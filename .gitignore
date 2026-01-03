@@ -1,1 +1,5 @@
+# Things that should not be tracked by Git and so are stored elsewhere
 /storage/
+
+# Environmental variables
+.env
