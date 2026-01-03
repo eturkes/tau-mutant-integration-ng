@@ -1,0 +1,10 @@
+services:
+  rstudio:
+    image: eturkes/tau-mutant-integration:v1
+    volumes:
+      - ".:/home/rstudio/tau-mutant-integration:rw"
+    ports:
+      - "127.0.0.1:${PORT}:8787"
+    environment:
+      -  DISABLE_AUTH=true
+      -  RSTUDIO_SESSION_TIMEOUT=0
