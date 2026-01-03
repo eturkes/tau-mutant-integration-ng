@@ -1,8 +1,8 @@
 services:
   rstudio:
-    image: eturkes/tau-mutant-integration:v1
+    image: eturkes/tau-mutant-integration-ng:v1
     volumes:
-      - ".:/home/rstudio/tau-mutant-integration:rw"
+      - ".:/home/rstudio/tau-mutant-integration-ng:rw"
     ports:
       - "127.0.0.1:${PORT}:8787"
     environment:
