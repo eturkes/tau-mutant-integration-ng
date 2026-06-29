@@ -51,7 +51,8 @@ GeoMx genotype tally (no batch axis in the spatial design) and the proteomics ke
 #| label: modality-sanity
 knitr::kable(t(as.matrix(table(geomx$genotype))))
 stopifnot(
-  nlevels(factor(geomx$genotype)) == 4L,   # four genotypes present in the spatial assay
+  !anyNA(geomx$genotype),                                          # no AOI with a missing genotype
+  setequal(as.character(unique(geomx$genotype)), genotype_levels), # exactly the canonical 4 labels
   nrow(sample_key) == 16L                  # 4 genotypes x 4 replicates at the 24M timepoint
 )
 ```

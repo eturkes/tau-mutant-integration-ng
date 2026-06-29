@@ -137,11 +137,17 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   ./<sibling>.html` nav warnings under embed-resources -> trips the zero-warning gate). tar_quarto
   still detects `tar_load`s inside an included `_*.qmd` (verified: 5 edges through the include); list
   the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
-- Theme split (Quarto 1.9.38, verified live): theme.scss `scss:defaults` sets COLOURS ONLY
-  ($primary/$link-color/$code-color DO inline -> verified .count). FONTS do NOT work via theme.scss:
-  Quarto overrides Bootstrap's $font-family-* (with/without !default) AND will not resolve @font-face
-  `url()` under embed-resources -> ship fonts as a generated plain CSS (base64 data-URI @font-face +
-  explicit body/headings/code font-family rules) loaded via `css:` in the doc.
+- Theme (Quarto 1.9.38, verified live 2026-06-29): theme.scss `scss:defaults` COLOUR vars
+  ($primary/$link-color/$code-color) embed RAW -> raw .count works. FONTS ALSO work via theme.scss --
+  the earlier "they don't" was a MEASUREMENT ARTIFACT, not a Quarto limit. Set $font-family-sans-serif
+  / $headings-font-family / $font-family-monospace (defaults) + an `@font-face` with a relative
+  `url("assets/fonts/<n>.woff2") format("woff2")` (scss:rules); the vars apply AND Quarto base64-INLINES
+  the woff2 into the embedded CSS under embed-resources (woff2 must exist at render -> commit or fetch;
+  list in `tar_quarto(extra_files=)`). NO hand-rolled data-URI CSS / build script needed for inlining.
+- Font DETECTION gotcha: Quarto embeds theme CSS as a URL-ENCODED `data:text/css,...` URI, so RAW greps
+  for `IBM Plex` / `data:font/woff2` read ~0 even when fonts ARE inlined (present as `IBM%20Plex` /
+  `woff2%3Bbase64`; woff2 base64 magic = d09GMg). ALWAYS urllib.unquote the data:text/css blocks before
+  matching FONT assets; raw `.count` is fine ONLY for raw-embedded things like the colour hexes.
 - Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
   is deny-Read -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
   script), not a Bash `rm`. Inspect the output HTML the same way (output dir is deny-Read): build the

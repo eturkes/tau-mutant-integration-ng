@@ -26,7 +26,7 @@ genotype_batch (16 ids); 5 contrasts {tau_alone, nlgf_in_maptki, nlgf_in_p301s,
 tau_in_nlgf, interaction}; `interaction = (NLGF_P301S-P301S)-(NLGF_MAPTKI-MAPTKI)`.
 
 ## STACK (gate resolved 2026-06-29)
-**Quarto book** (reports) + **targets** DAG (`tarchetypes::tar_quarto`) + **rv** (R pkgs;
+**Standalone offline Quarto HTML** (reports; one `format: html` doc + `{{< include >}}`, superseded the book) + **targets** DAG (`tarchetypes::tar_quarto`) + **rv** (R pkgs;
 A2-ai Rust, declarative `rproject.toml` + `rv.lock`) + **uv** (Python), versions pinned
 via **P3M dated snapshot**. User picked rv over renv (agent-native, mirrors uv; accepts
 pre-1.0 + manual Bioc, cheap fallback). rv specifics: hand-wire Bioc **3.23** (R 4.6)
@@ -113,65 +113,72 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
   meta; pseudobulk on S2 live object -> 16 genotype_batch columns.
 
 ### S4 - plot + report theme; QC-sanity chapter  [GATE-DEPENDENT engine; light render]  -- IN PROGRESS (resume here)
-<!-- S4 STATUS 2026-06-29 (CHECKPOINT COMMITTED; resume at REMAINING; codex-reviewed):
+<!-- S4 STATUS 2026-06-29 (CHECKPOINT COMMITTED + codex-reviewed; resume at REMAINING):
   DECISION (durable -> also memory.md "Reports"): report = ONE self-contained OFFLINE HTML, NOT a
     Quarto book (a book is MULTI-FILE + emits `Could not fetch resource ./<sibling>.html` nav WARNINGs
     under embed-resources -> would trip the S5 zero-warning gate). Render ONE standalone `format: html`
     doc (embed-resources self-contains it); modular sources via `{{< include _section.qmd >}}` (leading
     `_` => not rendered standalone).
-  COMMITTED THIS CHECKPOINT (gate-clean: offline = 0 external loads; render 0 error/0 warning; bounds
-    stopifnot pass; test_io/test_design/test_de_pb green):
+  COMMITTED (gate-clean: offline = 0 external loads; render 0 error/0 warning; bounds stopifnot pass;
+    test_io/test_design/test_de_pb green):
     - `index.qmd` = the ONE report (format.html {theme: theme.scss, embed-resources, toc, code-fold,
-      code-tools} + overview prose + `{{< include _qc.qmd >}}`). The book nav warning is gone (standalone).
-    - `_qc.qmd` (renamed from qc.qmd) = the QC-sanity include (8 chunks; setup does library + tar_source +
+      code-tools} + overview prose + `{{< include _qc.qmd >}}`). Book nav warning gone (standalone).
+    - `_qc.qmd` (renamed from qc.qmd) = the QC-sanity include (setup: library + tar_source +
       tar_load(microglia_seurat_raw,geomx,proteomics,phospho,sample_key) + theme_set; reads the
       33683x26104 qs target, NO 8G reload). Bounds HARDENED: dropped the arbitrary 1e6 nCount ceiling
-      (upper=Inf, rail "UMIs>=1"; the planned `nCount==colSums` check FAILED -- nCount is precomputed over
-      the pre-trim 33683+ gene universe, off by up to 246 -> not definitional here); replaced
-      `length(unique(genotype_batch))==16` with `!anyNA` + a 16x16 bijection vs interaction(genotype,batch).
-    - `theme.scss` = COLOURS ONLY ($primary,$link-color:#B0344D; $code-color:#3F5A6B) -- these Bootstrap
-      COLOUR vars DO inline (verified .count: B0344D 52, 3F5A6B 2). Fonts removed (see GOTCHA).
+      (upper=Inf; the planned `nCount==colSums` check FAILED -- nCount is precomputed over the pre-trim
+      gene universe, off by up to 246 -> not definitional); `length(unique(genotype_batch))==16` ->
+      `!anyNA` + a 16x16 bijection vs interaction(genotype,batch); GeoMx check (codex S4-review) ->
+      `!anyNA(geomx$genotype)` + `setequal(unique, genotype_levels)` (was a weak nlevels==4; verified the
+      data: factor, no NA, the 4 canonical labels, level ORDER differs so setequal not identical).
+    - `theme.scss` = COLOURS for now ($primary/$link-color #B0344D; $code-color #3F5A6B -- raw .count
+      52/2; colours embed RAW). Fonts DEFERRED to REMAINING (they DO work via theme.scss -- see GOTCHA).
     - `R/plot.R` = theme_tau(base_family="" -> no missing-font warning) + scale_colour/fill_genotype
       [+ scale_color_ alias] (limits+breaks=genotype_levels, drop=FALSE) + concordance_plot (v1 port).
     - `_quarto.yml` book -> {type: default, output-dir: _report, render:[index.qmd], lang: en-GB,
-      freeze:false}; `_targets.R` tar_quarto(report, extra_files="theme.scss") (VERIFIED it still detects
-      the 5 tar_load deps INSIDE _qc.qmd through the include); .gitignore /_book/->/_report/ + /assets/fonts/;
+      freeze:false}; `_targets.R` tar_quarto(report, extra_files="theme.scss") (detects the 5 tar_load
+      deps INSIDE _qc.qmd through the include); .gitignore /_book/->/_report/ + /assets/fonts/;
       .claude/settings.json deny ./_book/**->./_report/**.
-    - assets/fonts/ = 9 pinned IBM Plex woff2 (Sans 400/500/600/700+400i, Serif 600/700, Mono 400/600;
-      fontsource sans 5.2.8 / serif 5.2.7 / mono 5.2.7 via cdn.jsdelivr.net/npm/@fontsource/
-      ibm-plex-<fam>@<ver>/files/) ON DISK but GITIGNORED (build inputs for next session's CSS; these ARE
-      this session's download-verified files -> sha256 them locally to seed build-fonts.sh's pin).
-  GOTCHA (why fonts are DEFERRED, not a skipped step): IBM Plex does NOT apply via theme.scss. Quarto
-    1.9.38 OVERRIDES Bootstrap's $font-family-sans-serif/$headings-font-family/$font-family-monospace
-    (with or without !default -- only COLOUR vars win), AND @font-face with `url("assets/fonts/...")` in
-    scss:rules does NOT inline/resolve under embed-resources. Quarto caches the Sass compile in .quarto/
-    -> clear it to see theme edits (the render script does `unlink(".quarto")`; .quarto is deny-Read ->
+    - assets/fonts/ = 9 IBM Plex woff2 (Sans 400/500/600/700+400i, Serif 600/700, Mono 400/600; latin
+      subset ~200KB; fontsource sans 5.2.8 / serif 5.2.7 / mono 5.2.7 via cdn.jsdelivr.net/npm/
+      @fontsource/ibm-plex-<fam>@<ver>/files/, name ibm-plex-<fam>-latin-<wt>-<style>.woff2) ON DISK but
+      GITIGNORED -- this session's download-verified files (sha256 locally if a fetch-script pin is chosen).
+  GOTCHA -- CORRECTED (codex finding 1; the prior "fonts cannot work via theme.scss" was FALSE, a
+    measurement artifact): IBM Plex DOES work via theme.scss. Verified live 2026-06-29 on the PRODUCTION
+    render: set $font-family-sans-serif/$headings-font-family/$font-family-monospace (scss:defaults) +
+    `@font-face { src: url("assets/fonts/<n>.woff2") format("woff2") }` (scss:rules) -> the vars apply AND
+    Quarto base64-INLINES the woff2 into the embedded CSS under embed-resources (decoded the data:text/css
+    -> src:url(data:font/woff2;base64,d09GMg...) = wOF2 magic, all 3 families). NO hand-rolled data-URI CSS
+    / build script needed for inlining; the woff2 just have to exist at render. The earlier wrong call came
+    from RAW greps: Quarto embeds theme CSS as a URL-ENCODED data:text/css URI, so the tokens read ~0 while
+    present as `IBM%20Plex` / `woff2%3Bbase64`. ALWAYS urllib.unquote the data:text/css blocks before
+    matching FONT assets (colours embed raw -> raw .count fine for them). Quarto caches the Sass compile in
+    .quarto/ -> clear it to see theme edits (render script unlink(".quarto"); .quarto is deny-Read ->
     runtime indirection, not a Bash rm).
-  REMAINING (next session, in order -> closes S4):
-    1. `scripts/build-fonts.sh`: ensure the 9 woff2 (sha256 manifest; download-on-miss from the pinned
-       fontsource via jsDelivr) AND generate `assets/report-fonts.css` = one base64 data-URI @font-face per
-       woff2 (`src:url(data:font/woff2;base64,<b64>) format("woff2")`; `base64 -w0`; parse weight via bash
-       `[[ name =~ ([0-9]{3}) ]]`, style via `italic`) + explicit font-family rules: body -> "IBM Plex Sans"
-       + system fallbacks; h1..h6,.h1..h6 -> "IBM Plex Serif" + serif fallbacks, font-weight 600;
-       code,pre,kbd,samp,.sourceCode,pre.sourceCode -> "IBM Plex Mono" + mono fallbacks.
-    2. Run it -> assets/report-fonts.css (COMMIT it = render payload; it is a non-gitignored generated blob
-       -> add .claude/settings.json deny `Read(./assets/report-fonts.css)` + `Read(**/*.woff2)` + .serena
-       project.yml ignored_paths; Read-test 1 must-block + 1 must-read after). Add
-       `css: assets/report-fonts.css` to index.qmd format.html; add it to _targets.R extra_files.
-    3. Clear .quarto, re-render: PROVE fonts NOW inlined (data:...woff2;base64 count == 9 (Plex) AND Plex
-       font-family count > 0) AND still offline (0 external) + 0 warning + bounds pass. Inspect via the
-       .count-based python (the `#hex` regex is flaky; .count is authoritative; output dir is deny-Read ->
-       build its path inside the script).
+  REMAINING (next session, in order -> closes S4; SIMPLE now -- no build script needed for inlining):
+    1. theme.scss: add the 9 `@font-face` (relative `url("assets/fonts/<name>.woff2") format("woff2")`,
+       per-face font-weight + font-style:italic for the 400i) + `$font-family-sans-serif`:"IBM Plex Sans"+
+       system fallbacks, `$headings-font-family`:"IBM Plex Serif"+serif fallbacks, `$font-family-monospace`:
+       "IBM Plex Mono"+mono fallbacks (scss:defaults) + explicit body / h1..h6,.h1..h6 (weight 600) /
+       code,pre,kbd,samp,.sourceCode font-family rules (scss:rules).
+    2. DECISION (open) -- woff2 availability on a fresh clone: (a) COMMIT the 9 woff2 (~200KB, no build-time
+       network, KISS) + .claude/settings.json deny `Read(**/*.woff2)` + .serena ignored_paths (binary;
+       Read-test 1 must-block + 1 must-read); OR (b) keep gitignored + `scripts/build-fonts.sh` (sha256-
+       pinned jsDelivr fetch, matches the tools/ install pattern). List the woff2 (or assets/fonts) in
+       `tar_quarto(extra_files=)` either way.
+    3. Clear .quarto, re-render: PROVE fonts inlined via a DECODED check -- urllib.unquote the data:text/css
+       URIs then assert >=1 (target 9) `woff2;base64` (magic d09GMg) + IBM Plex font-family rules present,
+       AND still offline (0 external) + 0 warning + bounds pass. (Raw `.count` MISLEADS -- URL-encoded.)
     4. `tests/test_plot.R` (device-free: source constants+utils+plot+helpers; class-check theme_tau inherits
        theme/gg, scale_*_genotype aesthetics + scale_color_ alias identical, concordance_plot on a
        deterministic df inherits ggplot with NO draw; print "ok - test_plot"). Run all tests/test_*.R green.
-    5. SCRUB stale refs: `rg 'book|_book|_brand|brand.yml'` -> fix the plan STACK line (~L29 "Quarto book")
-       + any leftover. Update map.md (plot.R + report wiring: index.qmd -include-> _qc.qmd; theme.scss +
-       report-fonts.css; report target). Mark S4 done (this plan + roadmap Active plan + Ledger). Commit
-       `report (p0 s4): ...`.
+    5. SCRUB residual stale refs: `rg 'book|_book|_brand|brand.yml'` -> fix any leftover (e.g. S1 "book
+       skeleton" historical refs). Update map.md (plot.R + report wiring: index.qmd -include-> _qc.qmd;
+       theme.scss with fonts; report target). Mark S4 done (this plan + roadmap Active plan + Ledger).
+       Commit `report (p0 s4): ...`.
 -->
 - `R/plot.R`: base ggplot theme fn + `concordance_plot()`.
-- Report theme: Quarto `_brand.yml` / theme scss + IBM Plex (carry v1 bslib palette:
+- Report theme: Quarto `theme.scss` + IBM Plex (carry v1 bslib palette:
   primary/link = #B0344D). British English; human-facing prose uses hyphens not em/en-dashes.
 - QC-sanity chapter (.qmd): load data; print dims + genotype x batch crosstab;
   QC metric distributions (nFeature/nCount/percent_mt/percent_contam from raw object's

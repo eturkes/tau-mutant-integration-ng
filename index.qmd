@@ -21,6 +21,6 @@ Analysis sections arrive in later phases. This foundation page marks the reprodu
 spine: a pinned R environment (rv), a pinned Python environment (uv), a targets pipeline,
 and this single self-contained Quarto report. The quality-control pass below confirms that
 every modality loads at its expected shape and that the single-nucleus microglia carry a
-complete, balanced genotype-by-batch design.
+complete genotype-by-batch design.
 
 {{< include _qc.qmd >}}
