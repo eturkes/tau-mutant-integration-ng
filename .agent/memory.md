@@ -17,7 +17,10 @@ P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 - snrnaseq.rds  8.3G  (snRNAseq Seurat object)
 - geomx.rds     22M   (GeoMx WTA spatial, ~91 ROIs)
 - proteomics_nonfiltered_nonnormalised.tsv      15M  (peptide-level)
-- phosphoproteomics_nonfiltered_nonnormalised.tsv  11M  (phosphosite-level)
+- phosphoproteomics_nonfiltered_nonnormalised.tsv  35.5M (phosphosite-level)
+- proteomics_sample_key.csv  3.3K  (67 rows: `File name` + `Sample/Condtion`[sic];
+  TiO2/PTM phospho-run map; 24M timepoint = rows 1-16 = 4 genotypes x 4 reps;
+  io::proteomics_sample_meta n_keep=16; raw labels MAPT-KI/P301S+3/NLGF-* -> canonical)
 Missing vs v1 (do NOT re-acquire unless a phase explicitly needs them): cisTarget
 mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope.
 
@@ -37,13 +40,22 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
 - R is 4.6.0 here (v1 pinned 4.5.2 / Bioc 3.22) -> numbers WILL differ; we
   re-baseline, never reproduce v1's locked margins (18/12/55).
-- R packages: project-local via renv (lockfile tracked; renv not yet installed).
+- Stack (P0-locked; SOTA-researched, see p0_foundations_plan): **Quarto book** (reports)
+  + **targets** DAG (orchestration; `tarchetypes::tar_quarto`; R/ fns via `tar_source()`,
+  no manual loader) + **rv** (R pkgs; declarative `rproject.toml`+`rv.lock`) + **uv**
+  (Python). Versions pinned via **P3M dated snapshot** (binary CRAN+Bioc; Debian-13
+  trixie binaries may be absent -> source-compile fallback keeps pinning, loses speed).
+  NO Docker -> no bitwise guarantee: targets = pipeline correctness; rv.lock+uv.lock =
+  versions; P3M = pinning. (renv was the safe alt: auto-Bioc but imperative.)
+- R packages: project-local via rv (NOT installed yet). Bioc **3.23** (R 4.6) repos
+  hand-wired (no auto R<->Bioc coupling); no `rv remove` (hand-edit TOML); exclude
+  `rv/library` in `_quarto.yml` (bug #332). rv pre-1.0 -> fall back to renv if it bites.
 - Python: project-local uv `.venv` (gitignored); pick the SOTA per phase.
 - Heavy installs/compute: expect long runs; smoke-test helpers via `Rscript -e '...'`
   against the live data BEFORE any full run.
 
 ## Quality gate (provisional - lock concretely in P0)
-- Reproducible: fresh clone + `renv::restore()` (+ `uv sync`) runs the pipeline.
+- Reproducible: fresh clone + `rv sync` (+ `uv sync`) -> `targets::tar_make()` runs the pipeline.
 - Each module smoke-tested against live data before commit.
 - Reports (once they exist) knit clean: 0 error / 0 warning.
 
@@ -59,7 +71,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Bash deny-gate is static on command text -> a cmd naming a deny-Read path as an
   arg (rm/stat/grep/find-piped) is blocked; use a glob/`find -delete` or runtime
   indirection. `ls`/`wc`/`echo` slip through.
-- New `R/*.R` must be sourced in a single helpers loader, in dependency order.
+- New `R/*.R` = pure functions loaded by targets via `tar_source()`; the DAG orders
+  execution (no manual dependency loader). Heavy producers = `tar_target`s storing
+  `format="qs"`/`"file"`; Python steps = `uv run <script>` as `tar_file` targets.
 - Commit `.serena/` (project.yml + .gitignore); Serena language changes are
   startup-only (restart Claude Code to apply).
 

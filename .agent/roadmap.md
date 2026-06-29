@@ -27,10 +27,10 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none) - awaiting go on the phase plan below
+## Active plan: `p0_foundations_plan.md` - P0 Foundations (open). Stack locked: Quarto book + targets + rv + uv, P3M-pinned.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
-- P0 Foundations: project-local env (renv for R + uv .venv for Python), shared
+- P0 Foundations: project-local env (rv for R + uv .venv for Python), shared
   helpers (io / design+contrasts / plot theme), data load + QC sanity, 2x2
   factorial + 5 contrasts, concrete quality gate.
 - P1 snRNAseq microglia core: QC, microglia subset + substates (homeostatic / DAM /
