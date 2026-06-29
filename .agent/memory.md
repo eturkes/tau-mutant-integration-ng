@@ -54,8 +54,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - `reprocess_microglia`: SCT-v2(glmGamPoi, regress percent_mt+percent_contam) -> RunPCA(npcs=30) ->
   RunHarmony(batch ONLY) -> FindNeighbors+RunUMAP(harmony dims 1:20) -> FindClusters(Louvain algo 1, res
   {0.2,0.4,0.6}). Output (687MB qs, DefaultAssay SCT): reductions pca/harmony/umap, fresh SCT_snn_res.* +
-  `microglia_clusters` (=res 0.4 primary, 12 clusters, Idents). Reproducible: ARI=1.0 between runs
-  (assignment-deterministic despite non-bitwise float); seed 42 + RNGkind + thread snapshot in
+  `microglia_clusters` (=res 0.4 primary, 12 clusters, Idents). Re-run STABLE: observed cluster
+  ARI=1.0 under the recorded thread config -- NOT bitwise-guaranteed (clusters come from the seeded
+  PCA->Harmony->SNN->Louvain chain; UMAP is viz-only, irrelevant; Annoy/BLAS threads unpinned per
+  up-to-tolerance). seed 42 + RNGkind + thread snapshot in
   @misc$reprocess_provenance (read provenance$primary_cluster_col / $resolutions, NOT a grep -- robust to
   stale cols). Post-Harmony marker separation CONFIRMED (homeostatic/DAM/IFN/prolif distinct argmax clusters
   -> batch-only Harmony did NOT wash out substate biology). marker_mean_by_cluster(symbols mapped ->ensembl
@@ -70,6 +72,13 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   signal. SCTransform also trips future's 500MiB globals cap on 26k cells -> set options(future.globals.maxSize).
   Check each new pkg (UCell/sccomp) for the same patterns. harmony 2.0 dropped the v1 `assay.use` arg (assay
   implicit in reduction.use) -> v1 recipe args can be stale under the P3M-2026 pkg versions; verify signatures.
+- P1-S1 codex-review hardening (durable): reprocess_microglia ends with BUILD-TIME postconditions (3 reductions
+  + microglia_clusters factor + Idents match + no reduction shadows + only fresh *_snn_res.* + provenance) -> a
+  silent recipe regression fails tar_make (the warn=2 unit tests skip the heavy body); the marker-SEPARATION
+  argmax assertion is deferred to S2 QC (needs its curated ensembl sets). load_snrnaseq also clears
+  @graphs/@neighbors (v1 source carries stale SCT_nn/SCT_snn). Matrix is used directly but INTENTIONALLY
+  undeclared in rproject.toml (recommended pkg, ABI-coupled to R, always present via SeuratObject Imports ->
+  an explicit CRAN decl only risks a mismatched reinstall).
 - 5 canonical contrasts everywhere: tau_alone, nlgf_in_maptki, nlgf_in_p301s,
   tau_in_nlgf, interaction (factorial 2x2 + batch).
 - State thresholds before applying them; present the axes with no pre-privileged winner.

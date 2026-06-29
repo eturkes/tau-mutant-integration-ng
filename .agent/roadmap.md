@@ -37,8 +37,8 @@ headline = amyloid->DAM (robust, microglia-led); the tau x amyloid interaction =
 WITH a power/effect-size stmt (outcome-open), synergy = a rate effect handed to P2. Carry Thrupp 2020 caveat
 (snRNA under-detects ~18% DAM genes; score, not threshold).
 S1 DONE 2026-06-29: `microglia_processed` (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain 12 clusters @res0.4 ->
-UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif distinct argmax); re-run ARI=1.0;
-gate green. **NEXT:** S2 substate annotation + QC prune (rv add UCell).
+UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif distinct argmax); re-run STABLE
+(observed ARI=1.0, recorded threads); gate green. **NEXT:** S2 substate annotation + QC prune (rv add UCell).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -103,4 +103,5 @@ gate green. **NEXT:** S2 substate annotation + QC prune (rv add UCell).
   the gate via tar_meta -> silenced by Seurat's own `Seurat.warn.umap.uwot=FALSE` (other warnings still
   surface). Also strips stale upstream meta shadows (pca1/umap1 coords-as-cols, SCT_snn_res.0.01). Acceptance:
   reductions {pca,harmony,umap}+cluster factor present; post-Harmony marker separation confirmed (distinct
-  argmax per substate); re-run ARI=1.0 (assignment-deterministic despite non-bitwise float); gate green.
+  argmax per substate); re-run STABLE (observed ARI=1.0 under recorded threads; clusters derive from the
+  seeded PCA->Harmony->SNN->Louvain chain, UMAP is viz-only; NOT bitwise-guaranteed per up-to-tolerance); gate green.

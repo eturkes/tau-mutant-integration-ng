@@ -19,6 +19,11 @@ obj_qc <- obj
 obj_qc$percent_mt <- 1; obj_qc$percent_contam <- 1                                   # satisfy the regress-var guard
 expect_error(reprocess_microglia(obj_qc, primary_resolution = 0.9), "primary_resolution")  # primary not in resolutions
 expect_error(reprocess_microglia(obj_qc, dims = seq_len(40L)), "npcs")               # dims exceed npcs
+expect_error(reprocess_microglia(obj_qc, dims = integer(0)), "dims")                 # empty dims (no heavy run)
+expect_error(reprocess_microglia(obj_qc, npcs = c(30L, 40L)), "npcs")               # non-scalar npcs
+expect_error(reprocess_microglia(obj_qc, resolutions = c(0.2, NA)), "resolutions")   # non-finite resolution
+obj_na <- obj_qc; obj_na@meta.data$batch[1] <- NA
+expect_error(reprocess_microglia(obj_na), "batch_col")                               # NA in grouping metadata
 
 # --- marker_mean_by_cluster: exact means, deterministic order, absent-marker handling ------
 obj_m <- make_fake_seurat(cells_per = 4L, n_genes = 30L)
@@ -43,6 +48,6 @@ mm2   <- marker_mean_by_cluster(obj_m, sets2, cluster_col = "microglia_clusters"
 stopifnot(identical(attr(mm2, "markers_used")$A, rn[1]))
 expect_error(marker_mean_by_cluster(obj_m, list(A = c("X", "Y"), B = rn[4:6]),
                                     cluster_col = "microglia_clusters",
-                                    assay = "RNA", layer = "counts"))
+                                    assay = "RNA", layer = "counts"), "no present marker")
 
 cat("ok - test_microglia\n")

@@ -5,7 +5,7 @@
 # --- snRNAseq ----------------------------------------------------------------
 
 # Load the full snRNAseq Seurat object, subset to microglia, strip the whole-object SCT
-# assay + reductions (P1 recomputes both on the subset), and free the ~8G parent. Returns
+# assay + reductions + neighbor graphs (P1 recomputes them on the subset), and free the ~8G parent. Returns
 # an RNA-counts-only Seurat object (~26k microglia) carrying the original meta.data
 # (genotype, batch, genotype_batch, QC cols), with genotype refactored to canonical order.
 # Fails loud if the subset column is missing or the 4x4 fully-crossed genotype_batch design
@@ -19,6 +19,8 @@ load_snrnaseq <- function(path = data_paths$snrnaseq) {
   SeuratObject::DefaultAssay(micro) <- "RNA"
   micro[["SCT"]] <- NULL
   micro@reductions <- list()
+  micro@graphs <- list()       # drop stale SCT_nn/SCT_snn shadows (P1 recomputes); keep raw target clean
+  micro@neighbors <- list()
   stopifnot(all(c("genotype", "batch", "genotype_batch") %in% colnames(micro@meta.data)))
   # Refactor genotype to canonical order BEFORE asserting: factor() coerces any value outside
   # genotype_levels to NA, so the no-NA check must see the refactored column to actually catch

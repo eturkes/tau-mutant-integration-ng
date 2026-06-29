@@ -36,11 +36,14 @@ reprocess_microglia <- function(seurat_obj,
   stopifnot(
     inherits(seurat_obj, "Seurat"),
     "RNA" %in% SeuratObject::Assays(seurat_obj),
+    is.numeric(npcs), length(npcs) == 1L, npcs >= 2L, npcs == round(npcs),
+    is.numeric(dims), length(dims) >= 1L, all(dims >= 1L), all(dims == round(dims)), max(dims) <= npcs,
+    is.numeric(resolutions), length(resolutions) >= 1L, all(is.finite(resolutions)), all(resolutions > 0),
+    length(primary_resolution) == 1L, primary_resolution %in% resolutions,
     batch_col %in% colnames(seurat_obj@meta.data),
     all(regress_vars %in% colnames(seurat_obj@meta.data)),
-    is.numeric(resolutions), length(resolutions) >= 1L,
-    primary_resolution %in% resolutions,
-    max(dims) <= npcs
+    !anyNA(seurat_obj@meta.data[[batch_col]]),                                  # complete grouping/regression
+    all(vapply(regress_vars, function(v) !anyNA(seurat_obj@meta.data[[v]]), logical(1)))
   )
   RNGkind("Mersenne-Twister", "Inversion", "Rejection")   # pin the stream; Seurat's internal set.seed inherits the current kind
   set.seed(seed)
@@ -77,8 +80,8 @@ reprocess_microglia <- function(seurat_obj,
   # resolution we did not compute (e.g. an upstream SCT_snn_res.0.01). Fresh SCT_snn_res.<our
   # resolutions> + seurat_clusters stay; QC / annotation / cell-cycle / design columns are untouched.
   fresh_res <- paste0("SCT_snn_res.", resolutions)
-  stale <- setdiff(grep("^(pca|umap|tsne|harmony)[0-9]+$|_snn_res\\.[0-9]",
-                        colnames(obj@meta.data), value = TRUE), fresh_res)
+  stale <- setdiff(grep("^(pca|umap|tsne|harmony)[0-9]+$|^[A-Za-z0-9]+_snn_res\\.[0-9.]+$",
+                        colnames(obj@meta.data), value = TRUE), fresh_res)   # anchored: exact shadow shapes only
   if (length(stale)) obj@meta.data[stale] <- NULL
 
   primary_col <- paste0("SCT_snn_res.", primary_resolution)
@@ -92,6 +95,17 @@ reprocess_microglia <- function(seurat_obj,
     primary_resolution = primary_resolution, primary_cluster_col = primary_col,
     batch_col = batch_col, regress_vars = regress_vars,
     r_version = as.character(getRversion())
+  )
+  # Build-time postconditions -- the gate's warn=2 unit tests skip this heavy body, so the S1
+  # acceptance INVARIANTS are pinned HERE (a regression -> tar_make stops, gate red). Structural
+  # only (not the empirical "12 clusters" count, which legitimately shifts with npcs/dims tuning):
+  stopifnot(
+    all(c("pca", "harmony", "umap") %in% SeuratObject::Reductions(obj)),
+    is.factor(obj$microglia_clusters), nlevels(obj$microglia_clusters) >= 2L,
+    identical(as.character(SeuratObject::Idents(obj)), as.character(obj$microglia_clusters)),
+    !any(grepl("^(pca|umap|tsne|harmony)[0-9]+$", colnames(obj@meta.data))),       # no reduction-coord shadows
+    setequal(grep("_snn_res\\.", colnames(obj@meta.data), value = TRUE), fresh_res),  # only fresh cluster cols
+    length(obj@misc$reprocess_provenance) >= 1L
   )
   obj
 }
@@ -113,15 +127,21 @@ marker_mean_by_cluster <- function(seurat_obj, marker_sets,
   expr     <- SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer)
   clusters <- as.character(seurat_obj@meta.data[[cluster_col]])
   stopifnot(length(clusters) == ncol(expr), !anyNA(clusters))
-  lvls    <- sort(unique(clusters), method = "radix")   # locale-independent -> deterministic row order
+  u       <- unique(clusters)                           # deterministic row order, human-legible:
+  nums    <- suppressWarnings(as.numeric(u))             # numeric-like labels -> numeric sort (0,1,..,10,11),
+  lvls    <- if (!anyNA(nums)) u[order(nums)] else sort(u, method = "radix")   # else locale-independent radix
   present <- lapply(marker_sets, function(m) intersect(m, rownames(expr)))
-  stopifnot(all(vapply(present, length, integer(1)) >= 1L))   # every set retains >=1 present marker
+  empty   <- names(present)[vapply(present, length, integer(1)) == 0L]
+  if (length(empty))                                    # a silent empty set would fabricate NaN separation
+    stop("marker_mean_by_cluster: no present marker in set(s): ", paste(empty, collapse = ", "),
+         " -- map symbols -> ensembl upstream (assay rownames are ensembl)")
   out <- vapply(present, function(genes) {
     set_mean <- Matrix::colMeans(expr[genes, , drop = FALSE])   # per-cell mean across the set's genes
     vapply(lvls, function(g) mean(set_mean[clusters == g]), numeric(1))
   }, numeric(length(lvls)))
   if (!is.matrix(out)) out <- matrix(out, nrow = length(lvls))   # one cluster / one set -> re-wrap to matrix
   dimnames(out) <- list(lvls, names(marker_sets))
+  stopifnot(all(is.finite(out)))                        # no NA/NaN leaked into the separation matrix
   attr(out, "markers_used") <- present
   out
 }

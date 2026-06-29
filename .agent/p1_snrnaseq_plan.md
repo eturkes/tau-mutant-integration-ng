@@ -111,7 +111,8 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   R/microglia.R::reprocess_microglia() (SCT recipe above) + marker_mean_by_cluster (separation check); target
   `microglia_processed` (qs: SCT+pca+harmony+clusters+umap; 12 clusters @res0.4, 687MB). harmony+glmGamPoi
   added. ACCEPT met: reductions {pca,harmony,umap}+cluster factor present; post-Harmony marker separation
-  confirmed (distinct argmax homeostatic/DAM/IFN/prolif); re-run ARI=1.0 (assignment-deterministic, seed 42 +
+  confirmed (distinct argmax homeostatic/DAM/IFN/prolif); re-run STABLE (observed ARI=1.0, recorded threads,
+  not bitwise-guaranteed; seed 42 +
   RNGkind + thread snapshot in @misc$reprocess_provenance); gate green. Pkg-drift fixes vs v1: harmony 2.0 drops
   assay.use; future.globals.maxSize raised for SCT; Seurat.warn.umap.uwot=FALSE (else UMAP notice -> tar_meta
   warning -> gate fail). Stale upstream meta shadows (pca1/umap1, SCT_snn_res.0.01) stripped.
