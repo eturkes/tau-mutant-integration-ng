@@ -1,0 +1,317 @@
+## snRNAseq DE: per-substate NEBULA (localisation)
+
+The whole-microglia NEBULA fit reported a borderline interaction
+(min FDR 0.063) with `Colec12`, `Plac9` and a small OXPHOS-leaning
+pathway signal driving the divergence narrative. The natural follow-up
+question is *which substate* (homeostatic, DAM, IFN, proliferative)
+carries each candidate signal. We therefore re-fit the 2x2 factorial
+NEBULA model independently within each microglia state and align the
+five canonical contrasts side-by-side. The per-substate gene universe is
+filtered to genes expressed in >= 5% of cells in that state (cf. 1% for
+whole-microglia), reflecting the smaller cell counts per state.
+
+```{r snrnaseq-substate-nebula}
+per_state_path <- file.path(params$cache_dir, "de_snrnaseq_nebula_per_state.rds")
+de_snrnaseq_nebula_per_state <- cache_or_run(per_state_path,
+                                             overwrite = params$recompute_snrnaseq, {
+  fit_nebula_per_state(
+    microglia_seurat,
+    state_col     = "state",
+    id_col        = "genotype_batch",
+    genotype_col  = "genotype",
+    assay         = "RNA",
+    layer         = "counts",
+    min_cell_frac = 0.05,
+    ncore         = max(1L, parallel::detectCores() - 1L),
+    symbol_map    = symbol_map
+  )
+})
+
+per_state_states <- names(de_snrnaseq_nebula_per_state)
+cat(sprintf("Per-substate NEBULA fits: %s.\n",
+            paste(per_state_states, collapse = ", ")))
+for (st in per_state_states) {
+  fit <- de_snrnaseq_nebula_per_state[[st]]
+  cat(sprintf("  %-15s n_cells=%5d  n_genes=%5d  converged=%d/%d.\n",
+              st, fit$n_cells, fit$n_genes,
+              sum(fit$fit$convergence == 1, na.rm = TRUE),
+              length(fit$fit$convergence)))
+}
+```
+
+```{r snrnaseq-substate-nebula-summary}
+contrast_levels <- c("nlgf_in_maptki", "nlgf_in_p301s",
+                     "interaction", "tau_alone", "tau_in_nlgf")
+per_state_summary <- purrr::imap_dfr(de_snrnaseq_nebula_per_state, function(fit, st) {
+  purrr::imap_dfr(fit$top, function(tbl, cn) {
+    data.frame(
+      state    = st,
+      contrast = cn,
+      n_genes  = nrow(tbl),
+      n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+      n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+      n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE),
+      min_padj = suppressWarnings(min(tbl$adj.P.Val, na.rm = TRUE))
+    )
+  })
+})
+per_state_summary$contrast <- factor(per_state_summary$contrast,
+                                     levels = contrast_levels)
+per_state_summary <- per_state_summary[order(per_state_summary$state,
+                                             per_state_summary$contrast), ]
+per_state_summary$min_padj[!is.finite(per_state_summary$min_padj)] <- NA_real_
+knitr::kable(per_state_summary, digits = 3,
+             caption = "Per-substate NEBULA DE summary (FDR < 0.05)")
+write_tsv_safe(per_state_summary,
+               file.path(params$results_dir, "nebula_per_state_summary.tsv"))
+```
+
+```{r snrnaseq-substate-interaction-volcano, fig.width = 11, fig.height = 7}
+# Volcano of the interaction contrast per substate. Same scale across
+# panels so a stronger signal in one state shows up as taller points.
+int_panels <- purrr::imap(de_snrnaseq_nebula_per_state, function(fit, st) {
+  volcano(fit$top$interaction, sprintf("Interaction (%s)", st))
+})
+patchwork::wrap_plots(int_panels, ncol = 2)
+```
+
+```{r snrnaseq-substate-localisation}
+# Localise the whole-microglia interaction signal: for the union of
+#   (a) top 20 NEBULA whole-microglia interaction hits by raw P, and
+#   (b) the union of top-20 per-method hits from the 6-method
+#       triangulation (already saved as `union_genes`),
+# look up per-state interaction logFC and -log10(P). Highlights which
+# substate carries each candidate divergence gene.
+nebula_int_whole <- de_snrnaseq_nebula$top$interaction |>
+  dplyr::filter(is.finite(P.Value)) |>
+  dplyr::arrange(P.Value) |>
+  head(20) |>
+  dplyr::pull(gene)
+target_genes <- unique(c(nebula_int_whole, union_genes))
+
+# Symbols for display.
+target_symbols <- symbol_map$symbol[match(target_genes, symbol_map$ensembl)]
+
+per_state_int <- purrr::imap_dfr(de_snrnaseq_nebula_per_state, function(fit, st) {
+  tbl <- fit$top$interaction
+  idx <- match(target_genes, tbl$gene)
+  data.frame(
+    gene        = target_genes,
+    symbol      = target_symbols,
+    state       = st,
+    logFC       = tbl$logFC[idx],
+    P.Value     = tbl$P.Value[idx],
+    adj.P.Val   = tbl$adj.P.Val[idx],
+    convergence = tbl$convergence[idx]
+  )
+})
+
+# Whole-microglia reference for each gene, joined alongside.
+whole_ref <- de_snrnaseq_nebula$top$interaction |>
+  dplyr::filter(gene %in% target_genes) |>
+  dplyr::select(gene, whole_logFC = logFC,
+                whole_P = P.Value, whole_padj = adj.P.Val)
+
+per_state_int <- dplyr::left_join(per_state_int, whole_ref, by = "gene")
+
+# Wide table for display: one row per gene, columns per state for
+# -log10(P) and signed-logFC (sign captures direction of divergence).
+loc_wide <- per_state_int |>
+  dplyr::mutate(neg_log10p = -log10(pmax(P.Value, 1e-300))) |>
+  dplyr::select(gene, symbol, state, logFC, neg_log10p,
+                whole_P, whole_padj) |>
+  tidyr::pivot_wider(
+    id_cols = c(gene, symbol, whole_P, whole_padj),
+    names_from = state,
+    values_from = c(logFC, neg_log10p),
+    names_glue = "{state}_{.value}"
+  ) |>
+  dplyr::mutate(
+    max_negLogP_state = apply(
+      dplyr::pick(dplyr::ends_with("_neg_log10p")), 1,
+      function(x) {
+        nm <- names(x)
+        if (all(!is.finite(x))) return(NA_character_)
+        sub("_neg_log10p$", "", nm[which.max(x)])
+      }
+    ),
+    max_negLogP = apply(
+      dplyr::pick(dplyr::ends_with("_neg_log10p")), 1,
+      function(x) suppressWarnings(max(x, na.rm = TRUE))
+    )
+  ) |>
+  dplyr::arrange(dplyr::desc(max_negLogP))
+
+knitr::kable(head(loc_wide, 25), digits = 3,
+             caption = paste0(
+               "Per-substate localisation of the interaction contrast: ",
+               "for each candidate gene, -log10(P) and logFC per state ",
+               "plus the whole-microglia reference. ",
+               "Sorted by maximum per-state -log10(P)."))
+write_tsv_safe(loc_wide,
+               file.path(params$results_dir, "nebula_per_state_localisation.tsv"))
+```
+
+```{r snrnaseq-substate-spotlight, fig.width = 10, fig.height = 5}
+# Spotlight visualisation: pick the six genes with the most concentrated
+# per-state interaction signal (largest max_negLogP across states) that
+# survive the 5% prevalence filter in at least 2 states. Whole-microglia
+# borderline hits filtered out per-state by prevalence (Plac9, Cd276,
+# AI504432) are necessarily excluded here.
+state_levels <- names(de_snrnaseq_nebula_per_state)
+spotlight_pick <- loc_wide |>
+  dplyr::mutate(
+    n_states_present = rowSums(
+      !is.na(dplyr::pick(dplyr::ends_with("_logFC"))))
+  ) |>
+  dplyr::filter(n_states_present >= 2, is.finite(max_negLogP)) |>
+  dplyr::arrange(dplyr::desc(max_negLogP)) |>
+  head(6) |>
+  dplyr::pull(symbol)
+cat(sprintf("Spotlight genes (top 6 max-state-signal, >=2 states): %s.\n",
+            paste(spotlight_pick, collapse = ", ")))
+
+spotlight <- per_state_int |>
+  dplyr::filter(symbol %in% spotlight_pick) |>
+  dplyr::mutate(
+    symbol = factor(symbol, levels = spotlight_pick),
+    state  = factor(state, levels = state_levels),
+    neg_log10p = -log10(pmax(P.Value, 1e-300)),
+    direction  = ifelse(is.finite(logFC) & logFC >= 0, "up", "down")
+  )
+
+p_p <- ggplot(spotlight,
+              aes(state, neg_log10p, fill = direction)) +
+  geom_col() +
+  facet_wrap(~ symbol, nrow = 1) +
+  scale_fill_manual(values = c(up = "#b40426", down = "#3b4cc0"),
+                    name = "logFC direction") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed",
+             colour = "grey50") +
+  labs(x = NULL, y = "-log10(raw P), interaction",
+       title = "Per-substate localisation of top interaction hits") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+p_f <- ggplot(spotlight,
+              aes(state, logFC, fill = direction)) +
+  geom_col() +
+  facet_wrap(~ symbol, nrow = 1) +
+  scale_fill_manual(values = c(up = "#b40426", down = "#3b4cc0"),
+                    name = "logFC direction") +
+  geom_hline(yintercept = 0, colour = "grey50") +
+  labs(x = NULL, y = "log2 FC, interaction") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+p_p / p_f
+```
+
+### IFN microglia: asymmetric NLGF response
+
+The per-state summary above shows that IFN microglia mount a 3.8x
+stronger NLGF response in the P301S tau background (528 sig at
+FDR < 0.05) than in MAPTKI (138 sig). This asymmetry is the mathematical
+substrate of the whole-microglia interaction signal, but is much more
+striking in IFN than in any other state. Below we project the two
+NLGF contrasts within IFN onto each other to characterise which genes
+are P301S-specific (sig only in P301S context), MAPTKI-specific, or
+shared, and to list the strongest P301S-specific drivers.
+
+```{r snrnaseq-ifn-asymmetry, fig.width = 9, fig.height = 7}
+if ("IFN" %in% names(de_snrnaseq_nebula_per_state)) {
+  ifn_fit <- de_snrnaseq_nebula_per_state$IFN
+  ifn_maptki <- ifn_fit$top$nlgf_in_maptki |>
+    dplyr::select(gene, symbol,
+                  logFC_maptki = logFC, P_maptki = P.Value,
+                  padj_maptki = adj.P.Val) |>
+    dplyr::filter(!is.na(symbol))
+  ifn_p301s <- ifn_fit$top$nlgf_in_p301s |>
+    dplyr::select(gene, symbol,
+                  logFC_p301s = logFC, P_p301s = P.Value,
+                  padj_p301s = adj.P.Val) |>
+    dplyr::filter(!is.na(symbol))
+  ifn_join <- dplyr::inner_join(ifn_maptki, ifn_p301s,
+                                by = c("gene", "symbol")) |>
+    dplyr::mutate(
+      sig_maptki = !is.na(padj_maptki) & padj_maptki < 0.05,
+      sig_p301s  = !is.na(padj_p301s)  & padj_p301s  < 0.05,
+      category   = dplyr::case_when(
+        sig_p301s  & !sig_maptki ~ "P301S-specific",
+        sig_maptki & !sig_p301s  ~ "MAPTKI-specific",
+        sig_p301s  &  sig_maptki ~ "Shared",
+        TRUE                     ~ "ns"
+      )
+    )
+  ifn_join$category <- factor(ifn_join$category,
+                              levels = c("Shared", "P301S-specific",
+                                         "MAPTKI-specific", "ns"))
+  cat("IFN microglia, FDR<0.05 categorisation:\n")
+  print(table(ifn_join$category))
+
+  label_n <- 12
+  label_set <- dplyr::bind_rows(
+    ifn_join |> dplyr::filter(category == "P301S-specific") |>
+      dplyr::arrange(P_p301s) |> head(label_n),
+    ifn_join |> dplyr::filter(category == "MAPTKI-specific") |>
+      dplyr::arrange(P_maptki) |> head(label_n),
+    ifn_join |> dplyr::filter(category == "Shared") |>
+      dplyr::arrange(pmin(P_p301s, P_maptki)) |> head(6)
+  )
+  p_scatter <- ggplot(ifn_join,
+                      aes(logFC_maptki, logFC_p301s, colour = category)) +
+    geom_hline(yintercept = 0, colour = "grey80") +
+    geom_vline(xintercept = 0, colour = "grey80") +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+                colour = "grey60") +
+    geom_point(data = dplyr::filter(ifn_join, category == "ns"),
+               alpha = 0.2, size = 0.6) +
+    geom_point(data = dplyr::filter(ifn_join, category != "ns"),
+               alpha = 0.8, size = 1.1) +
+    ggrepel::geom_text_repel(data = label_set,
+                             aes(label = symbol),
+                             size = 3, colour = "black",
+                             max.overlaps = 40) +
+    scale_colour_manual(values = c(
+      Shared            = "#7e3a86",
+      `P301S-specific`  = "#b40426",
+      `MAPTKI-specific` = "#3b4cc0",
+      ns                = "grey70"
+    )) +
+    labs(x = "logFC nlgf_in_maptki (IFN microglia)",
+         y = "logFC nlgf_in_p301s (IFN microglia)",
+         title = "IFN microglia: NLGF response in P301S vs MAPTKI tau context",
+         subtitle = "Points off the dashed identity line = tau-context-dependent response") +
+    theme_bw()
+  print(p_scatter)
+
+  # |logFC|<=10 sanity filter on the displayed top-25: NEBULA can return
+  # extreme natural-log -> log2 estimates (e.g. Mamdc2 logFC_maptki=26.6)
+  # for genes with near-zero counts in one arm. The raw TSV stays
+  # untouched; this only governs the kable.
+  ifn_extreme_n <- ifn_join |>
+    dplyr::filter(category == "P301S-specific",
+                  abs(logFC_p301s) > 10 | abs(logFC_maptki) > 10) |>
+    nrow()
+  ifn_top_p301s <- ifn_join |>
+    dplyr::filter(category == "P301S-specific",
+                  abs(logFC_p301s) <= 10,
+                  abs(logFC_maptki) <= 10) |>
+    dplyr::arrange(P_p301s) |>
+    dplyr::transmute(symbol, gene,
+                     logFC_maptki, padj_maptki,
+                     logFC_p301s,  padj_p301s) |>
+    head(25)
+  print(knitr::kable(ifn_top_p301s, digits = 3,
+                     caption = sprintf(paste0(
+                       "Top P301S-specific IFN NLGF responders ",
+                       "(FDR<0.05 in P301S, ns in MAPTKI; |logFC|<=10 ",
+                       "in both contrasts, %d outliers excluded from display)"),
+                       ifn_extreme_n)))
+  write_tsv_safe(ifn_join,
+                 file.path(params$results_dir,
+                           "ifn_nlgf_asymmetry.tsv"))
+} else {
+  cat("IFN per-state NEBULA fit not available; skipping asymmetry panel.\n")
+}
+```

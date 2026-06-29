@@ -1,0 +1,1194 @@
+# Kinase activity inference
+
+This section is the second layer of the mechanism-layer arc described
+in `storage/notes/mechanism_layer_plan.md` (Phase F). Section 14 surfaced
+upstream transcriptional regulators against the D2 three-axis verdict;
+this section surfaces upstream **kinase** regulators against the same
+verdict, using the corrected bulk-phosphoproteome cache produced at
+session F2 as input. Phospho-site evidence for each of ~100 mouse
+kinases is integrated via `decoupleR` against the OmniPath
+kinase-substrate network (KSN, human prior mapped to mouse via
+`nichenetr::convert_human_to_mouse_symbols`; regulatory phosphosite
+residues are highly conserved so position/residue translation is 1:1).
+
+The mechanism layer derives every kinase candidate from the same
+phospho DE cache the project already builds for sections 6 and 6b; no
+new data ingestion. Phase E's TF layer scored ~250-680 TFs per
+modality across snRNAseq, GeoMx, and proteomics; the kinase layer
+scores ~100 kinases against the single phospho modality. The kinase
+universe is small because the OmniPath KSN, after mouse mapping and
+the `minsize = 5L` substrate-coverage floor in the corrected
+phospho universe, retains only kinases with at least five measured
+substrate sites. The single-modality nature of phospho means the
+parallel cross-modality leader-board pattern that drove section 14.1
+does not transfer directly; the rationale for the rewritten F3 rule
+is given in subsection 15.1 below.
+
+## Per-contrast kinase activity (corrected cache, FDR<0.10)
+
+**Inference rule (stated before applying to data).** This subsection
+treats the five contrasts as independent inference units. For each
+contrast, a kinase is called *significant* if its `ulm` p-value
+(decoupleR's canonical linear-model F-test against the OmniPath mouse
+KSN) is below BH-padj < 0.10 within that contrast's kinase universe.
+Direction (sign of activity score) is read from the `consensus`
+score (decoupleR's Stouffer combination of `ulm` and `wsum`-family
+scores) so that ulm arbitrates significance and consensus arbitrates
+magnitude / sign -- the same split used at section 14 for TFs. No
+cross-contrast aggregation. Only the `phospho_corrected` cache is
+consulted; `phospho_raw` is set aside.
+
+**Why this differs from the section 14 leader-board pattern (user-
+directed F3 deviation, 2026-05-24).** The original F3 plan stub
+proposed a cross-cache + cross-contrast leader board paralleling the
+E3 TF leader board, with `phospho_corrected` as primary and
+`phospho_raw` as a corroborator, gated by either ≥2 contrasts with
+cross-cache agreement or ≥3 contrasts significant in the corrected
+cache alone. The pre-build diagnostic at F3 found this rule to be
+structurally unsuitable for the kinase layer:
+
+* The cross-cache consistency arm yields **zero** kinase-contrast
+  cells at FDR<0.10. Batch correction has exposed kinase signals
+  (most prominently Gsk3b) that were buried in the raw cache by
+  batch-confounded noise; the two caches even disagree on the sign
+  of the dominant signal at three contrasts. The raw cache cannot
+  serve as an FDR-scale corroborator for the corrected cache.
+* The corrected-cache arm at "≥3 contrasts significant" yields
+  exactly one kinase (Gsk3b) because the small inference universe
+  (~100 kinases per contrast) makes BH-padj harsh -- the per-contrast
+  significant count at FDR<0.10 is in the 0-4 range.
+
+Given those two structural facts, the user-directed decision is to
+treat contrasts as independent and to anchor inference on the
+corrected cache alone, with no cross-contrast leader-rule
+aggregation. This is the right framing for the kinase layer because
+each contrast asks a different mechanistic question
+(amyloid-without-tau vs amyloid-on-tau vs interaction etc.), and
+collapsing across contrasts via a count-of-contrasts rule would have
+muddled rather than clarified the per-contrast biology.
+
+**Single-cache caveat.** The corrected cache is the primary inference
+substrate for this section. The raw cache is deliberately excluded
+from the per-contrast significance call because it cannot corroborate
+the corrected cache at FDR scale; downstream sessions (15.2 axis-
+restricted ranking, 15.3 verdict) inherit the same single-cache
+convention.
+
+**Bulk-phospho caveat.** The phospho-proteome is bulk hippocampus,
+not microglia-sorted. The kinase activity scores below integrate
+substrate-level phospho changes across all cell types in the tissue.
+Read these results as *"kinases active in this contrast anywhere in
+the hippocampus"* rather than as strictly microglia-specific kinase
+activity. The same caveat applied to the proteomics modality in
+sections 5 and 14; phospho inherits it directly because the input
+phospho DE cache is derived from the same bulk samples.
+
+```{r kinase-f3-build, message = FALSE, warning = FALSE}
+kinase_cache <- readRDS(file.path(params$cache_dir,
+                                  "kinase_activity_decoupler.rds"))
+
+kinase_per_contrast <- build_kinase_per_contrast_table(
+  kinase_cache,
+  cache_name    = "phospho_corrected",
+  sig_statistic = "ulm",
+  dir_statistic = "consensus"
+)
+
+# Persist the long-format per-contrast table for downstream sessions
+# (15.2 axis-restricted, 15.3 verdict) and out-of-knit consumers.
+# Long form: one row per (contrast, kinase) across all ~100 kinases
+# in the corrected cache; downstream code can filter on
+# sig_fdr10_ulm to isolate the per-contrast significant sets.
+kinase_per_contrast_export <- kinase_per_contrast
+kinase_per_contrast_export$sig_fdr10_ulm <-
+  !is.na(kinase_per_contrast$padj_ulm) & kinase_per_contrast$padj_ulm < 0.10
+write_tsv_safe(
+  kinase_per_contrast_export,
+  file.path(params$results_dir, "kinase_activity_per_contrast.tsv")
+)
+
+kinase_sig_summary <- summarise_sig_kinases_per_contrast(
+  kinase_per_contrast,
+  padj_cut      = 0.10,
+  sig_statistic = "ulm",
+  dir_statistic = "consensus"
+)
+```
+
+```{r kinase-f3-summary-table, results = "asis"}
+knitr::kable(
+  kinase_sig_summary,
+  digits  = 4,
+  caption = paste0(
+    "Per-contrast significant-kinase counts in the corrected ",
+    "phospho cache at FDR<0.10 (ulm). 'top_kinase' is the lowest-",
+    "padj kinase per contrast; 'top_kinase_score' is its signed ",
+    "consensus activity score."
+  )
+)
+```
+
+### Per-contrast significant kinases
+
+The five tables below list the significant kinases per contrast at
+FDR<0.10 on the corrected-cache ulm statistic. Two contrasts
+(`nlgf_in_maptki`, `tau_alone`) carry zero significant kinases at
+this threshold and are reported as honest non-findings; the remaining
+three (`nlgf_in_p301s`, `tau_in_nlgf`, `interaction`) carry 2-4
+significant kinases each. The score and padj for both `ulm` (sig
+arbiter) and `consensus` (direction arbiter) are shown side-by-side
+so the reader can see where the two statistics agree vs disagree on
+magnitude (sign agreement is the strict default; magnitude divergence
+is informational).
+
+```{r kinase-f3-per-contrast-tables, results = "asis"}
+for (ctr in c("nlgf_in_maptki", "nlgf_in_p301s", "tau_alone",
+              "tau_in_nlgf", "interaction")) {
+  sig_tbl <- filter_sig_kinases_for_contrast(
+    kinase_per_contrast,
+    contrast      = ctr,
+    padj_cut      = 0.10,
+    sig_statistic = "ulm",
+    dir_statistic = "consensus"
+  )
+  cat(sprintf("\n\n**Contrast `%s`**\n\n", ctr))
+  if (nrow(sig_tbl) == 0L) {
+    cat("No significant kinases at FDR<0.10 in the corrected cache.\n\n")
+  } else {
+    print(knitr::kable(
+      sig_tbl, digits = 4,
+      caption = sprintf(
+        paste0("Significant kinases at contrast `%s` ",
+               "(FDR<0.10 on ulm; corrected cache; %d of %d kinases)."),
+        ctr, nrow(sig_tbl),
+        kinase_sig_summary$n_kinases_total[kinase_sig_summary$contrast == ctr])
+    ))
+    cat("\n")
+  }
+}
+```
+
+### Activity score x contrast view for kinases significant in any contrast
+
+The heatmap below shows the union of kinases that reach FDR<0.10 on
+ulm in any contrast (alphabetical row order so no kinase is visually
+privileged), with cell colour set by signed consensus score across
+all five contrasts. The view includes the *non-significant* cells so
+the reader can see each kinase's full per-contrast pattern -- in
+particular, the sign-flip pattern for `Gsk3b` (negative at the two
+contrasts where it is not significant, strongly positive at the three
+where it is) and the opposite pattern for `Csnk1a1` (positive at
+`nlgf_in_maptki`, negative at `tau_in_nlgf` and `interaction`).
+Significance is marked on the cell text: `*` = FDR<0.05; `.` =
+FDR<0.10.
+
+```{r kinase-f3-heatmap, fig.width = 7, fig.height = 3.5}
+plot_kinase_activity_heatmap(
+  kinase_per_contrast,
+  padj_cut         = 0.10,
+  padj_strict      = 0.05,
+  sig_statistic    = "ulm",
+  colour_statistic = "consensus"
+)
+```
+
+### Interpretive notes for this subsection
+
+The per-contrast results centre overwhelmingly on **`Gsk3b`** -- the
+canonical tau kinase that phosphorylates tau at residues including
+S202/T205/S396/S404 (the AT8 / PHF1 epitopes used to stage AD tau
+pathology) and is the highest-profile pharmacological target in the
+tau kinase literature. The pattern across the five contrasts is
+internally coherent and is the cleanest single result of any Phase E
+or F mechanism output to date:
+
+| Contrast            | Gsk3b ulm | Gsk3b padj (ulm) | Reading                                                                                     |
+|---------------------|-----------|------------------|---------------------------------------------------------------------------------------------|
+| `nlgf_in_maptki`    | -1.66     | not sig          | Amyloid alone on tau-null background tends to *suppress* Gsk3b substrate phospho.           |
+| `tau_alone`         | -1.47     | not sig          | Tau alone (no amyloid) trends similarly negative; consistent with the above.                |
+| `nlgf_in_p301s`     | +3.79     | 0.008            | Amyloid on a tau background activates Gsk3b strongly.                                       |
+| `tau_in_nlgf`       | +4.15     | 0.003            | Adding tau onto amyloid activates Gsk3b strongly.                                           |
+| `interaction`       | +4.32     | 0.002            | The synergy between tau and amyloid *is* the Gsk3b activation -- this contrast is largest. |
+
+This is the most direct possible mechanism-layer answer to the
+project's interaction question (*"what does tau add on the amyloid
+background?"*): a Gsk3b-mediated kinase activation that neither tau
+alone nor amyloid alone produces on the MAPTKI background. The
+positive sign convention here matches decoupleR's signed activity
+score: a positive score means Gsk3b's known substrates are more
+phosphorylated on average than the kinase universe baseline at this
+contrast.
+
+`Cdk5` -- the second canonical tau kinase and a major regulator of
+tau S202/T205/S404 phosphorylation through its p35/p25 activation
+cycle -- corroborates Gsk3b at `nlgf_in_p301s` (ulm +3.91, padj
+0.008). The full Cdk5 pattern across contrasts mirrors Gsk3b's
+direction (+0.50 at `nlgf_in_maptki`, -2.00 at `tau_alone`, +1.94 at
+`tau_in_nlgf`, +2.74 at `interaction`) but with smaller magnitude;
+Cdk5 reaches significance only at `nlgf_in_p301s` where the signal
+is largest. This is a coherent tau-kinase-cluster signature: both
+canonical tau kinases trend in the same direction at the contrasts
+that involve tau (or tau on amyloid), and both are suppressed (Gsk3b)
+or weakly negative (Cdk5) at the contrasts that lack the tau side
+of the design.
+
+`Csnk1a1` (casein kinase 1 alpha) appears as the second hit at both
+`tau_in_nlgf` and `interaction`, but with **negative** activity
+scores (ulm -3.35 and -3.22 respectively). The full per-contrast
+pattern is +1.85 / -2.20 / +0.72 / -3.35 / -3.22: CK1α substrate
+phosphorylation is *increased* at `nlgf_in_maptki` and *decreased*
+in the P301S-containing backgrounds. CK1 family members have
+established roles in tau phosphorylation but typically as positive
+regulators; this opposite-direction pattern argues that the kinase
+layer is reading at least two distinct biological programs --
+the Gsk3b/Cdk5 axis active in tau-on-amyloid contrasts vs a CK1α
+axis active in amyloid-alone-on-MAPTKI contrasts. `Csnk1e` (CK1ε) at
+`nlgf_in_p301s` (+3.07) does not show the same sign pattern as CK1α
+across all five contrasts, consistent with CK1 family members being
+regulated independently.
+
+`Ppp1ca` (protein phosphatase 1 catalytic alpha) at `nlgf_in_p301s`
+(+3.09) is the one phosphatase in the significant set. A positive
+activity score for a phosphatase reads "*Ppp1ca's substrate sites are
+more dephosphorylated at this contrast than the kinase universe
+baseline*" via the decoupleR signed-mode-of-regulation convention.
+OmniPath KSN encodes the substrate `mor` (mode of regulation) column
+with negative weights for phosphatase-target relationships; the
+decoupleR `ulm` then returns a positive score when the substrate sites
+move in the dephosphorylation direction. Ppp1ca surfacing at the
+same contrast as Cdk5 and Gsk3b is consistent with the
+literature: PP1 is the major tau phosphatase counteracting both Cdk5
+and Gsk3b at multiple tau residues, so co-activation under amyloid
+pressure on the tau background reads as a coordinated kinase-
+phosphatase axis rather than as a contradiction.
+
+The two **honest non-findings** (`nlgf_in_maptki`, `tau_alone`)
+deserve their own brief framing. At FDR<0.10 on ulm in the corrected
+cache, neither contrast carries any kinase activity call. At nominal
+ulm p<0.05, both contrasts surface 5-13 kinases respectively, but
+none survives BH adjustment over the ~100-kinase universe. The
+correct reading is that the kinase layer cannot identify a
+high-confidence regulator for either of those contrasts at this
+threshold; the heatmap shows that Gsk3b, Cdk5, and Ppp1ca all carry
+*negative* scores at `nlgf_in_maptki` and `tau_alone` even when not
+significant, so the absence of a hit is not the absence of any
+direction. A more deeply powered phospho dataset (or a microglia-
+sorted phospho dataset) might surface those signals; the current
+data ceiling does not.
+
+**Cross-reference to section 14 TF findings.** The TF layer at
+section 14.1 surfaced ten cross-modality leader TFs concentrated on
+the **amyloid-activation axis** (NLGF contrasts, all dominant_sign
+= +), with the strongest single TF being Spi1 (PU.1). The kinase
+layer here surfaces the **tau-on-amyloid + interaction** axis as its
+strongest hits (Gsk3b, Cdk5, Csnk1a1 all peak at `tau_in_nlgf` and
+`interaction`). The two layers are therefore *complementary*:
+section 14 reads the amyloid-driven activation axis of the D2
+verdict; section 15.1 here reads the tau-on-amyloid interaction axis
+that the TF layer could not detect (the section 14.3 verdict named
+this absence as evidence of a post-transcriptional mechanism, and
+the kinase layer is exactly the post-transcriptional layer expected
+to surface it). The synaptic suppression axis remains unread at
+either mechanism layer -- consistent with the section 14.3 reading
+that synaptic suppression is more plausibly an engulfment /
+detection-level phenomenon than a regulator-driven program; the
+upcoming Phase G CCC re-analysis is the layer that can plausibly
+address it.
+
+Phase F sub-sessions still to come: subsection 15.2 below ranks
+kinases per D2 axis by mean activity across axis-relevant contrasts
+(parallel to the E4 axis-restricted layer for TFs); subsection 15.3
+will synthesise the kinase verdict and read it against the section
+14.3 TF verdict, including explicit cross-references between the
+kinase and TF leaders per axis.
+
+## Axis-restricted kinase activity (hybrid view)
+
+This subsection ranks each kinase per D2 axis by mean signed activity
+across the axis-relevant contrasts, using the same "Interpretation A"
+approach locked at the TF layer in subsection 14.2: read cached
+consensus scores against the full corrected-phospho universe, then
+restrict the kinase set to those with at least 5 OmniPath KSN
+substrate sites in the axis gene universe, and average the cached
+scores across the (axis-contrast x cache) cells where the kinase has
+a finite score. The hybrid output (axis-mean **and** per-axis-contrast
+columns side-by-side) was locked at the F4 decision gate on
+2026-05-24 (user directive: "Do the hybrid. Have other analyses do
+the hybrid as well for consistency"); the same hybrid view has been
+retrofitted to the TF axis-restricted layer in section 14.2 and to
+the TF verdict in section 14.3 so the reader can compare per-axis
+ranges with and without per-contrast smoothing at every layer of the
+mechanism arc.
+
+**Why the per-contrast view matters here.** The corrected phospho
+cache is single-modality (no cross-modality averaging dilutes the
+per-contrast signal), so the per-contrast columns and the axis-mean
+column will agree to floating-point precision whenever every kinase
+has a finite score in every axis-relevant contrast (verified at smoke
+test). The hybrid view's purpose at the kinase layer is therefore not
+to expose cell-coverage divergence (as it does at the TF layer where
+modality coverage varies) but to expose per-contrast heterogeneity
+across the top kinases: a top-ranked kinase by axis-mean might be
+strongly driven by one of the two NLGF contrasts and barely active at
+the other, which the axis-mean smooths away. The per-contrast columns
+preserve that asymmetry for inspection.
+
+**Axis 3 schema note.** The interaction-metabolic axis has a single
+axis_contrast (`interaction`), so its per-contrast column is
+numerically identical to the axis-mean. The hybrid columns are
+preserved in the exported TSV for schema consistency with axes 1 and
+2 (and with the TF axis-restricted TSV), not because they carry
+additional information at axis 3.
+
+```{r kinase-axis-restricted-build}
+leaderboard <- readr::read_tsv(
+  file.path(params$results_dir,
+            "pathway_survey_unified_leaderboard.tsv"),
+  show_col_types = FALSE
+)
+
+# Same gene-set caches as the TF axis-restricted layer (rmd/13 build
+# chunk). hdWGCNA modules need ENSMUSG -> symbol translation. We rely
+# on the in-knit one-session shared globals from rmd/13 having already
+# loaded gobp/gocc/gomf/cstates/cad/hwg_modules and built
+# `axis_universes`, but defensive re-build kept for out-of-knit runs.
+if (!exists("axis_universes")) {
+  gobp     <- readRDS(file.path(params$cache_dir, "msigdb_gobp_mouse.rds"))
+  gocc     <- readRDS(file.path(params$cache_dir, "msigdb_gocc_mouse.rds"))
+  gomf     <- readRDS(file.path(params$cache_dir, "msigdb_gomf_mouse.rds"))
+  cstates  <- readRDS(file.path(params$cache_dir,
+                                "custom_microglia_states.rds"))
+  cad      <- readRDS(file.path(params$cache_dir,
+                                "custom_microglia_ad.rds"))
+  hwg        <- readRDS(file.path(params$cache_dir,
+                                  "hdwgcna_microglia.rds"))
+  symbol_map <- readRDS(file.path(params$cache_dir,
+                                  "snrnaseq_symbol_map.rds"))
+  hwg_modules <- hwg$modules
+  hwg_modules$gene_name <- symbol_map$symbol[
+    match(hwg_modules$gene_name, symbol_map$ensembl)]
+  hwg_modules <- hwg_modules[
+    !is.na(hwg_modules$gene_name) & nzchar(hwg_modules$gene_name) &
+      as.character(hwg_modules$module) != "grey", , drop = FALSE]
+  gene_sets <- list(
+    gobp                    = gobp,
+    gocc                    = gocc,
+    gomf                    = gomf,
+    custom_microglia_states = cstates,
+    custom_microglia_ad     = cad,
+    hdwgcna_modules         = hwg_modules
+  )
+  axis_universes <- build_axis_gene_universe(leaderboard, gene_sets)
+}
+
+# Build (or reuse) the OmniPath mouse KSN. F2 already cached it via
+# OmnipathR; the build here is cheap on the second call.
+ksn_mouse <- build_omnipath_ksn_mouse()
+
+kinase_axis_scores <- score_kinase_per_axis(
+  kinase_cache       = kinase_cache,
+  axis_universes     = axis_universes,
+  network            = ksn_mouse,
+  primary_modalities = "phospho_corrected",
+  min_targets        = 5L,
+  score_statistic    = "consensus"
+)
+
+readr::write_tsv(
+  kinase_axis_scores,
+  file.path(params$results_dir, "kinase_activity_axis_restricted.tsv")
+)
+
+kinase_axis_summary <- vapply(names(axis_universes), function(ax) {
+  n_uni <- length(axis_universes[[ax]]$universe)
+  n_ctr <- length(axis_universes[[ax]]$axis_contrasts)
+  n_k   <- sum(kinase_axis_scores$axis == ax)
+  sprintf("  %-22s  %5d universe genes  %d axis contrasts  %d kinases scored",
+          ax, n_uni, n_ctr, n_k)
+}, character(1))
+cat(sprintf(
+  "Axis-restricted kinase inference: %d axes (%s).\n",
+  length(axis_universes),
+  paste(names(axis_universes), collapse = ", ")))
+cat(paste(kinase_axis_summary, collapse = "\n"), "\n", sep = "")
+```
+
+### Amyloid-activation axis (axis 1)
+
+The amyloid-activation universe is the union of leader-pathway gene
+sets whose `contrasts_summary` carries at least one positive NLGF
+contrast (built in section 14 and reused here). Kinases are filtered
+to those with at least 5 OmniPath KSN substrate sites whose gene
+symbol lies in that universe. The per-kinase mean is the average of
+the consensus score across the two NLGF contrasts in the corrected
+phospho cache.
+
+```{r kinase-axis-restricted-table-1, results = 'asis'}
+print(format_axis_restricted_kinase_table(
+  kinase_axis_scores, "amyloid_activation", n = 15))
+```
+
+```{r kinase-axis-restricted-plot-1, fig.width = 6, fig.height = 4.5}
+plot_axis_lollipop_kinase(
+  kinase_axis_scores, "amyloid_activation", n = 12)
+```
+
+**Top 5 kinases by axis-restricted |mean|:** Cdk2 (+2.91), Cdk5
+(+1.75), Csnk1e (+1.64), Mapk8 (+1.17), Camk2g (-1.16). Four positive,
+one negative; signed mean range [-1.16, +2.91]. None of the five
+reached significance at FDR<0.10 on `nlgf_in_maptki` in the per-
+contrast layer (15.1); Cdk5 and Csnk1e reach significance at
+`nlgf_in_p301s`. The axis-restricted ranking is therefore *not* a
+re-statement of 15.1's significance call -- it is the orthogonal view
+that asks "which kinases best summarise the amyloid-axis program
+across both NLGF contrasts, regardless of per-contrast significance".
+
+**Per-contrast hybrid view (locked F4).** The cross-modality means at
+the two NLGF contrasts (one modality here -- the corrected phospho
+cache -- so this is just the per-contrast score) for the same top 5
+are: Cdk2 (maptki +3.02, p301s +2.80; tight); Cdk5 (maptki +0.50,
+p301s +3.00; **strongly p301s-driven**); Csnk1e (maptki +1.19,
+p301s +2.08; mildly p301s-driven); Mapk8 (maptki +0.25, p301s +2.08;
+**strongly p301s-driven**); Camk2g (maptki -1.32, p301s -1.00;
+tight, both contrasts negative). The per-contrast view reveals that
+two of the top 5 (Cdk5, Mapk8) are predominantly tau-on-amyloid
+signals -- they would not have made the top 5 on the maptki contrast
+alone, but the p301s arm pulls their axis-mean over the threshold.
+The hybrid display is intentional: a reader concerned that the
+"amyloid-activation axis" reading might mask a tau-on-amyloid
+substructure can verify directly that it does, and can re-weight the
+biological reading accordingly.
+
+**Biological reading.** Cdk2 is a cell-cycle-progression kinase whose
+activation in microglia has been documented in disease-associated
+states (DAM-like activation involves microglial proliferative re-
+entry); its highest substrate-site count in this axis (259) reflects
+broad coverage in the amyloid universe. Cdk5 -- the second canonical
+tau kinase from 15.1 -- surfaces at axis 1 driven by its p301s signal
+(+3.00); the maptki signal (+0.50) is much weaker, consistent with
+Cdk5's tau-dependence. Csnk1e and Mapk8 (JNK) are stress-activated
+kinases canonical in microglial activation. Camk2g (CaMKIIγ) is the
+only repressor in the top 5; calcium / calmodulin signalling is
+attenuated on average across both NLGF contrasts, a real but minor
+counter-signal worth preserving.
+
+**Cross-reference to section-13 axis 1 and section-14 axis 1.**
+Section 13's axis-1 verdict named MG-M2, the MHC II antigen-
+presentation family, GOBP_ADAPTIVE_IMMUNE_RESPONSE, and the custom
+DAM_up / WAM / HAM_disease sets. Section 14's TF-axis-1 named Spi1
+(PU.1) / Nfkb1 / Sp3 / A0A979HLR9 (complex) / Rreb1 as the cross-
+modality leader ensemble. The kinase axis-1 reading here adds
+**Cdk2 / Cdk5 / Mapk8** as the proliferative + stress-kinase
+mechanism downstream of the Spi1 / Nfkb1 TF activation. The two
+mechanism layers are *complementary*: TFs name the master
+transcriptional regulators of the DAM program, kinases name the
+phospho-signalling effectors of the same program.
+
+### Synaptic-suppression axis (axis 2)
+
+The synaptic-suppression universe is the union of leader-pathway gene
+sets whose `contrasts_summary` carries at least one negative NLGF
+contrast. Both NLGF contrasts populate this axis as well (the same
+two contrasts populate axis 1), so the kinase ranking by mean across
+contrasts is structurally identical to axis 1 by Interpretation A.
+
+```{r kinase-axis-restricted-table-2, results = 'asis'}
+print(format_axis_restricted_kinase_table(
+  kinase_axis_scores, "synaptic_suppression", n = 15))
+```
+
+```{r kinase-axis-restricted-plot-2, fig.width = 6, fig.height = 4.5}
+plot_axis_lollipop_kinase(
+  kinase_axis_scores, "synaptic_suppression", n = 12)
+```
+
+**Top 5 kinases by axis-restricted |mean|:** identical to axis 1
+(Cdk2, Cdk5, Csnk1e, Mapk8, Camk2g) by Interpretation A. The
+**structural differentiator** is in-universe substrate-site counts:
+Cdk5's footprint in the synaptic universe is 263 sites vs 81 in the
+amyloid universe -- a more-than-3x increase, reflecting Cdk5's
+well-documented role in synaptic phospho-regulation. Cdk2's count
+also expands (293 vs 259), Csnk1e nearly doubles (70 vs 38), and
+Camk2g doubles (49 vs 24). Mapk8 changes modestly (195 vs 176). The
+target-set differential makes axis 2 the natural axis for reading
+**how strongly each kinase's substrate program touches the synaptic
+machinery**, not for reading which kinases drive synaptic suppression.
+
+**Per-contrast hybrid view (locked F4).** Identical to axis 1 by
+shared contrast set; preserved unsmoothed to match axis 1's
+asymmetry-exposure rationale -- the Cdk5 / Mapk8 p301s-bias propagates
+here too.
+
+**This is the honest non-finding.** Cdk2 / Cdk5 / Mapk8 are positive
+on average across both NLGF contrasts where the synaptic program is
+*downregulated* (section 13 axis-2 named six synaptic GOCC terms
+plus matching synapse GOBP terms, all consistently negative at NLGF).
+A coherent kinase-axis-2 reading would require either:
+
+* a *repressor* kinase whose activation directly suppresses the
+  synaptic gene program (not present in the top 5 -- the repressors
+  in the top 5 are weak, single-digit-target Camk2g),
+* or a coherent dephosphorylation signal in the synaptic universe
+  driven by a phosphatase (the per-contrast layer at 15.1 surfaced
+  Ppp1ca at nlgf_in_p301s but with a positive substrate-dephospho
+  reading, not aligned with synaptic suppression),
+* or evidence that the synaptic suppression is *post-translational*
+  (engulfment / phagocytosis-driven loss of synaptic material), in
+  which case a kinase-layer signature is not the right place to read
+  it.
+
+The third interpretation is the most parsimonious given the section-
+14 TF-axis-2 finding of "no distinct TF signature for synaptic
+suppression" plus the kinase-axis-2 finding of "no repressor program
+distinct from axis 1". Phase G (CCC sender-receiver) is the layer
+that can plausibly read engulfment / phagocytosis biology directly.
+
+### Interaction metabolic/translational axis (axis 3)
+
+The interaction-metabolic universe is the union of leader-pathway
+gene sets whose `contrasts_summary` carries at least one mixed-sign
+`interaction` token. Only the single `interaction` contrast populates
+this axis.
+
+```{r kinase-axis-restricted-table-3, results = 'asis'}
+print(format_axis_restricted_kinase_table(
+  kinase_axis_scores, "interaction_metabolic", n = 15))
+```
+
+```{r kinase-axis-restricted-plot-3, fig.width = 6, fig.height = 4.5}
+plot_axis_lollipop_kinase(
+  kinase_axis_scores, "interaction_metabolic", n = 12)
+```
+
+**Top 5 kinases by axis-restricted |mean|:** **Gsk3b (+4.77)**,
+Csnk1a1 (-2.81), Mapk14 (+2.63), Cdk5 (+2.10), Cdk1 (+1.99). Four
+positive, one negative; signed mean range [-2.81, +4.77] at the
+single interaction contrast. Three of the five (Gsk3b, Csnk1a1, Cdk5)
+reached significance at FDR<0.10 on the per-contrast layer in 15.1
+at the `interaction` contrast; the axis-restricted rank and the
+per-contrast significance call therefore converge on the same lead
+kinases.
+
+**Per-contrast hybrid view (locked F4).** Collapses to the single
+contrast `interaction:[-2.81, +4.77]`, identical to `mean_score_range`
+by construction. The hybrid columns are preserved in the TSV for
+schema consistency with axes 1 and 2 but provide no additional
+information beyond the axis-mean at this axis -- a deliberate
+property of the chosen axis_contrasts mapping.
+
+**Biological reading.** This is the cleanest mechanism-layer result
+of the project. **Gsk3b** -- the canonical tau kinase that
+phosphorylates tau at S202 / T205 / S396 / S404 (the AT8 / PHF1
+epitopes used to stage AD tau pathology, and the dominant target of
+two decades of failed tau-kinase pharmacology) -- is the rank-1
+kinase at the `tau x amyloid` interaction with mean +4.77 and 257
+in-axis-universe substrate sites. Mapk14 (p38α MAPK) is the canonical
+stress-kinase activator of tau phosphorylation downstream of
+inflammatory and ROS stimuli, and a known modulator of microglial
+activation; its co-activation here (+2.63) corroborates Gsk3b.
+**Cdk5** -- the second canonical tau kinase -- corroborates again
+(+2.10), preserving the same tau-kinase-cluster signature seen at the
+per-contrast layer. Cdk1, the master mitotic kinase, surfaces as the
+fifth hit (+1.99) and is biologically interpretable as evidence of
+microglial cell-cycle re-engagement at the interaction. The single
+repressor in the top 5, **Csnk1a1** (CK1α, -2.81), is the same
+opposite-direction CK1-family signal seen at 15.1 and is consistent
+with at least two distinct kinase programs operating at the
+interaction: the canonical tau-kinase axis (Gsk3b / Cdk5) gaining
+activity, and the CK1α axis losing activity, on the tau-on-amyloid
+background.
+
+**The TF layer reads a Myc-driven biosynthetic shutdown at axis 3;
+the kinase layer reads a Gsk3b-driven tau-phospho activation at the
+same axis.** These two readings are *mechanistically complementary*,
+not redundant: TFs read the slow-time-scale transcriptional re-
+programming of biosynthetic capacity, kinases read the fast-time-
+scale phospho-signalling state. The combined mechanism is "the tau x
+amyloid interface drives tau hyperphosphorylation through canonical
+tau kinases while transcriptionally shutting down biosynthetic
+throughput" -- exactly the kind of two-layer answer the mechanism arc
+was designed to expose. The section 13 axis-3 mixed-sign reading
+(OXPHOS / ribosomal compartment + MG-M3 + DAM_up; modality-divergent
+signs) resolves under the joint mechanism: the proteomics + phospho
+signal of biosynthetic+phospho dysregulation runs in the same
+direction once the kinase + TF layers are read together.
+
+**Cross-reference to section-13 axis 3 and section-14 axis 3.**
+Section 13's axis-3 verdict named eight OXPHOS / ETC GO terms,
+ribosomal compartments, MG-M3, and DAM_up at the interaction. Section
+14's TF-axis-3 named Myc / Creb1 / Tp53 / Jun as the coordinated
+suppression ensemble. The kinase axis-3 reading here adds Gsk3b /
+Mapk14 / Cdk5 / Cdk1 as the canonical tau-kinase activation ensemble
+at the same contrast. The mechanism layer therefore reads axis 3
+*very strongly* with a two-layer integrated answer.
+
+### Cross-axis observations and limitations
+
+**The kinase mechanism layer is asymmetric across the three D2 axes,
+mirroring the TF mechanism layer.** Axes 1 (amyloid_activation) and
+3 (interaction_metabolic) both read with coherent, biologically
+interpretable kinase ensembles (Cdk2 / Cdk5 / Mapk8 for axis 1; Gsk3b
+/ Mapk14 / Cdk5 / Cdk1 for axis 3). Axis 2 (synaptic_suppression) is
+an honest non-finding at the kinase layer too -- the top 5 are
+inherited from axis 1 by shared NLGF contrasts, and no distinct
+synapse-repressor program emerges. The asymmetry across axes is the
+same shape as the TF layer's asymmetry (strong / non-finding /
+strong) and is consistent with the section 14.3 reading that synaptic
+suppression is more plausibly an engulfment / detection-level
+phenomenon than a regulator-driven program.
+
+**Cdk5 is the integrator across all three axes.** Cdk5 surfaces in
+the top 5 at axis 1 (+1.75), axis 2 (+1.75 by construction), and
+axis 3 (+2.10), and is the only kinase to do so. The cross-axis
+substrate-set differential is biologically interpretable: 81 sites
+in the amyloid universe, 263 in the synaptic universe, 153 at the
+interaction. Cdk5 is therefore the kinase whose program is most
+broadly engaged across the project's three biological axes; its
+literature reputation as a master regulator of both tau phospho-
+biology and synaptic phospho-biology is consistent with this pattern.
+A future plan could deploy a Cdk5-substrate-resolved sub-analysis to
+test whether the axis-specific Cdk5 substrates differ in identity
+across axes 1, 2, and 3.
+
+**The axis-1 / axis-2 entanglement is preserved at the kinase layer.**
+The two NLGF contrasts populate both axes by the locked axis-
+classification rule, so the axis-restricted ranking by mean cannot
+differentiate them at the kinase layer either. The structural
+differentiator remains in-universe substrate-site counts, which the
+hybrid column `n_sites` exposes per row. A future plan that re-runs
+decoupleR with the KSN clipped to per-axis universes (Interpretation
+B) might surface different kinase rankings at axes 1 vs 2, at the
+cost of statistical power; the trade-off is the same one made at the
+TF layer and is locked at the same direction.
+
+**No anti-anchoring guardrails were relaxed in this subsection.**
+All three D2 axes are presented in parallel with the same template
+(no axis privileged); the per-contrast hybrid view is rendered the
+same way at every axis whether or not it carries additional
+information (preserving schema consistency across the three axes);
+the corrected-cache-only convention from 15.1 is inherited; no
+literature-confirmation bias is introduced (Gsk3b is named because it
+is the rank-1 kinase by mean activity, not because the literature
+flagged tau kinases). The verdict at 15.3 will read this evidence
+together with section 15.1 and section 14.3 without re-anchoring on
+any one axis.
+
+## Verdict (sign-aware kinase synthesis)
+
+This subsection synthesises the per-contrast significant-kinase
+reading (15.1) and the axis-restricted kinase ranking (15.2) into a
+per-axis verdict, mirroring the shape of the section-14.3 TF verdict
+at the kinase layer. The mechanism-layer reading is *not* a
+re-derivation of the pathway-survey axes -- those axes are accepted
+as inputs from section 13's D2 verdict -- it is an answer to the
+question *which upstream kinases carry the strongest signal within
+each axis's biology, and which axis is best read by the kinase layer
+at all?*
+
+**Inference thresholds (re-stated before the verdict so the bar is
+explicit).** Per-contrast significance is FDR<0.10 on the decoupleR
+`ulm` p-value (BH-adjusted within each contrast's ~100-kinase
+universe), evaluated against the **corrected** phospho cache only;
+direction (sign of activity) is read from the `consensus` score so
+that ulm arbitrates significance and consensus arbitrates magnitude /
+sign -- the same split locked at the TF layer. Contrasts are treated
+as independent inference units per the F3 user-directed deviation:
+no cross-contrast aggregation, no leader-board membership rule, no
+raw-cache corroboration. The axis-restricted ranking (subsection
+15.2) filters kinases to those with `>= 5` OmniPath KSN substrate
+sites in the axis gene universe and ranks within axis by `|mean
+consensus score|` across the axis-relevant contrasts; the verdict
+displays the top 5 kinases per axis.
+
+**The kinase verdict TSV schema is one row per axis** (mirroring the
+TF verdict TSV; eight columns). The hybrid columns
+(`per_contrast_score_range`, `per_contrast_summary`) carry the per-
+axis-contrast min/max across the top-5 kinases (locked at the F4
+decision gate on 2026-05-24, user directive "Do the hybrid. Have
+other analyses do the hybrid as well for consistency"). The
+F5-specific column is `n_top_sig_in_axis_contrasts`: it counts how
+many of the top-5 axis-restricted kinases also reach FDR<0.10 on ulm
+in *any* of the axis-relevant contrasts per the 15.1 per-contrast
+table (this column **replaces** the E5 verdict's
+`n_top_in_cross_modality_leaderboard` column because the F3 user-
+directed deviation removed the kinase leader-board concept entirely).
+
+**Bulk-phospho caveat re-stated.** The phospho-proteome is bulk
+hippocampus, not microglia-sorted. The kinase verdict integrates
+substrate-level phospho changes across all cell types in the tissue.
+Read the per-axis verdicts as *"kinases active at this axis anywhere
+in the hippocampus"* rather than as strictly microglia-specific
+kinase activity. The same caveat applied to the proteomics modality
+in sections 5 and 14; phospho inherits it directly because the input
+phospho DE cache is derived from the same bulk samples.
+
+```{r kinase-inference-verdict-build}
+kinase_axis_scores_tbl <- readr::read_tsv(
+  file.path(params$results_dir,
+            "kinase_activity_axis_restricted.tsv"),
+  show_col_types = FALSE
+)
+kinase_per_contrast_tsv <- readr::read_tsv(
+  file.path(params$results_dir,
+            "kinase_activity_per_contrast.tsv"),
+  show_col_types = FALSE
+)
+
+kinase_verdict_evidence <- list(
+  amyloid_activation = paste0(
+    "Top 5 axis-restricted kinases are 4-positive / 1-negative; signed mean ",
+    "range [-1.16, +2.91] across the two NLGF contrasts. Hybrid per-contrast ",
+    "view: nlgf_in_maptki:[-1.32, +3.02]; nlgf_in_p301s:[-1.00, +3.00] -- ",
+    "the maptki contrast carries the wider positive activator tail (Cdk2 ",
+    "+3.02 > axis-mean upper +2.91 > p301s upper +3.00; tight), and Cdk5 / ",
+    "Mapk8 are predominantly p301s-driven (maptki +0.50/+0.25 vs p301s ",
+    "+3.00/+2.08) so two of the top 5 would not have ranked here on the ",
+    "maptki contrast alone -- a real tau-on-amyloid substructure the axis-",
+    "mean smooths over. 2 of the top 5 (Cdk5, Csnk1e) reach FDR<0.10 on ",
+    "ulm at nlgf_in_p301s per the 15.1 per-contrast table; the remaining ",
+    "three are non-significant at both NLGF contrasts. Reading: Cdk2 (cell-",
+    "cycle progression in microglial proliferative re-entry), Cdk5 (canonical ",
+    "tau kinase, p301s-biased here), Csnk1e (CK1-epsilon, stress-activated), ",
+    "and Mapk8 (JNK, stress-activated) form a proliferation + stress-kinase ",
+    "ensemble at the amyloid-axis contrasts; Camk2g is the lone repressor ",
+    "(CaMKII-gamma, calcium / calmodulin signalling attenuated). The kinase ",
+    "axis-1 reading complements the section-14.3 TF axis-1 reading (Spi1 / ",
+    "Nfkb1 / Sp3 ensemble): TFs name the transcriptional regulators of the ",
+    "DAM program, kinases name the phospho-signalling effectors of the same ",
+    "program."),
+  synaptic_suppression = paste0(
+    "Top 5 axis-restricted kinases are identical to axis 1 by Interpretation ",
+    "A construction (both axes share their NLGF contrasts and the per-kinase ",
+    "mean is computed from full-cache scores). Hybrid per-contrast view is ",
+    "therefore also identical to axis 1 (nlgf_in_maptki:[-1.32, +3.02]; ",
+    "nlgf_in_p301s:[-1.00, +3.00]); the axis 1 / axis 2 entanglement ",
+    "propagates to the per-contrast layer as a structural consequence of ",
+    "the shared contrast set. The structural differentiator is in-universe ",
+    "substrate-site counts: Cdk5's footprint expands from 81 sites in the ",
+    "amyloid universe to 263 sites in the synaptic universe (3.2x), Cdk2 ",
+    "from 259 to 293 sites, Csnk1e from 38 to 70, and Camk2g from 24 to ",
+    "49 -- the synaptic axis is therefore best interpreted as a target-",
+    "overlap filter ('which amyloid-active kinases have substrate programs ",
+    "that also touch the synaptic machinery'), not as a list of kinases ",
+    "that drive synaptic suppression. 2 of the top 5 (Cdk5, Csnk1e) reach ",
+    "FDR<0.10 on ulm at nlgf_in_p301s, identical to axis 1 by inheritance. ",
+    "This is the honest non-finding -- the kinase layer does NOT ",
+    "independently identify drivers of synaptic suppression at this ",
+    "resolution; the top kinases are positive activators of broadly ",
+    "synapse-relevant substrate programs (Cdk5 in particular is a ",
+    "well-documented synaptic regulator), not repressors of synaptic gene ",
+    "output. Consistent with the section-14.3 TF axis-2 finding and the ",
+    "engulfment-mediated mechanism hypothesis raised in 14.1.4 / 14.2.4 / ",
+    "15.2.4; Phase G (CCC sender-receiver) is the layer that can plausibly ",
+    "read engulfment biology directly."),
+  interaction_metabolic = paste0(
+    "Top 5 axis-restricted kinases are 4-positive / 1-negative; signed mean ",
+    "range [-2.81, +4.77] at the single interaction contrast. Hybrid per-",
+    "contrast view collapses to interaction:[-2.81, +4.77], identical to ",
+    "the axis-mean range by construction (only one axis_contrast at axis ",
+    "3); the hybrid columns are preserved in the TSV for schema ",
+    "consistency with axes 1 and 2. 2 of the top 5 (Gsk3b, Csnk1a1) reach ",
+    "FDR<0.10 on ulm at the interaction contrast per the 15.1 per-contrast ",
+    "table -- Gsk3b at padj 0.002 (the strongest single-kinase result of ",
+    "the whole mechanism arc) and Csnk1a1 at padj < 0.10 in the opposite ",
+    "direction. Reading: Gsk3b (canonical tau kinase phosphorylating tau ",
+    "at S202 / T205 / S396 / S404, the AT8 / PHF1 epitopes that stage AD ",
+    "tau pathology), Mapk14 (p38-alpha MAPK, stress-kinase activator of ",
+    "tau phosphorylation and microglial activation), Cdk5 (second canonical ",
+    "tau kinase, p35 / p25 activation cycle), and Cdk1 (master mitotic ",
+    "kinase, microglial cell-cycle re-engagement) form a canonical tau-",
+    "kinase activation ensemble at the tau x amyloid interaction; Csnk1a1 ",
+    "(CK1-alpha) is the opposite-direction signal whose substrate program ",
+    "is suppressed on the tau-on-amyloid background. Combined with the ",
+    "section-14.3 TF axis-3 reading (Myc / Creb1 / Tp53 / Jun coordinated ",
+    "suppression of biosynthetic activity), the joint mechanism at axis 3 ",
+    "is 'the tau x amyloid interface drives tau hyperphosphorylation ",
+    "through canonical tau kinases (Gsk3b lead) while transcriptionally ",
+    "shutting down biosynthetic throughput (Myc lead)' -- exactly the kind ",
+    "of two-layer answer the mechanism arc was designed to expose. The ",
+    "section-13 axis-3 mixed-sign reading (OXPHOS / ribosomal compartment ",
+    "+ MG-M3 + DAM_up at interaction; modality-divergent signs) resolves ",
+    "under this joint mechanism: the proteomics + phospho signal of ",
+    "biosynthetic + phospho dysregulation runs in the same direction once ",
+    "the kinase + TF layers are read together.")
+)
+
+kinase_verdict <- build_kinase_verdict_table(
+  axis_tbl           = kinase_axis_scores_tbl,
+  per_contrast_tbl   = kinase_per_contrast_tsv,
+  n_top_per_axis     = 5L,
+  evidence_summaries = kinase_verdict_evidence
+)
+
+readr::write_tsv(
+  kinase_verdict,
+  file.path(params$results_dir, "kinase_activity_verdict.tsv")
+)
+
+cat(sprintf(
+  "Kinase inference verdict: %d axes summarised (%s), top-%d kinases per axis.\n",
+  nrow(kinase_verdict),
+  paste(kinase_verdict$axis, collapse = ", "),
+  5L))
+```
+
+### Verdict summary table
+
+The summary table below has one row per D2 axis. `top_kinases` lists
+the top 5 kinases per axis sorted by `|mean consensus score|` (the
+axis-restricted ranking from 15.2); `top_kinase_signs` carries the
+signed direction of each kinase's mean (`+` = positive substrate-
+phosphorylation, `-` = negative substrate-phosphorylation at the
+axis's contrast set, applied to the decoupleR signed-mode-of-
+regulation convention so phosphatases and dephosphorylation edges
+are sign-flipped as appropriate); `mean_score_range` gives the
+[min, max] of the signed mean across those 5 kinases;
+`per_contrast_summary` is the locked **hybrid** companion -- it
+gives the [min, max] of the consensus score at each axis-contrast
+in isolation, so a reader can see whether the axis-mean smooths over
+heterogeneous per-contrast signal or is reading a coherent direction.
+`n_top_sig_in_axis_contrasts` counts how many of the top 5 also
+reach FDR<0.10 on ulm in *any* of the axis-relevant contrasts per
+the 15.1 per-contrast table (this column **replaces** the E5
+verdict's `n_top_in_cross_modality_leaderboard` because the F3
+user-directed deviation removed the kinase leader-board concept);
+`evidence_summary` is a prose distillation of the per-axis reading.
+
+The hybrid display (mean range + per-contrast ranges side-by-side)
+matches the section-14.3 TF verdict layout so the kinase verdict
+and the TF verdict can be read in parallel without schema friction.
+
+```{r kinase-inference-verdict-table, results = 'asis'}
+kinase_verdict_view <- kinase_verdict |>
+  dplyr::transmute(
+    axis,
+    top_kinases,
+    top_kinase_signs,
+    mean_score_range,
+    per_contrast_summary,
+    n_top_sig_in_axis_contrasts
+  )
+print(knitr::kable(
+  kinase_verdict_view, digits = 2,
+  caption = paste0(
+    "Per-axis kinase verdict summary (top 5 axis-restricted kinases ",
+    "per axis). Hybrid view: `mean_score_range` gives the [min, max] ",
+    "of the axis-mean across the top 5; `per_contrast_summary` gives ",
+    "per-axis-contrast [min, max] of the consensus score across the ",
+    "same top 5 (exposes per-contrast asymmetry that the axis-mean ",
+    "smooths over). `n_top_sig_in_axis_contrasts` = count of top-5 ",
+    "kinases that also reach FDR<0.10 on ulm in any of the axis-",
+    "relevant contrasts per the 15.1 per-contrast table."
+  )
+))
+```
+
+The `evidence_summary` column is omitted from the inline kable to
+keep the row heights tractable; the full per-axis prose lives in
+subsections 15.3.2-15.3.4 below, and the column is preserved verbatim
+in the exported TSV (`storage/results/kinase_activity_verdict.tsv`).
+The TSV also carries `per_contrast_score_range` (the [min, max]
+across the top-5 x axis-contrasts cells, useful for at-a-glance
+comparison to `mean_score_range`).
+
+### Amyloid-activation axis (axis 1)
+
+**Top 5 kinases by axis-restricted |mean|:** Cdk2 (+2.91), Cdk5
+(+1.75), Csnk1e (+1.64), Mapk8 (+1.17), Camk2g (-1.16). Four
+positive, one negative; signed mean range [-1.16, +2.91]. Two of the
+five (Cdk5 and Csnk1e) reach FDR<0.10 on ulm at `nlgf_in_p301s` per
+the 15.1 per-contrast table; the remaining three (Cdk2, Mapk8,
+Camk2g) are non-significant at both NLGF contrasts but reach the
+top-5 axis-mean ranking through coherent direction across the two
+contrasts.
+
+**Per-contrast hybrid view (locked F4).** The consensus score min /
+max at the two NLGF contrasts across the same top 5 is
+`nlgf_in_maptki:[-1.32, +3.02]; nlgf_in_p301s:[-1.00, +3.00]`. The
+maptki contrast (NLGF on the tau-loss background) carries the
+slightly wider positive tail (+3.02, driven by Cdk2 maptki +3.02 /
+p301s +2.80; tight); Cdk5 and Mapk8 are predominantly p301s-driven
+(Cdk5 maptki +0.50 vs p301s +3.00; Mapk8 maptki +0.25 vs p301s
++2.08) so two of the top 5 would not have ranked here on the maptki
+contrast alone -- a real tau-on-amyloid substructure that the
+axis-mean [-1.16, +2.91] smooths over. The hybrid display is
+intentional: a reader concerned that "axis 1 reads as proliferation +
+stress" might mask a tau-on-amyloid bias can check the per-contrast
+row and see that Cdk5 / Mapk8 in particular *do* carry that bias,
+and re-weight the biological reading accordingly.
+
+**Biological reading.** Cdk2 is a cell-cycle-progression kinase
+whose activation in microglia has been documented in disease-
+associated states (DAM-like activation involves microglial
+proliferative re-entry); its 259 in-axis-universe substrate sites is
+the highest of the top 5 and reflects broad coverage in the amyloid
+universe. Cdk5 -- the second canonical tau kinase from 15.1 --
+surfaces at axis 1 driven by its p301s signal (+3.00); the maptki
+signal (+0.50) is much weaker, consistent with Cdk5's tau-dependence
+documented in the per-contrast layer. Csnk1e (CK1-epsilon) and Mapk8
+(JNK) are stress-activated kinases canonical in microglial activation
+and inflammatory signalling. Camk2g (CaMKII-gamma) is the lone
+repressor in the top 5; calcium / calmodulin signalling is
+attenuated on average across both NLGF contrasts, a real but minor
+counter-signal worth preserving rather than filtering.
+
+**Cross-reference to section-13 axis 1 and section-14.3 axis 1.**
+Section 13's axis-1 verdict named MG-M2 (hdWGCNA module), the MHC II
+antigen-presentation family, `GOBP_ADAPTIVE_IMMUNE_RESPONSE`, and the
+custom `DAM_up` / `HAM_disease` / `WAM` sets as leader-pathway
+evidence. Section 14.3's TF axis-1 named the Spi1 / Nfkb1 / Sp3 /
+A0A979HLR9 (complex) / Rreb1 ensemble as the cross-modality leader
+TFs. The kinase axis-1 reading here adds **Cdk2 / Cdk5 / Mapk8** as
+the proliferative + stress-kinase mechanism downstream of the Spi1 /
+Nfkb1 TF activation. The mechanism layer reads axis 1 across two
+complementary layers: TFs name the master transcriptional regulators
+of the DAM program; kinases name the phospho-signalling effectors of
+the same program. The mechanism layer therefore reads axis 1
+*strongly*.
+
+### Synaptic-suppression axis (axis 2)
+
+**Top 5 kinases by axis-restricted |mean|:** identical to axis 1
+(Cdk2, Cdk5, Csnk1e, Mapk8, Camk2g) by Interpretation A construction.
+The per-kinase mean is computed from full-cache consensus scores
+averaged over the two NLGF contrasts; both NLGF axes share that
+contrast set, so the mean ranking does not differentiate them.
+
+**Per-contrast hybrid view (locked F4).** The per-contrast summary is
+likewise identical to axis 1
+(`nlgf_in_maptki:[-1.32, +3.02]; nlgf_in_p301s:[-1.00, +3.00]`)
+because the same contrast pair is averaged over the same top 5
+kinases. This is the expected hybrid behaviour at axis 2 under
+Interpretation A and is preserved unsmoothed in the verdict so a
+future reader can see that the entanglement between axes 1 and 2
+propagates to the hybrid layer as well -- it is a structural property
+of sharing the contrast set, not an information loss specific to the
+axis-mean.
+
+**The structural differentiator is in-universe substrate-site count,
+not mean.** Cdk5's KSN substrate-site count expands from 81 in the
+amyloid universe to 263 in the synaptic universe (a 3.2x increase
+that reflects Cdk5's well-documented role in synaptic phospho-
+regulation); Cdk2 expands from 259 to 293, Csnk1e from 38 to 70,
+Camk2g from 24 to 49, and Mapk8 changes modestly from 176 to 195.
+The synaptic axis is therefore best interpreted as a *target-overlap
+filter*: which amyloid-active kinases have substrate programs that
+*also* touch the synaptic machinery? Not as a list of kinases that
+*drive* synaptic suppression. Two of the top 5 (Cdk5, Csnk1e) reach
+FDR<0.10 on ulm at `nlgf_in_p301s`, identical to axis 1 by
+inheritance.
+
+**This is the honest non-finding.** The kinase layer does NOT
+independently identify drivers of synaptic suppression at this
+resolution. The top kinases are positive activators of broadly
+synapse-relevant substrate programs (Cdk5 in particular is a
+canonical synaptic phospho regulator), not repressors of synaptic
+gene output. Two non-mutually-exclusive interpretations of the
+absence: (a) synaptic suppression at NLGF onset in the microglia
+compartment is detection-level engulfment -- microglia phagocytose
+synaptic material and so apparent downregulation of synaptic
+transcripts/proteins is a mass-balance signal, not a phospho-
+signalling one. OmniPath KSN cannot surface a kinase for a mechanism
+that is not phospho-regulatory. (b) Phospho-regulatory repression of
+synaptic gene output in microglia, if it occurs, may be driven by
+phosphatase complexes or by kinases whose substrate set is poorly
+represented in OmniPath's literature-curated prior (e.g. Camk1
+family, Prkcz family). A future plan could test (b) with a
+broader-prior tool or with a microglia-sorted phospho-proteome.
+
+**Cross-reference to section-13 axis 2 and section-14.3 axis 2.**
+Section 13's axis-2 verdict named six synaptic GO CC terms plus
+matching synapse GO BP terms, all consistently negative at the two
+NLGF contrasts. Section 14.3's TF axis-2 was an honest non-finding
+("TF layer does NOT independently identify drivers of synaptic
+suppression at this resolution"). The kinase axis-2 verdict here
+*also* reads as an honest non-finding, paralleling the TF reading
+shape -- two mechanism layers agree that the synaptic-suppression
+axis is not a regulator-driven program at the resolution available
+to either layer. Phase G (CCC sender-receiver) is the layer that can
+plausibly read the engulfment / phagocytosis biology directly.
+
+### Interaction metabolic/translational axis (axis 3)
+
+**Top 5 kinases by axis-restricted |mean|:** **Gsk3b (+4.77)**,
+Csnk1a1 (-2.81), Mapk14 (+2.63), Cdk5 (+2.10), Cdk1 (+1.99). Four
+positive, one negative; signed mean range [-2.81, +4.77] at the
+single `interaction` contrast. Two of the five (Gsk3b, Csnk1a1) reach
+FDR<0.10 on ulm at the `interaction` contrast itself per the 15.1
+per-contrast table -- **Gsk3b at padj 0.002, the strongest single-
+kinase result of the whole mechanism arc**, and Csnk1a1 at padj <
+0.10 in the opposite (negative) direction.
+
+**Per-contrast hybrid view (locked F4).** The per-contrast summary
+collapses to a single contrast at axis 3
+(`interaction:[-2.81, +4.77]`), identical to `mean_score_range` by
+construction. The hybrid columns are therefore preserved in the
+exported TSV for schema consistency with axes 1 and 2 but provide
+no additional information beyond the axis-mean at this axis -- a
+deliberate property of the chosen axis_contrasts mapping (only the
+`interaction` contrast is included at axis 3). A future plan that
+admits more than one interaction contrast (e.g. higher-order tau x
+amyloid x age or tau x amyloid x cell-state slices) will see the
+hybrid view become informative at axis 3 as well.
+
+**Biological reading.** This is the cleanest mechanism-layer result
+of the project. **Gsk3b** -- the canonical tau kinase that
+phosphorylates tau at S202 / T205 / S396 / S404 (the AT8 / PHF1
+epitopes used to stage AD tau pathology, and the dominant target of
+two decades of pharmacological development) -- is the rank-1 kinase
+at the tau x amyloid interaction with mean +4.77 and 257 in-axis-
+universe substrate sites. The Gsk3b activation peaks at the
+`interaction` contrast itself; the per-contrast layer at 15.1 shows
+Gsk3b's sign pattern across all five contrasts is -1.66 / -1.47 /
++3.79 / +4.15 / +4.32 -- amyloid alone on tau-null background and tau
+alone both *suppress* Gsk3b substrate phospho; the combination of tau
+and amyloid drives the activation, peaking at the interaction
+contrast. The synergy *is* the Gsk3b activation; this reads as the
+most direct possible mechanism-layer answer to the project's
+interaction question ("what does tau add on the amyloid
+background?").
+
+Mapk14 (p38-alpha MAPK, +2.63) is the canonical stress-kinase
+activator of tau phosphorylation downstream of inflammatory and ROS
+stimuli and a documented modulator of microglial activation; its
+co-activation here corroborates Gsk3b at the interaction. **Cdk5**
+(+2.10) -- the second canonical tau kinase -- corroborates again,
+preserving the same tau-kinase-cluster signature seen at the per-
+contrast layer. Cdk1 (+1.99), the master mitotic kinase, surfaces as
+the fifth hit and is biologically interpretable as evidence of
+microglial cell-cycle re-engagement at the interaction. The single
+repressor in the top 5, **Csnk1a1** (CK1-alpha, -2.81), is the same
+opposite-direction CK1-family signal seen at 15.1 and is consistent
+with at least two distinct kinase programs operating at the
+interaction: the canonical tau-kinase axis (Gsk3b / Cdk5) gaining
+activity, and the CK1-alpha axis losing activity, on the tau-on-
+amyloid background.
+
+**Joint mechanism reading across TF + kinase layers at axis 3.** The
+TF layer at section 14.3.4 reads a Myc / Creb1 / Tp53 / Jun
+coordinated suppression of biosynthetic activity at the interaction
+(all five top TFs negative; signed mean range [-4.85, -1.81]). The
+kinase layer at axis 3 reads a Gsk3b / Mapk14 / Cdk5 / Cdk1 canonical
+tau-kinase activation at the same contrast. These two readings are
+*mechanistically complementary*, not redundant: TFs read the slow-
+time-scale transcriptional re-programming of biosynthetic capacity;
+kinases read the fast-time-scale phospho-signalling state. The
+combined mechanism at axis 3 is "the tau x amyloid interface drives
+tau hyperphosphorylation through canonical tau kinases while
+transcriptionally shutting down biosynthetic throughput" -- exactly
+the kind of two-layer answer the mechanism arc was designed to
+expose. **The section-13 axis-3 mixed-sign reading resolves under
+this joint mechanism**: the proteomics + phospho signal of
+biosynthetic + phospho dysregulation at axis 3 was previously called
+"mixed-sign" because RNA / proteomics push negative on `DAM_up` and
+MG-M3 while phospho-corrected pushes positive; the joint TF + kinase
+reading shows the two layers run in the *same biological direction*
+(biosynthesis off, tau-kinase substrate program on) with the apparent
+sign disagreement at the gene-set layer arising from RNA / proteomics
+/ phospho-corrected orthogonality, not internal disagreement on the
+direction of metabolic + phospho perturbation.
+
+**Cross-reference to section-13 axis 3 and section-14.3 axis 3.**
+Section 13's axis-3 verdict named eight OXPHOS / ETC GO terms (BP +
+MF + CC), the ribosomal compartment, MG-M3, and `DAM_up` at the
+interaction. Section 14.3's TF axis-3 named the Myc / Creb1 / Tp53 /
+Jun coordinated-suppression ensemble. The kinase axis-3 reading here
+adds Gsk3b / Mapk14 / Cdk5 / Cdk1 as the canonical tau-kinase
+activation ensemble at the same contrast. The mechanism layer reads
+axis 3 *very strongly* with a two-layer integrated answer.
+
+### Cross-axis observations and limitations
+
+**The kinase mechanism layer is asymmetric across the three D2 axes,
+mirroring the TF mechanism layer.** Axes 1 (amyloid_activation) and
+3 (interaction_metabolic) both read with coherent, biologically
+interpretable kinase ensembles (Cdk2 / Cdk5 / Mapk8 for axis 1;
+Gsk3b / Mapk14 / Cdk5 / Cdk1 for axis 3). Axis 2 (synaptic_suppression)
+is an honest non-finding at the kinase layer -- the top 5 are
+inherited from axis 1 by the shared NLGF contrast set, and no
+distinct synapse-repressor program emerges. The asymmetry across
+axes is the same shape as the TF layer's asymmetry (strong /
+non-finding / strong) and is consistent with the section-14.3
+reading that synaptic suppression is more plausibly an engulfment /
+detection-level phenomenon than a regulator-driven program.
+
+**Cdk5 is the integrator across all three axes at the kinase layer.**
+Cdk5 surfaces in the top 5 at axis 1 (+1.75 mean, p301s-driven),
+axis 2 (+1.75 by Interpretation A inheritance), and axis 3 (+2.10
+mean at the interaction contrast). It is the only kinase to do so.
+The cross-axis substrate-set differential is biologically
+interpretable: 81 sites in the amyloid universe, 263 in the synaptic
+universe, 153 at the interaction. Cdk5 is therefore the kinase whose
+program is most broadly engaged across the project's three biological
+axes; its literature reputation as a master regulator of both tau
+phospho-biology and synaptic phospho-biology is consistent with this
+pattern. A future plan could deploy a Cdk5-substrate-resolved sub-
+analysis to test whether the axis-specific Cdk5 substrates differ in
+identity across axes 1, 2, and 3 (the same future-work hook recorded
+at 15.2.4).
+
+**Two-layer mechanism reading per axis (preferred summary).** The
+combined section-14.3 TF verdict and section-15.3 kinase verdict
+read each D2 axis with the following per-axis mechanism:
+
+* Axis 1 (amyloid_activation): TFs name Spi1 / Nfkb1 / Sp3 / Rela
+  (cross-modality leaders A0A979HLR9 and Spi1 reach the cross-modality
+  leader rule); kinases name Cdk2 / Cdk5 / Mapk8 / Csnk1e (Cdk5 +
+  Csnk1e reach FDR<0.10 at nlgf_in_p301s). Joint reading: the canonical
+  microglial DAM-state induction at NLGF onset, with the
+  transcriptional axis driving the program and the kinase axis
+  delivering the phospho-signalling effector layer. Both layers
+  corroborate.
+* Axis 2 (synaptic_suppression): TFs read as honest non-finding
+  (top 5 inherited from axis 1 by Interpretation A); kinases read
+  as honest non-finding (top 5 inherited from axis 1 by Interpretation
+  A). Joint reading: the synaptic-suppression axis is not a
+  regulator-driven program at the resolution available to either
+  mechanism layer; most parsimonious mechanism is an engulfment /
+  detection-level phenomenon. Phase G CCC is the layer expected to
+  surface it.
+* Axis 3 (interaction_metabolic): TFs name Myc / Creb1 / Tp53 / Jun
+  (coordinated suppression of biosynthetic activity); kinases name
+  Gsk3b / Mapk14 / Cdk5 / Cdk1 (canonical tau-kinase activation), with
+  Gsk3b at padj 0.002 the strongest single-kinase result. Joint
+  reading: at the tau x amyloid interaction the cell suppresses
+  biosynthetic capacity transcriptionally while activating canonical
+  tau-kinase substrate phosphorylation; both readings run in the
+  same biological direction and jointly resolve the section-13
+  axis-3 mixed-sign call to a single coherent mechanism. Both layers
+  corroborate strongly.
+
+**The axis-1 / axis-2 entanglement is preserved at the kinase verdict
+layer.** Both NLGF contrasts populate axes 1 and 2 by the locked
+axis-classification rule, so the axis-restricted ranking by mean
+cannot differentiate them at the kinase layer either; the same trade-
+off was accepted at the TF layer at E4 / E5. The structural
+differentiator remains in-universe substrate-site count, exposed per
+row in the F4 axis-restricted TSV. A future plan that re-runs
+decoupleR with the KSN clipped to per-axis universes (Interpretation
+B) might surface different kinase rankings at axes 1 vs 2 at the
+cost of statistical power; the trade-off is the same one made at the
+TF layer and is locked at the same direction.
+
+**No anti-anchoring guardrails were relaxed in this verdict.** All
+three D2 axes are named explicitly; no axis is privileged over the
+others; the F3 FDR<0.10 ulm threshold and the F4 `min_targets = 5`
+filter are re-stated above; no Hallmark or OXPHOS-confirmatory-arc
+terminology appears; hdWGCNA modules are alphabetised where they
+appear (the verdict mentions MG-M2 at axis 1 and MG-M3 at axis 3
+individually only, so the alphabetisation rule is trivially
+satisfied here). The verdict's bottom-line reading is deliberately
+asymmetric across axes (strong / non-finding / strong) because the
+data are asymmetric across axes; collapsing to a single-axis winner
+or a fake-symmetric three-axis pose would reintroduce the bias the
+section-13 D2 verdict, the section-14.3 TF verdict, and this kinase
+verdict were jointly designed to remove.
+
+**Phase F COMPLETE.** With this verdict subsection, the mechanism
+layer arc has produced two complementary verdicts (TFs at 14.3,
+kinases at 15.3) against the same three D2 axes from section 13.
+The next active session in `storage/notes/mechanism_layer_plan.md`
+is Phase G1 -- the CCC re-analysis approach decision gate. CCC is
+expected to be the layer that can plausibly surface the synaptic-
+suppression axis (axis 2) where both TF and kinase layers read as
+honest non-finding.

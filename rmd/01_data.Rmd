@@ -1,0 +1,66 @@
+# Data loading
+
+## snRNAseq: subset to microglia and cache
+
+The full Seurat object is large (~9 GB on disk). We load it, subset to
+microglia and re-run a fresh microglia-focused workflow, then cache the
+result. The full object is dropped from memory immediately after subsetting.
+
+```{r snrnaseq-subset}
+microglia_path <- file.path(params$cache_dir, "microglia_seurat_raw.rds")
+
+microglia_seurat <- cache_or_run(microglia_path, overwrite = params$recompute_snrnaseq, {
+  sc <- readRDS("storage/data/snrnaseq.rds")
+  message("Loaded full snRNAseq object: ", paste(dim(sc), collapse = " x "))
+  stopifnot("broad_annotations" %in% colnames(sc@meta.data))
+  micro <- subset(sc, subset = broad_annotations == "Microglia")
+  # Drop the SCT assay computed on all cells (no longer applicable) and the
+  # whole-object reductions; we recompute on the microglia subset.
+  DefaultAssay(micro) <- "RNA"
+  micro[["SCT"]] <- NULL
+  micro@reductions <- list()
+  rm(sc); invisible(gc())
+  micro
+})
+
+cat(sprintf("Microglia subset: %d genes x %d nuclei\n",
+            nrow(microglia_seurat), ncol(microglia_seurat)))
+
+# Build a stable gene-symbol map from the @misc$geneids vector (aligned to RNA rows).
+symbol_path <- file.path(params$cache_dir, "snrnaseq_symbol_map.rds")
+symbol_map <- cache_or_run(symbol_path, {
+  gids <- microglia_seurat@misc$geneids
+  ens  <- rownames(microglia_seurat[["RNA"]])
+  stopifnot(length(gids) == length(ens))
+  data.frame(ensembl = ens, symbol = as.character(gids),
+             stringsAsFactors = FALSE)
+})
+cat(sprintf("Symbol map: %d entries; %d unique symbols\n",
+            nrow(symbol_map), dplyr::n_distinct(symbol_map$symbol)))
+head(symbol_map, 5)
+```
+
+```{r genotype-factor}
+microglia_seurat$genotype <- factor(microglia_seurat$genotype,
+                                    levels = genotype_levels)
+table(microglia_seurat$genotype, microglia_seurat$batch)
+```
+
+## GeoMx, proteomics, phosphoproteomics
+
+```{r load-others}
+geomx <- readRDS("storage/data/geomx.rds")
+geomx$genotype <- factor(geomx$genotype, levels = genotype_levels)
+cat(sprintf("GeoMx object: %d genes x %d AOIs\n", nrow(geomx), ncol(geomx)))
+table(geomx$genotype)
+
+prot_raw   <- readr::read_tsv("storage/data/proteomics_nonfiltered_nonnormalised.tsv",
+                              show_col_types = FALSE)
+phos_raw   <- readr::read_tsv("storage/data/phosphoproteomics_nonfiltered_nonnormalised.tsv",
+                              show_col_types = FALSE)
+sample_key <- proteomics_sample_meta("storage/data/proteomics_sample_key.csv", n_keep = 16)
+
+cat(sprintf("Proteomics TSV: %d rows x %d cols\n", nrow(prot_raw), ncol(prot_raw)))
+cat(sprintf("Phospho TSV:    %d rows x %d cols\n", nrow(phos_raw), ncol(phos_raw)))
+sample_key
+```

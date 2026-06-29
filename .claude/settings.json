@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.git/**)",
+      "Read(./.venv/**)",
+      "Read(./.micromamba/**)",
+      "Read(./storage/data/**)",
+      "Read(./storage/cache/**)",
+      "Read(./storage/logs/**)",
+      "Read(./.agent/completed/*_plan_*.md)",
+      "Read(./analysis.html)",
+      "Read(./summary.html)",
+      "Read(./synthesis.html)",
+      "Read(./synthesis_files/**)",
+      "Read(./synthesis_cache/**)",
+      "Read(./analysis_files/**)",
+      "Read(./analysis_cache/**)",
+      "Read(./summary_files/**)",
+      "Read(./summary_cache/**)",
+      "Read(./omnipathr-log/**)",
+      "Read(./knit.log)",
+      "Read(./nohup.out)",
+      "Read(./Rplots.pdf)"
+    ]
+  }
+}

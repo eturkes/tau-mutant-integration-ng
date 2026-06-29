@@ -1,0 +1,115 @@
+## Phospho-protein stoichiometric correction
+
+Raw phosphosite log2FC mixes two effects: changes in the abundance of the
+parent protein and changes in the *stoichiometry* of phosphorylation at
+that site. To isolate the latter, we subtract the matched parent-protein
+log2-intensity from each phosphosite log2-intensity per sample, then refit
+limma. Sites whose parent protein is missing from the proteomics matrix
+are dropped. Sample pairing across the two modalities is by `key_idx`
+(both datasets cover DIA_01..16 of the same animals).
+
+```{r phospho-protein-correction}
+phos_corr_path <- file.path(params$cache_dir, "de_phospho_corrected.rds")
+
+de_phospho_corr <- cache_or_run(phos_corr_path, {
+  # Site metadata: map Gene-pSite -> parent PG.ProteinGroups.
+  site_meta <- phos_raw |>
+    dplyr::distinct(`Gene-pSite`, PG.Genes, PG.ProteinGroups,
+                    PTM.SiteAA, PTM.SiteLocation) |>
+    dplyr::filter(!is.na(`Gene-pSite`), `Gene-pSite` != "")
+
+  phospho_log <- de_phospho$log_matrix
+  protein_log <- de_proteomics$log_matrix
+
+  # Pair phospho columns with proteomics columns by key_idx (sample identity).
+  ph_key <- de_phospho$meta$key_idx[match(colnames(phospho_log),
+                                          de_phospho$meta$column)]
+  pr_key <- de_proteomics$meta$key_idx[match(colnames(protein_log),
+                                             de_proteomics$meta$column)]
+  pr_for_ph <- match(ph_key, pr_key)
+  stopifnot(!any(is.na(pr_for_ph)))                # all 16 phospho samples must match
+  protein_log_aligned <- protein_log[, pr_for_ph, drop = FALSE]
+  colnames(protein_log_aligned) <- colnames(phospho_log)
+
+  # Lookup parent PG per site; keep only sites with a parent in the proteomics matrix.
+  site_to_pg <- site_meta$PG.ProteinGroups[match(rownames(phospho_log),
+                                                 site_meta$`Gene-pSite`)]
+  has_protein <- !is.na(site_to_pg) & site_to_pg %in% rownames(protein_log_aligned)
+  message(sprintf(
+    "[phospho-corr] %d / %d sites have a matched parent protein.",
+    sum(has_protein), length(has_protein)))
+
+  corr_mat <- phospho_log[has_protein, , drop = FALSE] -
+              protein_log_aligned[site_to_pg[has_protein], , drop = FALSE]
+  rownames(corr_mat) <- rownames(phospho_log)[has_protein]
+
+  # Re-apply prevalence filter on the corrected matrix (subtraction can introduce
+  # NAs where either component was missing).
+  corr_mat <- prevalence_filter(corr_mat, de_phospho$meta$genotype,
+                                min_present = 3, min_groups = 2)
+
+  meta <- de_phospho$meta
+  design <- model.matrix(~ 0 + genotype, data = meta)
+  colnames(design) <- sub("^genotype", "", colnames(design))
+  cm <- make_contrast_matrix(design)
+  fit <- fit_limma_log(corr_mat, group = meta$genotype, design = design,
+                       contrasts = cm)
+  for (cn in names(fit$top)) {
+    fit$top[[cn]] <- dplyr::left_join(fit$top[[cn]], site_meta,
+      by = c("feature" = "Gene-pSite")) |>
+      dplyr::rename(symbol = PG.Genes)
+  }
+  list(meta = meta, design = design, contrasts = cm, fit = fit,
+       log_matrix = corr_mat,
+       n_sites_with_parent = sum(has_protein),
+       n_sites_tested      = nrow(corr_mat))
+})
+
+cat(sprintf("Phospho-corrected: %d sites with parent protein; %d retained after filter.\n",
+            de_phospho_corr$n_sites_with_parent,
+            de_phospho_corr$n_sites_tested))
+
+phos_corr_summary <- purrr::imap_dfr(de_phospho_corr$fit$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_total  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+    n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(phos_corr_summary,
+             caption = "Phospho-corrected (phospho - protein) DE summary")
+
+if (isTRUE(params$publication_mode)) {
+  masked <- c("nlgf_in_maptki", "tau_alone", "interaction")
+  for (cn in masked) de_phospho_corr$fit$top[[cn]]$logFC <- NA_real_
+}
+```
+
+```{r phospho-corr-scatter, fig.width = 9, fig.height = 4}
+# Compare raw phospho log2FC vs protein-corrected log2FC on the two NLGF contrasts.
+compare_corr <- function(cn, title) {
+  raw <- de_phospho$fit$top[[cn]] |>
+    dplyr::transmute(feature, raw = logFC, raw_p = adj.P.Val)
+  cor_tbl <- de_phospho_corr$fit$top[[cn]] |>
+    dplyr::transmute(feature, corr = logFC, corr_p = adj.P.Val)
+  cmp <- dplyr::inner_join(raw, cor_tbl, by = "feature") |>
+    dplyr::filter(is.finite(raw), is.finite(corr))
+  rho <- suppressWarnings(cor(cmp$raw, cmp$corr, method = "spearman"))
+  ggplot(cmp, aes(raw, corr)) +
+    geom_hline(yintercept = 0, colour = "grey70") +
+    geom_vline(xintercept = 0, colour = "grey70") +
+    geom_abline(slope = 1, intercept = 0, colour = "#b40426",
+                linetype = "dashed") +
+    geom_point(alpha = 0.25, size = 0.6) +
+    labs(x = "raw phospho log2FC", y = "corrected (phospho - protein) log2FC",
+         title = title,
+         subtitle = sprintf("Spearman rho = %.3f, n = %d", rho, nrow(cmp))) +
+    theme_bw()
+}
+compare_corr("nlgf_in_maptki", "NLGF in MAPTKI") |
+compare_corr("nlgf_in_p301s",  "NLGF in P301S")
+compare_corr("interaction",    "interaction (tau-dependent NLGF)") |
+compare_corr("tau_in_nlgf",    "tau in NLGF")
+```

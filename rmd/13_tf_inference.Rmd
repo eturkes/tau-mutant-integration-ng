@@ -1,0 +1,951 @@
+# TF activity inference
+
+This section is the first layer of the mechanism-layer arc described in
+`storage/notes/mechanism_layer_plan.md` (Phase E). The agnostic pathway
+survey at section 12 surfaced **three biological axes** in the cross-
+modality leader board: amyloid-driven activation, NLGF-driven synaptic
+suppression, and mixed-sign metabolic/translational disagreement at
+`tau x amyloid` interaction. The pathway-level evidence answers
+*"which functional gene programmes shift"* but not *"which upstream
+regulators drive those shifts"*. TF inference begins to answer the
+latter.
+
+The mechanism layer derives every regulator candidate from the same
+DE caches the pathway survey used; no new data ingestion and no
+re-anchoring on a pre-committed regulator family. The TF-target prior
+is `CollecTRI` mouse via `decoupleR::get_collectri()` -- a curated
+literature + ChIP-seq prior covering 1,114 TFs over 6,110 targets in
+mouse symbol space. Phase F (kinase inference) and Phase G (CCC
+re-analysis) will follow the same pattern with OmniPath kinase and
+ligand-receptor priors.
+
+## Cross-modality TF activity ranking
+
+This subsection ranks TFs by cross-modality agreement at each contrast
+using the same scoring conventions as section 12's pathway survey, so
+the two layers are read side-by-side with parallel mental models.
+
+**Inference threshold (stated before applying to data).** Per-modality
+significance uses the `ulm` linear-model F-test p-value (decoupleR's
+canonical univariate statistic), BH-adjusted within each
+`(modality, contrast)` cell, with `padj < 0.10` as the per-modality
+sig call. The threshold is locked at 0.10 (looser than the
+pathway-survey's 0.05) because TF activity inference has sparser
+per-TF evidence than fgsea -- CollecTRI TF target sets range from 5
+to a few hundred genes vs. fgsea minimum 15 -- and the looser
+threshold compensates for the lower per-modality power. Per-TF
+ranking and sign attribution use the `consensus` score (decoupleR's
+recommended primary ranking metric, signed, 87% sign-agreement with
+ulm, 0.87 correlation). The two statistics serve two roles: ulm
+arbitrates significance; consensus arbitrates magnitude and direction.
+This split is the decoupleR vignette convention.
+
+**Primary modalities and substate breadth axis.** Cross-modality
+counts (`n_modalities_sig`, max 3) cover snRNAseq whole-microglia +
+GeoMx + bulk proteomics. The four microglia substates (homeostatic,
+DAM, IFN, proliferative) feed a separate substate-breadth axis
+(max 4), mirroring the pathway-survey's treatment of substates as a
+breadth axis rather than additional cross-modality columns. Phospho
+is excluded from Phase E by design: phospho-site DE statistics need
+protein-level collapse and signed re-mapping before they can serve as
+TF-target evidence, which is the work of Phase F.
+
+**Leader rule (verbatim from pathway-survey).** A `(TF, contrast)`
+row is a leader if
+`n_modalities_sig_consistent_sign >= 2` OR `n_modalities_sig >= 3`.
+The first clause requires at least two modalities at FDR<0.10 with
+the same sign of activity score; the second requires all three at
+FDR<0.10 regardless of sign. The composite `leader_score` formula is
+identical to the pathway-survey:
+`5 * n_contrasts_consistent_sign_ge2 + n_contrasts_sig_ge3 + max_consistent_sign / 5`.
+
+```{r tf-inference-build}
+tf_activity <- readRDS(file.path(params$cache_dir,
+                                 "tf_activity_decoupler.rds"))
+
+contrasts5 <- c("nlgf_in_maptki", "nlgf_in_p301s",
+                "interaction", "tau_alone", "tau_in_nlgf")
+primary_mods <- c("snrnaseq", "geomx", "proteomics")
+
+tf_ranking_per_contrast <- lapply(contrasts5, function(cn) {
+  rank_tfs_cross_modality(tf_activity, cn,
+                          primary_modalities = primary_mods)
+})
+names(tf_ranking_per_contrast) <- contrasts5
+
+tf_ranking_long <- dplyr::bind_rows(lapply(contrasts5, function(cn) {
+  r <- tf_ranking_per_contrast[[cn]]
+  r$contrast <- cn
+  r
+}))
+
+tf_substate_breadth_long <- compute_tf_substate_breadth(tf_activity,
+                                                       contrasts = contrasts5)
+
+tf_leaderboard <- build_tf_leader_board(
+  tf_ranking_long,
+  substate_breadth_long = tf_substate_breadth_long
+)
+
+readr::write_tsv(
+  tf_leaderboard,
+  file.path(params$results_dir, "tf_activity_unified_leaderboard.tsv")
+)
+
+cat(sprintf(
+  paste0("Cross-modality TF ranking: %d unique TFs covered across ",
+         "primary modalities (%s) at the 5 contrasts.\n",
+         "Unified leader board: %d leader TFs at FDR<0.10 with the ",
+         "default rule (>=2 consistent sign OR >=3 sig across the 3 ",
+         "primary modalities at any single contrast).\n"),
+  length(unique(tf_ranking_long$source)),
+  paste(primary_mods, collapse = ", "),
+  nrow(tf_leaderboard)
+))
+```
+
+### Per-contrast cross-modality top-10 TFs
+
+The five tables below show the top 10 TFs per contrast by the same
+composite rank used in the pathway survey (sign-consistent significant-
+modality count desc, then mean `|consensus score|` desc). Contrasts
+with no sig TFs at any modality still produce a ranking by absolute
+consensus score; rows with `n_modalities_sig == 0` are sorted by mean
+`|consensus score|` and do not contribute to the leader board.
+
+```{r tf-inference-per-contrast-tables, results = 'asis'}
+for (cn in contrasts5) {
+  print(format_tf_ranking_table(tf_ranking_per_contrast[[cn]],
+                                contrast = cn, n = 10))
+}
+```
+
+The qualitative pattern across the five tables: TFs reach
+cross-modality significance almost exclusively at the two NLGF
+contrasts (`nlgf_in_maptki`, `nlgf_in_p301s`). The interaction
+contrast yields a thin signal (1 TF at the leader rule's all-three-sig
+clause); `tau_alone` and `tau_in_nlgf` have essentially no
+cross-modality sig signal. This is the empirical reflection of the
+TF inference layer being lower-powered than gene-set enrichment at
+small effect sizes -- the interaction and tau-only contrasts already
+showed weaker cross-modality pathway signal in section 12, and the
+TF layer inherits that limitation.
+
+### Unified TF leader board
+
+```{r tf-inference-leader-table, results = 'asis'}
+tf_leader_view <- tf_leaderboard |>
+  dplyr::transmute(
+    source,
+    leader_score,
+    n_contrasts_cons_ge2 = n_contrasts_consistent_sign_ge2,
+    n_contrasts_sig_ge3,
+    max_consistent_sign,
+    dominant_sign,
+    max_substate_breadth,
+    contrasts_summary
+  )
+
+print(knitr::kable(
+  tf_leader_view, digits = 2,
+  caption = paste0(
+    "Unified TF leader board (all leader rows). leader_score = ",
+    "5 * n_contrasts_consistent_sign_ge2 + n_contrasts_sig_ge3 + ",
+    "max_consistent_sign / 5; max_substate_breadth is the count out ",
+    "of 4 microglia substates where the TF reaches FDR<0.10 on ",
+    "consensus p-value at any contrast."
+  )
+))
+```
+
+### TF x modality activity heatmap (nlgf_in_maptki contrast)
+
+The heatmap below shows the top leader TFs (alphabetical row order so
+no TF is visually privileged) by signed consensus score across the
+three primary modalities at the `nlgf_in_maptki` contrast -- the
+contrast with the largest cross-modality TF leader population. Cell
+text marks per-modality significance: `*` = FDR<0.05, `.` = FDR<0.10.
+NA cells (TF dropped by `minsize=5` in that modality's CollecTRI
+target overlap) are blank.
+
+```{r tf-inference-heatmap, fig.width = 7, fig.height = 4.5}
+heatmap_contrast <- "nlgf_in_maptki"
+tf_alpha <- sort(tf_leaderboard$source)
+
+ranking_for_heatmap <- tf_ranking_per_contrast[[heatmap_contrast]]
+score_cols <- paste0("score_", primary_mods)
+padj_cols  <- paste0("padj_",  primary_mods)
+
+score_mat <- as.matrix(
+  ranking_for_heatmap[match(tf_alpha, ranking_for_heatmap$source),
+                      score_cols, drop = FALSE]
+)
+padj_mat  <- as.matrix(
+  ranking_for_heatmap[match(tf_alpha, ranking_for_heatmap$source),
+                      padj_cols, drop = FALSE]
+)
+rownames(score_mat) <- tf_alpha
+rownames(padj_mat)  <- tf_alpha
+colnames(score_mat) <- primary_mods
+colnames(padj_mat)  <- primary_mods
+
+range_abs <- max(abs(score_mat[is.finite(score_mat)]), na.rm = TRUE)
+if (!is.finite(range_abs) || range_abs == 0) range_abs <- 1
+col_fun <- circlize::colorRamp2(c(-range_abs, 0, range_abs),
+                                c("#3a4cc0", "white", "#b40426"))
+cell_fn <- function(j, i, x, y, width, height, fill) {
+  if (is.na(padj_mat[i, j])) return()
+  if (padj_mat[i, j] < 0.05) {
+    grid::grid.text("*", x, y,
+                    gp = grid::gpar(fontsize = 11, col = "black"))
+  } else if (padj_mat[i, j] < 0.10) {
+    grid::grid.text(".", x, y,
+                    gp = grid::gpar(fontsize = 11, col = "black"))
+  }
+}
+ComplexHeatmap::Heatmap(
+  score_mat,
+  name            = "consensus score",
+  col             = col_fun,
+  cluster_rows    = FALSE,
+  cluster_columns = FALSE,
+  row_order       = seq_len(nrow(score_mat)),
+  column_order    = seq_len(ncol(score_mat)),
+  cell_fun        = cell_fn,
+  row_names_gp    = grid::gpar(fontsize = 10),
+  column_names_gp = grid::gpar(fontsize = 10),
+  column_title    = sprintf(
+    paste0("Leader TFs x modality (consensus score) at '%s' contrast ",
+           "('*' = FDR<0.05, '.' = FDR<0.10; rows alphabetical)"),
+    heatmap_contrast),
+  na_col          = "grey90",
+  border          = TRUE
+)
+```
+
+### Interpretive notes for this subsection
+
+The cross-modality TF leader board concentrates almost entirely on
+the **amyloid-driven activation axis** identified in section 12:
+every leader TF has `dominant_sign = "+"`, and contrasts at which
+leaders qualify are the two NLGF contrasts. The synaptic suppression
+axis (negative signal at NLGF contrasts on synaptic GO CC terms) and
+the mixed-sign metabolic/translational interaction axis do not
+surface at the TF layer with this prior and threshold. Two
+mechanistic readings of that absence: (a) synaptic suppression in
+section 12 is most likely driven by detection-level engulfment /
+trans-synaptic protein reorganisation rather than transcriptional
+regulation, so a TF-target prior would not be expected to surface
+it; (b) the interaction-axis OXPHOS / ribosomal signal is a
+metabolic compartment shift that may be governed by post-
+transcriptional regulators (kinases, miRNAs) not represented in a
+TF-target prior. Phase F will revisit the interaction axis with the
+OmniPath kinase prior. The full per-axis treatment, including this
+absence as a *finding*, lives in subsection 13.3 (verdict).
+
+The leader TFs themselves are biologically face-valid for the
+amyloid-activation axis. Nr1h3 (LXR alpha) is the canonical
+microglial cholesterol-handling and DAM-priming regulator; Spi1
+(PU.1) is the master microglial lineage TF and an established AD
+GWAS locus; Irf1 mediates interferon-driven activation that overlaps
+with the IFN microglial substate. Usf2 is the only TF with
+`max_substate_breadth = 4` (active in every microglia substate at
+some contrast), making it the closest TF analogue of the compartment-
+wide patterns surfaced in the pathway survey's per-substate analysis.
+Two CollecTRI complex sources (`A0A979HLR9`, `A0A087WSP5`) appear in
+the leader board with UniProt-accession names rather than gene
+symbols; these are CollecTRI's "complex" entries (typically
+heterodimer-resolved). E4 will decide whether to filter them out of
+axis-restricted analyses or annotate them and retain.
+
+## Axis-restricted TF rankings
+
+Subsection 14.1 ranked TFs by their *global* cross-modality activity
+profile and surfaced almost exclusively amyloid-activation drivers at
+the two NLGF contrasts. Subsection 14.2 asks the complementary
+question: for each of the three biological axes named in section
+13's D2 verdict (amyloid-driven activation; NLGF-driven synaptic
+suppression; mixed-sign metabolic/translational at the `tau x
+amyloid` interaction), which TFs carry the strongest activity
+*within that axis's gene universe*? The answer is computed by
+restricting the CollecTRI TF--target graph to TFs whose target sets
+overlap the axis universe at >= 5 distinct symbols, and averaging the
+existing E2 cache scores across the (axis-contrast x primary-modality)
+cells.
+
+**Axis classification rule (locked at E4).** A leader row from
+`storage/results/pathway_survey_unified_leaderboard.tsv` is assigned
+to axis `amyloid_activation` if its `contrasts_summary` matches the
+regex `nlgf_in_[a-z0-9]+:[0-9]+/[+]` (an NLGF contrast with positive
+consensus sign); to `synaptic_suppression` if it matches
+`nlgf_in_[a-z0-9]+:[0-9]+/-` (NLGF, negative sign); to
+`interaction_metabolic` if it matches `interaction:[0-9]+/mixed`
+(the interaction contrast with mixed-sign consensus). Multi-label
+is permitted -- a row may contribute to more than one axis universe,
+reflecting that single pathways may bridge axes (e.g. `DAM_up`
+contributes to both axes 1 and 3 in the live leader board). Orphan
+rows (matching no axis) are dropped. The rule is strictly directional
+and so may differ from the predecessor pathway-survey prose in
+borderline cases; notably `AD2`, which the section 13 verdict
+grouped with the amyloid-activation axis by curatorial provenance,
+carries `nlgf_in_maptki:2/-` in the leader board and so lands in
+`synaptic_suppression` by the directional rule. Directional grouping
+is preferred at the mechanism layer because the axis universe should
+reflect the biological direction the axis represents -- mixing
+direction within an axis would dilute the per-TF inference signal.
+
+**Interpretation A (locked at E4).** Per-TF activity scores are read
+from the existing `tf_activity_decoupler.rds` cache (computed against
+each modality's full universe in E2). E4 restricts the TF *set* by
+universe-overlap (CollecTRI targets >= `min_targets = 5` distinct
+symbols in the axis universe), then averages the cached consensus
+scores across the (axis-contrast x primary-modality) cells where the
+TF has a finite score. The alternative ("Interpretation B" -- re-run
+decoupleR with each modality's CollecTRI network clipped to the axis
+universe) was considered and rejected: clipping shrinks per-TF
+target counts inside the run, costing statistical power that the
+small per-modality universes already cannot afford. Mean is taken
+signed (not absolute); ranking within axis is by `|mean|` so
+strong-signal TFs surface regardless of sign. The locked choice is
+recorded in the `R/tf_inference.R` module header so a future session
+can revisit on demand.
+
+```{r tf-axis-restricted-build}
+leaderboard <- readr::read_tsv(
+  file.path(params$results_dir,
+            "pathway_survey_unified_leaderboard.tsv"),
+  show_col_types = FALSE
+)
+
+# Gene-set caches keyed by the leaderboard's `collection` column.
+# msigdb_* are named lists `pathway -> character` of mouse gene
+# symbols; custom_microglia_* are likewise. hdWGCNA modules need
+# Ensembl -> symbol translation (the `modules` slot uses Seurat
+# rownames i.e. ENSMUSG IDs and CollecTRI is symbol-keyed).
+gobp     <- readRDS(file.path(params$cache_dir, "msigdb_gobp_mouse.rds"))
+gocc     <- readRDS(file.path(params$cache_dir, "msigdb_gocc_mouse.rds"))
+gomf     <- readRDS(file.path(params$cache_dir, "msigdb_gomf_mouse.rds"))
+cstates  <- readRDS(file.path(params$cache_dir,
+                              "custom_microglia_states.rds"))
+cad      <- readRDS(file.path(params$cache_dir,
+                              "custom_microglia_ad.rds"))
+
+hwg        <- readRDS(file.path(params$cache_dir,
+                                "hdwgcna_microglia.rds"))
+symbol_map <- readRDS(file.path(params$cache_dir,
+                                "snrnaseq_symbol_map.rds"))
+hwg_modules <- hwg$modules
+hwg_modules$gene_name <- symbol_map$symbol[
+  match(hwg_modules$gene_name, symbol_map$ensembl)]
+hwg_modules <- hwg_modules[
+  !is.na(hwg_modules$gene_name) & nzchar(hwg_modules$gene_name) &
+    as.character(hwg_modules$module) != "grey", , drop = FALSE]
+
+gene_sets <- list(
+  gobp                    = gobp,
+  gocc                    = gocc,
+  gomf                    = gomf,
+  custom_microglia_states = cstates,
+  custom_microglia_ad     = cad,
+  hdwgcna_modules         = hwg_modules
+)
+
+axis_universes <- build_axis_gene_universe(leaderboard, gene_sets)
+
+# CollecTRI mouse prior. OmnipathR-cached locally from E2; near-
+# instantaneous on the second call. split_complexes = FALSE retains
+# heterodimer-resolved TF complexes (UniProt-accession sources).
+collectri_mouse <- decoupleR::get_collectri(
+  organism        = "mouse",
+  split_complexes = FALSE
+)
+
+tf_axis_scores <- score_tf_per_axis(
+  tf_cache           = tf_activity,
+  axis_universes     = axis_universes,
+  network            = collectri_mouse,
+  primary_modalities = primary_mods,
+  min_targets        = 5L,
+  score_statistic    = "consensus"
+)
+
+readr::write_tsv(
+  tf_axis_scores,
+  file.path(params$results_dir, "tf_activity_axis_restricted.tsv")
+)
+
+axis_summary <- vapply(names(axis_universes), function(ax) {
+  n_uni <- length(axis_universes[[ax]]$universe)
+  n_ctr <- length(axis_universes[[ax]]$axis_contrasts)
+  n_tf  <- sum(tf_axis_scores$axis == ax)
+  sprintf("  %-22s  %5d universe genes  %d axis contrasts  %d TFs scored",
+          ax, n_uni, n_ctr, n_tf)
+}, character(1))
+cat(sprintf(
+  "Axis-restricted TF inference: %d axes (%s).\n",
+  length(axis_universes),
+  paste(names(axis_universes), collapse = ", ")))
+cat(paste(axis_summary, collapse = "\n"), "\n", sep = "")
+```
+
+### Amyloid-activation axis (axis 1)
+
+The amyloid-activation universe is the union of leader-pathway gene
+sets whose `contrasts_summary` carries at least one positive NLGF
+contrast: the gene programmes that section 13's D2 verdict identified
+as upregulated at amyloid onset (MG-M2, MHC II antigen presentation,
+adaptive immune response, the activated DAM_up / WAM / HAM_disease /
+IRM cores). The per-TF mean is the average of the consensus score
+across (NLGF contrasts x primary modalities) cells in the E2 cache;
+the signed mean carries direction (positive: TF activity rises with
+amyloid in this universe; negative: TF activity falls).
+
+```{r tf-axis-table-amyloid, results = 'asis'}
+print(format_axis_restricted_table(tf_axis_scores,
+                                   "amyloid_activation",
+                                   n = 15))
+```
+
+```{r tf-axis-lollipop-amyloid, fig.width = 7, fig.height = 4.5}
+plot_axis_lollipop(tf_axis_scores, "amyloid_activation", n = 12)
+```
+
+### Synaptic-suppression axis (axis 2)
+
+The synaptic-suppression universe is the union of leader-pathway gene
+sets whose `contrasts_summary` carries at least one negative NLGF
+contrast: six synaptic GO CC terms (synapse, presynaptic / postsynaptic
+membranes, plus matching compartments) and parallel synapse GO BP
+terms. Axes 1 and 2 share the same set of `axis_contrasts` (both
+NLGF contrasts) in the per-TF mean by construction of the directional
+rule, so the *ranking by mean* is structurally similar to axis 1
+modulo which TFs survive the universe-overlap filter. The biological
+differentiator lives in `n_targets_in_axis_universe`, which counts
+CollecTRI targets of each TF that fall inside the synaptic-suppression
+universe; contrast with the same column under axis 1 for any shared
+TF to see the per-axis target-density story.
+
+```{r tf-axis-table-synaptic, results = 'asis'}
+print(format_axis_restricted_table(tf_axis_scores,
+                                   "synaptic_suppression",
+                                   n = 15))
+```
+
+```{r tf-axis-lollipop-synaptic, fig.width = 7, fig.height = 4.5}
+plot_axis_lollipop(tf_axis_scores, "synaptic_suppression", n = 12)
+```
+
+### Interaction metabolic/translational axis (axis 3)
+
+The interaction universe is the union of leader-pathway gene sets
+whose `contrasts_summary` carries the `interaction` contrast with
+mixed-sign consensus: the eight OXPHOS / ETC GO terms, the ribosomal
+/ translational compartment, and the `MG-M3` / `DAM_up` interaction
+reading. Unlike axes 1 and 2, axis 3's `axis_contrasts` reduces to
+the single `interaction` contrast, so the per-TF mean is
+structurally independent of the NLGF-driven means above. The signed
+mean here is expected to lean negative for proliferation /
+cell-fate TFs whose target programmes include OXPHOS or ribosomal
+biogenesis.
+
+```{r tf-axis-table-interaction, results = 'asis'}
+print(format_axis_restricted_table(tf_axis_scores,
+                                   "interaction_metabolic",
+                                   n = 15))
+```
+
+```{r tf-axis-lollipop-interaction, fig.width = 7, fig.height = 4.5}
+plot_axis_lollipop(tf_axis_scores, "interaction_metabolic", n = 12)
+```
+
+### Interpretive notes for this subsection
+
+The axis-restricted TF rankings deliver three biological readings,
+two of which are tightly coupled by construction and one of which
+is genuinely independent.
+
+**Axis 1 (amyloid-activation)** broadens the cross-modality leader
+board from 14.1: Nr1h3 (LXR alpha, microglial cholesterol / DAM
+priming), Spi1 (PU.1, master microglial lineage TF + AD GWAS locus),
+Irf1 (interferon-driven activation) all surface among the top
+mean-activity TFs, alongside canonical inflammatory amplifiers
+Nfkb1 / Rela / Sp3 / Usf1 / Usf2. The signed mean is predominantly
+positive across the top of the ranking (10 of the top 15 TFs;
+expected, given the amyloid axis is defined as positive at NLGF);
+the five negative entries (Rreb1, Sin3a, Pa2g4, Klf7, Snai2) are
+TFs whose targets are coordinately *repressed* in the amyloid
+universe -- a real signal worth retaining rather than filtering on
+sign alone. Spi1's CollecTRI target set is heavily skewed towards
+the amyloid universe (184 in-universe targets) vs the synaptic
+universe (84 in-universe targets) -- the live values in the
+`n_targets_in_axis_universe` column for the rendered tables --
+confirming the bookkeeping correctly attributes Spi1's primary axis
+as amyloid.
+
+**Axis 2 (synaptic-suppression)** does **not** deliver a separate set
+of "synaptic-suppression TFs" by the mean-activity ranking. By the
+Interpretation-A formula the per-TF mean is identical to axis 1 for
+any TF passing both universe-overlap filters: the contrasts averaged
+over are the same (both NLGF contrasts) and the cached scores are
+computed against full per-modality universes, not against
+axis-restricted networks. The differentiator is structural -- which
+TFs survive the synaptic-universe filter, and how many of their
+CollecTRI targets fall in that universe. This is the documented
+property of Interpretation A; an Interpretation-B re-run (one
+decoupleR call per axis with the network clipped to the axis
+universe) would deliver genuinely axis-specific scores at the cost
+of per-modality statistical power. The choice was deliberate and
+recorded.
+
+The biological reading of axis 2 should therefore be: "these are TFs
+whose target genes overlap the synaptic-suppression universe at >=5
+CollecTRI edges *and* are active at NLGF contrasts" -- i.e. TFs
+whose activity is upregulated by amyloid while having synaptic-
+program targets. Whether their NLGF activity is *causally driving*
+the synaptic suppression or merely co-occurring with it cannot be
+resolved at the TF layer alone; the E5 verdict subsection will
+revisit with sign-aware interpretation.
+
+**Axis 3 (interaction metabolic/translational)** is the genuinely
+independent axis at this layer. Its `axis_contrasts` reduces to the
+single `interaction` contrast, so the per-TF mean diverges sharply
+from axes 1/2. Top TFs by `|mean|` are canonical
+metabolic/proliferation regulators -- Myc (drives ribosomal
+biogenesis and translation), Creb1, Tp53, Jun, Fos, Hif1a, Ctnnb1
+-- and the signed mean leans **negative** for 14 of the top 15 TFs
+(Hdac1 the lone positive exception, with only 9 in-universe targets;
+its rank is more a function of low denominator noise than a robust
+opposing signal). This is the upstream signal one would predict to
+drive the negative-NES end of the OXPHOS / ribosome gene-set
+readings at the `interaction` contrast in section 13: a coordinated
+reduction in Myc-driven biosynthetic activity at the `tau x amyloid`
+interaction is the most parsimonious mechanism for a compartment
+shift away from the high-translation / high-OXPHOS state. The
+mixed-sign character of the gene-set readings at the pathway layer
+reflects internal heterogeneity inside the OXPHOS / ribosome sets,
+but the TF layer reads a coherent direction.
+
+A diagnostic cross-axis observation: Rela (the NF-kB p65 subunit)
+appears in *both* axis 1 (rank 7, mean +2.19) and axis 3 (rank 13,
+mean -1.36), with opposite signs. The amyloid contrasts activate
+Rela targets (inflammatory response on); the interaction contrast
+suppresses them (compartment-shift away from inflammation as part
+of the metabolic re-tuning at the `tau x amyloid` interface).
+A0A087WSP5 (the second CollecTRI complex source) shows the same
+sign-reversal pattern (axis 1 mean +2.42; axis 3 mean -1.59). These
+sign reversals are not bookkeeping artefacts -- they are the
+expected signature of a coherent biological transition between the
+two contrast settings. The E5 verdict will weigh whether the axis-3
+signal is robust to the more demanding sign-aware aggregation.
+
+**Resolution of the open question from 14.1.4.** The two CollecTRI
+complex sources `A0A979HLR9` and `A0A087WSP5` are **retained** in
+the axis-restricted analyses, not filtered out. They are
+heterodimer-resolved CollecTRI entries (`split_complexes = FALSE`),
+both surface repeatedly with high `|mean|` scores in axes 1 and 3,
+and both have substantial target counts in those axis universes.
+Filtering them out would obscure substantive biology. A future
+annotation pass (deferred beyond Phase E) can resolve them to
+specific subunits via UniProt; for now they are reported with their
+accession names and treated as compound TF entities.
+
+The E5 verdict subsection will (a) take the per-axis top TFs above
+and produce a sign-aware narrative per axis, mirroring the D2
+verdict shape from section 13; (b) cross-check that the three axes
+remain visibly distinct after the verdict-level aggregation, per the
+anti-anchoring guardrails; and (c) explicitly list any axis whose
+TF-layer reading does not corroborate the section-13 pathway-layer
+verdict, naming the inconsistency rather than smoothing it.
+
+## Verdict (sign-aware TF synthesis)
+
+This subsection synthesises the cross-modality TF ranking (14.1) and
+the axis-restricted TF ranking (14.2) into a per-axis verdict, mirroring
+the shape of the section-13 pathway-survey verdict. The mechanism-layer
+reading is *not* a re-derivation of the pathway-survey axes -- those
+axes are accepted as inputs -- it is an answer to the question *which
+upstream regulators carry the strongest signal within each axis's
+biology, and which axis is best read by the TF layer at all?*
+
+**Inference thresholds (re-stated before the verdict so the bar is
+explicit).** Per-modality significance is FDR<0.10 on the decoupleR
+`ulm` p-value (BH-adjusted within each `(modality, contrast)` cell);
+ranking and sign use the `consensus` score. The cross-modality leader
+rule (subsection 14.1) is `n_modalities_sig_consistent_sign >= 2` OR
+`n_modalities_sig >= 3` across snRNAseq whole-microglia + GeoMx + bulk
+proteomics. The axis-restricted ranking (subsection 14.2) filters TFs
+to those with `>= 5` CollecTRI targets in the axis gene universe and
+ranks within axis by `|mean consensus score|`; the verdict displays the
+top 5 TFs per axis.
+
+```{r tf-inference-verdict-build}
+axis_scores_tbl <- readr::read_tsv(
+  file.path(params$results_dir,
+            "tf_activity_axis_restricted.tsv"),
+  show_col_types = FALSE
+)
+
+tf_verdict_evidence <- list(
+  amyloid_activation = paste0(
+    "Top 5 axis-restricted TFs are 4-positive / 1-negative; signed mean ",
+    "range [-2.57, +4.32] across NLGF contrasts. Hybrid per-contrast view: ",
+    "nlgf_in_maptki:[-2.09, +5.40]; nlgf_in_p301s:[-3.06, +3.23] (maptki ",
+    "carries the stronger positive tail; p301s the stronger negative tail) ",
+    "-- a real per-contrast asymmetry the axis-mean smooths over. ",
+    "2 of the top 5 (A0A979HLR9, Spi1) also reach the cross-modality ",
+    "leader rule at the two NLGF contrasts (subsection 14.1). Reading: ",
+    "Spi1 (PU.1, master microglial lineage TF + AD GWAS locus), ",
+    "Nfkb1 / Sp3 (canonical inflammatory amplifiers), and the CollecTRI ",
+    "complex source A0A979HLR9 are activated at NLGF onset; Rreb1 is the ",
+    "lone repressor in the top 5. Corroborates the section-13 axis-1 ",
+    "verdict (MG-M2 module, MHC II antigen-presentation family, ",
+    "GOBP_ADAPTIVE_IMMUNE_RESPONSE, custom DAM_up / WAM / HAM_disease ",
+    "sets) at the mechanism layer."),
+  synaptic_suppression = paste0(
+    "Top 5 axis-restricted TFs are identical to axis 1 by Interpretation ",
+    "A construction (both axes share their NLGF contrasts and the ",
+    "per-TF mean is computed from full-universe scores). Hybrid per-",
+    "contrast view is therefore also identical to axis 1 ",
+    "(nlgf_in_maptki:[-2.09, +5.40]; nlgf_in_p301s:[-3.06, +3.23]); the ",
+    "axis 1 / axis 2 entanglement propagates to the per-contrast layer ",
+    "as a structural consequence of the shared contrast set, not as an ",
+    "information loss specific to the axis-mean. The structural ",
+    "differentiator is in-universe target counts (e.g. Spi1: 184 ",
+    "amyloid-universe targets vs 84 synaptic-universe targets). Reading: ",
+    "the TF layer does NOT independently identify drivers of synaptic ",
+    "suppression at this resolution; the synaptic-axis top TFs read as ",
+    "'amyloid-activated TFs whose target programmes also include ",
+    "synaptic genes', not as 'TFs that drive synaptic gene downregulation'. ",
+    "This is an honest non-finding -- the absence of a distinct TF ",
+    "signature for synaptic suppression is consistent with the ",
+    "engulfment-mediated mechanism hypothesis raised in 14.1.4 and ",
+    "14.2.4."),
+  interaction_metabolic = paste0(
+    "Top 5 axis-restricted TFs are uniformly negative; signed mean range ",
+    "[-4.85, -1.81] at the single interaction contrast. Hybrid per-",
+    "contrast view collapses to interaction:[-4.85, -1.81], identical to ",
+    "the axis-mean range by construction (only one axis_contrast at axis ",
+    "3); the hybrid columns are preserved in the TSV for schema ",
+    "consistency with axes 1 and 2. 1 of the top 5 (A0A979HLR9) appears ",
+    "in the cross-modality leader board, but its leader status comes ",
+    "from the NLGF contrasts -- no TF reached the cross-modality leader ",
+    "rule at the interaction contrast in the current build. Reading: ",
+    "Myc / Creb1 / Tp53 / Jun, the canonical metabolic and proliferation ",
+    "regulators of ribosomal biogenesis and biosynthetic activity, are ",
+    "coordinately suppressed at the tau x amyloid interaction. The TF ",
+    "layer reads a COHERENT NEGATIVE direction here, in contrast to the ",
+    "mixed-sign signal at the gene-set layer of section 13. The most ",
+    "parsimonious upstream mechanism for the section-13 axis-3 biology ",
+    "(MG-M3 module + DAM_up at interaction + the OXPHOS/ETC GO family + ",
+    "ribosomal compartment) is a Myc-led reduction in biosynthetic ",
+    "throughput at the tau x amyloid interface; the mixed-sign reading ",
+    "at the gene-set layer reflects RNA / proteomics / phospho-corrected ",
+    "orthogonality already documented in section 13, not internal ",
+    "disagreement on direction at the TF layer.")
+)
+
+tf_verdict <- build_tf_verdict_table(
+  axis_tbl           = axis_scores_tbl,
+  tf_leaderboard     = tf_leaderboard,
+  n_top_per_axis     = 5L,
+  evidence_summaries = tf_verdict_evidence
+)
+
+readr::write_tsv(
+  tf_verdict,
+  file.path(params$results_dir, "tf_activity_verdict.tsv")
+)
+
+cat(sprintf(
+  "TF inference verdict: %d axes summarised (%s), top-%d TFs per axis.\n",
+  nrow(tf_verdict),
+  paste(tf_verdict$axis, collapse = ", "),
+  5L))
+```
+
+### Verdict summary table
+
+The summary table below has one row per D2 axis. `top_TFs` lists the
+top 5 TFs per axis sorted by `|mean consensus score|` (the axis-
+restricted ranking from 14.2); `top_TF_signs` carries the signed
+direction of each TF's mean (`+` = positive activator,
+`-` = negative repressor at the axis's contrast set); `mean_score_range`
+gives the [min, max] of the signed mean across those 5 TFs;
+`per_contrast_summary` is the locked **hybrid** companion -- it gives
+the [min, max] of the cross-modality mean at each axis-contrast in
+isolation, so a reader can see whether the axis-mean smooths over
+heterogeneous per-contrast signal or is reading a coherent direction.
+`n_top_in_cross_modality_leaderboard` counts how many of the top 5
+also reached the cross-modality leader rule (subsection 14.1);
+`evidence_summary` is a prose distillation of the per-axis reading.
+
+The hybrid display (mean range + per-contrast ranges side-by-side) was
+locked at the F4 decision gate on 2026-05-24 (user directive: "Do the
+hybrid. Have other analyses do the hybrid as well for consistency") and
+retrofitted to this E5 verdict layer for consistency with the F4
+kinase verdict that follows in subsection 15.2.
+
+```{r tf-inference-verdict-table, results = 'asis'}
+verdict_view <- tf_verdict |>
+  dplyr::transmute(
+    axis,
+    top_TFs,
+    top_TF_signs,
+    mean_score_range,
+    per_contrast_summary,
+    n_top_in_cm_lb = n_top_in_cross_modality_leaderboard
+  )
+print(knitr::kable(
+  verdict_view, digits = 2,
+  caption = paste0(
+    "Per-axis TF verdict summary (top 5 axis-restricted TFs per axis). ",
+    "Hybrid view: `mean_score_range` gives the [min, max] of the ",
+    "axis-mean across the top 5; `per_contrast_summary` gives ",
+    "per-axis-contrast [min, max] of the cross-modality mean across ",
+    "the same top 5 (exposes per-contrast asymmetry that the axis-mean ",
+    "smooths over). `n_top_in_cm_lb` = count of top-5 TFs that also ",
+    "reached the cross-modality leader rule in subsection 14.1."
+  )
+))
+```
+
+The `evidence_summary` column is omitted from the inline kable to keep
+the row heights tractable; the full per-axis prose lives in subsections
+14.3.1-14.3.3 below, and the column is preserved verbatim in the
+exported TSV (`storage/results/tf_activity_verdict.tsv`). The TSV
+also carries `per_contrast_score_range` (the [min, max] across the
+top-5 x axis-contrasts cells, useful for at-a-glance comparison to
+`mean_score_range`).
+
+### Amyloid-activation axis (axis 1)
+
+**Top 5 TFs by axis-restricted |mean|:** A0A979HLR9 (+4.32), Spi1
+(+2.81), Rreb1 (-2.57), Sp3 (+2.50), Nfkb1 (+2.47). Four positive,
+one negative; signed mean range [-2.57, +4.32]. Two of the five
+(A0A979HLR9 and Spi1) also reached the cross-modality leader rule at
+the two NLGF contrasts in subsection 14.1, with `dominant_sign = "+"`
+in both cases.
+
+**Per-contrast hybrid view (locked F4).** The cross-modality mean
+ranges of the same top 5 are
+`nlgf_in_maptki:[-2.09, +5.40]; nlgf_in_p301s:[-3.06, +3.23]`. The
+maptki contrast (NLGF on the tau-loss background) carries the
+stronger positive activator tail (+5.40 > axis-mean upper +4.32 >
+p301s upper +3.23); the p301s contrast (NLGF on the tau-gain
+background) carries the stronger negative repressor tail (-3.06 <
+axis-mean lower -2.57 < maptki lower -2.09). The two NLGF contrasts
+therefore agree on direction for most top TFs but disagree on the
+magnitude of the extremes -- a real asymmetry the axis-mean
+[-2.57, +4.32] smooths over. The hybrid display is intentional: a
+reader concerned that "axis 1 reads strongly positive" might mask a
+mixed-direction signal can check the per-contrast row and see it does
+not. The asymmetry is consistent with the literature reading that
+the tau-loss MAPTKI background releases a stronger Spi1 / Nfkb1
+amyloid-on response (no tau-driven attenuation), and the tau-gain
+P301S background runs a tighter activator window but a wider
+repressor window (consistent with NF-kB-family cross-regulation
+detuning under tauopathy).
+
+**Biological reading.** Spi1 (PU.1) is the master microglial lineage
+TF and a well-established AD GWAS locus; its activation at NLGF
+onset is the prototypical microglial-program-on signal at the
+amyloid--tau interface. Nfkb1 (NF-kB p50) and Sp3 are canonical
+inflammatory amplifiers whose joint activation is a hallmark of
+microglial disease-associated states. A0A979HLR9 is a CollecTRI
+heterodimer-resolved complex source retained per the 14.2.4 decision
+to keep complex sources in axis-restricted analyses (footnote: a
+future UniProt annotation pass can resolve the subunit identity).
+Rreb1 is a Ras-responsive transcription repressor; its negative
+signal at NLGF contrasts indicates coordinated downregulation of a
+small Rreb1-target programme in the amyloid universe (only 19
+in-axis-universe targets) -- a real but minor counter-signal worth
+preserving rather than filtering.
+
+**Cross-reference to section-13 axis 1.** Section 13's axis-1
+verdict named MG-M2 (hdWGCNA module), the MHC II
+antigen-presentation family (`GOBP_ANTIGEN_PROCESSING_AND_PRESENTATION_*`
+x5 + `GOMF_ANTIGEN_BINDING` + `GOMF_PEPTIDE_ANTIGEN_BINDING`),
+`GOBP_ADAPTIVE_IMMUNE_RESPONSE`, and the custom `DAM_up`, `HAM_disease`,
+`WAM` sets as the leader-pathway evidence. The TF-layer reading
+above corroborates that evidence with a parsimonious mechanism: the
+Spi1 / Nfkb1 / Sp3 / Rela ensemble are the canonical drivers of
+microglial inflammatory activation, antigen-processing-and-presentation
+machinery, and DAM-state induction in the published literature. The
+mechanism layer therefore reads axis 1 *strongly*.
+
+### Synaptic-suppression axis (axis 2)
+
+**Top 5 TFs by axis-restricted |mean|:** identical to axis 1
+(A0A979HLR9, Spi1, Rreb1, Sp3, Nfkb1) by Interpretation A
+construction. The per-TF mean is computed from full-modality-universe
+consensus scores averaged over the two NLGF contrasts; both NLGF
+axes share that contrast set, so the mean ranking does not
+differentiate them.
+
+**Per-contrast hybrid view (locked F4).** The per-contrast summary is
+likewise identical to axis 1
+(`nlgf_in_maptki:[-2.09, +5.40]; nlgf_in_p301s:[-3.06, +3.23]`)
+because the same contrast pair is averaged over the same top 5 TFs.
+This is the expected hybrid behaviour at axis 2 under Interpretation
+A and is preserved unsmoothed in the verdict so a future reader can
+see that the entanglement between axes 1 and 2 propagates to the
+hybrid layer as well -- it is a structural property of sharing the
+contrast set, not an information loss specific to the axis-mean.
+
+**The structural differentiator is in-universe target count, not
+mean.** Spi1's CollecTRI target set has 184 hits in the
+amyloid-activation universe but only 84 hits in the synaptic-
+suppression universe; A0A979HLR9 (the complex source) has 442 vs
+383. The synaptic axis is therefore best interpreted as a
+*target-overlap filter*: which amyloid-activated TFs have target
+programmes that *also* touch the synaptic-suppression universe? Not
+as a list of TFs that *drive* synaptic suppression.
+
+**This is the honest non-finding.** The mechanism layer does not
+identify TF-level drivers of synaptic suppression at this resolution
+with this prior. Two non-mutually-exclusive interpretations of the
+absence: (a) synaptic suppression in the microglia compartment is
+detection-level engulfment -- microglia phagocytose synaptic
+material at NLGF onset and so apparent downregulation of synaptic
+transcripts/proteins inside the microglia fraction is a
+mass-balance signal, not a transcriptional one. CollecTRI cannot
+surface a TF for a mechanism that is not transcriptional. (b)
+Transcriptional repression of synaptic genes in microglia, if it
+occurs, may be driven by repressor complexes or epigenetic
+regulators not well-represented in the CollecTRI literature-curated
+prior (e.g. PRC2, NuRD, REST). A future plan could test (b) with a
+chromatin-prior tool (e.g. ChEA3) before concluding the absence is
+biological rather than methodological.
+
+**Cross-reference to section-13 axis 2.** Section 13's axis-2
+verdict named six synaptic GO CC terms (`GOCC_EXCITATORY_SYNAPSE`,
+`GOCC_GABA_ERGIC_SYNAPSE`, `GOCC_PRESYNAPSE`, `GOCC_PRESYNAPTIC_MEMBRANE`,
+`GOCC_SCHAFFER_COLLATERAL_CA1_SYNAPSE`, `GOCC_SYNAPTIC_VESICLE_MEMBRANE`,
+listed alphabetically) plus matching synapse GO BP terms, all
+consistently negative at the two NLGF contrasts. The TF-layer reading
+above does *not* corroborate that pathway-layer evidence with a
+distinct mechanism: the verdict for axis 2 is therefore an explicit
+inconsistency call-out -- the pathway-layer signal is real but the
+TF layer cannot name its upstream driver. Phase F (kinase inference)
+and Phase G (CCC sender-receiver) will revisit.
+
+### Interaction metabolic/translational axis (axis 3)
+
+**Top 5 TFs by axis-restricted |mean|:** A0A979HLR9 (-4.85), Myc
+(-3.25), Creb1 (-2.28), Tp53 (-2.15), Jun (-1.81). All five
+negative; signed mean range [-4.85, -1.81] at the single
+interaction contrast. One of the five (A0A979HLR9) appears in the
+cross-modality leader board, but its leader status is earned at
+the NLGF contrasts; no TF reached the cross-modality leader rule at
+the interaction contrast itself in the current build.
+
+**Per-contrast hybrid view (locked F4).** The per-contrast summary
+collapses to a single contrast at axis 3
+(`interaction:[-4.85, -1.81]`), identical to `mean_score_range` by
+construction. The hybrid columns are therefore preserved in the
+exported TSV for schema consistency with axes 1 and 2 but provide
+no additional information beyond the axis-mean at this axis -- a
+deliberate property of the chosen axis_contrasts mapping (only the
+`interaction` contrast is included). A future plan that admits more
+than one interaction contrast (e.g. higher-order tau x amyloid x age
+or tau x amyloid x cell-state slices) will see the hybrid view
+become informative at axis 3 as well.
+
+**Biological reading.** Myc is the canonical driver of ribosomal
+biogenesis, translation, and biosynthetic anabolism; Creb1, Tp53,
+Jun, Fos (rank 6, mean -1.72), and Hif1a (rank 8, mean -1.70) are
+metabolic / cell-fate / hypoxic-response regulators whose
+coordinated suppression at the `(NLGF_P301S - P301S) - (NLGF_MAPTKI
+- MAPTKI)` interaction is the most parsimonious upstream mechanism
+for a compartment-wide reduction in biosynthetic and metabolic
+throughput. The single positive entry in the top 15
+(Hdac1, rank 7, mean +1.72) has only 9 in-axis-universe targets and
+is therefore most plausibly a low-denominator artefact rather than a
+robust opposing signal.
+
+**The TF layer reads a COHERENT negative direction at axis 3, in
+contrast to the mixed-sign reading at the section-13 gene-set
+layer.** This is not an inconsistency; it is the resolution of one.
+The section-13 axis-3 mixed-sign signal arises from
+RNA / proteomics / phospho-corrected orthogonality at the gene-set
+layer (snRNAseq and proteomics push negative on `DAM_up` and MG-M3
+while phospho-corrected pushes positive), not from internal
+disagreement on the direction of metabolic perturbation. The TF
+layer, working off cached DE-stat vectors per modality, integrates
+across the modality disagreement and surfaces the coherent
+downstream consequence: Myc and partners off, biosynthesis down.
+
+**Cross-reference to section-13 axis 3.** Section 13's axis-3
+verdict named eight OXPHOS / ETC GO terms (BP + MF + CC), the
+ribosomal compartment (`GOCC_CYTOSOLIC_RIBOSOME`,
+`GOCC_RIBOSOMAL_SUBUNIT`), Sun/Victor 2023 `MG3_ribosome_biogenesis`,
+`DAM_up`, and MG-M3 as the leader-pathway evidence. The TF-layer
+reading above corroborates that pathway evidence with a mechanism:
+suppression of Myc-driven biosynthetic activity is the predicted
+upstream of suppression of the ribosomal and OXPHOS / ETC machinery
+that the gene-set layer flagged. The mechanism layer therefore
+reads axis 3 *strongly*, with the bonus of resolving the
+gene-set-layer's mixed-sign ambiguity in favour of a single
+biological direction.
+
+### Cross-axis observations and limitations
+
+**Sign reversals between amyloid and interaction contrasts.** Three
+TFs surface in both the amyloid-activation top 15 (positive mean)
+and the interaction-metabolic top 15 (negative mean):
+A0A979HLR9 (+4.32 amyloid; -4.85 interaction; sign-flip magnitude
+9.17), A0A087WSP5 (+2.42 amyloid; -1.59 interaction; magnitude 4.01),
+and Rela (+2.19 amyloid; -1.36 interaction; magnitude 3.55). The
+sign reversal is not a bookkeeping artefact -- it is the expected
+signature of a coherent biological transition between contrast
+settings. At NLGF contrasts, inflammatory drivers are on; at the
+`tau x amyloid` interaction, the same drivers are suppressed
+relative to amyloid alone. Rela in particular is the NF-kB p65
+subunit, whose target programme includes both the canonical
+inflammatory response (axis 1) and the metabolic re-tuning machinery
+that interacts with OXPHOS / ribosomal output (axis 3). The
+sign-reversal pattern is therefore the TF-layer fingerprint of the
+interaction-axis biology: tau attenuates the amyloid-driven
+inflammatory program, and the metabolic compartment shifts
+accordingly.
+
+**The axis-1 / axis-2 entanglement is a deliberate trade-off, not a
+bug.** Interpretation A (cached scores against full per-modality
+universes, restricted-set ranking) was chosen at E4 over
+Interpretation B (re-run decoupleR per axis with the network clipped
+to the axis universe) to preserve per-modality statistical power.
+The cost is that axes 1 and 2 cannot be ranked differently when
+they share the same `axis_contrasts`. The benefit is that each TF's
+score reflects the full evidence base across the per-modality
+universe rather than the much smaller per-axis universe. A future
+plan could re-run with Interpretation B if a specific axis
+(synaptic suppression in particular) demands the targeted scoring
+at the cost of power; the design choice and its rationale are
+documented in `R/tf_inference.R` for that future session.
+
+**Two of three axes are corroborated; one is an honest
+non-finding.** The mechanism layer reads axes 1 and 3 strongly:
+axis 1 with a Spi1 / Nfkb1 / Sp3 / Rela activation ensemble that
+matches the literature on microglial DAM-state induction; axis 3
+with a Myc / Creb1 / Tp53 / Jun coordinated suppression that
+predicts the OXPHOS / ribosomal downregulation flagged in section
+13's mixed-sign reading. The mechanism layer does *not* read axis 2
+at TF resolution -- the synaptic-suppression axis has no distinct
+TF-layer signature with the CollecTRI prior, consistent with an
+engulfment-mediated (post-transcriptional) mechanism. This
+asymmetric corroboration is itself a finding and is preserved in
+the verdict rather than smoothed over.
+
+**No anti-anchoring guardrails were relaxed in this verdict.** All
+three D2 axes are named explicitly; no axis is privileged over the
+others; hdWGCNA modules are alphabetised wherever they appear in
+lists (e.g. axis 1 lists MG-M2 alone, axis 3 mentions MG-M3 alone;
+no multi-module list appears so the alphabetisation rule is
+trivially satisfied); the FDR<0.10 threshold and the leader rule
+N>=2 are re-stated above; no Hallmark or OXPHOS-confirmatory-arc
+terminology appears. The verdict's bottom-line reading is
+deliberately asymmetric across axes (strong / non-finding / strong)
+because the data are asymmetric across axes; collapsing to a
+single-axis winner or a fake-symmetric three-axis pose would
+reintroduce the bias the section-13 D2 verdict and this plan were
+designed to remove.

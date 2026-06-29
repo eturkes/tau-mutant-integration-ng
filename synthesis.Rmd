@@ -1,0 +1,811 @@
+---
+title: "The tau×amyloid microglial divergence: an integrated synthesis and current best conclusion"
+subtitle: "Cross-arc reading of eleven evidence layers, four base modalities and a human translational test, grounded against the literature"
+author: "Claude (autonomous agent)"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: !expr 'local({ source("R/report.R", local = TRUE); report_theme() })'
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: true
+    df_print: paged
+    fig_width: 9
+    fig_height: 6
+params:
+  results_dir: "storage/results"
+  figures_dir: "storage/figures"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, message = FALSE, warning = FALSE,
+  fig.align = "center", dev = "png", dpi = 110, cache = FALSE
+)
+knitr::opts_knit$set(root.dir = normalizePath("."))
+options(width = 110)
+
+# This document is a read-only synthesis. It re-reads only the exported result
+# tables in storage/results/ and embeds the pre-built capstone figure; it
+# recomputes nothing, touches no heavy cache, and does not modify the locked
+# analysis.Rmd section-17 ledger or its sealed contest margins.
+rt <- function(f) read.delim(file.path(params$results_dir, f),
+                             check.names = FALSE, stringsAsFactors = FALSE)
+```
+
+# Overview {-}
+
+This document states the best integrated conclusion the project currently
+supports, synthesising eleven orthogonal evidence arcs, four base molecular
+modalities and a human cross-species test into a single reading and grounding
+each load-bearing claim against the external literature. The study crosses tau
+(wild-type humanised *MAPT* versus P301S) with amyloid (App^NL-G-F^ knock-in
+versus none) in a 2×2 factorial across four 24-month mouse genotypes, and asks
+one question: does amyloid remodel hippocampal microglia *differently* depending
+on the tau background? The central result is a negative finding with a
+constructive resolution. Amyloid drives a strong, reproducible
+disease-associated-microglia (DAM) programme that is the dominant signal in every
+modality, whereas the tau×amyloid interaction, the project's core readout, is
+null at the whole-microglia gene level and remains null under six
+differential-expression engines, in every microglial substate, in every broad
+cell type at matched power, and in tissue composition. The interaction has not
+vanished; it has moved off the static gene axis and re-emerges as a coherent
+*mechanistic* and *dynamic* signal: GSK3β kinase activation, Myc-led
+transcriptional suppression, a recoverable kinase→transcription-factor causal
+bridge, and a supra-additive acceleration of the homeostatic→DAM activation
+trajectory. Two refinements complete the picture: on the amyloid background tau
+*attenuates* rather than amplifies the amyloid-driven NF-κB response, and the
+synaptic-suppression programme is dominated by TREM2/APP-fragment clearance
+ligands rather than classical complement. The same structure is directionally
+conserved in human Alzheimer cortex. The integrated model is therefore that
+amyloid is the primary architect of the microglial response and tau is a
+modifier that bends the *rate and signalling* of that response without
+rewriting its differentially expressed gene set. This reading is then made
+explicit as a single falsifiable systems model, ranked against four named
+alternatives it must beat, and tied to the ordered set of experiments that
+would decide between them.
+
+# How the conclusion was assembled {-}
+
+The reading below is a synthesis, not a re-analysis. Eight read-only agents
+ingested every analysis arc, its rendered verdict prose and its exported result
+tables, and five further agents grounded the headline claims in the current
+neuroimmunology literature; the conclusions are then reconciled here. The locked
+`analysis.Rmd` adjudication (its 92-row claims ledger, its eleven-entity
+hypothesis set, its grade definitions and its three sealed contest margins) is
+surfaced verbatim and is never re-opened. Where the external literature qualifies
+an internal claim, the qualification is stated rather than smoothed away.
+
+# The question and the design
+
+The four genotypes form the corners of a tau-by-amyloid square: MAPTKI
+(humanised wild-type tau, no amyloid), P301S (mutant tau, no amyloid),
+NLGF_MAPTKI (amyloid on a wild-type-tau background) and NLGF_P301S (amyloid plus
+mutant tau). The App^NL-G-F^ knock-in (Saito et al., 2014) accumulates amyloid
+and provokes plaque-coupled microgliosis without the confounds of APP
+overexpression, making it a clean amyloid driver. Each animal is read out across
+single-nucleus RNA-seq (≈23,500 analysed microglia from a 286,000-nucleus
+atlas), GeoMx spatial transcriptomics (91 microglia-enriched regions), and bulk
+hippocampal proteomics and phosphoproteomics (16 samples, four replicates per
+genotype). The divergence question is operationalised as a single interaction
+contrast, the difference of the two amyloid effects across tau backgrounds:
+(NLGF_P301S − P301S) − (NLGF_MAPTKI − MAPTKI). Pseudobulk replication uses
+genotype×batch (16 units, four per genotype), with batch in the design.
+
+The synthesis resolves into three biological axes (amyloid activation, synaptic
+suppression and the tau×amyloid interaction), each adjudicated as a binary
+contest between competing mechanistic hypotheses. The three sealed verdicts are
+the spine of the conclusion.
+
+```{r contest_table, results='asis'}
+cs <- rt("capstone_contest_summary.tsv")
+cap_lab <- c(amyloid_activation = "Amyloid activation",
+             synaptic_suppression = "Synaptic suppression",
+             interaction_metabolic = "Tau×amyloid interaction")
+hyp_id  <- sub(" .*$", "", cs$winner)
+hyp_dsc <- sub("^\\S+ \\((.*)\\)$", "\\1", cs$winner)
+cs_disp <- data.frame(
+  Axis            = cap_lab[cs$contest],
+  `Favoured model`= sprintf("%s - %s", hyp_id, hyp_dsc),
+  Margin          = cs$margin,
+  `Strong/Mod/Sugg` = sprintf("%d / %d / %d", cs$n_strong, cs$n_moderate, cs$n_suggestive),
+  Layers          = cs$n_layers,
+  Modalities      = cs$n_modalities,
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+cs_disp <- cs_disp[order(-cs$margin), ]
+knitr::kable(
+  cs_disp, row.names = FALSE, align = c("l", "l", "r", "c", "r", "r"),
+  caption = paste0(
+    "The three sealed contest verdicts (analysis report section 17), surfaced ",
+    "read-only. Margin = favoured-model net support minus rival net support; ",
+    "Strong/Mod/Sugg counts the grade of the supporting ledger rows; Layers and ",
+    "Modalities count the distinct evidence layers and replicate modalities ",
+    "behind the winner."
+  )
+)
+```
+
+# Amyloid activation: a DAM programme that tau restrains
+
+## A reproducible disease-associated-microglia response
+
+The amyloid axis is the strongest and most multi-layer-convergent finding in the
+project, positive and at least moderately supported in nearly every layer from
+expression through kinase activity, tissue composition and activation dynamics.
+At the gene level, amyloid induces the canonical DAM signature on both tau
+backgrounds: *Cst7* rises with a single-nucleus log~2~ fold-change of 4.72 (FDR
+1.3×10⁻¹⁹) on the wild-type-tau background and 4.48 (FDR 4.0×10⁻²⁷) on the P301S
+background, alongside *Colec12*, *Itgax*, *Lpl*, *Spp1*, *Trem2* and *Tyrobp*,
+with the homeostatic markers *P2ry12* and *Tmem119* falling in step. This
+programme is precisely the DAM state defined in the 5xFAD amyloid model
+(Keren-Shaul et al., 2017) and independently as the APOE-TREM2-driven
+"microglial neurodegenerative" (MGnD) phenotype (Krasemann et al., 2017;
+Deczkowska et al., 2018), and the App^NL-G-F^ knock-in is an established model of
+plaque-coupled microgliosis (Saito et al., 2014), so the breadth of this axis is
+well-founded. The signal survives aggregation into co-expression modules, the
+DAM-enriched hdWGCNA module (whose hub genes *Apoe*, *Cst7*, *Lpl*, *Spp1* and
+*Tyrobp* overlap the canonical DAM set at odds ratio 6.0) is up across three to
+four modalities at both amyloid contrasts, and the MHC-II/antigen-presentation
+arm of the response (*Cd74*, GO adaptive-immune-response) recovers a formally
+recognised fourth microglial state (Chen and Colonna, 2021). Transcription-factor
+inference nominates a *Spi1*/*Nfkb1*/*Sp3* induction ensemble, and *Spi1* (PU.1)
+is independently re-derived *de novo* by the data-driven SCENIC regulon analysis
+(recovered in 10 of 10 runs), mirroring its status as the master microglial
+lineage regulator and a causal Alzheimer risk locus (Huang et al., 2017).
+
+The activation is corroborated by two evidence classes that read quantities no
+expression analysis can. Spatial deconvolution of the GeoMx regions shows the DAM
+tissue compartment expanding under amyloid (abundance log~2~ fold-change +0.40,
+FDR 3.5×10⁻⁵, and +0.53, FDR 2.4×10⁻⁷, with the proliferative compartment its
+mirror), the project's first cell-composition readout. Activation-trajectory
+analysis shows amyloid advancing microglia along the homeostatic→DAM pseudotime
+in both tau backgrounds (mean-pseudotime log~2~ fold-change +7.87, FDR
+8.9×10⁻⁷, and +10.32, FDR 3.7×10⁻⁸; the fraction of cells past the DAM-onset
+threshold rises from ≈4% to 40-59%). Critically, when the locked factorial DE is
+re-run across six broad cell types at matched cell-count power, the amyloid main
+effect remains microglia-led, 625 significant genes in microglia versus 218 in
+the next-highest cell type, despite microglia carrying only ≈40% of the
+neuronal transcriptome depth. The amyloid-driven DAM response is thus genuinely a
+microglial specialty, robust to method, modality, aggregation and power.
+
+## On the amyloid background, tau attenuates the NF-κB response
+
+The amyloid contest is not won by the bare existence of the DAM programme (both
+competing hypotheses concede that) but by *how tau modifies it*. The favoured
+model (Hyp-1B, margin 18) is that tau attenuates the amyloid-driven NF-κB
+response rather than amplifying it. Per-substate transcription-factor and
+gene-set analysis shows the NF-κB-target signal reversing sign at the
+interaction: the complex-level NF-κB regulon score is positive at both amyloid
+contrasts but negative in all four substates at the interaction (consensus scores
+−6.52 in DAM, −5.45 in homeostatic, −3.66 in IFN, −2.55 in proliferative), and
+the NF-κB-target gene set is suppressed at the interaction in every substate (DAM
+NES −1.25, FDR 0.027). A per-sample compositional ANOVA formally excludes a
+substate-abundance artefact (tau:amyloid F = 1.03, p = 0.33), establishing the
+attenuation as transcriptional and global rather than a Simpson's-paradox
+shadow of the DAM expansion.
+
+This runs against the dominant view that tau *amplifies* microglial NF-κB and
+NLRP3 inflammation (Bhaskar et al., 2010; Ising et al., 2019; Wang et al., Nat.
+Commun. 2022), but that evidence comes almost entirely from pure-tauopathy
+models and speaks to the *main effect* of tau, not to how P301S modifies the
+*amyloid*-driven response in a 2×2 design. Two independent lines support the
+attenuation reading. Genetic tau reduction lowers microglial innate-immune output
+and renders mice resistant to inflammatory neurodegeneration (Maphis et al.,
+2015), and, most directly, an independent study in essentially the same
+App^NL-G-F^/MAPT^P301S^ cross found the microglial and cytokine response to be
+explicitly *non-additive*, with amyloid the dominant driver and tau adding little
+(Jiang et al., 2024), the qPCR analogue of our transcriptome-wide sub-additive
+NF-κB suppression. A plausible cell-biological route is that P301S tau drives
+microglia toward a senescent, hypofunctional state (Brelstaff et al., 2021). The
+honest caveat is that a sub-additive interaction is compatible with both
+genotypes still being more inflammatory than tau-free baseline; we claim that tau
+blunts the *amyloid increment*, not that tau is anti-inflammatory in absolute
+terms, and a ceiling/saturation of the DAM-NF-κB programme under combined
+pathology is a deflationary alternative that neither our design nor Jiang's can
+fully exclude.
+
+A second, important qualification concerns valence. The internal analysis labels
+this axis "activation"; the literature cautions against reading activation as
+pathology. PU.1 is *required* for the protective DAM phagocytic response, its
+microglial deletion worsens amyloid burden (Yun et al., 2026) and a risk allele
+that *lowers* PU.1 *delays* Alzheimer onset (Huang et al., 2017), and MHC-II⁺
+microglia can *enhance* plaque clearance (Chen and Colonna, 2021). The amyloid
+axis is therefore best read as a robust, predominantly compensatory DAM
+mobilisation whose net protective-versus-pathogenic valence this dataset does not
+resolve, rather than as a simple inflammatory-damage signal.
+
+# Synaptic suppression: clearance-dominant, not complement-pruning
+
+The synaptic-suppression axis is the project's most mechanistically surprising
+result. Synaptic-compartment genes fall coherently at both amyloid contrasts, but
+neither the transcription-factor nor the kinase layer names a distinct repressor,
+an honest non-finding that points to an intercellular rather than a
+regulator-driven mechanism. The ligand-receptor layer, run as a three-tool
+triangulation (CellChat, MultiNicheNet and LIANA+), resolves it: the favoured
+model (Hyp-2B, margin 12) is that suppression proceeds through up-regulated
+TREM2/APP-fragment clearance ligands rather than classical complement. The DAM
+clearance pairs *Apoe*-*Trem2* and *App*-*Cd74* rank near the top of the
+microglia-receiver ordering (ranks 9 and 12) while the first classical-complement
+pair *C1qb*-*Lrp1* ranks ≈775; nearly half of the top-100 axis pairs involve
+microglia.
+
+The external literature supports the *dichotomy* our finding draws. The
+TREM2-APOE/DAM programme is the canonical microglial clearance axis (Krasemann et
+al., 2017; Deczkowska et al., 2018), and TREM2 has been shown to bind the
+complement initiator C1q directly and *antagonise* classical-complement
+activation at the synapse, with TREM2 the protective arm (Zhong et al., 2023);
+CD74 physically interacts with APP and suppresses Aβ production, giving the gained
+*App*-*Cd74* pair specific biological plausibility (Bryan et al., 2009). The
+caveat a reviewer would press hardest is that the two mechanisms are widely
+regarded as complementary and stage-dependent rather than mutually exclusive: the
+classical-complement synapse-pruning hypothesis is robust (Hong et al., 2016) and
+C1q-driven, antibody-reversible synapse engulfment is documented specifically in
+the P301S background that defines our interaction contrast (Dejanovic et al.,
+2018). A low ligand-receptor rank for *C1qb*-*Lrp1* reflects expression-based
+interaction scoring rather than functional pruning flux, and classical complement
+acts through C1q→C3→CR3 (*Itgam*/*Itgb2*) opsonisation rather than the *C1qb*→
+*Lrp1* pairing, so the chosen receptor may understate complement. The defensible
+conclusion is therefore that the *up-regulated, dominant* axis is TREM2/APP
+clearance: the finding is best stated as clearance-dominant, not
+complement-absent.
+
+# The tau×amyloid interaction: where the divergence lives
+
+## Null on every static gene axis
+
+The interaction is the project's core readout and its hardest result. At the
+whole-microglia level it is null, and the null is exhaustively robust. Six
+differential-expression engines spanning three shrinkage families agree: limma-
+voom, edgeR, dream and single-cell NEBULA return zero genes at FDR < 0.05 for the
+interaction, DESeq2 returns one and glmmTMB twenty-five, with the leading NEBULA
+hit at FDR 0.063. The null holds within every microglial substate (zero genes in
+all four), and, decisively, it holds in every broad cell type at matched power:
+when the factorial is re-run across six cell types downsampled to equal cell
+counts, the gene-level interaction collapses to zero in all of them including
+microglia, the per-cell-type interaction profiles are mutually distinct
+(microglia-versus-other-type Spearman 0.08-0.15) while the two estimators agree
+almost perfectly (0.96-0.98). It is also null in tissue composition (DAM
+abundance interaction +0.13, p = 0.33). The four apparent native-power microglial
+interaction hits are exactly the artefact the matched-power control was built to
+expose, and they vanish when power is equalised. This cross-cell-type analysis
+reframes, without refuting, the project's microglial focus (the cross-cell-type
+ledger entry, N-002, deliberately feeds no model): the amyloid main effect is
+microglia-led, but the interaction is a tissue-wide property rather than a
+microglial specialty. The methodological backbone for trusting a matched-power
+null over the native-power hits is the demonstration that single-cell DE inflates
+significance through pseudoreplication and that effective power scales with
+replicate, not cell, count (Squair et al., 2021).
+
+## Re-emergence as mechanism and as dynamics
+
+What no static gene contrast can see, the mechanism and dynamics layers
+recover, and they agree. The favoured model (Hyp-3B, margin 55, the largest in
+the project and unanimously un-contradicted) is that the interaction has a
+distinct synergy mechanism. Its single strongest result is the activation of
+GSK3β, the canonical tau kinase, at the interaction contrast (consensus
+activity +4.32, FDR 0.0015); the sign trajectory across the five contrasts
+(−1.66, −1.47, +3.79, +4.15, +4.32) shows GSK3β suppressed by tau alone and by
+amyloid alone but activated only by their combination, a textbook supra-additive
+signature. In parallel, the biosynthetic/proliferation transcription factors Myc,
+Creb1, Tp53 and Jun are coherently *suppressed* at the interaction (Myc mean
+−3.25). The earlier "mixed-sign" label for this axis is resolved as a
+modality-orthogonality artefact rather than a directional disagreement: the
+kinase arm (tau-phosphorylation machinery on) and the transcription-factor arm
+(biosynthetic throughput off) run in the same biological direction, and the
+gene-set sign conflict came only from RNA-versus-phospho-corrected disagreement.
+The causal-topology layer then supplies the wiring that the endpoint layers
+lacked, recovering at the interaction a compact `Gsk3b ⊣ Mapk14 → Myc/Foxo3`
+module that joins the project's lead kinase to its lead transcription factors
+(all five interaction transcription factors recovered), the cleanest
+single result of the causal arc and the join that unifies the synergy mechanism.
+
+GSK3β is the textbook node where amyloid drives tau hyperphosphorylation and the
+two pathologies converge (Hooper et al., 2008; Lauretti et al., 2020), with a
+documented microglial NF-κB/pro-inflammatory arm (Zhao et al., 2024) that
+connects this axis back to the amyloid-axis NF-κB result. Combined amyloid and
+tau pathology is repeatedly reported to drive supra-additive rather than merely
+additive microglial and transcriptional responses (Pickett et al., 2019; Kim et
+al., 2022; Lee et al., 2021). Two honest qualifications apply. First, most
+GSK3β-tau-phosphorylation evidence is neuronal, so framing GSK3β as a *microglial*
+interaction effector leans on the matched-power specificity arc, which shows the
+interaction is not microglia-restricted in any case. Second, the Myc-suppression
+arm is the most inferential pillar: Myc is well established as a transient
+early-proliferation and ribosome-biogenesis regulator in microglia (Wang et al.,
+Cell Discov. 2022), so its suppression at a mature DAM-skewed interface is
+consistent with, but not yet directly demonstrated as, an amyloid×tau signature.
+
+The interaction's most distinctive positive signal is dynamic, not static. The
+activation-trajectory analysis is the only layer in which the interaction is both
+positive and significant: the P301S background supra-additively amplifies the
+amyloid-driven advance along the homeostatic→DAM pseudotime (mean-pseudotime
+interaction +2.46, FDR 0.077; fraction-past-threshold interaction +0.19, FDR
+0.013). A progression-versus-composition decomposition, the load-bearing control,
+shows this loads almost entirely on genuine within-state progression (≈94% of
+the effect; composition channel +0.13, FDR 0.81, null), so it is non-redundant
+with the composition layer's interaction null and cannot be a cell-mixing
+artefact, since even homeostatic-labelled cells advance (within-homeostatic
+interaction +2.68, FDR 0.077). A gene-level tradeSeq analysis of expression
+dynamics along the trajectory then recovers 110 genes whose pseudotime *shape* is
+tau×amyloid-modulated, none of which reach static matched-power significance,
+handing the aggregate progression synergy a candidate gene-level signature that
+static DE is blind to. This last result is reported with its caveats intact:
+roughly a quarter of the 110 genes are ambient or ribosomal contaminants, and the
+named Hyp-3B effectors GSK3β and Myc are *absent* from the set, so it corroborates
+the existence of a dynamic interaction without naming its effectors and is
+ledgered to feed no model.
+
+This is where the project's reading must be reconciled with recent
+combined-pathology studies that report amyloid×tau microglial *synergy*
+explicitly (Kim et al., 2022; Coburn et al., 2025; Lu et al., 2026). The apparent
+conflict with our gene-level null is largely a level-of-analysis distinction:
+those studies measure synergy as state-abundance or programme induction, which
+maps onto our retained progression-rate synergy, whereas our null is a
+gene-level factorial contrast in 16 pseudobulk replicates, structurally
+under-powered for an interaction term. The two readings are complementary, not
+contradictory. The correct strength of claim is that there is no FDR-surviving
+*gene-level* interaction under our power, while the interaction is real as a
+progression-rate and signalling phenomenon, and is not microglia-restricted.
+
+# The integrated model
+
+```{r capstone_figure, out.width = "100%", fig.cap = "Integrated convergence of the tau×amyloid microglial model. Panel A (landscape) shows each evidence arc's own signed verdict per axis, with non-convergence first-class: grey null cells, the gold reframe cell where the specificity arc recast the interaction as not microglia-specific, and purple mixed cells where modalities disagree in sign. Panel B (contest) shows the three sealed section-17 margins. The human band is held separate and never counted in the mouse contests. Figure pre-built out-of-knit by scripts/build_capstone_figure.py."}
+knitr::include_graphics(file.path(params$figures_dir, "capstone_convergence.png"))
+```
+
+Read together, the eleven arcs converge on one coherent mechanistic statement.
+Amyloid is the primary architect of the microglial response: it mobilises a
+predominantly compensatory DAM programme that is the dominant, most-replicated
+signal across expression, pathway, transcription-factor, kinase, composition and
+trajectory layers, and that remains microglia-led even at matched power. Tau is a
+modifier acting on that amyloid-built response in two distinct registers. In the
+*signalling* register, the combination of tau and amyloid supra-additively
+activates GSK3β and suppresses Myc-led biosynthesis, wired through a recoverable
+`Gsk3b ⊣ Mapk14 → Myc` topology; in the *dynamic* register, tau accelerates the
+amyloid-driven progression of microglia toward the DAM state. Simultaneously, tau
+*attenuates* the amyloid-driven NF-κB transcriptional response across all
+substates, so its net effect is to bend the rate and the signalling of the
+microglial response rather than to rewrite its differentially expressed gene set,
+which is precisely why the interaction is null on every static gene axis yet
+positive on the kinase, causal and trajectory axes. The synaptic consequence of
+this remodelling is carried by up-regulated TREM2/APP-fragment clearance ligands.
+
+The convergence matrix below makes the structure explicit. The amyloid column is
+positive and convergent down nearly the whole table; the interaction column is
+the synthesis's value-add, null on the static readouts (expression, composition,
+specificity) but mechanism-signed (GSK3β up, Myc down) and dynamics-positive; the
+synaptic column is moderate and clearance-flavoured. The later arcs (K-O) are
+deliberately margin-neutral, each contributing only one or two ledger rows, so
+they corroborate the decided contests orthogonally without moving them, which is
+why the landscape view and the contest view are shown side by side.
+
+```{r convergence_matrix, results='asis'}
+cm <- rt("capstone_convergence_matrix.tsv")
+axis_order <- c("amyloid_activation", "synaptic_suppression", "interaction_metabolic")
+axis_lab   <- c(amyloid_activation = "Amyloid activation",
+                synaptic_suppression = "Synaptic suppression",
+                interaction_metabolic = "Tau×amyloid interaction")
+cm$row <- sprintf("%s (%s)", cm$evidence_class, cm$arc)
+rows <- unique(cm$row)
+wide <- data.frame(`Evidence layer (arc)` = rows, check.names = FALSE)
+for (ax in axis_order) {
+  wide[[axis_lab[ax]]] <- cm$cell_value[match(paste(rows, ax), paste(cm$row, cm$axis))]
+}
+knitr::kable(
+  wide, row.names = FALSE, align = c("l", "c", "c", "c"),
+  caption = paste0(
+    "Evidence-layer by biological-axis convergence matrix (each arc's own signed ",
+    "verdict). Cell tokens combine sign and confidence: strong/mod/sugg = grade, ",
+    "+/- = direction, mixed = modalities disagree in sign, null = tested but not ",
+    "significant, reframes = recast the question (interaction is not ",
+    "microglia-specific), n.a. = axis not probed by that arc. The final 'human' ",
+    "row is a separate evidence band, directionally consistent with the mouse ",
+    "mechanisms but never counted into the mouse contests."
+  )
+)
+```
+
+# Candidate holistic models: a generative layer above the contests
+
+The synthesis so far has been an *adjudication*: each axis was settled as a binary
+contest, and the section above distilled the winners into a single integrated
+reading. This section takes the complementary, generative step. Where the contests
+ask which hypothesis wins an axis, a holistic model asks what one coherent
+biological *system* could produce all eleven arcs at once and, by committing to a
+mechanism, exposes itself to falsification in a way a verdict tally does not. The
+candidates below were produced by a dynamic multi-agent procedure that grounded
+each mechanistic framework in the 2022-2026 neuroimmunology literature, generated
+one unified systems model together with four deliberately distinct rivals, and then
+subjected every model to adversarial critique against the project's own evidence
+before reconciling them here. Three rules govern the exercise. The three sealed
+section-17 verdicts are reinterpreted, never reopened. Each model is required to be
+falsifiable by a concrete experiment and anchored to specific findings, so the set
+can be *ranked* rather than merely listed. And because "holistic" invites reaching
+past the adjudicated evidence (into feedback, temporal order, valence and
+tissue-level organisation), every such reach is flagged as proposed and carries its
+own literature anchor and falsification test. The lead is stated first, but its lead
+is provisional; the rivals it must beat, and the experiments that would decide
+between them, are given equal weight.
+
+## The lead model: amyloid as architect, tau as a rate-and-wiring modifier
+
+The favoured holistic reading formalises the integrated statement above into an
+explicit, signed systems model (schematic below). Amyloid is the *architect*: it
+templates the entire homeostatic→DAM activation trajectory to essentially the same
+extent on either tau background (mean-pseudotime log~2~ fold-change +7.87 and
++10.32), mobilises the canonical DAM gene programme under the PU.1/Nfkb1/Sp3
+ensemble, expands the DAM tissue compartment, and emits the TREM2/APOE and
+APP-fragment clearance secretome that is the project's synaptic-axis output, a
+response that remains microglia-led even at matched power. Mutant tau, by contrast,
+does essentially nothing to this trajectory on its own. Tau is therefore not a
+second architect but a *modifier* whose action is conditional on the amyloid
+scaffold.
+
+The modifier acts at a single integrating node. GSK3β kinase activity behaves as a
+coincidence detector, a Boolean AND-gate, that is *suppressed* by tau alone and by
+amyloid alone (signed activity ≈ −1.7 and −1.5) yet flips strongly positive in the
+three combined contrasts (+3.8, +4.2 and +4.3; interaction FDR 1.5×10⁻³), with both
+inference estimators agreeing on the shape. No monotone single dose-response curve
+can produce that dip-then-spike. From this one flip the interaction propagates along
+two post-transcriptional channels that never touch the steady-state differentially
+expressed gene set, which is precisely why it is null on every static gene,
+composition and cell-type-specificity axis yet positive on the kinase, causal and
+trajectory axes. The first channel is *rate*: the combination supra-additively
+accelerates within-state progression along the amyloid-built trajectory (pseudotime
+interaction +2.46, loading ≈94% on genuine within-state progression rather than
+compartment shifts, with even homeostatic-labelled cells advancing). The second is
+*wiring*: the causal reconstruction recovers all five measured interaction
+transcription factors from the single GSK3β seed: GSK3β inhibits Mapk14 (p38α),
+which normally activates Myc and Foxo3, so the biosynthetic transcription factors
+(Myc, Creb1, Tp53, Jun) fall coherently without any change in their mRNA. The
+post-translational route is the textbook one: GSK3β phosphorylates Myc at Thr58 to
+create the Fbw7 phosphodegron (Welcker et al., 2004), so a kinase flip degrades the
+protein while the transcript is unmoved, a mechanism a steady-state expression scan
+is structurally blind to.
+
+```{r model_schematic, out.width = "100%", fig.cap = "The lead holistic model (M-UNIFIED), \"amyloid as architect, tau as a rate-and-wiring modifier\". Amyloid (left) templates the homeostatic→DAM activation trajectory and its TREM2/APP-fragment clearance output (top spine); tau acts only on that scaffold, firing a supra-additive GSK3β coincidence (AND-gate) node that drives two post-transcriptional channels: a within-state progression-RATE synergy and a WIRING cascade (GSK3β⊣Mapk14→Myc/Foxo3; the amyloid NF-κB increment attenuated), neither of which rewrites the DAM gene set. Arrowheads = activation, bars = inhibition/suppression, dotted = inferred temporal order, dashed = proposed/off-interaction reaches. The kinase and causal layers are bulk hippocampus, not microglia-sorted. Pre-built out-of-knit by scripts/build_synthesis_model_figure.py."}
+knitr::include_graphics(file.path(params$figures_dir, "synthesis_model.png"))
+```
+
+Several features of the model are deliberate reaches beyond the adjudicated
+evidence, and each is flagged. The temporal ordering (amyloid first,
+tau-modulation later) is inferred from a single cross-sectional pseudotime axis,
+not real time, and is read in the light of the human Aβ→tau inflection point at
+which the microglial *transition*, not the static state, separates dementia from
+resilience (Lu et al., 2026). The attenuating GSK3β→NF-κB edge is proposed rather
+than recovered: the causal layer finds no NF-κB node at the interaction contrast
+itself, and the canonical direction of GSK3β on microglial NF-κB is *positive*
+(Zhao et al., 2024), so the attenuation reading requires a documented context-switch
+rather than default wiring, even though the attenuation itself is real and sealed
+(Hyp-1B). The GSK3β node is framed as parenchyma-wide rather than
+microglia-exclusive, reconciling the specificity reframe: microglia integrate a
+tissue-level signal as accelerated progression while the amyloid main effect stays
+microglia-led. Valence is compensatory-leaning (the architect programme is
+protective PU.1/MHC-II/TREM2 clearance biology) but genuinely unresolved, because no
+senescence panel was measured and the canonical arrest markers move the wrong way
+for a clean exhausted terminus. The load-bearing caveat throughout is that the
+kinase and causal layers are read from *bulk* hippocampus, not microglia-sorted
+tissue, so every GSK3β step is a bulk-signalling-to-microglial-transcription bridge;
+only the p38/Mapk14 leg is partially de-risked by the demonstration that p38
+activation in P301S is mainly microglial (Perea et al., 2022). The model's chief
+epistemic risk is that it can *absorb* its rivals (treating the signalling-only
+account as its own second channel, the ceiling account as a substrate partner, and
+the exhaustion account as a valence branch), which would make it unfalsifiable by
+accretion. Its defence is to make its own *joint* falsifier load-bearing instead: if
+microglia-sorted phosphoproteomics shows no within-microglia supra-additive GSK3β
+signature *and* an age series shows the progression-rate interaction does not widen
+with age, the model collapses to a bulk-tissue ceiling artefact with no
+microglia-intrinsic modifier.
+
+## The rivals it must beat
+
+Four rivals sharpen the lead by contesting exactly the inferences it cannot yet
+secure; all four respect the sealed verdicts and differ only in how they read the
+interaction. The deflationary **saturation-ceiling** model (M-CEIL) is the most
+important, because it is the alternative the design openly cannot exclude: an
+independent App^NL-G-F^/MAPT^P301S^ cross found the combined microglial response
+non-additive and amyloid-dominant (Jiang et al., 2024), and a sub-additive
+interaction is what a shared programme near its ceiling would produce. Its premise
+is nonetheless strained by the very data it leans on: the matched-power interaction
+profiles are *decorrelated* across cell types yet reproducible within one, which a
+single shared curve cannot generate, and the GSK3β dip-then-spike cannot come from a
+monotone sigmoid. The **compensation-to-exhaustion** model (M-EXH) reads the
+interaction as a state-quality collapse in which tau corrupts a protective DAM into a
+senescent terminus, a route with strong cell-biological precedent (Brelstaff et al.,
+2021; Hu et al., 2021; Graves et al., 2025); it is the weakest of the four here,
+because the senescence-specific signal is absent or wrong-signed in the measured data
+(the canonical arrest markers move down, p16 is undetected) and the valence axis is
+one this design cannot adjudicate. The **tissue-wide convergent-stress** model
+(M-TISSUE) relocates the GSK3β core off microglia onto neurons or astrocytes, where
+the constitutively active kinase predominantly resides (Perez-Costas et al., 2010),
+casting microglia as responders to a parenchymal field; it is honest that the bulk
+phospho cannot localise the signal to any compartment, so it is observationally
+equivalent to the lead on present evidence and decidable only by cell-type-resolved
+measurement. The **state-independent signalling-rewiring** model (M-SIG) is the most
+parsimonious: one GSK3β flip and the Thr58 degron explain the nulls and the Myc
+suppression together, and the progression-rate synergy is demoted to a downstream
+shadow, a single-register claim attractive on Occam grounds but currently untested,
+since the decomposition already shows the rate channel is non-redundant with
+composition. The comparison is laid out below.
+
+```{r model_comparison, results='asis'}
+mc <- rt("synthesis_model_comparison.tsv")
+names(mc) <- c("Model", "Core claim", "Amyloid axis", "Tau×amyloid interaction",
+               "Key weakness / open flank", "Decisive test")
+knitr::kable(
+  mc, row.names = FALSE, align = rep("l", 6),
+  caption = paste0(
+    "Five candidate holistic models compared. The lead (M-UNIFIED) is listed ",
+    "first; the four rivals contest only the interaction and all respect the three ",
+    "sealed verdicts. 'Decisive test' names the observation that would favour or ",
+    "kill each model; the discriminating experiments are detailed below."
+  )
+)
+```
+
+## What would decide between them
+
+Because the models converge on the sealed verdicts and diverge only on the
+interaction, the experiments that separate them are well defined, and they run from
+a free reanalysis to a multi-year cross. The cheapest is decisive for the
+lead-versus-M-SIG question: a within-mouse mediation that conditions the pseudotime
+interaction on per-replicate GSK3β/Myc activity (the analogue of the human
+mediation already in the pipeline) would show full mediation if the rate channel is
+a signalling shadow, or a surviving residual if it is an independent register. The
+remaining four are experimental and *extend*, rather than repeat, the controls this
+synthesis flags as decisive: a tau-knockout-on-amyloid arm tests whether the GSK3β
+AND-gate collapses when tau is removed; microglia-sorted phosphoproteomics tests
+whether the GSK3β core is microglia-intrinsic (the lead) or non-microglial
+(M-TISSUE), and is the single experiment that lifts the project's largest standing
+caveat; a multi-age series tests the temporal ordering and the rate-widening
+prediction against the ceiling and exhaustion accounts at once; and a microglial
+*Gsk3b* conditional knockout, paired with a senolytic and a neurodegeneration
+readout, is the joint arbiter of mechanistic sufficiency and valence. Each row of
+the table names which models it separates and how their predictions diverge.
+
+```{r model_experiments, results='asis'}
+me <- rt("synthesis_model_discriminating_experiments.tsv")
+names(me) <- c("Experiment", "Separates", "Predicted split", "Feasibility")
+knitr::kable(
+  me, row.names = FALSE, align = rep("l", 4),
+  caption = paste0(
+    "Experiments that would discriminate the holistic models, cheapest first. The ",
+    "first is a free reanalysis of existing caches; the rest extend the controls ",
+    "this synthesis flags as decisive (the tau-knockout arm and microglia-sorted ",
+    "phosphoproteomics among them)."
+  )
+)
+```
+
+Read as a whole, the generative layer delivers what the contest arithmetic cannot: a
+single falsifiable systems model that integrates all eleven arcs and all three
+sealed verdicts into one node, the named alternatives it must beat, and an ordered
+set of tests, from a free reanalysis to a definitive knockout, that would convert
+its provisional lead into a decided one. The lead leads because it is the only
+candidate that ties the amyloid architecture, the GSK3β coincidence node, the two
+post-transcriptional channels and the clearance output into one mechanism rather
+than explaining a single layer; but it leads provisionally, its directional-driver
+and microglial-locus claims resting on bulk rather than sorted signalling, its
+two-register claim untested in mouse, and its valence genuinely open. That honest,
+bounded, testable statement, not a settled mechanism, is the current best holistic
+reading the project supports.
+
+# Cross-species translation
+
+The mouse structure is directionally conserved in human Alzheimer cortex, tested
+in the SEA-AD single-nucleus atlas of middle-temporal and dorsolateral-prefrontal
+cortex (Gabitto et al., 2024) with amyloid indexed by Thal phase and tau by Braak
+stage. All four mouse microglial substates resolve in human microglia, and the
+disease-emergent supertype occupancy rises monotonically across them (0.150 →
+0.490 from homeostatic to proliferative), so the activation gradient is conserved
+even though discrete cluster agreement is low. All three pre-registered
+interaction mechanisms reproduce their mouse-predicted sign in all five strata
+(NF-κB targets negative, the interaction-carrier module negative, and GSK3β targets
+positive), and the directional concordance is robust to single-cell refitting
+(129 of 130 panel cells) and to an orthogonal AUCell scorer (82 of 90). No
+pre-registered interaction survives multiple-testing correction, which is the
+expected consequence of amyloid-tau collinearity across human donors (Spearman
+≈ 0.65; variance-inflation 1.5-1.9) rather than counter-evidence: a
+non-significant interaction at this power is not evidence of absence. The human
+microglial-state structure is itself well supported (Sun, Mathys et al., 2023;
+Mancuso et al., 2024), and the separable amyloid- and tau-associated profiles
+reported in human tissue (Gerrits et al., 2021) match our finding that the
+dominant, FDR-surviving human signal is per-pathology main effects rather than an
+emergent interaction. The co-escalation of plaque and tangle burden in late-stage
+human disease (Gabitto et al., 2024; Lu et al., 2026) *is* the donor-level
+collinearity that defeats a factorial interaction term. The right strength of
+claim is therefore directional conservation: consistent with the mouse, never a
+literal replication, and held in a separate evidence band from the mouse
+contests.
+
+# Confidence, caveats and what would change the conclusion
+
+The conclusion is held with graded confidence. The amyloid-driven DAM programme
+is the most secure element (multi-modal, multi-method, power-robust and
+externally canonical), though its protective-versus-pathogenic valence is
+unresolved by these data and the literature leans protective. The interaction
+mechanism (GSK3β up, Myc down, wired and dynamics-positive) is internally coherent
+and externally plausible but rests on activity inference rather than direct
+gene-level DE, and three caveats temper it. The phosphoproteome is bulk
+hippocampus, not microglia-sorted, so every kinase and causal-topology result is a
+bulk-signalling-to-microglial-transcription bridge rather than a within-microglia
+measurement. The gene-level dynamics signature is roughly one-quarter ambient and
+ribosomal contamination and names neither GSK3β nor Myc. And the whole synthesis is
+a single mouse cohort at one 24-month timepoint, with sex perfectly aliased to
+batch. The NF-κB attenuation has a ceiling/saturation alternative the design
+cannot exclude, and the synaptic verdict is clearance-dominant rather than
+complement-absent.
+
+Three specific experiments would move a verdict rather than add orthogonal
+corroboration at diminishing return. A tau-knockout-on-amyloid arm
+(MAPT-null × App^NL-G-F^) would convert the tau-as-modifier claims from
+genotype-correlational to causal, and is the single most informative missing
+control. Microglia-sorted phosphoproteomics would lift the GSK3β interaction
+result out of its bulk-tissue caveat and test whether the kinase synergy is
+microglia-intrinsic. And a powered, amyloid-tau-decoupling human cohort such as
+ROSMAP, currently deferred for want of a data-use agreement, would test whether
+the directionally-conserved human interaction survives once the donor-level
+collinearity that defeats it here is broken. Absent these, the project has reached
+the point where further evidence arcs would corroborate the existing reading
+rather than overturn it.
+
+# Conclusion {-}
+
+The best current conclusion is that amyloid is the primary driver of microglial
+remodelling in this 2×2 model, mobilising a robust and largely compensatory DAM
+programme, while tau acts as a modifier that does not rewrite the
+amyloid-determined gene set but instead bends the response in three specific ways:
+it supra-additively engages a GSK3β-kinase and Myc-suppression signalling module
+at the tau×amyloid interface, it accelerates the rate at which amyloid pushes
+microglia toward the DAM state, and it attenuates the amyloid-driven NF-κB
+transcriptional response. The downstream synaptic remodelling is carried by
+TREM2/APP-fragment clearance signalling rather than classical complement. The
+divergence the project set out to find is real but does not live where a
+differential-expression scan would look for it: it is a signalling and dynamic
+phenomenon, tissue-wide rather than microglia-restricted, and directionally
+conserved in human Alzheimer cortex.
+
+# References {-}
+
+Bhaskar K, Konerth M, Kokiko-Cochran ON, Cardona A, Ransohoff RM, Lamb BT (2010).
+Regulation of tau pathology by the microglial fractalkine receptor. *Neuron*
+68(1):19-31.
+
+Brelstaff JH, Mason M, Katsinelos T, et al. (2021). Microglia become
+hypofunctional and release metalloproteases and tau seeds when phagocytosing live
+neurons with P301S tau aggregates. *Science Advances* 7(43):eabg4980.
+
+Bryan KJ, Zhu X, Harris PL, et al. (2009). Expression of CD74 is increased in
+neurofibrillary tangles in Alzheimer's disease and interacts with APP to suppress
+Aβ production. *Molecular Neurodegeneration* 4:41.
+
+Chen Y, Colonna M (2021). Microglia in Alzheimer's disease at single-cell level.
+Are there common patterns in humans and mice? *Journal of Experimental Medicine*
+218(9):e20202717.
+
+Coburn JM, et al. (2025). Amyloid and tau pathologies synergistically drive
+human microglial responses in xenografted models. *Alzheimer's & Dementia*.
+
+Deczkowska A, Keren-Shaul H, Weiner A, Colonna M, Schwartz M, Amit I (2018).
+Disease-associated microglia: a universal immune sensor of neurodegeneration.
+*Cell* 173(5):1073-1081.
+
+Dejanovic B, Huntley MA, De Mazière A, et al. (2018). Changes in the synaptic
+proteome in tauopathy and rescue of tau-induced synapse loss by C1q antibodies.
+*Neuron* 100(6):1322-1336.
+
+Gabitto MI, Travaglini KJ, Rachleff VM, et al. (2024). Integrated multimodal
+cell atlas of Alzheimer's disease (SEA-AD). *Nature Neuroscience* 27:2366-2383.
+
+Gerrits E, Brouwer N, Kooistra SM, et al. (2021). Distinct amyloid-β and tau
+associated microglia profiles in Alzheimer's disease. *Acta Neuropathologica*
+141(5):681-696.
+
+Graves et al. (2025). p16-expressing microglia and endothelial cells promote
+tauopathy and neurovascular abnormalities in PS19 mice. *Neuron*.
+
+Hong S, Beja-Glasser VF, Nfonoyim BM, et al. (2016). Complement and microglia
+mediate early synapse loss in Alzheimer mouse models. *Science*
+352(6286):712-716.
+
+Hooper C, Killick R, Lovestone S (2008). The GSK3 hypothesis of Alzheimer's
+disease. *Journal of Neurochemistry* 104(6):1433-1439.
+
+Hu Y, et al. (2021). Replicative senescence dictates the emergence of
+disease-associated microglia and contributes to Aβ pathology. *Cell Reports*
+35(10):109228.
+
+Huang KL, Marcora E, Pimenova AA, et al. (2017). A common haplotype lowers PU.1
+expression in myeloid cells and delays onset of Alzheimer's disease. *Nature
+Neuroscience* 20(8):1052-1061.
+
+Ising C, Venegas C, Zhang S, et al. (2019). NLRP3 inflammasome activation drives
+tau pathology. *Nature* 575(7784):669-673.
+
+Jiang L, et al. (2024). β-amyloid accumulation enhances microtubule-associated
+protein tau pathology in an App^NL-G-F^/MAPT^P301S^ mouse model. *Frontiers in
+Neuroscience* 18:1372297.
+
+Keren-Shaul H, Spinrad A, Weiner A, et al. (2017). A unique microglia type
+associated with restricting development of Alzheimer's disease. *Cell*
+169(7):1276-1290.
+
+Kim B, Kim H, Jeong H, et al. (2022). Amyloid-β and tau pathologies act
+synergistically to induce novel disease stage-specific microglia subtypes.
+*Molecular Neurodegeneration* 17:83.
+
+Krasemann S, Madore C, Cialic R, et al. (2017). The TREM2-APOE pathway drives the
+transcriptional phenotype of dysfunctional microglia in neurodegenerative
+diseases. *Immunity* 47(3):566-581.
+
+Lauretti E, Dincer O, Praticò D (2020). Glycogen synthase kinase-3 signaling in
+Alzheimer's disease. *Biochimica et Biophysica Acta - Molecular Cell Research*
+1867(5):118664.
+
+Lee SH, Meilandt WJ, Xie L, et al. (2021). Trem2 restrains the enhancement of tau
+accumulation and neurodegeneration by β-amyloid pathology. *Neuron*
+104(7):1283-1297.
+
+Lu et al. (2026). Human microglial transitions at the Aβ-tau inflection point
+associate with divergent pathways to dementia and resilience. *Nature Medicine*.
+
+Mancuso R, Fattorelli N, Martinez-Muriana A, et al. (2024). A multi-pathology
+human microglial xenotransplantation model reveals a TREM2- and APOE-modulated
+HLA response to amyloid. *Nature Neuroscience* 27:886-900.
+
+Maphis N, Xu G, Kokiko-Cochran ON, et al. (2015). Reactive microglia drive tau
+pathology and contribute to the spreading of pathological tau in the brain.
+*Brain* 138(6):1738-1755.
+
+Perea JR, et al. (2022). p38 activation occurs mainly in microglia in the P301S
+Tauopathy mouse model. *Scientific Reports* 12:2130.
+
+Perez-Costas E, Gandy JC, Meléndez-Ferro M, Roberts RC, Bijur GN (2010). Light and
+electron microscopy study of glycogen synthase kinase-3β in the mouse brain. *PLoS
+ONE* 5(1):e8911.
+
+Pickett EK, Herrmann AG, McQueen J, et al. (2019). Amyloid beta and tau cooperate
+to cause reversible behavioral and transcriptional deficits in a model of
+Alzheimer's disease. *Cell Reports* 29(11):3592-3604.
+
+Saito T, Matsuba Y, Mihira N, et al. (2014). Single App knock-in mouse models of
+Alzheimer's disease. *Nature Neuroscience* 17(5):661-663.
+
+Squair JW, Gautier M, Kathe C, et al. (2021). Confronting false discoveries in
+single-cell differential expression. *Nature Communications* 12:5692.
+
+Sun N, Victor MB, Park YP, et al. (2023). Human microglial state dynamics in
+Alzheimer's disease progression. *Cell* 186(20):4386-4403.
+
+Wang C, et al. (Cell Discov. 2022). Distinct phases of adult microglia
+proliferation: a Myc-mediated early phase and a Tnfaip3-mediated terminal phase.
+*Cell Discovery* 8:130.
+
+Wang C, Fan L, Khawaja RR, et al. (Nat. Commun. 2022). Microglial NF-κB drives
+tau spreading and toxicity in a mouse model of tauopathy. *Nature Communications*
+13:1969.
+
+Welcker M, Orian A, Jin J, et al. (2004). The Fbw7 tumor suppressor regulates
+glycogen synthase kinase 3 phosphorylation-dependent c-Myc protein degradation.
+*PNAS* 101(24):9085-9090.
+
+Yun H, et al. (2026). Microglial SPI1/PU.1 is required for the protective
+response to amyloid pathology. *Neuron*.
+
+Zhao Y, et al. (2024). GSK3: a potential target and pending issues for treatment
+of Alzheimer's disease. *CNS Neuroscience & Therapeutics* 30(7):e14818.
+
+Zhong L, Sheng X, Wang W, et al. (2023). TREM2 receptor protects against
+complement-mediated synaptic loss by binding to complement C1q during
+neurodegeneration. *Immunity* 56(8):1794-1808.
+
+# Reproducibility {-}
+
+This synthesis is read-only: it re-reads the exported result tables in
+`storage/results/` and embeds the pre-built capstone figure, recomputing nothing
+and leaving the locked `analysis.Rmd` section-17 adjudication untouched.
+
+```{r session_info}
+sessionInfo()
+```

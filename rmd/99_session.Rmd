@@ -1,0 +1,17 @@
+# Session info and results manifest
+
+```{r results-manifest}
+cache_files <- list.files(params$cache_dir, recursive = TRUE, full.names = TRUE)
+result_files <- list.files(params$results_dir, recursive = TRUE, full.names = TRUE)
+cat("Cached artefacts (", length(cache_files), "):\n", sep = "")
+cat(paste(cache_files, collapse = "\n"), "\n")
+cat("\nResult exports (", length(result_files), "):\n", sep = "")
+cat(paste(result_files, collapse = "\n"), "\n")
+
+# Ensure rstudio:rstudio ownership where missing.
+Sys.chmod(c(cache_files, result_files), mode = "0664")
+```
+
+```{r session-info}
+sessionInfo()
+```

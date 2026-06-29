@@ -1,0 +1,573 @@
+# SCENIC data-driven regulon inference
+
+This section adds the project's first **data-driven** gene-regulatory
+layer and closes narrative arc **K**
+(`storage/notes/scenic_regulons_plan.md`). Every preceding mechanism
+layer is *prior-based*: the transcription-factor activities of section 14
+read from the CollecTRI literature network, the kinase activities of
+section 15 from the OmniPath kinase-substrate prior, the ligand-receptor
+calls of section 16 from curated interaction priors, and the causal
+topology of section 20 from the OmniPath prior-knowledge network. SCENIC
+instead infers regulons *de novo* from this dataset's own microglial
+co-expression: GRNBoost2 over the 26,104-nucleus microglia matrix learns
+TF&rarr;target adjacencies, cisTarget prunes them to motif-supported,
+signed regulons against the mm10 v10 motif collection, and AUCell scores
+per-cell regulon activity. The motivating question is narrow and
+falsifiable: do the section-14 prior-based TF verdicts survive a method
+that does **not** lean on a literature prior? The layer is framed
+throughout as orthogonal corroboration or honest discordance &mdash;
+never as a re-run of section 14. It feeds two margin-neutral Suggestive
+rows to the section-17 claims ledger (K-001 Spi1, K-002 Rel: the
+data-driven *recovery* of those regulons, scoped to existence and not
+activity direction), and so it does not perturb the locked mouse
+2&times;2 contest margins.
+
+**The consensus regulon set, fixed before any contrast was read.** The
+GRNBoost2 / cisTarget pipeline was run independently over ten random
+seeds, and the consensus was defined *before* inspecting which TFs
+survived (the load-bearing anti-anchoring lock). A TF&rarr;target edge is
+high-confidence iff it recurs in **&ge; 8 of 10** runs; a consensus
+regulon is a TF that retains **&ge; 5** such high-confidence targets
+(`min_targets`, mirroring section 14's decoupleR floor). This yields
+**51 activating regulons** over 10,711
+high-confidence edges, drawn from the 994 candidate regulators
+(the genes that survived the &ge; 1%-of-cells expression filter
+intersected with the mouse TF list). Every consensus regulon carries the
+sign `+`: the repressing modules never reached the &ge; 8/10 bar, an
+anticipated outcome since SCENIC's correlation-derived `(-)` regulons are
+the less stable half.
+
+**The controlled network swap (primary readout).** To isolate the effect
+of the *network* from the effect of the *scoring*, readout 1 feeds the
+SCENIC regulons to the section-14 decoupleR machinery **verbatim**: the
+same NEBULA *z* statistic (`de_snrnaseq_nebula$top[[contrast]]`), the same
+`ulm` significance and cross-method `consensus` direction, the same
+`min_targets = 5`, the same FDR < 0.10. Only the prior network changes
+&mdash; data-driven SCENIC regulons in place of CollecTRI. Any difference
+in TF activity is therefore attributable to the network alone. Readout 2
+scores the native AUCell activity through the locked 2&times;2 factorial;
+readout 3 mirrors the section-18 per-substate analysis.
+
+**Thresholds, stated before any result is read.** Significance everywhere
+is BH-FDR < 0.10 (the project standard). Regulon `min_targets` &ge; 5;
+recurrence bar &ge; 8/10; AUCell pseudobulk variance-stabilised by
+`qlogis` (logit); cisTarget motif-enrichment at the pyscenic defaults
+(`rank_threshold` 5000, `auc_threshold` 0.05, NES &ge; 3.0,
+`min_genes` 20).
+
+**Caveats carried throughout.** (a) The inference is **microglia-only**,
+so these are microglial-**state** regulons, not cell-type-identity
+regulons. (b) The input is single-nucleus (intronic reads included);
+SCENIC handles snRNA but the co-expression is nuclear. (c) The working
+microglia identity is **inherited** from the section-14
+`broad_annotations`, not re-derived here; the same modest ambient
+neuronal/oligodendrocyte signal noted at the data-export step is present.
+(d) Because the consensus is **all-activating**, the SCENIC decoupleR
+network carries no repressing edges; a section-14 *repressing* call that
+has no SCENIC counterpart is a structural consequence of that, **not** a
+discordance, and is flagged as such wherever signs are compared.
+
+**Anti-anchoring.** All 51 regulons are reported even-handedly,
+including the large novel ones absent from section 14. Non-recovery of a
+prior TF is reported as evidence that the prior footprint lacks
+microglial co-expression support, not hidden. No axis is privileged. The
+&ge; 8/10 bar is **not** relaxed to rescue sub-threshold near-misses.
+
+```{r scenic-load}
+scenic   <- readRDS(file.path(params$cache_dir, "scenic_summary.rds"))
+sc_reg   <- scenic$regulons          # long TF/sign/target/recurrence/importance
+sc_net   <- scenic$scenic_net        # decoupleR net (source/target/mor)
+sc_h2h   <- scenic$headtohead        # SCENIC vs CollecTRI activity, paired
+sc_act   <- scenic$scenic_activity   # decoupleR SCENIC net on NEBULA z (long)
+sc_auc   <- scenic$aucell_contrasts  # native AUCell 2x2 factorial (long)
+sc_aucpb <- scenic$aucell_pb         # list(mat = regulon x 16, meta)
+sc_sub   <- scenic$substate_int      # per-substate decoupleR at interaction
+sc_over  <- scenic$target_overlap    # SCENIC-vs-CollecTRI target Jaccard
+sc_rec   <- scenic$recovery          # recovery ladder (60 rows)
+sc_cen   <- scenic$census            # comparison-TF census (12 rows)
+sc_par   <- scenic$params
+
+n_reg  <- sc_par$n_consensus_regulons
+n_cand <- sc_par$candidate_tfs_n
+
+# Headline scalars used inline so prose never drifts from the cache.
+med_jac   <- median(sc_over$jaccard)
+max_jac   <- max(sc_over$jaccard)
+max_jac_tf<- sc_over$TF[which.max(sc_over$jaccard)]
+n_shared  <- nrow(sc_over)
+spi1_ov   <- sc_over[sc_over$TF == "Spi1", ]
+n_auc_sig <- length(unique(sc_auc$regulon[sc_auc$sig]))
+n_act_sig <- length(unique(sc_act$source[sc_act$sig]))
+n_int_aucell <- sum(sc_auc$sig[sc_auc$contrast == "interaction"])
+
+contrast_order <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+                    "tau_alone", "tau_in_nlgf")
+substate_order <- c("homeostatic", "DAM", "IFN", "proliferative")
+diverging <- c("#3a4cc0", "white", "#b40426")   # negative .. zero .. positive
+```
+
+## Regulon recovery census
+
+The first question is purely about presence: of the section-14 TF verdict
+leads and the section-18 NF-&kappa;B family, which form a motif-supported,
+co-expression-recurrent regulon in this dataset's own microglia? The
+recovery ladder below classifies **every** TF &mdash; the `r n_reg`
+consensus regulons plus the section-14/18 comparison set &mdash; by why it
+did or did not enter the &ge; 8/10 consensus, separating structural
+non-recovery (below the expression floor, never a candidate regulator)
+from motif pruning (a candidate with adjacencies but no motif-supported
+regulon) from stochastic near-misses. The class definitions are
+data-derived: candidacy is recomputed live from the filtered-matrix
+&cap; TF-list intersection, not hand-assigned.
+
+```{r scenic-recovery-ladder, results = "asis"}
+class_lab <- c(
+  recovered_novel              = "Recovered (novel; not a section-14/18 TF)",
+  recovered_comparison         = "Recovered (section-14/18 comparison TF)",
+  near_miss                    = "Near-miss (6-7/10 runs, below the >=8 bar)",
+  present_targets_subthreshold = "Regulon formed but < 5 stable targets",
+  weak                         = "Weak (1-5/10 runs)",
+  motif_pruned                 = "Motif-pruned (candidate, 0 motif-supported regulon)",
+  expression_floor             = "Expression floor (below the >=1% filter)")
+ladder <- as.data.frame(table(sc_rec$recovery_class), stringsAsFactors = FALSE)
+names(ladder) <- c("recovery_class", "n_TFs")
+ladder$comparison_TFs <- vapply(ladder$recovery_class, function(cl) {
+  tf <- sc_rec$TF[sc_rec$recovery_class == cl & sc_rec$is_comparison_tf]
+  if (length(tf) == 0L) "-" else paste(sort(tf), collapse = ", ")
+}, character(1))
+ladder$class <- class_lab[ladder$recovery_class]
+ladder <- ladder[order(-ladder$n_TFs), c("class", "n_TFs", "comparison_TFs")]
+knitr::kable(
+  ladder, row.names = FALSE,
+  col.names = c("Recovery class", "n TFs", "Comparison TFs in class"),
+  caption = paste0(
+    "Recovery ladder over all ", nrow(sc_rec), " classified TFs (",
+    n_reg, " consensus regulons + the section-14/18 comparison set). ",
+    "`comparison TFs in class` names only the section-14/18 leads; the ",
+    "49 novel recovered regulons are >=8/10 by construction. Full table ",
+    "in storage/results/scenic_regulon_recovery.tsv."))
+```
+
+The section-14/18 comparison TFs alone are tabulated next, with their
+per-seed presence and consensus outcome. This is the headline of the
+section, reported exactly as computed.
+
+```{r scenic-census-table, results = "asis"}
+cen <- sc_cen
+cen$recovered <- ifelse(cen$in_consensus == 1L, "yes", "no")
+cen_view <- cen[, c("axis", "TF", "max_runs_present", "present_signs",
+                    "recovered", "consensus_signs_ntargets")]
+cen_view <- cen_view[order(cen_view$axis, -cen_view$max_runs_present), ]
+knitr::kable(
+  cen_view, row.names = FALSE,
+  col.names = c("Axis", "TF", "max runs present", "signs (n runs)",
+                "in consensus", "consensus sign:n targets"),
+  caption = paste0(
+    "Recovery census for the section-14 verdict TFs (amyloid_activation: ",
+    "Spi1/Nfkb1/Sp3; interaction_metabolic: Myc/Creb1/Tp53/Jun) and the ",
+    "section-18 NF-kB family (Rela/Nfkb1/Nfkb2/Relb/Rel). `max runs ",
+    "present` = the most runs in which the TF formed any motif-supported ",
+    "regulon; `in consensus` requires >=8/10 edge recurrence AND >=5 ",
+    "stable targets."))
+```
+
+Two comparison TFs cross the bar into the consensus and no more: **Spi1**
+&mdash; the section-14 amyloid-axis lead &mdash; recovers cleanly
+(present in all ten runs, 15 high-confidence targets), and **Rel** (an
+NF-&kappa;B-family member) likewise (10/10, 9 targets). The remaining
+calls are sub-threshold, and their *causes differ*, which is the
+informative part:
+
+* **Near-misses (6-7/10):** **Nfkb1** and **Sp3** (both 7/10) and
+  **Creb1** (6/10) form recurrent regulons but fall just short of the
+  locked &ge; 8/10 bar. These are reported at 6-7/10 honestly; the bar is
+  not lowered to admit them.
+* **Regulon formed but too few stable targets:** **Relb** is present in
+  all ten runs yet retains fewer than five high-confidence targets, so it
+  is a regulon that exists but does not meet `min_targets`.
+* **Motif-pruned:** **Nfkb2** is a *candidate* regulator (it had hundreds
+  of GRNBoost2 adjacencies) but formed **no** motif-supported regulon in
+  any run &mdash; a co-expression/motif failure, not an expression-floor
+  one.
+* **Expression floor (structural):** **Myc** and **Tp53** are below the
+  &ge; 1%-of-cells filter, so they were never candidate regulators and
+  draw zero edges in every run. SCENIC *structurally cannot* recover them.
+  They are **two of the four `interaction_metabolic` verdict TFs**: the
+  data-driven layer cannot corroborate the half of that axis that lacks
+  microglial co-expression footing &mdash; precisely the anti-anchoring
+  guardrail's "non-recovery = the prior footprint lacks co-expression
+  support", reported as-is.
+
+The &ge; 8/10 bar's strictness is itself audited below: the
+recurrence-sensitivity curve shows how many regulons survive at each
+threshold. The decay is smooth with no cliff at 8, so the locked bar is
+strict but not pathological &mdash; a looser bar would admit more
+near-misses but the curve gives no principled reason to move it.
+
+```{r scenic-recurrence-fig, fig.width = 7, fig.height = 3.8, fig.cap = "Number of consensus regulons (TFs retaining >=5 high-confidence targets) surviving at each edge-recurrence threshold from 1/10 to 10/10. The dashed line marks the locked >=8/10 bar (51 regulons). The smooth decay shows the bar is strict but not pathological."}
+rec_dist <- readr::read_tsv(
+  file.path(params$cache_dir, "scenic", "scenic_recurrence_dist.tsv"),
+  show_col_types = FALSE)
+ggplot(rec_dist, aes(min_runs, n_regulons_ge_min_targets)) +
+  geom_vline(xintercept = sc_par$recurrence_threshold, linetype = "dashed",
+             colour = "#b40426") +
+  geom_line(colour = "grey50") +
+  geom_point(size = 2) +
+  geom_text(aes(label = n_regulons_ge_min_targets), vjust = -0.8, size = 3) +
+  scale_x_continuous(breaks = 1:10) +
+  labs(x = "edge-recurrence threshold (runs out of 10)",
+       y = "consensus regulons",
+       title = "Recurrence sensitivity of the consensus regulon count") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+## SCENIC-versus-CollecTRI head-to-head (controlled network swap)
+
+This subsection swaps only the network. Two facts emerge, and the first
+governs the second. **First, the data-driven and prior footprints are
+almost disjoint gene sets.** Across the `r n_shared` TFs that exist in
+both the SCENIC consensus and the CollecTRI prior, the median target-set
+Jaccard is **`r sprintf("%.3f", med_jac)`** and the maximum only
+**`r sprintf("%.3f", max_jac)`** (`r max_jac_tf`). The recovered Spi1
+regulon shares just **`r spi1_ov$n_shared` of its `r spi1_ov$n_union`
+union targets** with CollecTRI's Spi1 (`r spi1_ov$n_scenic_targets`
+SCENIC targets vs `r spi1_ov$n_collectri_targets` CollecTRI targets).
+Near-disjoint target sets are the strongest single piece of evidence that
+the layer is genuinely orthogonal rather than a prior re-run &mdash; and
+they make activity discordance the expected, not surprising, outcome.
+
+```{r scenic-overlap-table, results = "asis"}
+ov_view <- head(sc_over, 10)
+knitr::kable(
+  ov_view, digits = 4, row.names = FALSE,
+  col.names = c("TF", "SCENIC targets", "CollecTRI targets", "shared",
+                "union", "Jaccard"),
+  caption = paste0(
+    "Target-set overlap for the 10 highest-Jaccard TFs shared between the ",
+    "SCENIC consensus and the CollecTRI prior (of ", n_shared,
+    " shared TFs; median Jaccard ", sprintf("%.3f", med_jac),
+    "). Full table in storage/results/scenic_target_overlap.tsv."))
+```
+
+**Second, where the prior made its section-14/18 calls, the data-driven
+network either disagrees or is silent.** The table below takes each
+comparison TF at the contrast where CollecTRI's call is strongest
+(smallest BH-FDR on the shared NEBULA *z*) and places the SCENIC verdict
+beside it. Of the section-14 verdict TFs, **only Spi1 is also a SCENIC
+regulon**, and its activity **sign-flips and loses significance** under
+the swap; the rest are CollecTRI-only (absent from the SCENIC network), so
+the swap removes the call entirely.
+
+```{r scenic-h2h-table, results = "asis"}
+comp_tfs <- unique(sc_par$comparison_tfs$TF)
+h2h_comp <- sc_h2h[sc_h2h$TF %in% comp_tfs, ]
+# Strongest CollecTRI call per TF: smallest collectri_padj (NA sorted last).
+pick <- h2h_comp |>
+  dplyr::arrange(TF, collectri_padj) |>
+  dplyr::group_by(TF) |>
+  dplyr::slice(1L) |>
+  dplyr::ungroup()
+# Merge only recovery_class; headtohead already carries its own `axis`
+# (same combined label as recovery, e.g. Nfkb1 spans two axes) -- pulling
+# axis from both would collide into axis.x/axis.y under merge().
+ax  <- sc_rec[, c("TF", "recovery_class")]
+pick <- merge(pick, ax, by = "TF", all.x = TRUE)
+fmt_call <- function(cons, sig) {
+  ifelse(is.na(cons), "absent",
+         sprintf("%.2f%s", cons, ifelse(sig, "*", "")))
+}
+h2h_view <- data.frame(
+  TF             = pick$TF,
+  axis           = pick$axis,
+  recovery       = pick$recovery_class,
+  in_SCENIC      = ifelse(pick$in_scenic_regulons, "yes", "no"),
+  strongest_contrast = pick$contrast,
+  CollecTRI      = fmt_call(pick$collectri_cons, pick$collectri_sig),
+  SCENIC         = fmt_call(pick$scenic_cons, pick$scenic_sig),
+  stringsAsFactors = FALSE)
+h2h_view <- h2h_view[order(h2h_view$axis, h2h_view$TF), ]
+knitr::kable(
+  h2h_view, row.names = FALSE,
+  col.names = c("TF", "axis", "recovery class", "in SCENIC net",
+                "strongest contrast", "CollecTRI cons", "SCENIC cons"),
+  caption = paste0(
+    "Controlled head-to-head for the section-14/18 comparison TFs. ",
+    "`strongest contrast` is where CollecTRI's call has the smallest ",
+    "FDR; CollecTRI / SCENIC columns give the consensus activity there ",
+    "(* = FDR < 0.10; `absent` = the TF is not in that network). Both ",
+    "sides are decoupleR on the SAME NEBULA z -- only the network ",
+    "differs."))
+```
+
+The interaction-metabolic axis is **entirely CollecTRI-only**: Myc, Creb1,
+Tp53 and Jun are all absent from the SCENIC network (Myc and Tp53 below
+the expression floor, Creb1/Jun sub-threshold), so the strongest CollecTRI
+call on that axis &mdash; Myc at the interaction contrast (consensus
+&minus;6.60, FDR-significant) &mdash; has no SCENIC counterpart at all. On
+the amyloid axis, Nfkb1 and Sp3 are CollecTRI-significant at the NLGF
+contrasts but unrecovered by SCENIC, while Spi1's CollecTRI activity
+(+2.73, significant at `nlgf_in_maptki`) reverses to a small, non-
+significant negative SCENIC score. The recovered NF-&kappa;B regulon Rel
+has no bare-symbol CollecTRI source, so it carries no head-to-head row
+(CollecTRI = absent).
+
+Crucially, the swap does not silence SCENIC &mdash; it **redirects** it.
+On the same NEBULA *z*, **`r n_act_sig` of `r n_reg`** SCENIC regulons
+reach FDR < 0.10 in at least one contrast. Those significant regulons are
+the *large novel* ones (Zbtb20 with 3,140 targets, Fli1, Hif1a, and the
+AP-1 / IRF / STAT immune block), not the small section-14-overlap TFs.
+The data-driven network has ample power; it simply points at a different,
+co-expression-defined TF set. The concordance scatter makes the
+orthogonality quantitative.
+
+```{r scenic-h2h-scatter, fig.width = 7, fig.height = 5.2, fig.cap = "SCENIC vs CollecTRI consensus activity on the SAME NEBULA z, for every TF scored by both networks across all five contrasts (one point per TF x contrast). Section-14/18 comparison TFs are highlighted and labelled. Near-zero correlation = the controlled network swap produces orthogonal activity."}
+sct <- sc_h2h[!is.na(sc_h2h$scenic_cons) & !is.na(sc_h2h$collectri_cons), ]
+sct$is_comp <- sct$TF %in% comp_tfs
+rho_s <- suppressWarnings(cor(sct$scenic_cons, sct$collectri_cons,
+                              method = "spearman"))
+rho_p <- suppressWarnings(cor(sct$scenic_cons, sct$collectri_cons,
+                              method = "pearson"))
+ggplot(sct, aes(collectri_cons, scenic_cons)) +
+  geom_hline(yintercept = 0, colour = "grey80") +
+  geom_vline(xintercept = 0, colour = "grey80") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dotted",
+              colour = "grey60") +
+  geom_point(aes(colour = is_comp, size = is_comp), alpha = 0.6) +
+  ggrepel::geom_text_repel(
+    data = sct[sct$is_comp, ],
+    aes(label = sprintf("%s (%s)", TF, contrast)),
+    size = 2.7, max.overlaps = 30, colour = "#b40426") +
+  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#b40426"),
+                      guide = "none") +
+  scale_size_manual(values = c(`FALSE` = 1.1, `TRUE` = 2.2), guide = "none") +
+  labs(x = "CollecTRI consensus activity",
+       y = "SCENIC consensus activity",
+       title = "Controlled network swap: SCENIC vs CollecTRI on the same z",
+       subtitle = sprintf(
+         "Spearman rho = %.3f, Pearson r = %.3f, n = %d TF x contrast pairs",
+         rho_s, rho_p, nrow(sct))) +
+  theme_bw()
+```
+
+## Native AUCell activity across contrasts
+
+Readout 2 leaves the NEBULA *z* aside and tests the regulons' **own**
+per-cell AUCell activity. The 26,104-cell AUCell matrix is pseudobulked to
+the 16 `genotype_batch` ids (the locked replicate unit), logit-transformed
+(every pooled mean lies strictly interior, 0.005-0.097, so `qlogis` needs
+no clamp), and run through the locked 2&times;2 + batch factorial. The
+logit choice is immaterial to the conclusions: against raw means the
+*t*-statistics correlate at Spearman
+`r sprintf("%.3f", sc_par$aucell_logit_vs_raw$spearman_t)` with
+`r sprintf("%.1f%%", 100 * sc_par$aucell_logit_vs_raw$sign_agreement)`
+sign agreement.
+
+```{r scenic-aucell-counts, results = "asis"}
+auc_counts <- sc_auc |>
+  dplyr::group_by(contrast) |>
+  dplyr::summarise(n_sig = sum(sig), .groups = "drop")
+auc_counts <- auc_counts[match(contrast_order, auc_counts$contrast), ]
+knitr::kable(
+  auc_counts, row.names = FALSE,
+  col.names = c("Contrast", "n regulons FDR < 0.10"),
+  caption = paste0(
+    "Native AUCell activity: number of the ", n_reg, " consensus regulons ",
+    "reaching FDR < 0.10 per contrast (2x2 + batch factorial on the ",
+    "logit-transformed pseudobulk AUCell means). ", n_auc_sig,
+    " distinct regulons are significant in >=1 contrast; none at the ",
+    "interaction."))
+```
+
+`r n_auc_sig` of `r n_reg` regulons are significant in at least one
+contrast, but **`r n_int_aucell` at the interaction**: no data-driven
+regulon shows a genotype&times;amyloid interaction at the pseudobulk
+level. The amyloid main-effect contrasts carry the signal (14 regulons at
+`nlgf_in_p301s`, 7 at `nlgf_in_maptki`), and again the movers are novel
+identity/immune regulons (Tcf7l2, Zfp704, Hif1a, the Fos/Junb AP-1 set,
+Irf8), not the section-14 leads. The two recovered comparison regulons are
+quiet here: Spi1(+) trends negative at both amyloid contrasts
+(*t* &approx; &minus;2.2) but does not survive FDR, and Rel(+) is flat
+throughout. The heatmap shows the full activity field.
+
+```{r scenic-aucell-heatmap, fig.width = 8, fig.height = 9.5, fig.cap = "Native AUCell activity (limma logFC on logit pseudobulk) for all 51 consensus regulons (rows, ordered by nlgf_in_p301s effect) across the five contrasts (columns). Fill = logFC (blue down, red up); * = FDR < 0.10 within contrast. Signal concentrates on the amyloid main effects; the interaction column carries no significant regulon."}
+ord <- sc_auc |>
+  dplyr::filter(contrast == "nlgf_in_p301s") |>
+  dplyr::arrange(logFC)
+hm <- sc_auc
+hm$regulon  <- factor(hm$regulon, levels = ord$regulon)
+hm$contrast <- factor(hm$contrast, levels = contrast_order)
+hm$star <- ifelse(hm$sig, "*", "")
+lim <- max(abs(hm$logFC), na.rm = TRUE)
+ggplot(hm, aes(contrast, regulon, fill = logFC)) +
+  geom_tile(colour = "grey90") +
+  geom_text(aes(label = star), size = 3, vjust = 0.78) +
+  scale_fill_gradientn(colours = diverging, limits = c(-lim, lim),
+                       name = "logFC") +
+  labs(x = NULL, y = NULL,
+       title = "Native AUCell regulon activity across contrasts") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1),
+        axis.text.y = element_text(size = 6.5))
+```
+
+## Per-substate regulon activity (NF-&kappa;B focus)
+
+Readout 3 mirrors section 18: the controlled decoupleR swap is run within
+each of the four microglia substates on the per-state NEBULA *z*, at the
+interaction contrast. The section-18 result this tests against is the
+**all-substate NF-&kappa;B attenuation** &mdash; does the *data-driven*
+NF-&kappa;B regulon reproduce it? It does not. The recovered NF-&kappa;B
+regulon **Rel** (and the recovered amyloid regulon Spi1, shown for
+reference) is **non-significant at the interaction in all four substates**;
+the closest approach is Rel in the IFN substate (FDR 0.109).
+
+```{r scenic-substate-focus, results = "asis"}
+foc <- sc_sub[sc_sub$is_focus, c("substate", "source", "cons_score",
+                                 "padj", "sig")]
+foc$substate <- factor(foc$substate, levels = substate_order)
+foc <- foc[order(foc$source, foc$substate), ]
+foc$sig <- ifelse(foc$sig, "yes", "no")
+knitr::kable(
+  foc, digits = 3, row.names = FALSE,
+  col.names = c("substate", "regulon", "consensus", "FDR", "sig"),
+  caption = paste0(
+    "The two recovered comparison regulons (Rel = NF-kB family; Spi1 = ",
+    "amyloid lead) at the interaction contrast, per substate. Neither is ",
+    "significant in any substate: the data-driven NF-kB regulon does not ",
+    "reproduce the section-18 all-substate attenuation."))
+```
+
+That non-reproduction is, however, **not** an absence of data-driven
+interaction signal &mdash; it is specific to the section-14/18 TFs. The
+per-substate decoupleR readout finds **many** novel regulons significant
+at the interaction within substates (22 in homeostatic, 18 in DAM, 19 in
+IFN, 24 in proliferative), spanning the same immune/identity programmes
+seen elsewhere (Ets1, Klf2, Hif1a, Zbtb20, Mitf, Pax5, the STAT/IRF set).
+This stands in deliberate contrast to the native AUCell factorial, which
+found zero interaction regulons: the per-state NEBULA *z* is a single-cell
+DE statistic with far more power than 16-id pseudobulk means, so the two
+readouts probe different quantities (DE-weighted regulon enrichment vs a
+shift in mean regulon activity). Both are reported; neither is privileged.
+
+```{r scenic-substate-heatmap, fig.width = 8, fig.height = 8.5, fig.cap = "Per-substate SCENIC regulon activity at the interaction contrast (decoupleR consensus on the per-state NEBULA z), for every regulon significant in >=1 substate plus the two focus regulons. Fill = consensus score (blue down, red up); * = FDR < 0.10 within substate; the focus regulons Rel and Spi1 are tagged (focus) on the axis. They stay flat (no significant cell) while novel immune regulons carry the per-substate interaction signal."}
+keep <- unique(c(sc_sub$source[sc_sub$sig],
+                 sc_sub$source[sc_sub$is_focus]))
+sh <- sc_sub[sc_sub$source %in% keep, ]
+# Tag the two focus regulons in the row label itself (a supported,
+# device-safe alternative to per-label face styling).
+focus_set <- unique(sc_sub$source[sc_sub$is_focus])
+sh$row_lab <- ifelse(sh$source %in% focus_set,
+                     paste0(sh$source, " (focus)"), sh$source)
+# Order rows by mean consensus across substates.
+row_ord <- sh |>
+  dplyr::group_by(row_lab) |>
+  dplyr::summarise(m = mean(cons_score), .groups = "drop") |>
+  dplyr::arrange(m)
+sh$row_lab  <- factor(sh$row_lab, levels = row_ord$row_lab)
+sh$substate <- factor(sh$substate, levels = substate_order)
+sh$star <- ifelse(sh$sig, "*", "")
+lim2 <- max(abs(sh$cons_score), na.rm = TRUE)
+ggplot(sh, aes(substate, row_lab, fill = cons_score)) +
+  geom_tile(colour = "grey90") +
+  geom_text(aes(label = star), size = 3, vjust = 0.78) +
+  scale_fill_gradientn(colours = diverging, limits = c(-lim2, lim2),
+                       name = "consensus") +
+  labs(x = NULL, y = NULL,
+       title = "Per-substate regulon activity at the interaction contrast") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.y = element_text(size = 7))
+```
+
+## Verdict (orthogonal corroboration vs honest discordance)
+
+The synthesis is read per comparison axis, with absence reported as
+evidence and no axis privileged. The thresholds are restated once:
+decoupleR `ulm` significance + `consensus` direction at FDR < 0.10 on the
+NEBULA *z* (readouts 1 and 3) and the locked 2&times;2 factorial on logit
+AUCell (readout 2); consensus regulons at &ge; 8/10 edge recurrence and
+&ge; 5 targets; all regulons activating.
+
+**Overall.** The data-driven layer is **orthogonal to, and largely
+discordant with, the section-14 prior.** Target overlap is near-zero
+(median Jaccard `r sprintf("%.3f", med_jac)`), the controlled swap
+produces near-zero activity correlation, and of the section-14 verdict
+TFs only Spi1 is even present in the SCENIC network &mdash; where it
+sign-flips and loses significance. This is not a power failure:
+`r n_act_sig` of `r n_reg` regulons are significant on the same *z* and
+`r n_auc_sig` move in native AUCell, but the movers are novel
+co-expression-defined regulons (Zbtb20, Fli1, Hif1a, the AP-1/IRF/STAT
+immune programmes), not the literature leads. The honest reading is that
+SCENIC corroborates the amyloid Spi1 call at the *motif/recovery* level
+only, gives the NF-&kappa;B axis partial recovery (Rel in; Nfkb1, Relb
+near), and does **not** recover the interaction-metabolic axis at the
+strict bar &mdash; half of it sits below the microglial expression floor.
+
+```{r scenic-verdict-build}
+sc_verdict <- tibble::tibble(
+  axis = c("amyloid_activation", "interaction_metabolic",
+           "nfkb_family_sec18"),
+  comparison_tfs = c("Spi1, Nfkb1, Sp3",
+                     "Myc, Creb1, Tp53, Jun",
+                     "Rela, Nfkb1, Nfkb2, Relb, Rel"),
+  scenic_recovery = c(
+    "Spi1 recovered (+10/10, 15 targets); Nfkb1 7/10 & Sp3 7/10 near-miss",
+    "none recovered; Myc & Tp53 expression-floor (structural), Creb1 6/10 near-miss, Jun 2/10 weak",
+    "Rel recovered (+10/10, 9 targets); Relb 10/10 but <5 targets; Nfkb1 7/10 near-miss; Nfkb2 motif-pruned; Rela 1/10 weak"),
+  headtohead = c(
+    "Spi1 the only shared regulon: activity sign-flips & loses sig (CollecTRI +2.73* -> SCENIC -0.43 ns); shares 2/381 targets",
+    "axis entirely CollecTRI-only; Myc interaction -6.60* has no SCENIC counterpart",
+    "Rel has no bare-symbol CollecTRI source; Nfkb1/Rela/Sp3 CollecTRI-sig at amyloid but SCENIC-absent"),
+  native_aucell = c(
+    "Spi1(+) trends negative at amyloid contrasts but ns; recovered regulon carries no main-effect call",
+    "no regulon sig at interaction (0/51); recovered axis TFs absent from network",
+    "Rel(+) flat across all contrasts"),
+  per_substate = c(
+    "Spi1 ns at interaction in all 4 substates",
+    "section-14 TFs absent, but novel regulons (Ets1/Klf2/Hif1a/Zbtb20) carry strong per-substate interaction signal",
+    "Rel ns at interaction in all 4 substates (IFN FDR 0.109 closest); section-18 attenuation NOT reproduced"),
+  verdict = c(
+    "motif-level recovery, activity-level discordance",
+    "axis unrecovered at the strict bar (expression floor); data-driven interaction signal lives in novel regulons",
+    "partial regulon recovery, no activity-level corroboration"))
+readr::write_tsv(sc_verdict,
+                 file.path(params$results_dir, "scenic_verdict.tsv"))
+```
+
+```{r scenic-verdict-table, results = "asis"}
+knitr::kable(
+  sc_verdict[, c("axis", "comparison_tfs", "scenic_recovery", "headtohead",
+                 "verdict")],
+  col.names = c("Axis", "Comparison TFs", "SCENIC recovery",
+                "Head-to-head (vs CollecTRI)", "Verdict"),
+  caption = paste0(
+    "Per-axis SCENIC verdict. The synaptic-suppression axis has no ",
+    "section-14 TF endpoint to compare and so carries no row (consistent ",
+    "with the sections 14/20 non-finding for that axis). Full prose incl. ",
+    "native-AUCell and per-substate columns in ",
+    "storage/results/scenic_verdict.tsv."))
+```
+
+The **synaptic-suppression** axis is absent from the table by
+construction: section 14 returned no TF verdict for it (it reads as an
+engulfment / post-translational programme, not a regulator-driven one), so
+there is no prior TF call for SCENIC to confirm or refute &mdash; the same
+honest non-finding the TF (14) and causal (20) layers recorded. SCENIC's
+largest activity signals do fall on the shared NLGF contrasts but belong
+to the novel immune regulon set, not to any synaptic-suppression claim.
+
+**The boundary conditions, restated as the verdict's caveats.** These are
+microglial-state regulons from single-nucleus co-expression, identity-
+inherited from section 14; the consensus is all-activating, so any
+section-14 repressing call is uncomparable by construction rather than
+discordant; and the GRNBoost2 step is stochastic, controlled here by the
+ten-run &ge; 8/10 consensus rather than a single seed. Within those
+bounds the data-driven layer delivers a clean, falsifiable result: run
+without a literature prior, this dataset's own microglia reconstruct a
+regulatory programme that overlaps the section-14 prior almost not at all
+&mdash; corroborating Spi1 and Rel as *recoverable regulons* while
+declining to reproduce their prior-based *activity* calls, and locating
+the bulk of the regulatory signal in a co-expression-defined TF set the
+literature prior never nominated.

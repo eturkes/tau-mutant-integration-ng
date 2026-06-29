@@ -1,0 +1,1748 @@
+---
+title: "Microglia divergence in tau and amyloid AD models"
+subtitle: "Highest-impact figures and results -- internal findings summary"
+author: "Claude (autonomous agent)"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: !expr 'local({ source("R/report.R", local = TRUE); report_theme() })'
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    fig_width: 8
+    fig_height: 6
+params:
+  publication_mode: false
+  cache_dir: "storage/cache"
+  results_dir: "storage/results"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  fig.align = "center", dev = "png", dpi = 110, cache = FALSE
+)
+project_root <- normalizePath(".")
+knitr::opts_knit$set(root.dir = project_root)
+options(width = 110)
+
+# Project-wide libraries + domain helpers (genotype_levels/_colours,
+# contrast_definitions, proteomics_sample_meta, plot_kinase_activity_heatmap).
+source("R/helpers.R")
+
+# Summary-specific loaders the curated chunks assume:
+#   rd() -> pre-extracted minimal plotting caches in storage/cache/
+#   rt() -> exported result tables in storage/results/
+rd <- function(f) readRDS(file.path(params$cache_dir, f))
+rt <- function(f) read.delim(file.path(params$results_dir, f),
+                             check.names = FALSE, stringsAsFactors = FALSE)
+```
+
+# Overview {-}
+
+This document curates the highest-impact figures and results from an integrated analysis of microglia across a 2x2 tau x amyloid mouse model, spanning single-nucleus and spatial transcriptomics, bulk proteomics and phosphoproteomics. The central finding is a *negative result with a constructive resolution*: tau-dependent amyloid remodelling of microglia does not appear as differentially expressed genes at the whole-microglia level in any modality, yet it is robustly present once the readout is resolved to substates, co-expression modules, neighbourhood abundance, kinase activity and intercellular signalling. The strongest single mechanism is **Gsk3b kinase activation at the tau x amyloid interaction** (padj 0.00152), a tau-dependent synergy.
+
+This is an *internal synthesis*: phosphoproteomics involving the MAPT-KI background is shown, effect sizes and caveats are stated plainly, and findings are framed mechanistically rather than for publication. Every panel re-reads its data from disk (pre-extracted caches and exported result tables) and re-renders without recomputing the underlying analysis, so this report knits in roughly a minute and never touches the heavy Seurat or MultiNicheNet objects.
+
+# Study design
+
+The study crosses tau and amyloid pathology in a 2x2 factorial and reads each animal out across four molecular modalities. The divergence question -- does amyloid remodel microglia *differently* depending on the tau background -- is operationalised as a single interaction contrast.
+
+## Cohort: four genotypes across four modalities
+
+Four hippocampal genotypes span a 2x2 tau (wild-type humanised MAPT vs P301S) by amyloid (no-NLGF vs NLGF knock-in) design, profiled at 24 months. snRNAseq contributes 23,465 analysed microglia nuclei (drawn from a 286,287-nucleus all-cell-type atlas), GeoMx 91 microglia-enriched spatial AOIs, and bulk proteome and phosphoproteome 16 samples each (four biological replicates per genotype). Microglial nuclei roughly double under NLGF -- the first hint of amyloid-driven microglial expansion.
+
+```{r design_cohort_table, results='asis'}
+# Study-design cohort overview: 4 genotypes x 4 modalities, with the
+# per-cell unit count and the 2x2 factor coding (tau, amyloid). All
+# counts are read from authoritative light sources, never the heavy
+# Seurat/MultiNicheNet caches:
+#   * microglia nuclei per genotype  <- ccc_dam_sampling_balance_sample_dam.tsv
+#       (the 23,465-nucleus analysed microglia subset; total column summed
+#        over the 4 batches per genotype)
+#   * GeoMx microglia AOIs per genotype <- storage/data/geomx.rds metadata
+#       (23 MB object; sub-100 MB, may load directly)
+#   * bulk proteome / phosphoproteome  <- proteomics_sample_key.csv (first
+#       16 rows = the four 24-month genotypes, 4 replicates each)
+# The full snRNAseq cohort spans 286,287 nuclei across all broad cell
+# types; microglia are the analysed subset and are what the table reports.
+
+design_cohort_geno <- genotype_levels
+
+# --- snRNAseq: analysed microglia nuclei per genotype ---------------------
+design_cohort_sd <- rt("ccc_dam_sampling_balance_sample_dam.tsv")
+design_cohort_mg <- tapply(design_cohort_sd$total,
+                           factor(design_cohort_sd$genotype, design_cohort_geno),
+                           sum)
+design_cohort_mg <- as.integer(design_cohort_mg[design_cohort_geno])
+
+# --- GeoMx: microglia AOIs per genotype ----------------------------------
+design_cohort_gx_obj <- readRDS("storage/data/geomx.rds")
+design_cohort_gx <- as.integer(table(
+  factor(design_cohort_gx_obj@meta.data$genotype, design_cohort_geno)
+)[design_cohort_geno])
+rm(design_cohort_gx_obj)
+
+# --- bulk proteome / phosphoproteome: replicates per genotype ------------
+design_cohort_key <- proteomics_sample_meta(
+  "storage/data/proteomics_sample_key.csv", n_keep = 16
+)
+design_cohort_bulk <- as.integer(table(
+  factor(design_cohort_key$genotype, design_cohort_geno)
+)[design_cohort_geno])
+
+# --- 2x2 factor coding ---------------------------------------------------
+design_cohort_tau  <- ifelse(design_cohort_geno %in% c("P301S", "NLGF_P301S"),
+                             "P301S", "wt-tau")
+design_cohort_amy  <- ifelse(grepl("NLGF", design_cohort_geno), "NLGF", "no-NLGF")
+
+# --- assemble (one row per genotype + a totals row) ----------------------
+design_cohort_tbl <- tibble::tibble(
+  Genotype                       = design_cohort_geno,
+  `Tau`                          = design_cohort_tau,
+  `Amyloid`                      = design_cohort_amy,
+  `snRNAseq (microglia nuclei)`  = design_cohort_mg,
+  `GeoMx (microglia AOIs)`       = design_cohort_gx,
+  `Proteome (samples)`           = design_cohort_bulk,
+  `Phosphoproteome (samples)`    = design_cohort_bulk
+)
+
+design_cohort_total <- tibble::tibble(
+  Genotype                       = "All four genotypes",
+  `Tau`                          = "2x2",
+  `Amyloid`                      = "2x2",
+  `snRNAseq (microglia nuclei)`  = sum(design_cohort_mg),
+  `GeoMx (microglia AOIs)`       = sum(design_cohort_gx),
+  `Proteome (samples)`           = sum(design_cohort_bulk),
+  `Phosphoproteome (samples)`    = sum(design_cohort_bulk)
+)
+
+design_cohort_out <- dplyr::bind_rows(design_cohort_tbl, design_cohort_total)
+
+knitr::kable(
+  design_cohort_out,
+  align   = c("l", "l", "l", "r", "r", "r", "r"),
+  caption = paste0(
+    "Cohort overview: four hippocampal AD-model genotypes profiled across ",
+    "four modalities. Genotypes form a 2x2 tau (wild-type humanised MAPT vs ",
+    "P301S) by amyloid (no-NLGF vs NLGF knock-in) factorial. snRNAseq counts ",
+    "are the analysed microglia subset (23,465 nuclei) drawn from a 286,287-",
+    "nucleus all-cell-type atlas; GeoMx counts are microglia-enriched spatial ",
+    "AOIs (91 total); bulk proteome and phosphoproteome share 16 samples ",
+    "(4 biological replicates per genotype, 24-month timepoint)."
+  )
+)
+```
+
+## The 2x2 design and the interaction contrast
+
+Five named contrasts sit on the design. The two amyloid (NLGF) effects and two tau (P301S) effects are the grid edges; the **interaction** -- (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI) -- is the differential-of-differentials that isolates tau-dependent amyloid remodelling. It is the project's core readout: the single strongest mechanism (Gsk3b kinase activation, padj 0.00152) concentrates here, even though the whole-microglia transcriptional interaction is essentially null.
+
+```{r design_factorial_contrasts, fig.width=8.5, fig.height=6}
+# 2x2 factorial layout of the four genotypes plus the five named contrasts
+# that drive the divergence narrative. Pure design schematic: built only
+# from the project constants genotype_levels / genotype_colours and the
+# contrast_definitions list (loaded by R/helpers.R); no data cache touched.
+# The interaction contrast is the project's core readout and is drawn as
+# the differential-of-differentials of the two amyloid (NLGF) effects.
+
+# --- place each genotype on the 2x2 grid ---------------------------------
+# x-axis = amyloid (NLGF) status, y-axis = tau (P301S) status.
+design_fc_pos <- tibble::tibble(
+  genotype = genotype_levels,
+  amyloid  = ifelse(grepl("NLGF", genotype_levels), 1L, 0L),
+  tau      = ifelse(genotype_levels %in% c("P301S", "NLGF_P301S"), 1L, 0L)
+)
+design_fc_pos$x <- design_fc_pos$amyloid
+design_fc_pos$y <- design_fc_pos$tau
+
+design_fc_lookup <- function(g) design_fc_pos[match(g, design_fc_pos$genotype), c("x", "y")]
+
+# --- the five canonical contrasts (numerator - denominator) --------------
+# Four pairwise contrasts come straight from contrast_definitions; the
+# fifth (interaction) is the difference of the two NLGF effects.
+design_fc_named <- contrast_definitions[c("nlgf_in_maptki", "nlgf_in_p301s",
+                                          "tau_alone", "tau_in_nlgf")]
+design_fc_arrows <- purrr::imap_dfr(design_fc_named, function(pair, nm) {
+  num <- design_fc_lookup(pair[1]); den <- design_fc_lookup(pair[2])
+  tibble::tibble(contrast = nm,
+                 x = den$x, y = den$y, xend = num$x, yend = num$y)
+})
+# Nudge the two horizontal NLGF arrows vertically apart so both labels read.
+design_fc_arrows$kind <- ifelse(
+  design_fc_arrows$contrast %in% c("nlgf_in_maptki", "nlgf_in_p301s"),
+  "amyloid effect", "tau effect"
+)
+design_fc_lab <- c(
+  nlgf_in_maptki = "nlgf_in_maptki\n(NLGF effect, wt-tau)",
+  nlgf_in_p301s  = "nlgf_in_p301s\n(NLGF effect, P301S)",
+  tau_alone      = "tau_alone\n(P301S effect, no-NLGF)",
+  tau_in_nlgf    = "tau_in_nlgf\n(P301S effect, NLGF)"
+)
+design_fc_arrows$label <- design_fc_lab[design_fc_arrows$contrast]
+design_fc_arrows$mx <- (design_fc_arrows$x + design_fc_arrows$xend) / 2
+design_fc_arrows$my <- (design_fc_arrows$y + design_fc_arrows$yend) / 2
+
+# --- build the plot ------------------------------------------------------
+design_fc_pos$lab <- factor(design_fc_pos$genotype, levels = genotype_levels)
+
+design_fc_p <- ggplot() +
+  # contrast arrows between adjacent cells: amyloid effects darker, tau
+  # effects lighter, both fixed greys (no mapped colour scale, so the
+  # genotype fill below is the figure's only legendable scale).
+  geom_segment(
+    data = design_fc_arrows,
+    aes(x = x, y = y, xend = xend, yend = yend),
+    colour = ifelse(design_fc_arrows$kind == "amyloid effect",
+                    "#6f6f6f", "#b0b0b0"),
+    arrow = grid::arrow(length = grid::unit(0.18, "cm"), type = "closed"),
+    linewidth = 0.7
+  ) +
+  geom_label(
+    data = design_fc_arrows,
+    aes(x = mx, y = my, label = label),
+    colour = ifelse(design_fc_arrows$kind == "amyloid effect",
+                    "#4d4d4d", "#8a8a8a"),
+    size = 2.5, label.size = 0, fill = "white",
+    label.padding = grid::unit(0.1, "lines"), lineheight = 0.85
+  ) +
+  # genotype cells, coloured by the canonical palette
+  geom_point(data = design_fc_pos, aes(x, y, fill = lab),
+             shape = 21, size = 18, colour = "grey20", stroke = 0.6) +
+  geom_text(data = design_fc_pos, aes(x, y, label = genotype),
+            size = 2.7, fontface = "bold") +
+  scale_fill_manual(values = genotype_colours, guide = "none") +
+  # interaction annotation across the top
+  annotate("text", x = 0.5, y = 1.46,
+           label = "INTERACTION (core readout):", fontface = "bold", size = 3.1) +
+  annotate("text", x = 0.5, y = 1.34,
+           label = "(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)",
+           size = 3.0, fontface = "italic") +
+  annotate("segment", x = 0.5, xend = 0.5, y = 1.27, yend = 1.06,
+           arrow = grid::arrow(length = grid::unit(0.18, "cm"), type = "closed"),
+           colour = "#B0344D", linewidth = 0.8) +
+  annotate("text", x = 0.5, y = 1.15,
+           label = "= divergence of the\nNLGF effect across tau backgrounds",
+           size = 2.6, lineheight = 0.85, hjust = 0.5, vjust = 0.5,
+           colour = "#B0344D") +
+  scale_x_continuous(breaks = c(0, 1), labels = c("no-NLGF", "NLGF (amyloid)"),
+                     limits = c(-0.45, 1.45)) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("wt-tau", "P301S (tau)"),
+                     limits = c(-0.35, 1.55)) +
+  coord_equal(clip = "off") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        axis.title = element_text(face = "bold")) +
+  labs(
+    x = "Amyloid axis", y = "Tau axis",
+    title = "2x2 factorial design and the five named contrasts",
+    subtitle = paste0(
+      "Four genotypes cross tau (P301S) with amyloid (NLGF). The interaction ",
+      "contrast isolates how\namyloid reshapes microglia differently on a ",
+      "P301S vs a wild-type-tau background."
+    ),
+    caption = paste0(
+      "Core readout where the divergence signal lives (e.g. Gsk3b kinase ",
+      "activation at the interaction, padj 0.00152); the whole-microglia ",
+      "transcriptional interaction is near-null."
+    )
+  )
+design_fc_p
+```
+
+# The microglial atlas
+
+Microglia resolve into four transcriptional substates, and amyloid reshapes their proportions far more than tau does.
+
+## DAM doubles under amyloid
+
+Across 26,104 microglial nuclei (pre-QC-pruning; substates by AddModuleScore argmax), the disease-associated (DAM) fraction roughly doubles under amyloid on both tau backgrounds -- MAPTKI 19.8% to 40.1%, P301S 19.3% to 41.3% -- at the expense of the homeostatic compartment (~65% to ~44%). Tau alone barely shifts composition. This additive amyloid expansion is the compositional backdrop against which every downstream divergence readout is interpreted.
+
+```{r mg_substate_composition, fig.width=7, fig.height=4.8}
+# Microglia substate composition by genotype. Reproduces the substate
+# stacked-bar from rmd/02a_snrnaseq_qc.Rmd (chunk snrnaseq-substate),
+# loading the pre-extracted per-cell table instead of the 730M Seurat.
+# Cache is PRE-QC-pruning (26,104 microglial nuclei; argmax of
+# AddModuleScore over homeostatic/DAM/IFN/proliferative signatures).
+mg_comp_df <- rd("summary_mg_substate_umap.rds")
+
+# Composition within each genotype (matches prop.table(margin = 2) in source).
+mg_comp_tab  <- table(mg_comp_df$state, mg_comp_df$genotype)
+mg_comp_prop <- prop.table(mg_comp_tab, margin = 2)
+mg_comp_long <- as.data.frame(mg_comp_prop)
+names(mg_comp_long) <- c("state", "genotype", "prop")
+mg_comp_long$genotype <- factor(mg_comp_long$genotype, levels = genotype_levels)
+
+# Explicit substate palette (stable; Set2 hues as used in the source chunk).
+mg_comp_pal <- c(
+  homeostatic   = "#1B9E77",
+  DAM           = "#B0344D",
+  IFN           = "#7570B3",
+  proliferative = "#E08754"
+)
+
+# DAM labels: amyloid (NLGF) roughly doubles the DAM fraction under both
+# tau backgrounds (MAPTKI 19.8% -> 40.1%; P301S 19.3% -> 41.3%).
+mg_comp_dam <- mg_comp_long[mg_comp_long$state == "DAM", ]
+mg_comp_dam$lab <- sprintf("%.0f%%", mg_comp_dam$prop * 100)
+
+ggplot(mg_comp_long, aes(genotype, prop, fill = state)) +
+  geom_col(position = "fill", width = 0.8) +
+  geom_text(
+    data = mg_comp_dam,
+    aes(label = lab), position = position_fill(vjust = 0.5),
+    colour = "white", fontface = "bold", size = 3.6, inherit.aes = TRUE
+  ) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = mg_comp_pal) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(
+    x = NULL, y = "Fraction of microglial nuclei", fill = "Substate",
+    title = "Microglia substate composition by genotype",
+    subtitle = "DAM fraction (labelled) roughly doubles with amyloid (NLGF) under both tau backgrounds",
+    caption = "snRNAseq, 26,104 microglial nuclei (pre-QC-pruning); substates by AddModuleScore argmax"
+  )
+```
+
+# The divergence is null at the whole-microglia level
+
+The natural expectation -- that tau-dependent amyloid remodelling shows up as differentially expressed genes -- fails. At the whole-microglia level the interaction contrast is null, and the null is robust to method, modality and analytic shrinkage.
+
+## snRNAseq interaction volcano (NEBULA)
+
+Single-cell NEBULA (negative-binomial GLMM, 23,465 cells x 11,411 genes) finds no gene clearing FDR < 0.05 at the interaction; the leading hit Plac9 sits at FDR 0.063. The cloud is centred on the origin -- there is no whole-microglia interaction programme to speak of.
+
+```{r sn_nebula_interaction_volcano, fig.width=7.5, fig.height=5.2}
+sn_neb_vol_tbl <- rd("summary_sn_nebula_interaction_volcano.rds")
+sn_neb_vol_tbl$sig <- sn_neb_vol_tbl$adj.P.Val < 0.10 & abs(sn_neb_vol_tbl$logFC) > 0.5
+# A single predicted-gene outlier (Gm44993, logFC ~ -25, P ~ 0.99) otherwise
+# stretches the x-axis and crushes the near-null cloud; clip the view to focus
+# on the informative range. All 15 labels lie within this window; coord_cartesian
+# clips display only (no points dropped from the data or stats).
+sn_neb_vol_xlim <- c(-5, 5)
+sn_neb_vol_lab <- sn_neb_vol_tbl |>
+  dplyr::arrange(P.Value) |>
+  head(15)
+sn_neb_vol_p <- ggplot(sn_neb_vol_tbl, aes(logFC, -log10(P.Value))) +
+  geom_point(aes(colour = sig), size = 0.6, alpha = 0.7) +
+  scale_colour_manual(values = c(`FALSE` = "grey75", `TRUE` = "#b40426"),
+                      guide = "none") +
+  ggrepel::geom_text_repel(data = sn_neb_vol_lab, aes(label = symbol),
+                           size = 3, max.overlaps = 50, min.segment.length = 0) +
+  coord_cartesian(xlim = sn_neb_vol_xlim) +
+  theme_bw() +
+  labs(
+    title = "snRNAseq interaction contrast (NEBULA single-cell NB GLMM)",
+    subtitle = "(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI); 23,465 cells x 11,411 genes",
+    x = expression(log[2]~fold-change), y = expression(-log[10]~italic(P)),
+    caption = paste0(
+      "Leading hit Plac9 at FDR 0.063; no gene clears FDR < 0.05. ",
+      "One off-scale predicted-gene outlier (Gm44993, P ~ 0.99) hidden by x-axis clipping."
+    )
+  )
+sn_neb_vol_p
+```
+
+## Six-method concordance of the interaction
+
+The null is not a NEBULA artefact. Six DE methods spanning three shrinkage families agree: pairwise Spearman concordance of interaction log2FC (and of -log10 P) is uniformly high *among methods*, yet they all rank the same near-zero effects -- method choice does not rescue a signal.
+
+```{r sn_triangulation_concordance, fig.width=10, fig.height=5.2}
+sn_tri_tops <- rd("summary_sn_triangulation_interaction.rds")
+sn_tri_int <- purrr::imap(sn_tri_tops, function(t, mname) {
+  t |>
+    dplyr::filter(is.finite(logFC), is.finite(P.Value), P.Value > 0) |>
+    dplyr::transmute(gene,
+                     "{mname}_logFC"   := logFC,
+                     "{mname}_negLogP" := -log10(P.Value))
+})
+sn_tri_joined <- Reduce(function(a, b) dplyr::inner_join(a, b, by = "gene"),
+                        sn_tri_int)
+sn_tri_lfc <- as.matrix(sn_tri_joined[, grep("_logFC$",   names(sn_tri_joined))])
+sn_tri_plp <- as.matrix(sn_tri_joined[, grep("_negLogP$", names(sn_tri_joined))])
+colnames(sn_tri_lfc) <- sub("_logFC$",   "", colnames(sn_tri_lfc))
+colnames(sn_tri_plp) <- sub("_negLogP$", "", colnames(sn_tri_plp))
+sn_tri_rho_l <- cor(sn_tri_lfc, method = "spearman", use = "pairwise.complete.obs")
+sn_tri_rho_p <- cor(sn_tri_plp, method = "spearman", use = "pairwise.complete.obs")
+
+sn_tri_corp <- function(mat, title) {
+  df <- as.data.frame.table(mat, responseName = "rho")
+  ggplot(df, aes(Var1, Var2, fill = rho)) +
+    geom_tile(colour = "white") +
+    geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
+    scale_fill_gradient2(low = "#3a4cc0", mid = "white", high = "#b40426",
+                         midpoint = 0.5, limits = c(0, 1)) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1),
+          panel.grid = element_blank()) +
+    labs(x = NULL, y = NULL, title = title, fill = "Spearman\nrho")
+}
+sn_tri_p <- (sn_tri_corp(sn_tri_rho_l, "Interaction log2FC concordance") |
+             sn_tri_corp(sn_tri_rho_p, "Interaction -log10(P) concordance")) +
+  patchwork::plot_annotation(
+    title = "snRNAseq interaction contrast: six-method cross-concordance",
+    subtitle = sprintf("%d genes common to all six methods; two scales x three shrinkage families",
+                       nrow(sn_tri_joined)))
+sn_tri_p
+```
+
+## Spatial validates the main effects, not the interaction
+
+Spatial transcriptomics corroborates. GeoMx reproduces the snRNAseq amyloid main effects (Spearman rho 0.117 in MAPTKI, 0.208 in P301S) but the interaction contrast is null cross-modally (rho -0.048, flat-to-negative slope). The spatial modality is not globally noisy -- the main effects validate -- so the interaction's absence is real, not a sensitivity floor.
+
+```{r gx_sn_interaction_concordance, fig.width=10, fig.height=8}
+gx_sc_tbl <- rd("summary_gx_sn_interaction_concordance.rds")
+# Source: rmd/07_integration.Rmd `concordance_plot()` over the harmonised
+# integration log2FC table (snRNAseq column = single-cell NEBULA fit).
+# We replicate that scatter for the two NLGF main effects and the
+# tau x amyloid interaction, to ask whether the spatial modality
+# reproduces the single-cell directionality.
+gx_sc_levels <- c(
+  nlgf_in_maptki = "NLGF effect in MAPTKI (amyloid, tau-WT background)",
+  nlgf_in_p301s  = "NLGF effect in P301S (amyloid, mutant-tau background)",
+  interaction    = "Interaction (tau-dependent NLGF response)"
+)
+gx_sc_one <- function(cn) {
+  sub <- gx_sc_tbl |> dplyr::filter(contrast == cn)
+  rho_s <- suppressWarnings(cor(sub$snrnaseq, sub$geomx, method = "spearman"))
+  rho_p <- suppressWarnings(cor(sub$snrnaseq, sub$geomx, method = "pearson"))
+  sub$score <- abs(sub$snrnaseq) + abs(sub$geomx)
+  top <- sub |> dplyr::arrange(dplyr::desc(score)) |> head(12)
+  ggplot(sub, aes(snrnaseq, geomx)) +
+    geom_hline(yintercept = 0, colour = "grey70") +
+    geom_vline(xintercept = 0, colour = "grey70") +
+    geom_point(alpha = 0.3, size = 0.6) +
+    geom_smooth(method = "lm", se = FALSE, colour = "#1f77b4") +
+    ggrepel::geom_text_repel(data = top, aes(label = symbol),
+                             size = 3, max.overlaps = 50) +
+    theme_bw() +
+    labs(
+      x = "snRNAseq log2FC (NEBULA single-cell)", y = "GeoMx spatial log2FC",
+      title = gx_sc_levels[[cn]],
+      subtitle = sprintf("Spearman rho = %.3f, Pearson r = %.3f, n = %d",
+                         rho_s, rho_p, nrow(sub))
+    )
+}
+gx_sc_p <- (gx_sc_one("nlgf_in_maptki") | gx_sc_one("nlgf_in_p301s")) /
+  (gx_sc_one("interaction") + patchwork::plot_spacer()) +
+  patchwork::plot_annotation(
+    title = "Spatial microglia validate the NLGF main effects but not the tau x amyloid interaction",
+    theme = ggplot2::theme(plot.title = ggplot2::element_text(face = "bold"))
+  )
+gx_sc_p
+```
+
+## Cross-modality concordance matrix
+
+Pooling all four modalities, the only appreciable cross-modality agreement sits on the proteome-phospho axis (proteome vs phospho rho 0.21-0.35; phospho vs corrected-phospho 0.47-0.53). Transcript-versus-protein concordance is near-null throughout, including at the interaction. This is the empirical case for abandoning a whole-microglia transcriptional readout and pivoting to mechanism-resolved layers.
+
+```{r xmod_concordance_heatmap, fig.width=11, fig.height=5}
+xmod_ch_tbl <- rt("modality_concordance.tsv")
+# Source: rmd/07_integration.Rmd `concordance-summary` chunk. That chunk
+# computes Spearman/Pearson concordance of harmonised gene-level log2FC for
+# every modality pair within each contrast (snRNAseq column = single-cell
+# NEBULA fit; phospho aggregated to gene by max |log2FC| across sites). We
+# render the Spearman matrix as a ComplexHeatmap, split by the three framing
+# contrasts, to show WHERE cross-modality agreement does and does not exist.
+xmod_ch_mods   <- c("snrnaseq", "geomx", "proteomics", "phospho", "phospho_corr")
+xmod_ch_labels <- c(snrnaseq = "snRNAseq", geomx = "GeoMx",
+                    proteomics = "Proteome", phospho = "Phospho",
+                    phospho_corr = "Phospho (corr.)")
+xmod_ch_contr  <- c(nlgf_in_maptki = "NLGF in MAPTKI",
+                    nlgf_in_p301s  = "NLGF in P301S",
+                    interaction    = "Interaction")
+
+# Build a symmetric Spearman matrix per contrast (diagonal = 1).
+xmod_ch_mat_for <- function(cn) {
+  m <- matrix(NA_real_, length(xmod_ch_mods), length(xmod_ch_mods),
+              dimnames = list(xmod_ch_mods, xmod_ch_mods))
+  diag(m) <- 1
+  sub <- xmod_ch_tbl[xmod_ch_tbl$contrast == cn, ]
+  for (i in seq_len(nrow(sub))) {
+    m[sub$x[i], sub$y[i]] <- sub$spearman[i]
+    m[sub$y[i], sub$x[i]] <- sub$spearman[i]
+  }
+  dimnames(m) <- list(xmod_ch_labels[xmod_ch_mods], xmod_ch_labels[xmod_ch_mods])
+  m
+}
+
+xmod_ch_col <- circlize::colorRamp2(c(-0.5, 0, 0.5),
+                                    c("#3b4cc0", "white", "#b40426"))
+
+xmod_ch_one <- function(cn, is_first) {
+  m <- xmod_ch_mat_for(cn)
+  ComplexHeatmap::Heatmap(
+    m,
+    name = paste0("rho_", cn),
+    col = xmod_ch_col,
+    cluster_rows = FALSE, cluster_columns = FALSE,
+    column_title = xmod_ch_contr[[cn]],
+    column_title_gp = grid::gpar(fontface = "bold", fontsize = 11),
+    row_names_side = "left", show_row_names = is_first,
+    column_names_rot = 45, column_names_gp = grid::gpar(fontsize = 9),
+    row_names_gp = grid::gpar(fontsize = 9),
+    rect_gp = grid::gpar(col = "grey85", lwd = 0.5),
+    na_col = "grey92",
+    show_heatmap_legend = is_first,
+    heatmap_legend_param = list(
+      title = "Spearman\nrho", at = c(-0.5, 0, 0.5),
+      legend_height = grid::unit(3, "cm")
+    ),
+    cell_fun = function(jj, ii, x, y, w, h, fill) {
+      v <- m[ii, jj]
+      if (!is.na(v) && ii != jj) {
+        grid::grid.text(sprintf("%.2f", v), x, y,
+                        gp = grid::gpar(fontsize = 7.5,
+                                        col = if (abs(v) > 0.32) "white" else "grey20"))
+      }
+    },
+    width = grid::unit(4.4, "cm"), height = grid::unit(4.4, "cm")
+  )
+}
+
+xmod_ch_ht <- xmod_ch_one("nlgf_in_maptki", TRUE) +
+  xmod_ch_one("nlgf_in_p301s", FALSE) +
+  xmod_ch_one("interaction", FALSE)
+
+ComplexHeatmap::draw(
+  xmod_ch_ht,
+  column_title = paste0(
+    "Cross-modality log2FC concordance is carried by the proteome-phospho axis, ",
+    "not by transcript-protein agreement"),
+  column_title_gp = grid::gpar(fontface = "bold", fontsize = 12),
+  ht_gap = grid::unit(6, "mm")
+)
+```
+
+# Where the divergence actually lives
+
+The divergence has not vanished -- it has moved off the whole-microglia gene axis. Four orthogonal readouts localise it: to specific substates, to coordinated pathways, to an unsupervised co-expression module, and to neighbourhood abundance.
+
+## IFN microglia carry a tau-context-dependent response
+
+Within IFN microglia the amyloid response is sharply tau-context-dependent: 446 genes respond to NLGF only on the P301S background versus 56 only on MAPTKI (82 shared), so the P301S-specific cloud lifts off the identity line. This per-substate asymmetry is the mathematical substrate of the otherwise-null whole-microglia interaction, and Pros1 -- the surviving TAM-kinase route from the synaptic axis -- is among the top P301S-specific responders.
+
+```{r sn_per_state_ifn_asymmetry, fig.width=7.5, fig.height=6.5}
+# Per-substate localisation of the divergence signal (gene level).
+# The whole-microglia interaction contrast is null gene-by-gene, and it
+# stays null WITHIN every substate (0 genes at FDR<0.05 in all 4 states;
+# see nebula_per_state_summary.tsv). The divergence is instead localised
+# as an ASYMMETRIC NLGF response: IFN microglia mount a far broader
+# transcriptional response to amyloid in the P301S tau background
+# (nlgf_in_p301s) than in MAPTKI (nlgf_in_maptki). This scatter projects
+# the two within-IFN NLGF contrasts against each other; points off the
+# dashed identity line are tau-context-dependent (the mathematical
+# substrate of the whole-microglia interaction).
+sn_ifn_asym <- rt("ifn_nlgf_asymmetry.tsv")
+sn_ifn_asym$category <- factor(
+  sn_ifn_asym$category,
+  levels = c("Shared", "P301S-specific", "MAPTKI-specific", "ns")
+)
+
+# Label the strongest drivers per category, mirroring the source section
+# (top by P, plus a few shared anchors). |logFC|<=10 guards against
+# NEBULA's extreme natural-log estimates for near-zero-count genes.
+sn_ifn_lab_n <- 12L
+sn_ifn_label <- dplyr::bind_rows(
+  sn_ifn_asym |>
+    dplyr::filter(category == "P301S-specific",
+                  abs(logFC_p301s) <= 10, abs(logFC_maptki) <= 10) |>
+    dplyr::arrange(P_p301s) |> head(sn_ifn_lab_n),
+  sn_ifn_asym |>
+    dplyr::filter(category == "MAPTKI-specific",
+                  abs(logFC_p301s) <= 10, abs(logFC_maptki) <= 10) |>
+    dplyr::arrange(P_maptki) |> head(sn_ifn_lab_n),
+  sn_ifn_asym |>
+    dplyr::filter(category == "Shared",
+                  abs(logFC_p301s) <= 10, abs(logFC_maptki) <= 10) |>
+    dplyr::arrange(pmin(P_p301s, P_maptki)) |> head(6L)
+)
+
+# Per-category counts (FDR<0.05) for the subtitle.
+sn_ifn_counts <- as.list(table(sn_ifn_asym$category))
+sn_ifn_sub <- sprintf(
+  paste0("IFN substate, FDR<0.05: %d P301S-specific vs %d MAPTKI-specific ",
+         "(%d shared). Points off the identity line = tau-context-dependent ",
+         "amyloid response."),
+  sn_ifn_counts[["P301S-specific"]],
+  sn_ifn_counts[["MAPTKI-specific"]],
+  sn_ifn_counts[["Shared"]]
+)
+
+sn_ifn_cols <- c(
+  Shared            = "#7e3a86",
+  `P301S-specific`  = "#b40426",
+  `MAPTKI-specific` = "#3b4cc0",
+  ns                = "grey75"
+)
+
+sn_ifn_asym_p <- ggplot(
+  sn_ifn_asym,
+  aes(logFC_maptki, logFC_p301s, colour = category)
+) +
+  geom_hline(yintercept = 0, colour = "grey85") +
+  geom_vline(xintercept = 0, colour = "grey85") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+              colour = "grey60") +
+  geom_point(data = dplyr::filter(sn_ifn_asym, category == "ns"),
+             alpha = 0.18, size = 0.6) +
+  geom_point(data = dplyr::filter(sn_ifn_asym, category != "ns"),
+             alpha = 0.85, size = 1.2) +
+  ggrepel::geom_text_repel(
+    data = sn_ifn_label, aes(label = symbol),
+    size = 3, colour = "black", max.overlaps = 40,
+    min.segment.length = 0, segment.colour = "grey60"
+  ) +
+  scale_colour_manual(values = sn_ifn_cols, name = NULL) +
+  coord_cartesian(xlim = c(-6, 6), ylim = c(-6, 6)) +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(
+    x = expression(log[2]~FC~", NLGF effect in MAPTKI tau (IFN)"),
+    y = expression(log[2]~FC~", NLGF effect in P301S tau (IFN)"),
+    title = "IFN microglia carry the divergence: amyloid response is tau-context-dependent",
+    subtitle = sn_ifn_sub,
+    caption = paste0(
+      "Per-substate NEBULA NB-GLMM (5% prevalence filter). Display clipped to ",
+      "|logFC|<=6; labels are top hits by P within each category. ",
+      "Pros1 (TAM-kinase route) is a top P301S-specific responder."
+    )
+  )
+sn_ifn_asym_p
+```
+
+## Per-substate differential-expression summary
+
+Quantifying the localisation: the interaction is null in *every* substate (0 genes at FDR < 0.05), confirming the whole-microglia null is not a substate-averaging artefact. The divergence reads off the asymmetry between the two NLGF arms -- IFN is P301S-leaning (528 vs 138 significant genes) whereas proliferative inverts to MAPTKI-leaning (139 vs 500) -- and genes reappear under the amyloid-conditioned tau effect (tau_in_nlgf: IFN 101, DAM 25).
+
+```{r sn_per_state_de_summary, results='asis'}
+# Per-substate NEBULA DE summary: how many genes move at FDR<0.05 for
+# each of the five 2x2 contrasts, within each microglia substate. This
+# is the localisation backbone for the divergence story:
+#   * interaction == 0 in EVERY substate (the whole-microglia gene-level
+#     null is reproduced per state, not hidden by substate averaging);
+#   * the divergence surfaces as ASYMMETRY between the two NLGF arms -
+#     IFN: 528 (P301S) vs 138 (MAPTKI); proliferative inverts to
+#     500 (MAPTKI) vs 139 (P301S);
+#   * tau_in_nlgf (the amyloid-conditioned tau effect) is where genes do
+#     reappear (IFN 101, DAM 25).
+sn_pss <- rt("nebula_per_state_summary.tsv")
+
+sn_pss_contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s",
+                      "interaction", "tau_alone", "tau_in_nlgf")
+sn_pss_contrast_lab <- c(
+  nlgf_in_maptki = "NLGF in MAPTKI",
+  nlgf_in_p301s  = "NLGF in P301S",
+  interaction    = "Interaction",
+  tau_alone      = "Tau alone",
+  tau_in_nlgf    = "Tau in NLGF"
+)
+sn_pss_state_order <- c("homeostatic", "DAM", "IFN", "proliferative")
+
+sn_pss <- sn_pss |>
+  dplyr::mutate(
+    State    = factor(state, levels = sn_pss_state_order),
+    Contrast = factor(sn_pss_contrast_lab[contrast],
+                      levels = unname(sn_pss_contrast_lab)),
+    `n sig (FDR<0.05)` = n_sig,
+    `up / down`        = paste0(n_up, " / ", n_down),
+    `min FDR`          = signif(min_padj, 3)
+  ) |>
+  dplyr::arrange(State, Contrast) |>
+  dplyr::select(State, Contrast, `n genes` = n_genes,
+                `n sig (FDR<0.05)`, `up / down`, `min FDR`)
+
+knitr::kable(
+  sn_pss,
+  caption = paste0(
+    "Per-substate NEBULA differential-expression summary across the five ",
+    "2x2 factorial contrasts (genes at FDR<0.05; gene universe filtered to ",
+    ">=5% prevalence within each substate). The interaction contrast is ",
+    "null in every substate, so the divergence is read off the asymmetry ",
+    "between the two NLGF arms - strongest and oppositely signed in IFN ",
+    "(528 vs 138, P301S-leaning) versus proliferative (139 vs 500, ",
+    "MAPTKI-leaning)."
+  )
+)
+```
+
+## Pathway suppression localises to DAM and homeostatic
+
+Where individual genes are silent, coordinated pathways are not. GSEA on the per-state NEBULA t-statistics recovers 43 GO BP terms at padj < 0.1 in at least one substate, ~90% negatively signed: oxidative phosphorylation, cellular respiration, cytoplasmic translation and ribosome biogenesis are suppressed at the interaction, predominantly in DAM and homeostatic microglia (e.g. DAM ribonucleoprotein-complex biogenesis NES -1.73, padj 7.1e-4).
+
+```{r sn_per_state_pathway_breadth, fig.width=8.5, fig.height=8.5}
+# Per-substate pathway breadth at the interaction contrast.
+# Gene-by-gene the interaction is null in every substate, yet GSEA on the
+# per-state NEBULA t-statistics recovers a COHERENT pathway-level
+# divergence - concentrated in DAM and homeostatic microglia, and almost
+# uniformly NEGATIVE (oxidative phosphorylation / cellular respiration /
+# cytoplasmic translation / ribosome biogenesis suppressed at the
+# tau x amyloid interaction). This is the OXPHOS-leaning signal flagged
+# in the whole-microglia analysis, here localised by substate.
+sn_pb_fg <- rt("fgsea_per_state.tsv")
+sn_pb_fg$padj <- suppressWarnings(as.numeric(sn_pb_fg$padj))
+sn_pb_fg$NES  <- suppressWarnings(as.numeric(sn_pb_fg$NES))
+
+sn_pb_state_order <- c("homeostatic", "DAM", "IFN", "proliferative")
+
+# GO BP, interaction contrast only. Keep pathways significant (padj<0.1)
+# in at least one substate, then cap to the most divergent terms by
+# max|NES| across states so labels stay legible.
+sn_pb_int <- sn_pb_fg |>
+  dplyr::filter(collection == "gobp", contrast == "interaction") |>
+  dplyr::select(pathway, state, NES, padj) |>
+  tidyr::pivot_wider(
+    id_cols = pathway, names_from = state,
+    values_from = c(NES, padj), names_glue = "{.value}_{state}"
+  )
+
+sn_pb_nes_cols  <- grep("^NES_",  names(sn_pb_int), value = TRUE)
+sn_pb_padj_cols <- grep("^padj_", names(sn_pb_int), value = TRUE)
+sn_pb_sig <- apply(as.matrix(sn_pb_int[, sn_pb_padj_cols]) < 0.1, 1,
+                   function(r) any(r, na.rm = TRUE))
+sn_pb_int <- sn_pb_int[sn_pb_sig, , drop = FALSE]
+
+sn_pb_mat <- as.matrix(sn_pb_int[, sn_pb_nes_cols])
+rownames(sn_pb_mat) <- gsub("_", " ", sub("^GOBP_", "", sn_pb_int$pathway))
+colnames(sn_pb_mat) <- sub("^NES_", "", colnames(sn_pb_mat))
+sn_pb_mat[!is.finite(sn_pb_mat)] <- 0
+# Order columns into the canonical substate order.
+sn_pb_mat <- sn_pb_mat[, intersect(sn_pb_state_order, colnames(sn_pb_mat)),
+                       drop = FALSE]
+if (nrow(sn_pb_mat) > 35) {
+  sn_pb_keep <- order(apply(abs(sn_pb_mat), 1, max, na.rm = TRUE),
+                      decreasing = TRUE)[seq_len(35)]
+  sn_pb_mat <- sn_pb_mat[sn_pb_keep, , drop = FALSE]
+}
+# Sort rows by DAM NES (the lead carrier) for a readable gradient.
+sn_pb_sortcol <- if ("DAM" %in% colnames(sn_pb_mat)) "DAM" else colnames(sn_pb_mat)[1]
+sn_pb_mat <- sn_pb_mat[order(sn_pb_mat[, sn_pb_sortcol]), , drop = FALSE]
+
+# Significance overlay: star where per-state padj<0.1.
+sn_pb_padj_mat <- as.matrix(sn_pb_int[, sn_pb_padj_cols])
+rownames(sn_pb_padj_mat) <- rownames(as.matrix(sn_pb_int[, sn_pb_nes_cols]))
+colnames(sn_pb_padj_mat) <- sub("^padj_", "", colnames(sn_pb_padj_mat))
+rownames(sn_pb_padj_mat) <- gsub("_", " ", sub("^GOBP_", "", sn_pb_int$pathway))
+sn_pb_padj_mat <- sn_pb_padj_mat[rownames(sn_pb_mat), colnames(sn_pb_mat),
+                                 drop = FALSE]
+
+sn_pb_col <- circlize::colorRamp2(c(-2.5, 0, 2.5),
+                                  c("#3a4cc0", "white", "#b40426"))
+
+ComplexHeatmap::Heatmap(
+  sn_pb_mat,
+  name = "NES",
+  col = sn_pb_col,
+  cluster_rows = FALSE,
+  cluster_columns = FALSE,
+  row_title = "GO BP pathway",
+  column_title = sprintf(
+    paste0("Per-substate GO BP enrichment at the tau x amyloid interaction ",
+           "(top %d by max|NES|; * = padj<0.1)"),
+    nrow(sn_pb_mat)
+  ),
+  row_names_gp = grid::gpar(fontsize = 7),
+  column_names_gp = grid::gpar(fontsize = 10),
+  column_names_rot = 0,
+  column_names_centered = TRUE,
+  border = TRUE,
+  cell_fun = function(j, i, x, y, width, height, fill) {
+    p <- sn_pb_padj_mat[i, j]
+    if (is.finite(p) && p < 0.1) {
+      grid::grid.text("*", x, y,
+                      gp = grid::gpar(fontsize = 11, fontface = "bold"))
+    }
+  }
+)
+```
+
+## hdWGCNA module MG-M3 echoes the interaction
+
+An unsupervised co-expression module carries the same echo. Of four hdWGCNA modules, only MG-M3 has a negative interaction response (logFC -2.91), collapsing under the amyloid-conditioned tau effect (logFC -3.80, FDR 6.7e-4). The DAM module MG-M2 instead activates under every NLGF contrast (logFC 5.0-6.2), the expected amyloid-driven DAM programme.
+
+```{r hdwgcna_module_logfc_heatmap, fig.width=8, fig.height=4}
+# hdWGCNA per-module eigengene DE: module logFC across the five canonical
+# contrasts, FDR star/dot annotation, MG-M3 highlighted. Replicates the
+# `hdwgcna-module-de-heatmap` chunk of rmd/03_hdwgcna.Rmd but loads the
+# long-form result TSV instead of the hdWGCNA cache. MG-M3 carries the
+# tau_in_nlgf / interaction transcriptional response (the unsupervised
+# co-expression echo of the otherwise-null whole-microglia interaction).
+hdw_lfc_de <- rt("hdwgcna_module_de.tsv")
+
+# Contrast display order (mechanistic narrative) + readable axis labels.
+hdw_lfc_ct_order <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s",
+                      "tau_in_nlgf", "interaction")
+hdw_lfc_ct_labels <- c(
+  tau_alone      = "tau alone\n(P301S - MAPTKI)",
+  nlgf_in_maptki = "NLGF in MAPTKI\n(NLGF_MAPTKI - MAPTKI)",
+  nlgf_in_p301s  = "NLGF in P301S\n(NLGF_P301S - P301S)",
+  tau_in_nlgf    = "tau in NLGF\n(NLGF_P301S - NLGF_MAPTKI)",
+  interaction    = "interaction\n(tau x amyloid)"
+)
+
+# Wide logFC and adj.P matrices: modules (rows) x contrasts (cols).
+hdw_lfc_mods <- sort(unique(hdw_lfc_de$module),
+                     method = "radix")
+hdw_lfc_mods <- hdw_lfc_mods[
+  order(suppressWarnings(as.integer(sub("^MG-M", "", hdw_lfc_mods))))
+]
+hdw_lfc_fc <- matrix(NA_real_, length(hdw_lfc_mods), length(hdw_lfc_ct_order),
+                     dimnames = list(hdw_lfc_mods, hdw_lfc_ct_order))
+hdw_lfc_pa <- hdw_lfc_fc
+for (i in seq_len(nrow(hdw_lfc_de))) {
+  hdw_lfc_fc[hdw_lfc_de$module[i], hdw_lfc_de$contrast[i]] <- hdw_lfc_de$logFC[i]
+  hdw_lfc_pa[hdw_lfc_de$module[i], hdw_lfc_de$contrast[i]] <- hdw_lfc_de$adj.P.Val[i]
+}
+colnames(hdw_lfc_fc) <- hdw_lfc_ct_labels[colnames(hdw_lfc_fc)]
+colnames(hdw_lfc_pa) <- colnames(hdw_lfc_fc)
+
+# Diverging colour scale centred on 0, symmetric to the largest |logFC|.
+hdw_lfc_rng <- max(abs(hdw_lfc_fc[is.finite(hdw_lfc_fc)]), na.rm = TRUE)
+hdw_lfc_col <- circlize::colorRamp2(c(-hdw_lfc_rng, 0, hdw_lfc_rng),
+                                    c("#3a4cc0", "white", "#b40426"))
+
+# FDR annotation: '*' = FDR<0.05, '.' = FDR<0.1; print the logFC otherwise.
+hdw_lfc_cell <- function(j, i, x, y, width, height, fill) {
+  pa <- hdw_lfc_pa[i, j]
+  fc <- hdw_lfc_fc[i, j]
+  if (is.na(fc)) return(invisible(NULL))
+  star <- if (!is.na(pa) && pa < 0.05) " *" else if (!is.na(pa) && pa < 0.1) " ." else ""
+  grid::grid.text(sprintf("%.1f%s", fc, star), x, y,
+                  gp = grid::gpar(fontsize = 8,
+                                  fontface = if (nzchar(star)) "bold" else "plain"))
+}
+
+# Highlight MG-M3 (the interaction/tau_in_nlgf carrier) with a red, bold
+# row label; leave the others black.
+hdw_lfc_lab_col <- ifelse(rownames(hdw_lfc_fc) == "MG-M3", "#b40426", "black")
+hdw_lfc_lab_face <- ifelse(rownames(hdw_lfc_fc) == "MG-M3", "bold", "plain")
+
+ComplexHeatmap::Heatmap(
+  hdw_lfc_fc,
+  name            = "module\nlogFC",
+  col             = hdw_lfc_col,
+  na_col          = "grey92",
+  cluster_rows    = FALSE,
+  cluster_columns = FALSE,
+  column_order    = seq_len(ncol(hdw_lfc_fc)),
+  cell_fun        = hdw_lfc_cell,
+  row_names_side  = "left",
+  row_names_gp    = grid::gpar(fontsize = 11, col = hdw_lfc_lab_col,
+                               fontface = hdw_lfc_lab_face),
+  column_names_gp = grid::gpar(fontsize = 8),
+  column_names_rot = 35,
+  column_title    = paste0("hdWGCNA module-eigengene logFC across contrasts",
+                           "  ('*' FDR<0.05, '.' FDR<0.1; MG-M3 in red)"),
+  column_title_gp = grid::gpar(fontsize = 11),
+  heatmap_legend_param = list(legend_height = grid::unit(3, "cm")),
+  border          = TRUE,
+  rect_gp         = grid::gpar(col = "white", lwd = 1)
+)
+```
+
+## Neighbourhood abundance shift, tau-asymmetric
+
+At the abundance level, miloR neighbourhood DA shows NLGF expanding the DAM island and depleting the homeostatic island on both backgrounds. But detectability is tau-asymmetric: 132/1,023 neighbourhoods clear SpatialFDR < 0.1 on the P301S background versus *none* on MAPTKI, despite near-identical raw DAM-fraction shifts (0.19 to 0.37 vs 0.18 to 0.40).
+
+```{r milo_da_umap_nlgf, fig.width=10, fig.height=5.2}
+# miloR microglia differential-abundance, projected onto the substate UMAP.
+# Each point is one neighbourhood placed at its index-cell UMAP coordinate;
+# colour = DA log2FC oriented so POSITIVE means the neighbourhood is enriched
+# in the NLGF (amyloid) arm of the pair (the milo design uses the NLGF level as
+# the intercept, so its enrichment is the negative testNhoods coefficient; we
+# flip the sign here for intuitive reading). Significant neighbourhoods
+# (SpatialFDR < 0.1) are drawn at full opacity and outlined; non-significant
+# ones are faded. Source: rmd/10_divergence.Rmd milo chunk; pre-extracted to
+# summary_milo_da_umap.rds (index-cell UMAP + logFC/SpatialFDR + state + size).
+milo_da_umap_tbl <- rd("summary_milo_da_umap.rds")
+milo_da_umap_tbl$contrast <- factor(
+  milo_da_umap_tbl$contrast,
+  levels = c("NLGF in MAPTKI background", "NLGF in P301S background")
+)
+milo_da_umap_tbl$state <- factor(
+  milo_da_umap_tbl$state,
+  levels = c("homeostatic", "DAM", "IFN", "proliferative")
+)
+milo_da_umap_tbl$sig <- milo_da_umap_tbl$SpatialFDR < 0.1
+
+# DAM-cluster hull centroid (for the substate callout) from the index cells.
+milo_da_umap_dam <- milo_da_umap_tbl |>
+  dplyr::filter(contrast == "NLGF in P301S background", state == "DAM") |>
+  dplyr::summarise(umap1 = median(umap1), umap2 = median(umap2))
+
+milo_da_umap_lim <- function(v) c(min(v) - 0.4, max(v) + 0.4)
+
+milo_da_umap_p <- ggplot(
+  milo_da_umap_tbl,
+  aes(umap1, umap2)
+) +
+  geom_point(
+    data = ~ dplyr::filter(.x, !sig),
+    aes(size = nhood_size, fill = logFC_nlgf),
+    shape = 21, colour = NA, alpha = 0.30
+  ) +
+  geom_point(
+    data = ~ dplyr::filter(.x, sig),
+    aes(size = nhood_size, fill = logFC_nlgf),
+    shape = 21, colour = "grey20", stroke = 0.25, alpha = 0.95
+  ) +
+  ggrepel::geom_text_repel(
+    data = milo_da_umap_dam, aes(label = "DAM"),
+    size = 3.4, fontface = "bold", colour = "grey15",
+    nudge_y = 1.1, segment.colour = "grey50", min.segment.length = 0
+  ) +
+  scale_fill_gradient2(
+    low = "#3a4cc0", mid = "white", high = "#b40426", midpoint = 0,
+    limits = c(-5, 5), oob = scales::squish,
+    name = expression(log[2]~FC~"(+ = NLGF-enriched)")
+  ) +
+  scale_size_continuous(range = c(0.6, 4.2), name = "neighbourhood size") +
+  facet_wrap(~ contrast) +
+  coord_equal(
+    xlim = milo_da_umap_lim(milo_da_umap_tbl$umap1),
+    ylim = milo_da_umap_lim(milo_da_umap_tbl$umap2)
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    strip.text = element_text(face = "bold")
+  ) +
+  labs(
+    title = "Microglia neighbourhood differential abundance (miloR)",
+    subtitle = paste0(
+      "NLGF reshapes substate composition on both tau backgrounds; ",
+      "the DAM island is enriched in the NLGF arm"
+    ),
+    x = "UMAP 1", y = "UMAP 2",
+    caption = paste0(
+      "1,023 neighbourhoods; outlined points SpatialFDR < 0.1 ",
+      "(132 significant for NLGF-in-P301S, 0 for NLGF-in-MAPTKI at this threshold). ",
+      "Sign flipped so positive log2FC = enriched in NLGF."
+    )
+  )
+milo_da_umap_p
+```
+
+# The mechanism layer
+
+Resolved to kinases, intercellular signalling and pathway families, the divergence becomes concrete -- and one result dominates.
+
+## Phosphosite stoichiometric correction
+
+A methodological prerequisite first. Subtracting the matched parent-protein abundance from each phosphosite isolates phosphorylation stoichiometry before limma is refit. Raw and corrected site-level log2FC correlate only moderately (Spearman rho 0.71/0.71 across the two NLGF contrasts, ~12.8k sites each), so a substantial fraction of apparent phospho-regulation is parent-protein-driven and is removed here. All kinase inference downstream runs on the corrected estimates.
+
+```{r prot_phospho_correction_scatter, fig.width=9, fig.height=5}
+# Phospho-protein stoichiometric correction (rmd/06b_phospho_corr.Rmd):
+# raw phosphosite log2FC mixes parent-protein abundance changes with
+# site-level phosphorylation stoichiometry. Subtracting the matched
+# parent-protein log2-intensity per sample and refitting limma isolates
+# the stoichiometric component. This scatter compares raw vs
+# protein-corrected log2FC on the two NLGF contrasts (publication_mode
+# = FALSE, so the MAPT-KI contrast is shown). Off-diagonal points are
+# sites whose apparent regulation was partly or wholly driven by the
+# parent protein. Minimal plotting frame pre-extracted to
+# storage/cache/summary_prot_phospho_correction_scatter.rds.
+prot_corr_d <- rd("summary_prot_phospho_correction_scatter.rds")
+prot_corr_df <- prot_corr_d$df
+prot_corr_df$contrast_label <- factor(
+  prot_corr_df$contrast_label,
+  levels = unname(prot_corr_d$contrasts))
+
+# Per-facet Spearman rho + n for the strip subtitle.
+prot_corr_lab <- data.frame(
+  contrast      = names(prot_corr_d$rho),
+  contrast_label = unname(prot_corr_d$contrasts[names(prot_corr_d$rho)]),
+  rho           = unname(prot_corr_d$rho),
+  stringsAsFactors = FALSE)
+prot_corr_lab$n <- as.integer(table(prot_corr_df$contrast)[prot_corr_lab$contrast])
+prot_corr_lab$contrast_label <- factor(prot_corr_lab$contrast_label,
+                                       levels = unname(prot_corr_d$contrasts))
+prot_corr_lab$txt <- sprintf("Spearman rho = %.3f\nn = %d sites",
+                             prot_corr_lab$rho, prot_corr_lab$n)
+
+# Axis range for placing the annotation in the lower-right of each panel.
+prot_corr_xr <- range(prot_corr_df$raw, na.rm = TRUE)
+prot_corr_yr <- range(prot_corr_df$corr, na.rm = TRUE)
+
+prot_corr_p <- ggplot(prot_corr_df, aes(raw, corr)) +
+  geom_hline(yintercept = 0, colour = "grey70") +
+  geom_vline(xintercept = 0, colour = "grey70") +
+  geom_abline(slope = 1, intercept = 0, colour = "#b40426",
+              linetype = "dashed") +
+  geom_point(alpha = 0.18, size = 0.5, colour = "grey25") +
+  geom_text(data = prot_corr_lab,
+            aes(x = prot_corr_xr[2], y = prot_corr_yr[1], label = txt),
+            hjust = 1, vjust = 0, size = 3, colour = "#b40426",
+            inherit.aes = FALSE) +
+  facet_wrap(~ contrast_label) +
+  coord_equal() +
+  labs(
+    title = "Phosphosite stoichiometric correction: raw vs parent-protein-corrected log2FC",
+    subtitle = sprintf(
+      paste0("Corrected = phospho minus matched parent-protein log2-intensity, refit by limma ",
+             "(%s sites had a matched parent; %s retained after prevalence filter).",
+             "\nDashed red = identity (no protein-driven component)."),
+      format(prot_corr_d$n_sites_with_parent, big.mark = ","),
+      format(prot_corr_d$n_sites_tested, big.mark = ",")),
+    x = expression(raw~phospho~log[2]~fold-change),
+    y = expression(corrected~(phospho-protein)~log[2]~fold-change)) +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"))
+prot_corr_p
+```
+
+## Gsk3b activation at the interaction (headline)
+
+The headline. decoupleR kinase-activity inference over the OmniPath kinase-substrate network puts **Gsk3b at +4.32 (ULM) at the interaction, FDR 0.00152** (consensus FDR 1.8e-4) -- the strongest single-mechanism signal in the project. The pattern is a tau-dependent sign-flip: Gsk3b is non-significantly negative when amyloid lands on wild-type tau (nlgf_in_maptki -1.66, ns) but strongly positive when it lands on a tau-mutant background (nlgf_in_p301s +3.79, FDR 0.0077). Gsk3b activation is therefore specifically a tau x amyloid synergy. (Bulk hippocampal phospho, not microglia-sorted: read as kinase activity anywhere in the tissue at this contrast.)
+
+```{r prot_gsk3b_kinase_interaction, fig.width=8, fig.height=4}
+# Headline T-Synergy result: Gsk3b activation at the tau x amyloid
+# interaction, the strongest single-mechanism signal in the project.
+# Kinase activity = decoupleR ULM + consensus over the OmniPath
+# kinase-substrate network (human -> mouse via nichenetr), run on the
+# protein-corrected phospho DE cache (rmd/14_kinase_inference.Rmd).
+# Reproduces the section-15.1 heatmap: the union of kinases reaching
+# FDR<0.10 (ulm) in ANY contrast, cell colour = signed consensus
+# score across all five contrasts (non-significant cells shown too so
+# the Gsk3b sign-flip is visible: negative on the two backgrounds
+# where amyloid does not activate it, strongly positive on the three
+# where it does). '*' = FDR<0.05, '.' = FDR<0.10 on ulm.
+prot_gsk3b_pc <- rt("kinase_activity_per_contrast.tsv")
+
+# Verify the headline number is carried into the figure title.
+prot_gsk3b_hit <- prot_gsk3b_pc[
+  prot_gsk3b_pc$contrast == "interaction" & prot_gsk3b_pc$source == "Gsk3b", ]
+prot_gsk3b_padj <- signif(prot_gsk3b_hit$padj_ulm[1], 3)
+prot_gsk3b_score <- round(prot_gsk3b_hit$score_ulm[1], 2)
+
+prot_gsk3b_title <- sprintf(
+  paste0("Kinase activity x contrast (sig at FDR<0.10 ulm in any contrast)\n",
+         "Gsk3b is the headline T-Synergy signal: +%.2f at the interaction, ",
+         "FDR %s\n('*' = FDR<0.05, '.' = FDR<0.10; rows alphabetical; ",
+         "colour = signed consensus score)"),
+  prot_gsk3b_score, format(prot_gsk3b_padj, scientific = FALSE))
+
+prot_gsk3b_hm <- plot_kinase_activity_heatmap(
+  prot_gsk3b_pc,
+  padj_cut         = 0.10,
+  padj_strict      = 0.05,
+  sig_statistic    = "ulm",
+  colour_statistic = "consensus",
+  title            = prot_gsk3b_title
+)
+prot_gsk3b_hm
+```
+
+## DAM-dominated ligand-receptor rewiring
+
+The intercellular layer rewires where the transcriptome does not. Across the top-25 microglia-receiver ligand-receptor pairs prioritised for the interaction (MultiNicheNet), DAM is the receiver in 18/25 and sender in 10/25, and the ligands collapse to four macrophage-trophic/clearance molecules (Apoe, C1qb, Csf1, Icam1) -- including the Apoe->Trem2 clearance route. None of these LR genes overlaps an hdWGCNA hub, so the signalling signal sits off the module axis.
+
+```{r ccc_interaction_lr_microglia, fig.width=9, fig.height=7.5}
+# Top-25 microglia-receiver ligand-receptor pairs under the divergence
+# INTERACTION contrast (MultiNicheNet prioritisation). This is the
+# cell-cell-communication face of the project's "interaction signal is
+# DAM-dominated" headline: where the whole-microglia transcriptional
+# interaction is null, the intercellular LR layer surfaces a coherent,
+# DAM-centred rewiring driven by a handful of macrophage-trophic /
+# clearance ligands (Apoe, C1qb, Csf1, Icam1). Reproduces the
+# `ccc-multinichenet-interaction-spotlight` table from rmd/11_ccc.Rmd as
+# a ranked dot chart (TSV-backed; the 277M MNN cache is NOT loaded).
+ccc_lr_tbl <- rt("ccc_multinichenet_interaction_top25_microglia.tsv")
+
+# Compact substate labels for axis legibility (drop the "Microglia_"
+# stem; the panel is microglia-receiver by construction).
+ccc_lr_short <- function(x) sub("^Microglia_", "", x)
+ccc_lr_tbl <- ccc_lr_tbl |>
+  dplyr::mutate(
+    sender_s   = ccc_lr_short(sender),
+    receiver_s = ccc_lr_short(receiver),
+    # DAM participation: the headline is that DAM dominates BOTH the
+    # sender and receiver ends of the prioritised interaction LR space.
+    dam_role = dplyr::case_when(
+      sender == "Microglia_DAM" & receiver == "Microglia_DAM" ~ "DAM->DAM",
+      sender == "Microglia_DAM"                               ~ "DAM sender",
+      receiver == "Microglia_DAM"                             ~ "DAM receiver",
+      TRUE                                                    ~ "Other"
+    ),
+    # Row label: ligand-receptor pair + the sender->receiver substate route.
+    row_lab = sprintf("%s → %s  (%s→%s)",
+                      ligand, receptor, sender_s, receiver_s)
+  ) |>
+  dplyr::arrange(prioritization_score) |>
+  dplyr::mutate(row_lab = factor(row_lab, levels = row_lab))
+
+ccc_lr_dam_cols <- c(
+  "DAM->DAM"     = "#B0344D",
+  "DAM receiver" = "#E08754",
+  "DAM sender"   = "#FDC086",
+  "Other"        = "grey70"
+)
+
+ccc_lr_n_dam_recv <- sum(ccc_lr_tbl$receiver == "Microglia_DAM")
+ccc_lr_n_dam_send <- sum(ccc_lr_tbl$sender   == "Microglia_DAM")
+ccc_lr_ligands    <- paste(sort(unique(ccc_lr_tbl$ligand)), collapse = ", ")
+
+ccc_lr_p <- ggplot(
+  ccc_lr_tbl,
+  aes(x = prioritization_score, y = row_lab, colour = dam_role)
+) +
+  geom_segment(aes(x = min(ccc_lr_tbl$prioritization_score) - 0.004,
+                   xend = prioritization_score,
+                   yend = row_lab),
+               colour = "grey85", linewidth = 0.4) +
+  geom_point(size = 3) +
+  scale_colour_manual(values = ccc_lr_dam_cols, name = "DAM role",
+                      breaks = names(ccc_lr_dam_cols)) +
+  theme_bw(base_size = 11) +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(size = 8)) +
+  labs(
+    title = "CCC interaction contrast: top-25 microglia-receiver LR pairs",
+    subtitle = paste0(
+      "MultiNicheNet prioritisation; (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI). ",
+      "DAM is receiver in ", ccc_lr_n_dam_recv, "/25, sender in ",
+      ccc_lr_n_dam_send, "/25"),
+    x = "Prioritisation score", y = NULL,
+    caption = paste0(
+      "Ligands collapse to ", ccc_lr_ligands,
+      "; clearance route Apoe→Trem2 present. ",
+      "No ligand/receptor overlaps an hdWGCNA hub (per-row flags all FALSE)."
+    )
+  )
+ccc_lr_p
+```
+
+## Axis-2 clearance: TREM2/APP over complement
+
+Adjudicating the synaptic-suppression axis across three CCC tools (6,459 universe-filtered LR cells), TREM2-mediated clearance (Apoe_Trem2 rank 9), APP-fragment uptake (App_Cd74 rank 12) and glial adhesion rank shallow, whereas classical complement ranks deep (first C1qb_Lrp1 at rank 775; no C3 or Mertk-Pros1 in the top 800). The clearance signature, not textbook complement pruning, is what the data surface. The residual TAM-kinase Pros1_Mertk route survives separately at IFN-microglia nodes.
+
+```{r ccc_axis2_lr_adjudication, fig.width=9.5, fig.height=6.5}
+# Axis-2 (synaptic-suppression) cross-tool LR adjudication: which intercellular
+# clearance mechanism the triangulated CCC layer surfaces, versus the textbook
+# classical-complement synaptic-pruning pairs. Source: rmd/15_ccc_mechanism.Rmd
+# section 16.2/16.3 (synaptic-suppression axis). Reproduces the axis-restricted
+# ranking from ccc_lr_axis_restricted.tsv; classifies the canonical
+# synaptic-clearance LR biochemistries into mechanism families and plots the
+# best (shallowest) axis-2 rank reached by each, so the reader sees that
+# TREM2-mediated clearance + APP-fragment uptake + glial adhesion rank near the
+# top of the axis while classical complement / engulfment regulators rank deep.
+ccc_ax2_axis <- rt("ccc_lr_axis_restricted.tsv")
+ccc_ax2_axis <- ccc_ax2_axis[ccc_ax2_axis$axis == "synaptic_suppression", , drop = FALSE]
+
+# Mechanism families keyed on the ligand_receptor biochemistry (cell-type pair
+# is retained for the best-ranked node label). British-English family labels.
+ccc_ax2_family <- function(lr) {
+  dplyr::case_when(
+    lr == "Apoe_Trem2"   ~ "TREM2-mediated clearance",
+    lr == "App_Cd74"     ~ "APP-fragment uptake",
+    lr == "Vcan_Cd44"    ~ "Glial adhesion modulation",
+    lr == "Ncam1_Ptprz1" ~ "Glial adhesion modulation",
+    lr == "Cd200_Cd200r1" ~ "Neuronal 'don't-activate-me'",
+    grepl("^C1q",  lr)   ~ "Classical complement",
+    grepl("^C3(_|ar1)", lr) ~ "Classical complement",
+    grepl("^C4",   lr)   ~ "Classical complement",
+    lr == "Cd47_Sirpa"   ~ "Engulfment regulator ('don't-eat-me')",
+    lr == "Pros1_Mertk"  ~ "TAM-kinase phagocytosis",
+    grepl("Mertk$|^Gas6_(Mertk|Tyro3|Axl)$", lr) ~ "TAM-kinase phagocytosis",
+    TRUE ~ NA_character_
+  )
+}
+ccc_ax2_axis$family <- ccc_ax2_family(ccc_ax2_axis$lr_interaction)
+ccc_ax2_keep <- ccc_ax2_axis[!is.na(ccc_ax2_axis$family), , drop = FALSE]
+
+# Best (shallowest) axis-2 rank per LR biochemistry, with the cell-type node
+# that achieves it (for the annotation label).
+ccc_ax2_best <- ccc_ax2_keep |>
+  dplyr::group_by(lr_interaction, family) |>
+  dplyr::slice_min(leader_rank, n = 1, with_ties = FALSE) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    node  = paste0(sender, " → ", receiver),
+    label = paste0(lr_interaction, "  (", node, ")")
+  ) |>
+  dplyr::arrange(leader_rank)
+
+# Pros1_Mertk is absent from the axis-2 universe-restricted ranking but DOES
+# survive in the cross-tool cross-contrast leader board at Microglia_IFN-sender
+# microglia nodes (3/5 contrasts, consistent +). Surface it as a residual route
+# flagged separately rather than dropped, mirroring the section verdict prose.
+ccc_ax2_lb <- rt("ccc_lr_cross_tool_leaderboard.tsv")
+ccc_ax2_pm <- ccc_ax2_lb[ccc_ax2_lb$lr_interaction == "Pros1_Mertk", , drop = FALSE]
+ccc_ax2_pm <- ccc_ax2_pm[order(-ccc_ax2_pm$n_contrasts_leader,
+                               -ccc_ax2_pm$max_mean_norm_score), , drop = FALSE][1, ]
+
+# Order families top->bottom by their shallowest rank so the clearance families
+# sit at the top (small rank = strong axis-2 signal) and complement at the base.
+ccc_ax2_fam_order <- ccc_ax2_best |>
+  dplyr::group_by(family) |>
+  dplyr::summarise(best = min(leader_rank), .groups = "drop") |>
+  dplyr::arrange(best) |>
+  dplyr::pull(family)
+ccc_ax2_best$family <- factor(ccc_ax2_best$family, levels = rev(ccc_ax2_fam_order))
+
+# Two-tone palette: warm = clearance / adhesion (surfaced by the LR layer);
+# cool grey-blue = classical complement / engulfment regulators (rank deep).
+ccc_ax2_surfaced <- c("TREM2-mediated clearance", "APP-fragment uptake",
+                      "Glial adhesion modulation", "Neuronal 'don't-activate-me'")
+ccc_ax2_best$surfaced <- ifelse(as.character(ccc_ax2_best$family) %in% ccc_ax2_surfaced,
+                                "Surfaced by LR layer", "Ranks deep (classical pruning)")
+
+ccc_ax2_n2 <- nrow(ccc_ax2_axis)   # total axis-2 universe-filtered LR cells
+
+ccc_ax2_p <- ggplot(ccc_ax2_best,
+                    aes(x = leader_rank, y = stats::reorder(label, -leader_rank))) +
+  geom_segment(aes(xend = 0.7, yend = label, colour = surfaced),
+               linewidth = 0.5) +
+  geom_point(aes(colour = surfaced, size = mean_activity_in_axis_contrasts)) +
+  geom_vline(xintercept = 12.5, linetype = "dashed",
+             colour = "grey55", linewidth = 0.4) +
+  geom_vline(xintercept = 100, linetype = "dotted",
+             colour = "grey55", linewidth = 0.4) +
+  scale_x_log10(breaks = c(1, 10, 100, 775),
+                labels = c("1", "10", "100", "775")) +
+  scale_colour_manual(
+    values = c("Surfaced by LR layer" = "#B0344D",
+               "Ranks deep (classical pruning)" = "#7FA8C1"),
+    name = NULL) +
+  scale_size_continuous(range = c(1.8, 5.5),
+                        name = "cross-tool\nnorm. score") +
+  facet_grid(family ~ ., scales = "free_y", space = "free_y", switch = "y") +
+  theme_bw(base_size = 11) +
+  theme(strip.text.y.left = element_text(angle = 0, hjust = 1, size = 8),
+        strip.placement = "outside",
+        strip.background = element_rect(fill = "grey95", colour = NA),
+        panel.grid.minor = element_blank(),
+        legend.position = "right",
+        legend.box = "vertical",
+        plot.caption = element_text(hjust = 0, size = 7.5)) +
+  labs(
+    title = "Axis-2 synaptic suppression: which clearance mechanism the cross-tool LR layer surfaces",
+    subtitle = paste0(
+      "Best axis-2 rank per ligand-receptor biochemistry (CellChat + MultiNicheNet + LIANA+; ",
+      ccc_ax2_n2, " universe-filtered LR cells)"),
+    x = "best axis-2 rank reached (log scale; lower = stronger)",
+    y = NULL,
+    caption = paste0(
+      "Dashed line = top-12 cut; dotted = top-100 cut. TREM2 / APP-fragment / glial-adhesion edges rank shallow (Apoe_Trem2 rank 9, App_Cd74 rank 12);\n",
+      "classical complement ranks deep (first C1qb_Lrp1 rank 775; Cd47_Sirpa rank 279; no C3 / Mertk-Pros1 in top 800). Residual TAM-kinase Pros1_Mertk\n",
+      "is absent from the axis-2 universe ranking but survives in the cross-tool leader board at ", ccc_ax2_pm$sender, " → ", ccc_ax2_pm$receiver,
+      " (", ccc_ax2_pm$n_contrasts_leader, "/5 contrasts, consistent +)."
+    )
+  )
+ccc_ax2_p
+```
+
+## Unified pathway leader board: three axes
+
+Pooling six gene-set collections under one fixed leader rule, the board refuses to name a single winner: three axes coexist -- tau x amyloid metabolic/translational non-additivity (mixed sign, led by MG-M3 at 23.4 with the OXPHOS/ETC family and DAM_up at 16.4), amyloid-driven activation (positive; MG-M2, adaptive immunity), and NLGF synaptic suppression (negative; presynaptic GO CC terms). The mixed-sign interaction family reaches breadth 4/4 substates.
+
+```{r pathway_survey_leaderboard, fig.width=10, fig.height=8.5}
+# Unified cross-modality / cross-collection pathway leader board (section 12
+# verdict figure). One fixed leader rule was applied verbatim to every
+# (pathway, contrast) cell of the six collection rankings; leader_score =
+# 5*n_contrasts_consistent_sign_ge2 + n_contrasts_sig_ge3 + max_consistent_sign/5.
+# Read the pre-built leader board TSV directly (15 KB) - no recomputation.
+psl_lb <- rt("pathway_survey_unified_leaderboard.tsv")
+
+# Strip GO prefixes and lower-case GO names for display; custom / module
+# names (MG-M3, DAM_up, ...) lack a recognised prefix and pass through.
+psl_pretty <- function(p) {
+  is_go <- grepl("^(GOBP|GOMF|GOCC)_", p)
+  p[is_go] <- gsub("_", " ", tolower(sub("^(GOBP|GOMF|GOCC)_", "", p[is_go])))
+  p
+}
+
+# Top N leader pathways by composite leader_score (the section's View 1).
+psl_top <- psl_lb |>
+  dplyr::arrange(dplyr::desc(leader_score), collection, pathway) |>
+  head(24) |>
+  dplyr::mutate(
+    label = psl_pretty(pathway),
+    # disambiguate the few identical pretty labels across GO collections
+    label = ifelse(duplicated(label) | duplicated(label, fromLast = TRUE),
+                   paste0(label, " (", toupper(sub("go", "GO ", collection)), ")"),
+                   label),
+    axis = dplyr::case_when(
+      dominant_sign == "+"     ~ "Amyloid activation (+)",
+      dominant_sign == "-"     ~ "Synaptic suppression (−)",
+      dominant_sign == "mixed" ~ "Metabolic / translational (mixed sign)"
+    ),
+    axis = factor(axis, levels = c(
+      "Amyloid activation (+)",
+      "Synaptic suppression (−)",
+      "Metabolic / translational (mixed sign)")),
+    breadth_lab = ifelse(max_substate_breadth == 4L,
+                         "breadth 4/4 substates", "")
+  )
+# Order bars by score (largest at top) within the plot.
+psl_top$label <- factor(psl_top$label,
+                        levels = rev(psl_top$label[order(psl_top$leader_score)]))
+
+psl_cols <- c(
+  "Amyloid activation (+)"                 = "#b40426",
+  "Synaptic suppression (−)"          = "#3a4cc0",
+  "Metabolic / translational (mixed sign)" = "#7b3294")
+
+psl_p <- ggplot(psl_top,
+                aes(x = leader_score, y = label, colour = axis)) +
+  geom_segment(aes(x = 0, xend = leader_score, yend = label),
+               linewidth = 0.5, alpha = 0.55) +
+  geom_point(aes(size = max_consistent_sign)) +
+  geom_text(aes(label = contrasts_summary), hjust = 0, nudge_x = 0.45,
+            size = 2.5, colour = "grey25") +
+  scale_colour_manual(values = psl_cols, name = "Leader axis") +
+  scale_size_continuous(range = c(1.6, 4.2),
+                        name = "Max sign-consistent\nsig modalities") +
+  scale_x_continuous(expand = expansion(mult = c(0.01, 0.42))) +
+  theme_bw(base_size = 11) +
+  theme(legend.position = "right",
+        panel.grid.major.y = element_blank(),
+        plot.title.position = "plot") +
+  labs(
+    title = "Unified cross-modality pathway leader board surfaces three axes, not one winner",
+    subtitle = paste0(
+      "Top 24 of ", nrow(psl_lb),
+      " leader pathways pooled across GO BP/MF/CC + curated sets + hdWGCNA modules; ",
+      "one fixed leader rule, five contrasts"),
+    x = "leader_score (cross-contrast × cross-modality composite)",
+    y = NULL,
+    caption = paste0(
+      "Text = per-contrast leader breakdown 'contrast:n_modalities/sign'. ",
+      "MG-M3 (23.4) leads via mixed-sign non-additivity at the tau×amyloid interaction; ",
+      "the OXPHOS/ETC family + DAM_up co-cluster at 16.4 with the same interaction:3/mixed signature; ",
+      "amyloid-activation (MG-M2, adaptive immunity) is + and synaptic terms are −."
+    ))
+
+psl_p
+```
+
+# Integrated synthesis
+
+The claims ledger adjudicates the competing models. On all three axes the data favour a divergent model over a simple additive one, and the cross-axis themes rank consistently.
+
+## Tau attenuates NF-kB across all substates
+
+The axis-1 mechanism, resolved. Tau on the amyloid background suppresses amyloid-driven NF-kB output at the interaction in all four substates: the union NF-kB-target GSEA reverses from positive at both NLGF arms (NES ~+1.0 to +1.2) to negative at the interaction (DAM NES -1.25, padj 0.027), mirrored by the CollecTRI NF-kB-complex TF score (DAM -6.5, p 7e-11), DAM leading. The substate-composition ANOVA (tau:nlgf p 0.33, ns) rules out a Simpson's-paradox abundance artefact -- the attenuation is transcriptional and global.
+
+```{r per_state_nfkb_attenuation, fig.width=9.5, fig.height=8}
+# Per-state NF-kB target attenuation at the tau x amyloid interaction (section 18).
+# Two panels from the pre-extracted minimal cache (TF complex consensus + GSEA
+# union NES, both layers, all 5 contrasts x 4 substates):
+#  (A) GSEA-layer union-NF-kB-target NES across all five contrasts per substate
+#      -> the sign reversal: positive (NF-kB-target activation) at the two NLGF
+#         arms, negative (suppression) at the interaction and tau_in_nlgf.
+#  (B) interaction-contrast carrier evidence: independent TF-complex consensus
+#      score and GSEA union NES, both negative in 4/4 substates, ordered
+#      DAM > homeostatic > IFN > proliferative (DAM lead carrier).
+psnfkb_d <- rd("summary_per_state_nfkb_attenuation.rds")
+psnfkb_long <- psnfkb_d$long
+psnfkb_states <- c("DAM", "homeostatic", "IFN", "proliferative")  # magnitude order
+
+psnfkb_contrast_levels <- c("nlgf_in_maptki", "nlgf_in_p301s",
+                            "interaction", "tau_in_nlgf", "tau_alone")
+psnfkb_contrast_labels <- c(
+  nlgf_in_maptki = "NLGF in\nMAPTKI",
+  nlgf_in_p301s  = "NLGF in\nP301S",
+  interaction    = "interaction",
+  tau_in_nlgf    = "tau in\nNLGF",
+  tau_alone      = "tau\nalone"
+)
+
+# --- Panel A: GSEA union NES across contrasts (sign-reversal heatmap-style tiles)
+psnfkb_a_df <- psnfkb_long
+psnfkb_a_df$state <- factor(psnfkb_a_df$state, levels = rev(psnfkb_states))
+psnfkb_a_df$contrast <- factor(psnfkb_a_df$contrast,
+                               levels = psnfkb_contrast_levels)
+psnfkb_a_df$lab <- sprintf("%.2f%s", psnfkb_a_df$gsea_union_NES,
+                           ifelse(!is.na(psnfkb_a_df$gsea_union_padj) &
+                                    psnfkb_a_df$gsea_union_padj < 0.10, "*", ""))
+
+psnfkb_a <- ggplot(psnfkb_a_df,
+                   aes(contrast, state, fill = gsea_union_NES)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = lab), size = 3) +
+  scale_fill_gradient2(
+    low = "#3b4cc0", mid = "white", high = "#b40426", midpoint = 0,
+    name = "GSEA NES\n(NF-kB targets)", limits = c(-1.4, 1.4)) +
+  scale_x_discrete(labels = psnfkb_contrast_labels) +
+  labs(
+    title = "A  NF-kB-target GSEA sign-reversal across contrasts",
+    subtitle = "Union CollecTRI NF-kB target set; + = activation, - = suppression",
+    x = NULL, y = "microglia substate") +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 8.5),
+    plot.subtitle = element_text(size = 9),
+    legend.key.height = grid::unit(0.9, "lines"))
+
+# --- Panel B: interaction-contrast carrier evidence, two independent layers
+psnfkb_int <- psnfkb_long[psnfkb_long$contrast == "interaction", , drop = FALSE]
+psnfkb_b_df <- rbind(
+  data.frame(state = psnfkb_int$state, layer = "TF complex activity\n(consensus score)",
+             value = psnfkb_int$tf_complex_score,
+             sig = !is.na(psnfkb_int$tf_complex_p) & psnfkb_int$tf_complex_p < 0.10,
+             stringsAsFactors = FALSE),
+  data.frame(state = psnfkb_int$state, layer = "Target-set GSEA\n(union NES x4, scaled)",
+             value = psnfkb_int$gsea_union_NES * 4,  # scale NES onto score axis for shared panel
+             sig = !is.na(psnfkb_int$gsea_union_padj) & psnfkb_int$gsea_union_padj < 0.10,
+             stringsAsFactors = FALSE)
+)
+psnfkb_b_df$state <- factor(psnfkb_b_df$state, levels = rev(psnfkb_states))
+psnfkb_b_df$layer <- factor(psnfkb_b_df$layer,
+                            levels = c("TF complex activity\n(consensus score)",
+                                       "Target-set GSEA\n(union NES x4, scaled)"))
+psnfkb_b_df$siglab <- ifelse(psnfkb_b_df$sig, "FDR<0.10", "")
+
+psnfkb_b <- ggplot(psnfkb_b_df, aes(value, state, fill = layer)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.68) +
+  geom_vline(xintercept = 0, linewidth = 0.4, colour = "grey40") +
+  geom_text(aes(label = siglab),
+            position = position_dodge(width = 0.75),
+            hjust = 1.05, size = 2.6, colour = "grey20") +
+  scale_fill_manual(values = c("TF complex activity\n(consensus score)" = "#5b8fb9",
+                               "Target-set GSEA\n(union NES x4, scaled)" = "#d98994"),
+                    name = NULL) +
+  labs(
+    title = "B  Both layers carry suppression at the interaction",
+    subtitle = "DAM lead carrier; 4/4 substates negative on both layers",
+    x = "signed effect at interaction (negative = NF-kB suppression)",
+    y = NULL) +
+  theme_bw(base_size = 11) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 7.5),
+    plot.subtitle = element_text(size = 9),
+    legend.key.size = grid::unit(0.8, "lines"))
+
+psnfkb_anova_f <- psnfkb_d$anova_taunlgf[["F value"]]
+psnfkb_anova_p <- psnfkb_d$anova_taunlgf[["Pr(>F)"]]
+
+(psnfkb_a / psnfkb_b) +
+  patchwork::plot_annotation(
+    title = "Tau attenuates amyloid-driven NF-kB across all four microglia substates",
+    subtitle = "Per-state NEBULA (1% prevalence); interaction = (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)",
+    caption = sprintf(
+      paste0("Verdict: Global attenuation (4/4 substates). Section 11 substate-composition ",
+             "ANOVA tau:nlgf F=%.2f, p=%.3f (n.s.) rules out a Simpson's-paradox abundance artefact."),
+      psnfkb_anova_f, psnfkb_anova_p),
+    theme = ggplot2::theme(
+      plot.title = element_text(face = "bold", size = 13),
+      plot.subtitle = element_text(size = 9.5),
+      plot.caption = element_text(size = 8, hjust = 0)))
+```
+
+## Three-axis biological-model contest verdicts
+
+Head-to-head, each axis favours its divergent model: axis 1 -> tau attenuates amyloid-driven NF-kB (margin 18), axis 2 -> TREM2/APP-fragment clearance over classical complement (margin 12), axis 3 -> a distinct tau x amyloid synergy mechanism (margin 55, the largest), anchored by Gsk3b. All three resolve at the first arithmetic level with no tie-break invoked.
+
+```{r biomodel_contest_verdicts, results='asis'}
+# Three-axis contest verdict table (section 17.3.1): the favoured biological
+# model and its net-support margin for each of the project's three mechanism
+# axes, derived from the H3 adjudication of the 81-row claims ledger. This is
+# the synthesis headline: amyloid_activation -> Hyp-1B (tau attenuates NF-kB,
+# margin 18), synaptic_suppression -> Hyp-2B (TREM2/APP clearance, margin 12),
+# interaction_metabolic -> Hyp-3B (Gsk3b/Myc synergy, margin 53; carries the
+# project's strongest single-kinase result Gsk3b padj 0.00152).
+bmcv_axis_labels <- c(
+  amyloid_activation    = "Axis 1 - Amyloid activation",
+  synaptic_suppression  = "Axis 2 - Synaptic suppression",
+  interaction_metabolic = "Axis 3 - Tau x amyloid interaction")
+
+bmcv <- rt("biological_model_contest_verdicts.tsv")
+
+bmcv_tbl <- bmcv |>
+  dplyr::transmute(
+    Axis = unname(bmcv_axis_labels[contest_id]),
+    `Favoured model` = sprintf("%s - %s",
+                               favoured_model,
+                               ifelse(favoured_model == model_a_id,
+                                      model_a_name, model_b_name)),
+    `Defeated model` = sprintf("%s - %s",
+                               ifelse(favoured_model == model_a_id,
+                                      model_b_id, model_a_id),
+                               ifelse(favoured_model == model_a_id,
+                                      model_b_name, model_a_name)),
+    `Winner net (sup-con)` = ifelse(
+      favoured_model == model_a_id,
+      sprintf("%d (%d-%d)", model_a_net_support, model_a_support_count,
+              model_a_contradict_count),
+      sprintf("%d (%d-%d)", model_b_net_support, model_b_support_count,
+              model_b_contradict_count)),
+    `Winner Strong rows` = ifelse(
+      favoured_model == model_a_id,
+      model_a_n_strong_supports, model_b_n_strong_supports),
+    `Margin` = favoured_by_margin
+  )
+
+# Stable axis order (1, 2, 3) regardless of TSV row order.
+bmcv_tbl <- bmcv_tbl[order(match(bmcv$contest_id,
+                                 c("amyloid_activation", "synaptic_suppression",
+                                   "interaction_metabolic"))), ]
+
+knitr::kable(
+  bmcv_tbl,
+  row.names = FALSE,
+  align = c("l", "l", "l", "r", "r", "r"),
+  caption = paste0(
+    "Per-axis contest verdicts. Each of the project's three mechanism axes ",
+    "pairs two competing biological models head-to-head; the favoured model ",
+    "is the one with the higher net support (support_count - contradict_count) ",
+    "across the 81-row H2 claims ledger. **Margin** is the favoured model's ",
+    "net support minus the loser's. All three resolve at the first arithmetic ",
+    "level (no tie-break invoked). Axis 1's Hyp-1B is anchored by the Rela ",
+    "sign-reversal (now replicated in all four microglia substates, section ",
+    "18); axis 3's Hyp-3B by Gsk3b activation at the interaction (padj ",
+    "0.00152, the project's strongest single-kinase result)."))
+```
+
+## Cross-axis theme support ranking
+
+Ranking the cross-axis themes by supporting ledger rows: T-Inflammation 31 (6 Strong) > T-Synergy 30 (9 Strong) > T-Compartment-suppression 17 > T-Tau-attenuates 12 > Hyp-0 (Cdk5) 7. Additive DAM-amplification (T-Inflammation) now edges past the Gsk3b/Myc synergy theme on raw supporting-row count, though T-Synergy retains the most Strong-grade support (9 versus 6); the Cdk5 integrator remains the most evenly cross-axis-distributed entity. This is the project's standing synthesis.
+
+```{r crossaxis_theme_ranking, fig.width=8.5, fig.height=5}
+# Cross-axis theme support ranking (section 17.3.2): the four cross-axis themes
+# plus the Hyp-0 Cdk5 integrator, ranked by support count with the confidence-
+# grade decomposition (Strong / Moderate / Suggestive) stacked. Surfaces the
+# established ranking T-Synergy (28) > T-Inflammation (26) > T-Compartment-
+# suppression (17) > T-Tau-attenuates (11) > Hyp-0 Cdk5 (7), each row's number
+# of Strong-grade supports annotated. Tallies are taken verbatim from the H3
+# adjudication TSV (the same single-pass groupby the synthesis chapter renders).
+catr <- rt("biological_model_adjudication.tsv")
+
+# Themes + integrator only (the cross-axis entities); contest models are
+# adjudicated head-to-head elsewhere (biomodel_contest_verdicts).
+catr_ent <- catr[catr$entity_type %in% c("theme", "integrator"), , drop = FALSE]
+
+catr_levels <- catr_ent$entity_id[order(catr_ent$support_count)]  # ascending -> bars bottom-to-top
+
+catr_long <- data.frame(
+  entity_id = rep(catr_ent$entity_id, 3),
+  grade = rep(c("Strong", "Moderate", "Suggestive"),
+              each = nrow(catr_ent)),
+  n = c(catr_ent$n_strong_supports,
+        catr_ent$n_moderate_supports,
+        catr_ent$n_suggestive_supports),
+  stringsAsFactors = FALSE
+)
+catr_long$entity_id <- factor(catr_long$entity_id, levels = catr_levels)
+catr_long$grade <- factor(catr_long$grade,
+                          levels = c("Suggestive", "Moderate", "Strong"))
+
+# Total + Strong-count annotation per entity (placed at bar end).
+catr_ann <- data.frame(
+  entity_id = factor(catr_ent$entity_id, levels = catr_levels),
+  total = catr_ent$support_count,
+  n_strong = catr_ent$n_strong_supports,
+  stringsAsFactors = FALSE
+)
+catr_ann$lab <- sprintf("%d  (%d Strong)", catr_ann$total, catr_ann$n_strong)
+
+# Readable display names paired with the id.
+catr_namemap <- setNames(catr_ent$entity_name, catr_ent$entity_id)
+catr_axis_labeller <- function(ids) {
+  sprintf("%s\n%s", ids, ifelse(nchar(catr_namemap[ids]) > 34,
+                                paste0(substr(catr_namemap[ids], 1, 33), "..."),
+                                catr_namemap[ids]))
+}
+
+catr_grade_cols <- c(Strong = "#1b6d4f", Moderate = "#6cae8f", Suggestive = "#c9e3d6")
+
+ggplot(catr_long, aes(n, entity_id, fill = grade)) +
+  geom_col(width = 0.68, colour = "white", linewidth = 0.3) +
+  geom_text(data = catr_ann, aes(total, entity_id, label = lab),
+            inherit.aes = FALSE, hjust = -0.08, size = 3.1) +
+  scale_fill_manual(values = catr_grade_cols, name = "Confidence grade",
+                    breaks = c("Strong", "Moderate", "Suggestive")) +
+  scale_y_discrete(labels = catr_axis_labeller) +
+  scale_x_continuous(expand = expansion(mult = c(0.01, 0.22))) +
+  labs(
+    title = "Cross-axis theme support ranking",
+    subtitle = paste0("Supporting ledger rows per cross-axis entity, ",
+                      "stacked by confidence grade (Strong / Moderate / Suggestive)"),
+    x = "supporting claim-ledger rows",
+    y = NULL,
+    caption = paste0(
+      "Counts from the H3 adjudication of the 81-row claims ledger. ",
+      "T-Synergy is anchored at axis 3 (Gsk3b synergy); T-Tau-attenuates ",
+      "lifted to 11 supports / 7 Strong by the Phase I per-state NF-kB test; ",
+      "Hyp-0 (Cdk5) is the most evenly cross-axis-distributed entity.")) +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    legend.position = "bottom",
+    axis.text.y = element_text(size = 8.5, lineheight = 0.9),
+    plot.caption = element_text(size = 7.5, hjust = 0))
+```
+
+# Cross-species validation in human AD
+
+Every result above is from four mouse genotypes in a clean 2x2 design. The closing question is translational: does the same interaction structure exist in human AD cortex, where amyloid and tau co-progress and cannot be crossed experimentally? Using SEA-AD (Gabitto 2024) middle-temporal-gyrus and prefrontal microglia (no data-use agreement required), the mouse substates and their interaction-localised mechanisms are tested for conservation and for direction-of-effect concordance under collinearity-aware modelling. Because human amyloid (Thal phase) and tau (Braak stage) are collinear (Spearman ~0.65), *direction* -- not significance -- is the readout, and a null is read as under-identification, never as evidence against the mouse finding. The full treatment is section 19 of the analysis report.
+
+## Mouse substates resolve in human microglia
+
+Per-state human claims are only admissible if the mouse substates resolve in human microglia at all. All four resolve as human SEA-AD populations, and the directional signal is correct: disease-emergent supertype occupancy rises monotonically along homeostatic -> DAM -> IFN -> proliferative, with homeostatic the only state *depleted* in disease supertypes. The conservation gate PASSES, clearing the per-state interaction tests below.
+
+```{r human_substate_conservation, results='asis'}
+# Human cross-species validation (SEA-AD MTG + DLPFC microglia/PVM): do the four
+# mouse microglial substates resolve as human populations? Per-state resolution
+# gate from H3 conservation. resolves := cell fraction >= 0.5% AND positive mean
+# self-score; the fraction of each predicted state's cells in a disease-emergent
+# SEA-AD -SEAAD supertype rises monotonically homeostatic -> DAM -> IFN ->
+# proliferative (the directional conservation signal). PASS gates every per-state
+# human interaction claim. Reads the H3 metrics TSV directly: the verdict block
+# is the second tab-table after the clustering-agreement header comment.
+hsc_raw <- readLines(file.path(params$results_dir,
+                               "human_substate_conservation_metrics.tsv"))
+hsc_hdr <- grep("^predicted_substate\t", hsc_raw)
+hsc <- read.delim(text = paste(hsc_raw[hsc_hdr:length(hsc_raw)], collapse = "\n"),
+                  stringsAsFactors = FALSE)
+hsc_order <- c("homeostatic", "DAM", "IFN", "proliferative")
+hsc <- hsc[match(hsc_order, hsc$predicted_substate), ]
+
+knitr::kable(
+  hsc[, c("predicted_substate", "frac", "mean_self_score",
+          "frac_SEAAD_supertype", "SEAAD_fold_vs_global",
+          "most_enriched_supertype", "enrichment_fold", "resolves")],
+  row.names = FALSE, digits = c(0, 3, 3, 3, 2, 0, 2, 0),
+  col.names = c("substate", "cell frac", "mean self-score",
+                "frac in -SEAAD", "-SEAAD fold", "top supertype",
+                "fold", "resolves"),
+  caption = paste0(
+    "Conservation gate (SEA-AD MTG + DLPFC, 82,486 microglia/PVM nuclei). Each ",
+    "human nucleus was scored for the four mouse substate signatures and ",
+    "assigned to its argmax state (the mouse AddModuleScore labelling ",
+    "procedure), then cross-tabulated against the dataset-native SEA-AD ",
+    "Supertype taxonomy. resolves := cell fraction >= 0.5% AND positive mean ",
+    "self-score. The fraction of each predicted state's cells in a ",
+    "disease-emergent -SEAAD supertype rises monotonically homeostatic -> DAM ",
+    "-> IFN -> proliferative (0.150 -> 0.239 -> 0.359 -> 0.490; -SEAAD fold = ",
+    "fold over the 22.5% global -SEAAD rate), and each activation state's single ",
+    "most-enriched supertype is itself a -SEAAD one -- the directional ",
+    "conservation signal. Verdict: all four mouse substates resolve in human ",
+    "cortex (gate PASS), clearing the per-state human interaction claims. Full ",
+    "cross-tab, UMAP and caveats: analysis report section 19."),
+  align = c("l", rep("r", 4), "l", "r", "l"))
+```
+
+## Interaction mechanisms reproduce in human (headline)
+
+The headline translational result. The three pre-registered interaction mechanisms reproduce their mouse-predicted amyloid:tau sign in human: **NF-kB-target** and **MG-M3-module** attenuation are negative (tau dampens the amyloid response) and the **Gsk3b-target** response is positive (tau-enhanced), in 5 of 5 strata, region-concordant and robust to single-cell aggregation and an orthogonal AUCell scorer. No human interaction survives FDR -- the expected consequence of amyloid-tau collinearity and observational cross-sectional power -- so the reading is directional corroboration (*consistent with* the mouse mechanism), never causal proof. The human-native Gerrits positive control behaves correctly (section 19).
+
+```{r human_mechanism_concordance, fig.width=8, fig.height=3.2}
+# Human cross-species validation headline: do the interaction-localised mouse
+# mechanisms reproduce their predicted amyloid:tau SIGN in human AD cortex?
+# Per-donor pseudobulk mixed model z(score) ~ amyloid * tau + region + age + sex
+# + (1|donor) on SEA-AD microglia; the amyloid:tau coefficient is the human
+# analogue of the mouse interaction contrast (NLGF_P301S - P301S) -
+# (NLGF_MAPTKI - MAPTKI). Signed-coefficient heatmap for the three
+# pre-registered INTERACTION mechanisms across the five modelling strata, with
+# the mouse-predicted sign printed on each row. DAM-up (a positive amyloid
+# MAIN-effect control) and the full 26-signature panel live in analysis report
+# section 19. Reads the H4/H5 light summary cache (no heavy h5ad touched).
+hmc_models <- as.data.frame(rd("summary_human_validation.rds")$models)
+
+hmc_diverging <- c("#3a4cc0", "white", "#b40426")   # negative .. zero .. positive
+hmc_strata <- c("all", "homeostatic", "DAM", "IFN", "proliferative")
+hmc_stratum_lab <- c(all = "whole-\nmicroglia", homeostatic = "homeostatic",
+                     DAM = "DAM", IFN = "IFN", proliferative = "proliferative")
+# Pre-registered interaction mechanisms only (term = amyloid:tau); mouse sign
+# locked in the validation plan. NF-kB & MG-M3 attenuation negative, Gsk3b
+# tau-enhanced positive.
+hmc_mech <- c("NFKB_union_targets", "MG_M3_module", "Gsk3b_targets")
+hmc_mouse_dir <- c(NFKB_union_targets = "negative", MG_M3_module = "negative",
+                   Gsk3b_targets = "positive")
+hmc_mech_lab <- c(NFKB_union_targets = "NF-kB targets",
+                  MG_M3_module = "MG-M3 module", Gsk3b_targets = "Gsk3b targets")
+
+hmc <- hmc_models[hmc_models$signature %in% hmc_mech, ]
+hmc$stratum <- factor(hmc_stratum_lab[hmc$stratum],
+                      levels = hmc_stratum_lab[hmc_strata])
+hmc$signature <- factor(hmc$signature, levels = rev(hmc_mech))
+hmc$lab <- sprintf("%.3f%s", hmc$ix_est,
+                   ifelse(!is.na(hmc$ix_fdr) & hmc$ix_fdr < 0.05, "*", ""))
+hmc_lim <- max(abs(hmc$ix_est), na.rm = TRUE)
+# Right-side y labels carry the mouse-predicted interaction sign.
+hmc_ylab <- setNames(sprintf("%s\n(mouse %s)", hmc_mech_lab[hmc_mech],
+                             hmc_mouse_dir[hmc_mech]), hmc_mech)
+
+ggplot(hmc, aes(stratum, signature, fill = ix_est)) +
+  geom_tile(colour = "grey85") +
+  geom_text(aes(label = lab), size = 3.1) +
+  scale_fill_gradientn(colours = hmc_diverging, limits = c(-hmc_lim, hmc_lim),
+                       name = "amyloid:tau\ncoefficient") +
+  scale_y_discrete(labels = hmc_ylab) +
+  labs(
+    x = NULL, y = NULL,
+    title = "Mouse interaction mechanisms reproduce their direction in human AD",
+    subtitle = paste0(
+      "Human SEA-AD amyloid:tau coefficient across strata; all three ",
+      "pre-registered mechanisms match the mouse-predicted sign in 5/5 strata")) +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid = element_blank(),
+    plot.subtitle = element_text(size = 9))
+```
+
+# The integrated convergence model
+
+Eleven evidence arcs (D--O) layered onto the four base modalities, plus the human translational test, converge on one integrated picture, rendered below as an evidence-layer by biological-axis matrix. Three readings sit side by side. First, amyloid-driven DAM activation is the strongest and most multi-layer-convergent axis -- positive and at least moderately supported in nearly every layer, from expression through kinase activity, composition and progression. Second, the tau x amyloid interaction, the project's core readout, does not live on the static gene axis: matched-power gene-level testing collapses it to null in every cell type, which the specificity arc (N) reframes as not microglia-specific, and it is likewise null in neighbourhood composition (spatial arc L); yet it re-emerges as a positive progression-dynamics effect (trajectory arc M) and is mechanism-signed at the kinase and transcription-factor layers (Gsk3b up, Myc down). Third, the later arcs (K--O) are deliberately margin-neutral -- each contributes only one or two Suggestive ledger rows -- so they corroborate the decided contests orthogonally without moving them. The human cross-species layer is held separate: directionally consistent with the mouse mechanisms, never counted into the mouse contests.
+
+## Convergence matrix across all evidence layers
+
+Panel A is the landscape view -- each arc's own signed verdict per axis, with nulls and reframings first-class: grey null cells, the gold reframe cell where the specificity arc recast the interaction as not microglia-specific, and the purple mixed cells where modalities or ligand-receptor pairs disagree in sign. Panel B is the contest view, the three sealed section-17 margins (55 / 18 / 12). The two views are complementary: the contest arithmetic discounts the margin-neutral arcs that the landscape view shows are nonetheless corroborating, which is precisely why both are shown. The table beneath re-surfaces the sealed margins read-only. With this synthesis the project reaches its planned close -- further arcs would add orthogonal corroboration at diminishing return rather than move any verdict.
+
+```{r capstone_convergence, results='asis'}
+# Capstone (arc P) -- the integrated tau x amyloid microglial convergence model.
+# Display-only: embeds the pre-built publication figure (built out-of-knit by
+# scripts/build_capstone_figure.py from the two capstone_* result TSVs; the
+# committed PNG under storage/figures/ is the deliverable and is NOT regenerated
+# inside the knit) and re-surfaces the sealed contest-view margins beneath it.
+# Reads only the two capstone_* TSVs via rt(); recomputes nothing (read-only
+# aggregation -- the ledger, the 11-entity set, the grade defs and the section-17
+# margins are never touched here).
+knitr::include_graphics("storage/figures/capstone_convergence.png")
+
+# Contest view: re-surface the three sealed adjudicated margins as a compact
+# table beneath the figure (the exact values behind panel B).
+.cap_lab <- c(amyloid_activation    = "Amyloid activation",
+              synaptic_suppression  = "Synaptic suppression",
+              interaction_metabolic = "Tau x amyloid interaction")
+cs       <- rt("capstone_contest_summary.tsv")
+.hyp_id  <- sub(" .*$", "", cs$winner)
+.hyp_dsc <- sub("^\\S+ \\((.*)\\)$", "\\1", cs$winner)
+cs_disp  <- data.frame(
+  Axis             = .cap_lab[cs$contest],
+  `Favoured model` = sprintf("%s: %s", .hyp_id, .hyp_dsc),
+  Margin           = cs$margin,
+  `S / M / Su`     = sprintf("%d / %d / %d", cs$n_strong, cs$n_moderate, cs$n_suggestive),
+  Layers           = cs$n_layers,
+  Modalities       = cs$n_modalities,
+  check.names      = FALSE,
+  stringsAsFactors = FALSE
+)
+cs_disp <- cs_disp[order(-cs$margin), ]
+knitr::kable(
+  cs_disp, row.names = FALSE, align = c("l", "l", "r", "c", "r", "r"),
+  caption = paste0(
+    "Contest view: the three sealed adjudicated margins (analysis report ",
+    "section 17), re-surfaced read-only. Margin = favoured-model net support ",
+    "minus rival net support; S / M / Su = Strong / Moderate / Suggestive ",
+    "supporting ledger rows; Layers and Modalities count the distinct evidence ",
+    "layers and replicate modalities behind the winner.")
+)
+```
+
+# Scope and caveats {-}
+
+- Bulk phospho/proteome are whole-hippocampus, **not** microglia-sorted, so kinase-activity readouts report tissue-level activity at each contrast.
+- snRNAseq composition figures are pre-QC-pruning (26,104 nuclei) whereas DE uses the pruned subset (~23,465); counts differ accordingly.
+- NEBULA produces extreme natural-log estimates for near-zero-count genes; per-substate scatters clip *display* only (no points or statistics dropped).
+- Cross-tool CCC ranks are universe-restricted and tool-dependent; the GeoMx interaction volcano (not shown here) is dominated by predicted-gene spatial confounds, which is why the cross-modal concordance panel carries the null.
+- All caches and result tables are re-read from disk; this document re-renders curated figures without recomputing the analysis.
+

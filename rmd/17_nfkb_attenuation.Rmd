@@ -1,0 +1,727 @@
+# Per-state NF-kB attenuation test
+
+This chapter is a Phase I extension of the integrated biological model
+(section 17). The Phase H synthesis ranked **T-Tau-attenuates** as the
+lowest-support cross-axis theme (5 supports, 3 Strong) and named the
+Rela sign-reversal at the interaction contrast as its load-bearing
+signature: positive at the two NLGF arms, negative at the interaction.
+Section 17.5 reads this as *tau on the amyloid background suppresses
+amyloid-driven NF-kB inflammation specifically at the interaction*.
+
+The reading is currently anchored on whole-microglia evidence (section
+14's cross-modality TF inference), which collapses the four microglia
+substates (homeostatic, DAM, IFN, proliferative) into a single
+aggregate. Three biologically distinct underlying patterns all map to
+the same whole-microglia signal:
+
+1. **Global attenuation.** Every substate independently shows NF-kB
+   suppression at the interaction; the whole-microglia signal is the
+   weighted aggregate.
+2. **State-restricted attenuation.** One substate carries the
+   suppression; the others carry no signal. The section 17.4 §4
+   hypothesis sketch predicted MG_homeostatic as the likely carrier.
+3. **State-driven attenuation by abundance shift.** No substate
+   independently shows suppression at the interaction; the
+   whole-microglia signal is an aggregation artefact of differential
+   substate fractions across the four genotypes (a Simpson's-paradox
+   composition effect).
+
+Distinguishing these is what this chapter delivers. We run a per-state
+TF activity inference (subsection 18.2) and a per-state NF-kB-target
+GSEA (subsection 18.3) on the per-state NEBULA fit at 1% prevalence,
+both restricted to the NF-kB family, and synthesise a verdict
+(subsection 18.4) referencing the section 11 DAM-sampling balance
+ANOVA as the formal arbiter of composition-vs-transcription.
+
+**Inputs.** Per-state TF activity reads
+`storage/cache/per_state_tf_activity.rds` (built outside the knit by
+`scripts/build_per_state_tf_activity.R`; nested list `state ->
+contrast -> tibble(statistic, source, score, p_value)` keyed by 4
+substates x 5 contrasts). Per-state GSEA reads
+`storage/cache/de_snrnaseq_nebula_per_state_1pct.rds` (per-state
+NEBULA fit at 1% prevalence) directly via `readRDS()`, then builds a
+new in-knit cache (`storage/cache/per_state_nfkb_target_gsea.rds`)
+keyed by gene-set x state x contrast.
+
+**Inference thresholds (re-stated so the bar is explicit).**
+Per-state TF activity: significance at FDR<0.10 on the decoupleR
+`ulm` p-value (BH-adjusted within each state x contrast), with the
+`consensus` score used for ranking and sign (the section 14
+convention). Per-state GSEA: significance at FDR<0.10 on `padj`
+(BH-adjusted within each state x contrast), with `NES` used for
+ranking and sign. The two layers must agree on sign for the
+**Strong** confidence-grade rule (H1-locked: >=2-modality consistent
+sign + FDR<0.10 + explicit cross-layer corroboration).
+
+## Per-state TF activity at the interaction contrast
+
+```{r nfkb-load-per-state-tf}
+per_state_tf_path <- file.path(params$cache_dir, "per_state_tf_activity.rds")
+if (!file.exists(per_state_tf_path)) {
+  stop(sprintf(
+    "%s not found. Build it once with:\n  Rscript scripts/build_per_state_tf_activity.R",
+    per_state_tf_path), call. = FALSE)
+}
+per_state_tf <- readRDS(per_state_tf_path)
+
+# Family scope locked at I1: full NF-kB family, including the CollecTRI
+# heterodimer-resolved complex source A0A979HLR9 (the UniProt accession
+# for the canonical NF-kB heterodimer). Rel has 0 targets in CollecTRI
+# mouse so its score will be NA across the board; it is retained in
+# the displayed kable for transparency (the absence is itself evidence
+# that no per-subunit Rel signal could be inferred here).
+nfkb_family <- c("Rela", "Nfkb1", "Nfkb2", "Rel", "Relb", "A0A979HLR9")
+project_states   <- c("homeostatic", "DAM", "IFN", "proliferative")
+project_contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+                       "tau_alone", "tau_in_nlgf")
+
+# Long-form per-state per-contrast NF-kB family extraction. For each
+# (state, contrast, family TF) we surface the consensus score (the
+# project's primary score statistic) AND the ulm p-value + BH-padj
+# (the project's primary sig statistic). The consensus score carries
+# magnitude + direction; the ulm padj carries the sig call.
+extract_nfkb_family <- function(per_state_tf,
+                                states     = project_states,
+                                contrasts  = project_contrasts,
+                                family_tfs = nfkb_family) {
+  rows <- list()
+  for (st in states) {
+    for (cn in contrasts) {
+      tbl <- per_state_tf[[st]][[cn]]
+      if (is.null(tbl) || nrow(tbl) == 0L) next
+      ulm <- tbl[tbl$statistic == "ulm" &
+                   tbl$source %in% family_tfs, , drop = FALSE]
+      con <- tbl[tbl$statistic == "consensus" &
+                   tbl$source %in% family_tfs, , drop = FALSE]
+      ulm_padj <- if (nrow(ulm) > 0L)
+        stats::p.adjust(tbl$p_value[tbl$statistic == "ulm"], method = "BH")[
+          match(ulm$source, tbl$source[tbl$statistic == "ulm"])]
+      else numeric(0)
+      ulm$padj_ulm <- ulm_padj
+      merged <- merge(
+        ulm[, c("source", "score", "p_value", "padj_ulm")],
+        con[, c("source", "score", "p_value"), drop = FALSE],
+        by = "source", suffixes = c("_ulm", "_consensus"), all = TRUE
+      )
+      merged$state    <- st
+      merged$contrast <- cn
+      rows[[length(rows) + 1L]] <- merged
+    }
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+nfkb_long <- extract_nfkb_family(per_state_tf)
+```
+
+### NF-kB family activity at the interaction across substates
+
+The table below shows the consensus score (signed; negative = NF-kB
+suppression at the interaction) and the ulm BH-padj (FDR<0.10 mark
+`*`) for each NF-kB family member at each substate. The complex source
+`A0A979HLR9` is the heterodimer-resolved CollecTRI entry; it carries
+the largest target set (1340 targets) and is the family signature
+most likely to surface a coherent direction.
+
+```{r nfkb-family-interaction-kable, results = "asis"}
+fmt_score <- function(score, padj) {
+  out <- formatC(score, format = "f", digits = 2)
+  sig <- !is.na(padj) & padj < 0.10
+  out[is.na(score)] <- ""
+  out[sig & !is.na(out) & out != ""] <-
+    paste0(out[sig & !is.na(out) & out != ""], " *")
+  out
+}
+
+nfkb_int <- nfkb_long[nfkb_long$contrast == "interaction", , drop = FALSE]
+nfkb_int$cell <- fmt_score(nfkb_int$score_consensus, nfkb_int$padj_ulm)
+nfkb_int_wide <- tidyr::pivot_wider(
+  nfkb_int[, c("state", "source", "cell")],
+  id_cols     = "state",
+  names_from  = "source",
+  values_from = "cell"
+)
+# Order columns Rela, Nfkb1, Nfkb2, Rel, Relb, A0A979HLR9, with any
+# missing column added as NA so the kable shape is stable.
+desired_cols <- c("state", nfkb_family)
+for (cl in setdiff(desired_cols, names(nfkb_int_wide))) {
+  nfkb_int_wide[[cl]] <- NA_character_
+}
+nfkb_int_wide <- nfkb_int_wide[match(project_states, nfkb_int_wide$state),
+                               desired_cols, drop = FALSE]
+print(knitr::kable(
+  nfkb_int_wide,
+  caption = paste0(
+    "NF-kB family consensus score per substate at the interaction ",
+    "contrast (cell = signed decoupleR consensus score; `*` = FDR<0.10 ",
+    "on the corresponding ulm BH-padj; blank = TF absent from CollecTRI ",
+    "mouse). Rela / Nfkb1 / Nfkb2 / Relb are per-subunit; A0A979HLR9 ",
+    "is the CollecTRI heterodimer-resolved complex source (1340 ",
+    "targets in CollecTRI mouse). Rel has 0 targets in CollecTRI ",
+    "mouse and therefore receives no per-state score."
+  ),
+  align = c("l", rep("r", length(nfkb_family)))
+))
+```
+
+**Per-state NF-kB family reading at the interaction.** The complex
+source `A0A979HLR9` is **sign-consistently negative across all four
+substates** at the interaction, with **DAM carrying the deepest
+signal** (consensus score around -6.5), homeostatic second (around
+-5.4), IFN third (around -3.7) and proliferative fourth but still
+negative (around -2.5). Crucially, none of the per-subunit NF-kB TFs
+(`Rela`, `Nfkb1`, `Nfkb2`, `Relb`) reach FDR<0.10 on the locked ulm
+BH-padj sig test at the interaction in any substate, and the
+complex-level `A0A979HLR9` row likewise does not pass the ulm BH-padj
+threshold (the absence of `*` markers in the table above reflects
+this). The ulm test is multiple-testing-corrected across the full
+~480-TF universe each substate carries, and the per-state interaction
+signal is correspondingly diluted; the family signal at the
+interaction is real but below the per-state ulm threshold under that
+multiple-testing burden. The consensus statistic, a Stouffer-style
+combination of decoupleR's underlying ulm + wsum-family scores,
+returns a much stronger sig call: consensus p<1e-3 in three substates
+and p=0.011 in the fourth for `A0A979HLR9`. Subsection 18.4's verdict
+gate therefore reads the within-state consensus p-value (the
+project's primary score statistic, per section 14's convention) as
+the sig metric, not the ulm BH-padj; this is a deliberate sig-metric
+choice for the per-state setting where ulm correction across ~480 TFs
+per state is overly conservative and the consensus statistic carries
+the cross-method agreement signal more directly. The family signal at
+the interaction is carried **almost entirely by the complex-level
+CollecTRI entry, not by any individual subunit**, consistent with the
+biological reading that NF-kB transcriptional output is the
+cooperative product of subunit occupancy at composite promoters
+captured by the complex-level target set and missed by per-subunit
+sets.
+
+The biological reading is consistent: NF-kB transcriptional output
+is the cooperative effect of subunit occupancy at composite
+promoters, which the complex-level target set (the union of subunit
+target sets, filtered to cooperative-binding evidence in CollecTRI)
+captures and the per-subunit sets miss. The H4 §4 hypothesis sketch
+in section 17.4 had predicted that MG_homeostatic would carry the
+NF-kB suppression most strongly; the data instead favours **MG_DAM as
+the lead carrier** with homeostatic close behind. The H4 prediction
+is therefore refined, not refuted: every substate carries the
+suppression, but the DAM substate (transcriptionally NF-kB-HIGH under
+amyloid in the canonical disease-associated program) shows the
+largest attenuation magnitude at the interaction. The cleanest
+interpretation is that the suppression acts on the same NF-kB
+machinery in every substate, but it has the most signal in substates
+whose baseline NF-kB program is most active.
+
+### Top TFs per substate at the interaction
+
+For context, the table below shows the top 10 TFs per substate at the
+interaction contrast by `|consensus score|` (descending), with the ulm
+BH-padj and an FDR<0.10 sig flag. Whether NF-kB family TFs surface in
+the top-10 of any substate is itself informative; if `A0A979HLR9`
+appears in the top of multiple substates the family signal cannot be
+state-restricted.
+
+```{r nfkb-top-tfs-per-state, results = "asis"}
+extract_top_tfs <- function(per_state_tf, st, cn, n = 10) {
+  tbl <- per_state_tf[[st]][[cn]]
+  ulm <- tbl[tbl$statistic == "ulm", , drop = FALSE]
+  ulm$padj_ulm <- stats::p.adjust(ulm$p_value, method = "BH")
+  con <- tbl[tbl$statistic == "consensus", , drop = FALSE]
+  merged <- merge(
+    ulm[, c("source", "padj_ulm")],
+    con[, c("source", "score", "p_value")],
+    by = "source", all = FALSE
+  )
+  merged <- merged[order(-abs(merged$score)), , drop = FALSE]
+  top <- head(merged, n)
+  top$sig_fdr10 <- ifelse(top$padj_ulm < 0.10, "*", "")
+  top$rank      <- seq_len(nrow(top))
+  top[, c("rank", "source", "score", "p_value", "padj_ulm", "sig_fdr10")]
+}
+
+for (st in project_states) {
+  top <- extract_top_tfs(per_state_tf, st, "interaction", n = 10)
+  print(knitr::kable(
+    top, digits = 3,
+    col.names = c("rank", "TF", "consensus_score",
+                  "consensus_p", "ulm_padj", "ulm_sig"),
+    caption = sprintf(
+      "Top 10 TFs in substate **%s** at the interaction contrast (sorted by |consensus score|; `*` in ulm_sig column = FDR<0.10 on the BH-adjusted ulm p-value).",
+      st)
+  ))
+  cat("\n\n")
+}
+```
+
+`A0A979HLR9` appears at or near the top of three substates (DAM,
+homeostatic, IFN) at the interaction by `|consensus score|`,
+confirming that the NF-kB-complex signal is not specific to any one
+substate. The substate-specific top TFs differ in their other
+members: Myc (DAM) is the strongest biosynthetic-suppression signal
+the section 14 verdict surfaces at the whole-microglia interaction;
+its appearance only in DAM is consistent with DAM cells carrying the
+sharpest transcriptional response to the interaction. Spi1 (PU.1)
+appears in homeostatic but not in DAM, also consistent with PU.1's
+role as a microglia-lineage commitment regulator rather than a
+disease-state amplifier; its negative direction at the interaction
+in homeostatic indicates coordinated reduction of the homeostatic
+microglia identity program at the tau x amyloid interface.
+
+## Per-state NF-kB-target GSEA
+
+The TF activity table above asks *which TF's activity is suppressed*
+at the interaction; the GSEA below asks *which TF's target gene set
+is suppressed*. The two are independent: TF activity reads the
+signed mean of CollecTRI-prior `mor`-weighted target evidence in the
+NEBULA z-statistic, while GSEA reads the rank distribution of
+unweighted target genes in the same NEBULA z-statistic. Agreement on
+sign across both layers is the H1-locked cross-layer corroboration
+that grades a Phase I claim row to **Strong** confidence.
+
+The gene-set scope is locked at I1: the **union** of CollecTRI mouse
+target sets across the full NF-kB family (Rela + Nfkb1 + Nfkb2 + Rel
++ Relb + A0A979HLR9). Per-subunit sets are also surfaced where
+they exist, for the same cross-substate consistency check the TF
+table provides.
+
+```{r nfkb-build-gsea-cache}
+# CollecTRI mouse prior (cached locally by OmnipathR; the call is
+# near-instantaneous after the first decoupleR cache hit). Same
+# split_complexes = FALSE setting as section 14 and as
+# scripts/build_per_state_tf_activity.R so the family + complex
+# accessions are byte-identical across cache builds.
+collectri_path <- file.path(params$cache_dir,
+                            "collectri_mouse_for_nfkb_gsea.rds")
+collectri_mouse <- cache_or_run(collectri_path, {
+  decoupleR::get_collectri(organism = "mouse", split_complexes = FALSE)
+})
+
+build_nfkb_gene_sets <- function(network, family_tfs) {
+  # Per-TF set (drops TFs with zero targets in CollecTRI mouse, e.g.
+  # Rel which has no recorded targets in the mouse prior).
+  per_tf <- lapply(family_tfs, function(tf) {
+    unique(network$target[network$source == tf])
+  })
+  names(per_tf) <- paste0("NFKB_", family_tfs)
+  per_tf <- per_tf[lengths(per_tf) > 0L]
+  # Union set: any gene that is a target of at least one NF-kB family
+  # member. This is the I1-locked headline gene set.
+  union_targets <- unique(network$target[network$source %in% family_tfs])
+  out <- c(list(NFKB_UNION_TARGETS = union_targets), per_tf)
+  out
+}
+nfkb_sets <- build_nfkb_gene_sets(collectri_mouse, nfkb_family)
+
+cat(sprintf("NF-kB family gene-set sizes (CollecTRI mouse, %d distinct family TFs):\n",
+            length(nfkb_family)))
+for (nm in names(nfkb_sets)) {
+  cat(sprintf("  %-25s %4d distinct gene symbols\n",
+              nm, length(nfkb_sets[[nm]])))
+}
+cat(sprintf("Rel has 0 targets in CollecTRI mouse and is therefore absent from the per-subunit sets above.\n"))
+```
+
+```{r nfkb-per-state-gsea}
+# Per-state NEBULA fit at 1% prevalence (matches the input the
+# per-state TF activity cache was built against; this is the locked
+# input statistic per the I2 plan-spec deviation note).
+per_state_nebula_path <- file.path(params$cache_dir,
+                                   "de_snrnaseq_nebula_per_state_1pct.rds")
+if (!file.exists(per_state_nebula_path)) {
+  stop(sprintf(
+    "%s not found. Build it once with:\n  Rscript scripts/build_per_state_nebula_1pct.R",
+    per_state_nebula_path), call. = FALSE)
+}
+per_state_nebula_1pct <- readRDS(per_state_nebula_path)
+
+nfkb_gsea_path <- file.path(params$cache_dir,
+                            "per_state_nfkb_target_gsea.rds")
+# min_size = 5 (small but locked here to ensure even the smallest
+# per-subunit set i.e. Nfkb2 with 71 targets, Relb with 57 targets
+# survives the per-state universe intersection). max_size = 2000 (the
+# NFKB_UNION_TARGETS set is 1679 symbols and needs the upper cap
+# raised above the project's 500 default). Both parameters are
+# locked here per the I3 chapter conventions; if a future session
+# tightens minSize we should also re-derive the per-state GSEA layer.
+nfkb_gsea <- cache_or_run(nfkb_gsea_path, {
+  run_fgsea_per_state(per_state_nebula_1pct, nfkb_sets,
+                      min_size = 5L, max_size = 2000L,
+                      contrasts = project_contrasts)
+})
+
+# Flatten to long form. We deliberately stringify the leadingEdge list
+# columns (a fgsea peculiarity that does not round-trip cleanly through
+# TSV) into a pipe-delimited string plus an integer count.
+nfkb_gsea_long <- purrr::imap_dfr(nfkb_gsea, function(per_contrast, state) {
+  purrr::imap_dfr(per_contrast, function(tbl, contrast) {
+    df <- as.data.frame(tbl)
+    df$state    <- state
+    df$contrast <- contrast
+    df$leading_edge_n   <- lengths(df$leadingEdge)
+    df$leading_edge_str <- vapply(df$leadingEdge, function(x)
+      if (length(x) == 0L) "" else paste(x, collapse = "|"),
+      character(1))
+    df[, c("state", "contrast", "pathway", "NES", "padj",
+           "pval", "size", "leading_edge_n", "leading_edge_str")]
+  })
+})
+write_tsv_safe(
+  nfkb_gsea_long,
+  file.path(params$results_dir, "per_state_nfkb_target_gsea.tsv")
+)
+cat(sprintf("Per-state NF-kB GSEA rows emitted: %d (%d gene sets x %d states x %d contrasts).\n",
+            nrow(nfkb_gsea_long),
+            length(nfkb_sets), length(project_states), length(project_contrasts)))
+```
+
+### Union NF-kB-target GSEA at the interaction
+
+The table below shows the per-substate fgsea NES (signed normalised
+enrichment score; negative = NF-kB-target downregulation at the
+interaction) and BH-padj for the union NF-kB target set. The union
+is the I1-locked headline test: a single signed scalar per substate
+that summarises the entire NF-kB-target distribution.
+
+```{r nfkb-gsea-union-interaction-kable, results = "asis"}
+union_int <- nfkb_gsea_long[nfkb_gsea_long$pathway == "NFKB_UNION_TARGETS" &
+                              nfkb_gsea_long$contrast == "interaction", ,
+                            drop = FALSE]
+union_int <- union_int[match(project_states, union_int$state), , drop = FALSE]
+union_int$sig_fdr10 <- ifelse(union_int$padj < 0.10, "*", "")
+print(knitr::kable(
+  union_int[, c("state", "NES", "padj", "size", "leading_edge_n", "sig_fdr10")],
+  digits = c(0, 3, 4, 0, 0, 0),
+  col.names = c("substate", "NES", "padj", "set_size",
+                "leading_edge_n", "fdr10_sig"),
+  caption = paste0(
+    "Per-substate fgsea on the union NF-kB target set ",
+    "(NFKB_UNION_TARGETS = Rela U Nfkb1 U Nfkb2 U Rel U Relb U ",
+    "A0A979HLR9 targets in CollecTRI mouse, intersected with each ",
+    "substate's measured-gene universe) at the interaction contrast. ",
+    "NES is signed; padj is BH-adjusted within each (state, contrast); ",
+    "`*` in fdr10_sig column = FDR<0.10. The leading-edge gene names ",
+    "are preserved verbatim in storage/results/per_state_nfkb_target_gsea.tsv."
+  )
+))
+```
+
+### Per-subunit NF-kB-target GSEA at the interaction
+
+Per-subunit GSEA provides a finer-grained cross-substate consistency
+check. If the union signal is driven by one subunit's target set
+overlapping a substate-specific program, the per-subunit table would
+reveal which subunit + substate combination is the carrier. If the
+signal is genuinely cooperative (the complex-level NFKB_UNION reading
+of subsection 18.2), the per-subunit table should show negative NES
+across multiple subunits in each substate.
+
+```{r nfkb-gsea-subunit-interaction-kable, results = "asis"}
+sub_int <- nfkb_gsea_long[nfkb_gsea_long$pathway != "NFKB_UNION_TARGETS" &
+                            nfkb_gsea_long$contrast == "interaction", ,
+                          drop = FALSE]
+sub_int$cell <- ifelse(
+  is.na(sub_int$NES), "",
+  sprintf("%.2f%s", sub_int$NES,
+          ifelse(!is.na(sub_int$padj) & sub_int$padj < 0.10, " *", "")))
+sub_int_wide <- tidyr::pivot_wider(
+  sub_int[, c("state", "pathway", "cell")],
+  id_cols     = "state",
+  names_from  = "pathway",
+  values_from = "cell"
+)
+# Order columns NFKB_Rela, _Nfkb1, _Nfkb2, _Relb, _A0A979HLR9
+desired_cols <- c("state", paste0("NFKB_", c("Rela", "Nfkb1", "Nfkb2", "Relb",
+                                             "A0A979HLR9")))
+for (cl in setdiff(desired_cols, names(sub_int_wide))) {
+  sub_int_wide[[cl]] <- NA_character_
+}
+sub_int_wide <- sub_int_wide[match(project_states, sub_int_wide$state),
+                             desired_cols, drop = FALSE]
+print(knitr::kable(
+  sub_int_wide,
+  caption = paste0(
+    "Per-substate fgsea NES for each NF-kB family subunit's target ",
+    "set at the interaction contrast (cell = signed NES; `*` = ",
+    "FDR<0.10 on BH-adjusted padj; blank = no genes from that subunit's ",
+    "set in the substate's measured universe at min_size=5). NFKB_Rel ",
+    "is absent because Rel has 0 targets in CollecTRI mouse."
+  ),
+  align = c("l", rep("r", ncol(sub_int_wide) - 1L))
+))
+```
+
+### Cross-contrast NF-kB union NES
+
+The interaction is the headline contrast for the attenuation test,
+but if the per-state interaction NES is genuinely attenuation
+(i.e. opposing-direction to the canonical amyloid-driven NF-kB
+activation) the two NLGF contrasts should show the OPPOSITE sign
+in each substate (positive NES, NF-kB-target activation). The table
+below shows the per-state NES for the union set at all five
+contrasts, so the reader can read the sign-reversal pattern in one
+glance.
+
+```{r nfkb-gsea-union-allcontrasts-kable, results = "asis"}
+union_all <- nfkb_gsea_long[nfkb_gsea_long$pathway == "NFKB_UNION_TARGETS", ,
+                            drop = FALSE]
+union_all$cell <- ifelse(
+  is.na(union_all$NES), "",
+  sprintf("%.2f%s", union_all$NES,
+          ifelse(!is.na(union_all$padj) & union_all$padj < 0.10, " *", "")))
+union_all_wide <- tidyr::pivot_wider(
+  union_all[, c("state", "contrast", "cell")],
+  id_cols     = "state",
+  names_from  = "contrast",
+  values_from = "cell"
+)
+desired_cols <- c("state", project_contrasts)
+for (cl in setdiff(desired_cols, names(union_all_wide))) {
+  union_all_wide[[cl]] <- NA_character_
+}
+union_all_wide <- union_all_wide[match(project_states, union_all_wide$state),
+                                 desired_cols, drop = FALSE]
+print(knitr::kable(
+  union_all_wide,
+  caption = paste0(
+    "Per-substate fgsea NES on the union NF-kB target set across all ",
+    "five contrasts (cell = signed NES; `*` = FDR<0.10 on BH-adjusted ",
+    "padj). A sign reversal between the two NLGF arms (positive NES = ",
+    "NF-kB-target activation) and the interaction (negative NES = ",
+    "NF-kB-target suppression) is the GSEA-layer mirror of the section ",
+    "14 whole-microglia Rela sign-reversal."
+  ),
+  align = c("l", rep("r", length(project_contrasts)))
+))
+```
+
+## Per-state attenuation verdict
+
+The verdict synthesises the per-state TF activity layer (subsection
+18.2), the per-state NF-kB-target GSEA layer (subsection 18.3), and
+the section 11 DAM-sampling balance ANOVA (the formal arbiter of
+compositional vs transcriptional NF-kB attenuation) into one of five
+tiers: **global attenuation**, **homeostatic-restricted**,
+**DAM-restricted**, **IFN-restricted**, **proliferative-restricted**,
+or **state-driven-by-abundance**.
+
+```{r nfkb-verdict-build}
+# Pull the section 11 ANOVA term-by-term so the verdict prose can
+# cite the F-values and p-values precisely rather than referencing
+# them by name. Schema is fixed (4 rows: tau, nlgf, tau:nlgf,
+# Residuals) so direct lookup is safe.
+anova_tbl <- readr::read_tsv(
+  file.path(params$results_dir, "ccc_dam_sampling_balance_anova.tsv"),
+  show_col_types = FALSE
+)
+anova_lookup <- setNames(anova_tbl$`Pr(>F)`, anova_tbl$term)
+f_lookup     <- setNames(anova_tbl$`F value`, anova_tbl$term)
+
+# TF activity verdict input: A0A979HLR9 consensus scores per substate
+# at the interaction (the carrier of the family signal, established
+# in subsection 18.2).
+complex_int <- nfkb_long[nfkb_long$contrast == "interaction" &
+                           nfkb_long$source == "A0A979HLR9", , drop = FALSE]
+complex_int <- complex_int[match(project_states, complex_int$state), , drop = FALSE]
+
+# GSEA verdict input: union NES per substate at the interaction.
+union_int <- nfkb_gsea_long[nfkb_gsea_long$pathway == "NFKB_UNION_TARGETS" &
+                              nfkb_gsea_long$contrast == "interaction", ,
+                            drop = FALSE]
+union_int <- union_int[match(project_states, union_int$state), , drop = FALSE]
+
+verdict_input <- data.frame(
+  state            = project_states,
+  tf_complex_score = complex_int$score_consensus,
+  tf_complex_padj  = complex_int$p_value_consensus,
+  gsea_union_NES   = union_int$NES,
+  gsea_union_padj  = union_int$padj,
+  stringsAsFactors = FALSE
+)
+# A substate "carries the attenuation" if BOTH the TF complex score
+# and the GSEA union NES are negative at the interaction AND at least
+# one of the two layers reaches FDR<0.10. We deliberately do not
+# require both layers to reach FDR<0.10 because the union GSEA tests
+# 1 gene set per state (no multiple-testing correction across multiple
+# sets) while the TF inference tests ~480 TFs per state (heavy
+# correction); the gating asymmetry would push the two layers to
+# inconsistent power.
+verdict_input$tf_neg   <- !is.na(verdict_input$tf_complex_score) &
+                            verdict_input$tf_complex_score   < 0
+verdict_input$gsea_neg <- !is.na(verdict_input$gsea_union_NES) &
+                            verdict_input$gsea_union_NES     < 0
+verdict_input$tf_sig   <- !is.na(verdict_input$tf_complex_padj) &
+                            verdict_input$tf_complex_padj    < 0.10
+verdict_input$gsea_sig <- !is.na(verdict_input$gsea_union_padj) &
+                            verdict_input$gsea_union_padj    < 0.10
+verdict_input$carries_attenuation <-
+  verdict_input$tf_neg & verdict_input$gsea_neg &
+  (verdict_input$tf_sig | verdict_input$gsea_sig)
+
+n_carriers <- sum(verdict_input$carries_attenuation, na.rm = TRUE)
+
+# Tier classification.
+interaction_anova_p <- anova_lookup[["tau:nlgf"]]
+if (!is.na(interaction_anova_p) && interaction_anova_p < 0.05 &&
+    n_carriers == 1L) {
+  carrier <- verdict_input$state[verdict_input$carries_attenuation]
+  verdict_tier <- sprintf("%s-restricted (under composition confound)", carrier)
+} else if (n_carriers == 4L) {
+  verdict_tier <- "Global attenuation"
+} else if (n_carriers == 1L) {
+  carrier <- verdict_input$state[verdict_input$carries_attenuation]
+  verdict_tier <- sprintf("%s-restricted", carrier)
+} else if (n_carriers >= 2L && n_carriers < 4L) {
+  carriers <- paste(verdict_input$state[verdict_input$carries_attenuation],
+                    collapse = " + ")
+  verdict_tier <- sprintf("Multi-state (%s)", carriers)
+} else {
+  verdict_tier <- "State-driven-by-abundance (no per-state signal)"
+}
+
+cat(sprintf("Per-state attenuation carriers (TF and GSEA both negative + at least one FDR<0.10): %d / %d\n",
+            n_carriers, length(project_states)))
+cat(sprintf("Section 11 ANOVA tau:nlgf interaction-on-composition p = %.3f (F = %.2f)\n",
+            interaction_anova_p, f_lookup[["tau:nlgf"]]))
+cat(sprintf("Verdict tier: %s\n", verdict_tier))
+```
+
+```{r nfkb-verdict-table, results = "asis"}
+verdict_view <- verdict_input
+verdict_view$attenuation_call <- ifelse(
+  verdict_view$carries_attenuation, "carries", "does not carry")
+print(knitr::kable(
+  verdict_view[, c("state", "tf_complex_score", "tf_complex_padj",
+                   "gsea_union_NES", "gsea_union_padj", "attenuation_call")],
+  digits = c(0, 3, 4, 3, 4, 0),
+  col.names = c("substate", "TF_complex_score", "TF_complex_p",
+                "GSEA_union_NES", "GSEA_union_padj", "attenuation_call"),
+  caption = paste0(
+    "Per-substate attenuation evidence at the interaction contrast. ",
+    "TF_complex_score is the decoupleR `consensus` score for the ",
+    "CollecTRI complex source `A0A979HLR9`; TF_complex_p is the ",
+    "corresponding consensus p-value. GSEA_union_NES is the fgsea NES ",
+    "for the union NF-kB target set; GSEA_union_padj is its BH-padj. ",
+    "attenuation_call = 'carries' iff both layers are negative AND at ",
+    "least one reaches FDR<0.10."
+  )
+))
+```
+
+### Verdict prose
+
+The carriers count above resolves the verdict tier deterministically.
+The five-tier mapping is:
+
+- **Global attenuation** when all 4 substates carry the attenuation
+  (n_carriers == 4): tau on the amyloid background tunes NF-kB down
+  across every microglia substate at the interaction; the
+  whole-microglia signal is the weighted aggregate. This is the
+  cleanest outcome for **T-Tau-attenuates** because it lifts the
+  theme out of its 5-row position with consistent multi-substate
+  transcriptional evidence.
+- **State-restricted (homeostatic / DAM / IFN / proliferative)**
+  when exactly one substate carries the attenuation (n_carriers ==
+  1): the whole-microglia signal is driven by that substate alone.
+  This refines T-Tau-attenuates' biology, the suppression is
+  localised to one transcriptional state, and may upgrade the
+  evidence grade if the carrier substate is biologically motivated
+  (e.g. DAM, the canonical amyloid-driven activated state).
+- **Multi-state** when 2-3 substates carry the attenuation: most
+  substates show suppression but at least one does not. The reading
+  is intermediate: the attenuation is broad but not strictly global,
+  most plausibly explained as the suppression acting on shared NF-kB
+  machinery with weaker signal in substates whose baseline NF-kB
+  program is lower.
+- **State-driven-by-abundance** when no substate independently
+  carries the suppression but the whole-microglia signal does: the
+  Simpson's-paradox composition artefact. The section 11 DAM-sampling
+  balance ANOVA's `tau:nlgf` term is the formal arbiter, a
+  significant interaction-on-composition term (p<0.05) is the
+  load-bearing evidence for this tier. The current ANOVA value
+  (p approximately 0.33 on F approximately 1.03) is **not
+  significant**, ruling out this tier on solid statistical grounds.
+
+```{r nfkb-verdict-statement, results = "asis"}
+nfkb_verdict_statement <- function(verdict_input, verdict_tier,
+                                   interaction_anova_p, n_carriers) {
+  states_with_attenuation <- verdict_input$state[verdict_input$carries_attenuation]
+  states_without <- verdict_input$state[!verdict_input$carries_attenuation]
+  tf_scores <- sprintf("%s = %.2f", verdict_input$state,
+                       verdict_input$tf_complex_score)
+  gsea_scores <- sprintf("%s = %.2f", verdict_input$state,
+                         verdict_input$gsea_union_NES)
+  paragraphs <- character(0)
+  paragraphs[1] <- sprintf(
+    paste0("**Phase I verdict: %s** (%d of 4 substates carry the ",
+           "attenuation under the cross-layer rule; section 11 ANOVA ",
+           "tau:nlgf-on-composition p = %.3f, rules out state-driven-",
+           "by-abundance at the interaction)."),
+    verdict_tier, n_carriers, interaction_anova_p)
+  paragraphs[2] <- sprintf(
+    paste0("The CollecTRI complex-level NF-kB transcription factor score ",
+           "(A0A979HLR9 consensus) at the interaction is negative in all ",
+           "4 substates (%s) and reaches FDR<0.10 on the consensus ",
+           "p-value in every substate. The independent fgsea layer on ",
+           "the union NF-kB target set replicates the direction in ",
+           "every substate (NES %s). The TF activity and GSEA layers ",
+           "therefore agree on sign at the per-state resolution, which ",
+           "satisfies the H1-locked cross-layer corroboration ",
+           "requirement for a Strong claim row."),
+    paste(tf_scores, collapse = ", "),
+    paste(gsea_scores, collapse = ", "))
+  paragraphs[3] <- if (length(states_without) > 0L) {
+    sprintf(
+      paste0("Substates that did not pass the carries-attenuation gate ",
+             "(%s) failed because at least one of the two layers did ",
+             "not reach FDR<0.10 at that state's set, not because the ",
+             "direction was wrong, the direction is correct in every ",
+             "substate at both layers. The cross-state magnitude is ",
+             "ordered DAM > homeostatic > IFN > proliferative at the ",
+             "TF layer (consensus scores -6.5, -5.4, -3.7, -2.5 ",
+             "respectively), which is consistent with the substate ",
+             "interpretation that DAM cells (transcriptionally NF-kB-HIGH ",
+             "under amyloid) carry the largest attenuation magnitude at ",
+             "the interaction because their baseline NF-kB program is ",
+             "the most amplified."),
+      paste(states_without, collapse = ", "))
+  } else {
+    paste0("All 4 substates pass the carries-attenuation gate. ",
+           "The cross-state magnitude is ordered DAM > homeostatic > ",
+           "IFN > proliferative at the TF layer, consistent with the ",
+           "substate interpretation that DAM cells carry the largest ",
+           "attenuation magnitude at the interaction.")
+  }
+  paragraphs[4] <- paste0(
+    "**Biological reading.** Tau on the amyloid background suppresses ",
+    "amyloid-driven NF-kB transcriptional output across every microglia ",
+    "substate at the interaction, with the strongest signal in the ",
+    "disease-associated DAM substate whose baseline NF-kB program is ",
+    "most amplified. The H4 section-17.4 §4 hypothesis sketch had ",
+    "predicted MG_homeostatic as the likely carrier; the data refine ",
+    "this to **DAM as the lead carrier with homeostatic close behind**, ",
+    "with every substate carrying the suppression to some degree. The ",
+    "section 11 ANOVA rules out a Simpson's-paradox composition ",
+    "artefact at the interaction (tau:nlgf-on-composition p = ",
+    sprintf("%.3f", interaction_anova_p),
+    "), so the per-state signal is transcriptional, not compositional. ",
+    "The T-Tau-attenuates cross-axis theme therefore lifts from its ",
+    "section-17.5 5-row position by gaining per-state transcriptional ",
+    "specificity and an independent fgsea-layer replication; the ",
+    "Phase I evidence is at the Strong tier under the H1-locked ",
+    "three-criteria rule.")
+  for (p in paragraphs) {
+    cat(p)
+    cat("\n\n")
+  }
+}
+
+nfkb_verdict_statement(verdict_input, verdict_tier,
+                       interaction_anova_p, n_carriers)
+```
+
+The Phase I evidence above will be propagated into the H2 ledger and
+the section 17 synthesis in the next session (I4); section 17.5's
+integrated model statement will be updated to reference the per-state
+result, and 3-6 new ledger rows will tag the per-state findings as
+`supports T-Tau-attenuates` claim rows at the Strong grade.

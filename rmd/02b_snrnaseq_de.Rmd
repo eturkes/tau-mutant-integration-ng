@@ -1,0 +1,165 @@
+# snRNAseq DE: pseudobulk per genotype_batch
+
+We aggregate raw RNA counts per `genotype_batch` (16 pseudo-samples = 4 per
+genotype) and fit `limma-voom` with the contrast matrix defined in
+`R/helpers.R`. The microglia population is used as a whole; substate-specific
+DE is run secondarily.
+
+```{r snrnaseq-de}
+de_sn_path <- file.path(params$cache_dir, "de_snrnaseq.rds")
+de_snrnaseq <- cache_or_run(de_sn_path, overwrite = params$recompute_snrnaseq, {
+  pb <- build_pseudobulk(microglia_seurat, sample_col = "genotype_batch",
+                         covariate_cols = c("genotype", "batch", "sex"))
+  meta <- pb$meta
+  meta$genotype <- factor(as.character(meta$genotype), levels = genotype_levels)
+  meta$batch    <- factor(meta$batch)
+  # 0 + genotype gives clean genotype coefficients; batch is added as covariate
+  # to absorb per-batch shifts. Sex is captured by batch (each batch is mixed).
+  design <- model.matrix(~ 0 + genotype + batch, data = meta)
+  colnames(design) <- sub("^genotype", "", colnames(design))
+  colnames(design) <- gsub("[^A-Za-z0-9_]", "_", colnames(design))
+  cm <- make_contrast_matrix(design)
+  fit <- fit_limma_voom(pb$counts, group = meta$genotype, design = design,
+                        contrasts = cm, min_count = 10)
+  # Attach gene symbols.
+  for (cn in names(fit$top)) {
+    fit$top[[cn]] <- dplyr::left_join(fit$top[[cn]],
+      symbol_map, by = c("gene" = "ensembl"))
+  }
+  list(meta = meta, design = design, contrasts = cm, fit = fit)
+})
+
+cat(sprintf("snRNAseq pseudobulk: %d samples, %d genes retained after filter.\n",
+            nrow(de_snrnaseq$meta), de_snrnaseq$fit$kept))
+
+# Summary of significant genes per contrast (FDR < 0.05).
+sn_summary <- purrr::imap_dfr(de_snrnaseq$fit$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_total  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+    n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(sn_summary, caption = "snRNAseq pseudobulk DE: significant gene counts")
+```
+
+```{r snrnaseq-volcano, fig.width = 10, fig.height = 5}
+volcano <- function(tbl, title) {
+  tbl <- tbl |> dplyr::filter(is.finite(logFC), is.finite(adj.P.Val))
+  tbl$sig <- tbl$adj.P.Val < 0.05 & abs(tbl$logFC) > 0.5
+  top <- tbl |> dplyr::arrange(adj.P.Val) |> dplyr::filter(sig) |> head(15)
+  ggplot(tbl, aes(logFC, -log10(adj.P.Val))) +
+    geom_point(aes(colour = sig), size = 0.6, alpha = 0.7) +
+    scale_colour_manual(values = c(`FALSE` = "grey70", `TRUE` = "#b40426"),
+                        guide = "none") +
+    ggrepel::geom_text_repel(data = top, aes(label = symbol),
+                             size = 3, max.overlaps = 50) +
+    theme_bw() +
+    labs(title = title, x = "log2 FC", y = "-log10 adj.P")
+}
+(volcano(de_snrnaseq$fit$top$nlgf_in_maptki, "snRNAseq: NLGF in MAPTKI") |
+ volcano(de_snrnaseq$fit$top$nlgf_in_p301s,  "snRNAseq: NLGF in P301S"))
+(volcano(de_snrnaseq$fit$top$interaction,    "snRNAseq: interaction (tau-dependent NLGF)") |
+ volcano(de_snrnaseq$fit$top$tau_alone,      "snRNAseq: tau alone"))
+```
+
+## snRNAseq DE: single-cell NB mixed model (NEBULA)
+
+Pseudobulk reduces 26k cells to 16 pseudo-samples, which under-powers the
+interaction contrast. We refit at single-cell resolution with `nebula`
+(negative-binomial gamma mixed model, log-normal random-effect method)
+using a 2x2 factorial parameterisation: `tau` and `nlgf` main effects
+plus the `tau:nlgf` interaction. The random intercept on
+`genotype_batch` absorbs batch and sex (both fully nested within
+`genotype_batch`). Three contrasts (`tau_alone`, `nlgf_in_maptki`,
+`interaction`) are direct model coefficients; the other two are computed
+via the per-gene covariance matrix returned by `nebula(..., covariance =
+TRUE)`. All logFC are converted to log2 for downstream comparability.
+
+```{r snrnaseq-nebula}
+nebula_path <- file.path(params$cache_dir, "de_snrnaseq_nebula.rds")
+de_snrnaseq_nebula <- cache_or_run(nebula_path, overwrite = params$recompute_snrnaseq, {
+  fit_nebula_microglia(
+    microglia_seurat,
+    id_col       = "genotype_batch",
+    genotype_col = "genotype",
+    assay        = "RNA",
+    layer        = "counts",
+    min_cell_frac = 0.01,
+    ncore        = max(1L, parallel::detectCores() - 1L),
+    symbol_map   = symbol_map
+  )
+})
+
+cat(sprintf("NEBULA: %d cells x %d genes; %d / %d converged.\n",
+            de_snrnaseq_nebula$n_cells, de_snrnaseq_nebula$n_genes,
+            sum(de_snrnaseq_nebula$fit$convergence == 1, na.rm = TRUE),
+            length(de_snrnaseq_nebula$fit$convergence)))
+
+neb_summary <- purrr::imap_dfr(de_snrnaseq_nebula$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_total  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+    n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(neb_summary,
+             caption = "snRNAseq NEBULA DE: significant gene counts (FDR < 0.05)")
+```
+
+```{r snrnaseq-nebula-volcano, fig.width = 10, fig.height = 5}
+(volcano(de_snrnaseq_nebula$top$nlgf_in_maptki, "NEBULA: NLGF in MAPTKI") |
+ volcano(de_snrnaseq_nebula$top$nlgf_in_p301s,  "NEBULA: NLGF in P301S"))
+(volcano(de_snrnaseq_nebula$top$interaction,    "NEBULA: interaction (tau-dependent NLGF)") |
+ volcano(de_snrnaseq_nebula$top$tau_in_nlgf,    "NEBULA: tau in NLGF"))
+```
+
+### Pseudobulk vs NEBULA: power gain on the interaction
+
+To quantify the power gain on the interaction contrast we align the two
+fits on shared genes and plot logFC and `-log10(P)`. A higher density off
+the y = x line in the right-hand panel signals that NEBULA assigns more
+significance to a comparable effect size than pseudobulk does.
+
+```{r snrnaseq-pseudobulk-vs-nebula, fig.width = 10, fig.height = 4}
+compare_contrast <- function(cn, title) {
+  pb <- de_snrnaseq$fit$top[[cn]] |>
+    dplyr::transmute(gene, logFC_pb = logFC, p_pb = P.Value)
+  nb <- de_snrnaseq_nebula$top[[cn]] |>
+    dplyr::transmute(gene, logFC_nb = logFC, p_nb = P.Value)
+  cmp <- dplyr::inner_join(pb, nb, by = "gene") |>
+    dplyr::filter(is.finite(logFC_pb), is.finite(logFC_nb),
+                  is.finite(p_pb), is.finite(p_nb), p_pb > 0, p_nb > 0)
+  rho_lfc <- suppressWarnings(cor(cmp$logFC_pb, cmp$logFC_nb,
+                                  method = "spearman"))
+  rho_p   <- suppressWarnings(cor(-log10(cmp$p_pb), -log10(cmp$p_nb),
+                                  method = "spearman"))
+  p1 <- ggplot(cmp, aes(logFC_pb, logFC_nb)) +
+    geom_hline(yintercept = 0, colour = "grey70") +
+    geom_vline(xintercept = 0, colour = "grey70") +
+    geom_abline(slope = 1, intercept = 0, colour = "#b40426",
+                linetype = "dashed") +
+    geom_point(alpha = 0.25, size = 0.5) +
+    labs(x = "pseudobulk log2FC", y = "NEBULA log2FC",
+         title = paste(title, "| logFC"),
+         subtitle = sprintf("Spearman rho = %.3f, n = %d",
+                            rho_lfc, nrow(cmp))) +
+    theme_bw()
+  p2 <- ggplot(cmp, aes(-log10(p_pb), -log10(p_nb))) +
+    geom_abline(slope = 1, intercept = 0, colour = "#b40426",
+                linetype = "dashed") +
+    geom_point(alpha = 0.25, size = 0.5) +
+    labs(x = "-log10 pseudobulk P", y = "-log10 NEBULA P",
+         title = paste(title, "| -log10 P"),
+         subtitle = sprintf("Spearman rho = %.3f", rho_p)) +
+    theme_bw()
+  p1 | p2
+}
+compare_contrast("interaction",    "interaction")
+compare_contrast("nlgf_in_p301s",  "nlgf_in_p301s")
+compare_contrast("nlgf_in_maptki", "nlgf_in_maptki")
+```

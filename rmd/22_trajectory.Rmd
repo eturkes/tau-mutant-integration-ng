@@ -1,0 +1,699 @@
+# Microglial activation trajectory: pseudotime dynamics
+
+This section adds the project's first **dynamics / progression** readout and
+closes narrative arc **M** (`storage/notes/trajectory_plan.md`). Every
+preceding arc reads a **static** quantity: expression DE (section 3), pathway
+and module enrichment, the prior-based and data-driven transcription-factor
+layers, the kinase and ligand-receptor layers, the causal topology, the
+SCENIC regulons, and &mdash; most recently &mdash; discrete cell
+**composition** (the GeoMx deconvolution of section 22). None reads the
+**ordering** of microglia along an activation continuum. Here a microglial
+activation trajectory (homeostatic &rarr; DAM) is inferred from the snRNAseq
+itself, every cell is assigned a pseudotime, and the question is whether
+**amyloid (NLGF) advances microglia along the homeostatic&rarr;DAM activation
+axis**, and whether the **tau background modulates that advance** &mdash; the
+same 2&times;2 interaction the rest of the project tracks,
+`(NLGF_P301S&minus;P301S)&minus;(NLGF_MAPTKI&minus;MAPTKI)`, now re-expressed
+as a *progression* effect rather than an expression, activity, or composition
+one.
+
+**Why this is an independent readout, not a restatement of sections 3 or 22.**
+Static substate DE asks *which genes change within a fixed cluster set*;
+composition (section 22) asks *how many cells fall in each discrete cluster*.
+A pseudotime asks *how far along the activation program each cell sits on a
+continuum* &mdash; including within-cluster advancement that neither DE nor
+discrete composition can see. The honest risk (the load-bearing guardrail) is
+that a per-replicate mean-pseudotime shift could be **entirely a composition
+shift** (more DAM cells &rArr; higher mean pseudotime), in which case it
+reduces to section 22; the design therefore *decomposes* progression from
+reshuffling and reports both channels side by side.
+
+**Method, fixed before any contrast was read.** The trajectory is
+`slingshot` (Street 2018) run on the batch-corrected **harmony** embedding
+truncated to the first `r {tj <- readRDS(file.path(params$cache_dir, "trajectory.rds")); tj$params$n_dims}`
+dimensions, with the four microglial `state`s (homeostatic, DAM, IFN,
+proliferative) as the cluster labels and the **root fixed at homeostatic**.
+The 15-dimension truncation is the documented cell-cycle mitigation: at the
+full 30 dimensions the cycling `proliferative` state is pulled in as a
+spurious intermediate. The headline lineage is the **clean homeostatic&rarr;DAM
+trajectory** built with the two cycling/peripheral side-states (IFN,
+proliferative) omitted from lineage inference; the all-states topology is
+reported alongside it. Pseudotime is summarised **per replicate**
+(`genotype_batch`, the locked 16-id unit) and pushed through the project's
+locked 5-contrast 2&times;2 factorial (`~ 0 + genotype + batch`,
+`make_contrast_matrix`, limma-trend) exactly as every other modality. The
+ordering is cross-checked against three independent methods (scanpy PAGA/DPT,
+CellRank2 velocity-free fate probabilities, nested all-states Slingshot) and
+the asserted root is validated against three root-free potency proxies
+(RNA Shannon entropy, detected-gene count, CytoTRACE2).
+
+**Thresholds, stated before any result is read.** Significance everywhere is
+BH-FDR &lt; 0.10 (the project standard), applied across measures within each
+contrast. The DAM-onset threshold for the *fraction-past* progression measure
+is the global median pseudotime of DAM-labelled cells
+(`r sprintf("%.1f", tj$params$dam_threshold)`), fixed once, data-driven.
+Pseudotime-scale measures and bounded [0,1] measures are fit in separate
+eBayes calls so the shared variance prior is not distorted across scales.
+
+**Caveats carried throughout.** (a) Pseudotime is a single inferred
+**activation ordering**, not chronological or developmental time; it is framed
+as "activation progression" throughout. (b) The four substates are
+transcriptionally close, so a raw per-replicate mean shift is substantially
+composition-driven &mdash; the decomposition and the cross-method concordance,
+not the raw mean, carry the interpretation. (c) RNA velocity is excluded (no
+spliced layers; snRNA capture unreliable). (d) The root is *validated, not
+asserted*: as reported below, microglial "homeostatic" is a mature resting
+state, not a stem state, so the potency proxies do **not** rank it most
+potent &mdash; the trajectory direction rests on the Slingshot
+homeostatic&rarr;DAM monotonicity and canonical marker biology, not on a
+potency claim.
+
+**Anti-anchoring.** All four states and both lineage topologies are reported
+even-handedly; absence of an IFN or proliferative effect is evidence, not
+omission. The cross-method pseudotime concordance is reported in full, a
+discordant method included rather than smoothed. A null/additive interaction
+would be a valid finding; it is not fished for, and the lineage was not
+retuned after inspecting which contrast moves.
+
+```{r trajectory-load}
+tj   <- readRDS(file.path(params$cache_dir, "trajectory.rds"))
+pc   <- tj$per_cell                     # 26,104 x 14 (per-cell pt + potency + umap)
+ct   <- tj$contrasts                    # 45 rows: measure x contrast factorial
+bg   <- tj$by_genotype                  # 36 rows: measure x genotype mean/sd
+dec  <- tj$decomposition                # progression-vs-composition partition
+rv   <- tj$root_validation              # 3 potency proxies x per-state ranks
+conc <- tj$concordance                  # cross-method Spearman
+par  <- tj$params
+prov <- tj$python_provenance
+
+geno_order     <- c("MAPTKI", "P301S", "NLGF_MAPTKI", "NLGF_P301S")
+contrast_order <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+                    "tau_alone", "tau_in_nlgf")
+diverging      <- c("#3a4cc0", "white", "#b40426")
+pc$state       <- factor(pc$state,
+                         levels = c("homeostatic", "DAM", "IFN", "proliferative"))
+pc$genotype    <- factor(pc$genotype, levels = geno_order)
+bg$genotype    <- factor(bg$genotype, levels = geno_order)
+
+# Unique-row lookups (each measure x contrast and measure x genotype is unique),
+# so prose scalars are read straight from the cache and never drift.
+ct_get <- function(m, cn) ct[ct$measure == m & ct$contrast == cn, ]
+bg_get <- function(m, g)  bg$mean[bg$measure == m & as.character(bg$genotype) == g]
+
+# Headline scalars.
+pt_nm   <- ct_get("mean_pt", "nlgf_in_maptki")
+pt_np   <- ct_get("mean_pt", "nlgf_in_p301s")
+pt_int  <- ct_get("mean_pt", "interaction")
+pt_tau  <- ct_get("mean_pt", "tau_alone")
+comp_int <- ct_get("composition_cf", "interaction")
+prog_int <- ct_get("progression_cf", "interaction")
+fp_int   <- ct_get("frac_past", "interaction")
+wh_int   <- ct_get("within_homeostatic", "interaction")
+wd_int   <- ct_get("within_DAM", "interaction")
+cr_int   <- ct_get("cellrank_dam_fate", "interaction")
+
+# Root validation: rank of the asserted root (homeostatic) in each proxy.
+root_rank <- function(p) rv[[p]]$root_rank
+ct2_root  <- rv$cytotrace2
+
+# Cross-method concordance pairs.
+cc <- conc$pairwise
+cc_get <- function(a, b) {
+  r <- cc[(cc$method_a == a & cc$method_b == b) |
+          (cc$method_a == b & cc$method_b == a), ]
+  r$rho[1]
+}
+```
+
+## Trajectory topology and root validation
+
+Slingshot on the 15-dimension harmony embedding returns a single clean
+**homeostatic&rarr;DAM** lineage when the two cycling/peripheral side-states
+are omitted, and a single all-states ordering
+homeostatic&rarr;proliferative&rarr;IFN&rarr;DAM when they are retained; in
+both, **DAM is the terminal state** and homeostatic the fixed root. The two
+runs are near-identical where they overlap (Spearman
+`r sprintf("%.2f", cc_get("slingshot_clean", "slingshot_all"))` over the
+shared cells), so omitting the side-states sharpens the headline axis without
+re-ordering it. An independent scanpy PAGA graph over the same embedding
+recovers the same broad connectivity (state order
+`r paste(prov$paga_state_order, collapse = ", ")`), corroborating the topology
+by a method that shares none of Slingshot's curve machinery.
+
+The UMAP below shows the four states and the per-cell pseudotime on the clean
+lineage. Pseudotime increases smoothly from the homeostatic body into the DAM
+region; the IFN and proliferative cells (grey in the right panel) are off the
+clean lineage by construction and carry no clean-lineage pseudotime.
+
+```{r trajectory-umap-state, fig.width = 6.6, fig.height = 5, fig.cap = "Microglial UMAP coloured by the four activation states. Slingshot's clean lineage runs homeostatic -> DAM (root fixed at homeostatic, DAM terminal); IFN and proliferative are treated as cycling/peripheral side-states and omitted from the headline lineage inference."}
+plot_trajectory_umap(
+  as.matrix(pc[, c("umap_1", "umap_2")]), pc$state,
+  colour_lab = "state",
+  title = "Microglial activation states on UMAP") +
+  scale_colour_brewer(palette = "Dark2") +
+  guides(colour = guide_legend(override.aes = list(size = 2.5, alpha = 1)))
+```
+
+```{r trajectory-umap-pseudotime, fig.width = 6.6, fig.height = 5, fig.cap = "Same UMAP coloured by clean-lineage (homeostatic -> DAM) pseudotime. Off-lineage IFN/proliferative cells (NA pseudotime) are grey. Pseudotime rises monotonically from the homeostatic body into the DAM territory."}
+plot_trajectory_umap(
+  as.matrix(pc[, c("umap_1", "umap_2")]), pc$pt_clean,
+  colour_lab = "pseudotime",
+  title = "Homeostatic -> DAM pseudotime on UMAP")
+```
+
+The root is **validated, not asserted**, and the honest result is that the
+asserted homeostatic root is *not* the most-potent state by any root-free
+proxy. Across RNA Shannon entropy, detected-gene count and CytoTRACE2 (the
+load-bearing arbiter), homeostatic ranks `r root_rank("entropy")`,
+`r root_rank("n_genes")` and `r root_rank("cytotrace2")` of four respectively,
+and is `most_potent = FALSE` in every case (CytoTRACE2 &Delta; to the
+next-highest state = `r sprintf("%.3f", ct2_root$delta_to_next)`). This is the
+expected confound: activated microglia induce many response genes, inflating
+crude potency, and "homeostatic" microglia are a *mature resting* population,
+not a developmental stem state. The trajectory direction therefore rests on
+the Slingshot homeostatic&rarr;DAM monotonicity (DAM mean pseudotime
+`r sprintf("%.1f", dec$global$mu_bar[dec$global$state == "DAM"])` &gt;
+homeostatic `r sprintf("%.1f", dec$global$mu_bar[dec$global$state == "homeostatic"])`)
+plus canonical marker biology, not on a potency claim &mdash; the pseudotime
+is an **activation ordering**, not developmental time.
+
+```{r trajectory-root-table, results = "asis"}
+root_tab <- data.frame(
+  state = rv$cytotrace2$per_state$state,
+  stringsAsFactors = FALSE)
+root_tab$`entropy rank`    <- rv$entropy$per_state$rank[match(root_tab$state, rv$entropy$per_state$state)]
+root_tab$`n_genes rank`    <- rv$n_genes$per_state$rank[match(root_tab$state, rv$n_genes$per_state$state)]
+root_tab$`CytoTRACE2 mean` <- sprintf("%.3f", rv$cytotrace2$per_state$mean_potency[match(root_tab$state, rv$cytotrace2$per_state$state)])
+root_tab$`CytoTRACE2 rank` <- rv$cytotrace2$per_state$rank[match(root_tab$state, rv$cytotrace2$per_state$state)]
+root_tab <- root_tab[order(root_tab$`CytoTRACE2 rank`), ]
+knitr::kable(
+  root_tab, row.names = FALSE,
+  caption = paste0(
+    "Root-free potency by state across three proxies (rank 1 = most potent / ",
+    "least differentiated). The asserted homeostatic root ranks last or ",
+    "near-last in every proxy, so the lineage is an ACTIVATION ordering, not ",
+    "a developmental-potency one; the direction rests on Slingshot ",
+    "monotonicity and marker biology. Reported honestly rather than forced."))
+```
+
+## Pseudotime distribution by genotype
+
+The per-cell clean-lineage pseudotime, split by the 2&times;2, is the direct
+visual of the effect. In both tau backgrounds the introduction of amyloid
+shifts the whole distribution rightward &mdash; mass moves from the
+homeostatic body toward the DAM tail &mdash; while the two amyloid-free
+genotypes (MAPTKI, P301S) sit together at low pseudotime. The mean
+clean-lineage pseudotime rises from
+`r sprintf("%.1f", bg_get("mean_pt", "MAPTKI"))` (MAPTKI) and
+`r sprintf("%.1f", bg_get("mean_pt", "P301S"))` (P301S) to
+`r sprintf("%.1f", bg_get("mean_pt", "NLGF_MAPTKI"))` (NLGF_MAPTKI) and
+**`r sprintf("%.1f", bg_get("mean_pt", "NLGF_P301S"))`** (NLGF_P301S, the
+highest).
+
+```{r trajectory-density, fig.width = 7, fig.height = 4.4, fig.cap = "Per-cell clean-lineage (homeostatic -> DAM) pseudotime density by genotype. Amyloid (NLGF, warm colours) shifts the distribution rightward in both tau backgrounds; the two amyloid-free genotypes overlap at low pseudotime. The NLGF_P301S curve carries the most DAM-end mass."}
+plot_pseudotime_density(
+  pc, pt_col = "pt_clean", genotype_col = "genotype",
+  title = "Activation pseudotime shifts rightward under amyloid")
+```
+
+## Factorial interaction test
+
+The per-replicate pseudotime summary is tested with the locked 2&times;2
+factorial. The headline measure is the per-replicate mean clean-lineage
+pseudotime; amyloid advances it strongly in **both** tau backgrounds
+(`nlgf_in_maptki` logFC `r sprintf("%+.2f", pt_nm$logFC)`,
+FDR `r sprintf("%.1e", pt_nm$adj.P.Val)`; `nlgf_in_p301s`
+`r sprintf("%+.2f", pt_np$logFC)`, FDR `r sprintf("%.1e", pt_np$adj.P.Val)`),
+while **tau alone does not** (`tau_alone`
+`r sprintf("%+.2f", pt_tau$logFC)`, FDR
+`r sprintf("%.2f", pt_tau$adj.P.Val)`, ns). The tau (P301S) background then
+**supra-additively amplifies the amyloid advance**: the interaction is
+positive and significant (logFC **`r sprintf("%+.2f", pt_int$logFC)`**, FDR
+`r sprintf("%.3f", pt_int$adj.P.Val)`), the gap between the two amyloid
+contrasts (`r sprintf("%.2f", pt_np$logFC)` &minus;
+`r sprintf("%.2f", pt_nm$logFC)`). This is the project's first
+tau&times;amyloid interaction that is both positive **and** significant in a
+non-expression layer.
+
+```{r trajectory-forest, fig.width = 7, fig.height = 3.8, fig.cap = "Forest of the five canonical contrasts on per-replicate mean clean-lineage pseudotime (logFC +/- approximate Wald 95% CI). Filled = FDR < 0.10. Amyloid (nlgf_in_maptki, nlgf_in_p301s) advances pseudotime strongly in both backgrounds; tau alone does not; the tau x amyloid interaction is positive and significant."}
+plot_interaction_forest(
+  ct, measure = "mean_pt", padj_cut = par$padj_cut,
+  title = "Mean activation-pseudotime: 2x2 factorial contrasts")
+```
+
+The same picture holds across every progression measure and is summarised in
+the heatmap below: all nine per-replicate measures against all five contrasts.
+The two amyloid main-effect columns are saturated; the interaction column is
+positive and significant on the genuine progression measures (mean pseudotime,
+fraction-past-DAM-threshold, within-homeostatic advancement, and the
+progression channel of the decomposition) and null on the composition channel
+&mdash; the dissociation that the next subsection makes explicit.
+
+```{r trajectory-heatmap, fig.width = 7.6, fig.height = 5.4, fig.cap = "Factorial contrasts across all nine per-replicate measures. Fill = logFC (blue down, red up); * = FDR < 0.10. Amyloid main effects saturate; the interaction column is significant on the progression measures and null on composition_cf. `observed` reproduces `mean_pt` exactly (law-of-total-expectation check); `mean_pt_all` is the secondary all-states lineage."}
+measure_order <- c("mean_pt", "frac_past", "within_homeostatic", "within_DAM",
+                   "progression_cf", "composition_cf", "cellrank_dam_fate",
+                   "mean_pt_all", "observed")
+hm <- ct
+hm$measure  <- factor(hm$measure, levels = rev(measure_order))
+hm$contrast <- factor(hm$contrast, levels = contrast_order)
+hm$star     <- ifelse(hm$sig, "*", "")
+lim <- max(abs(hm$logFC), na.rm = TRUE)
+ggplot(hm, aes(contrast, measure, fill = logFC)) +
+  geom_tile(colour = "grey90") +
+  geom_text(aes(label = star), size = 4, vjust = 0.78) +
+  scale_fill_gradientn(colours = diverging, limits = c(-lim, lim),
+                       name = "logFC") +
+  labs(x = NULL, y = NULL,
+       title = "Trajectory contrasts across per-replicate measures") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 25, hjust = 1))
+```
+
+## Progression versus composition, and cross-method concordance
+
+This is the load-bearing analysis. The per-replicate mean pseudotime is
+partitioned into a **composition** channel (vary the between-state fractions,
+hold within-state means at the global value) and a **progression** channel
+(vary the within-state means, hold the fractions at the global value). If the
+interaction lived in the composition channel it would simply restate the
+section-22 composition result (more DAM cells); if it lives in the progression
+channel it is genuine within-state advancement that no discrete-composition or
+DE analysis can see.
+
+The interaction is carried **almost entirely by progression**
+(`progression_cf` logFC `r sprintf("%+.2f", prog_int$logFC)`, FDR
+`r sprintf("%.3f", prog_int$adj.P.Val)`, significant) and **not by
+composition** (`composition_cf` `r sprintf("%+.2f", comp_int$logFC)`, FDR
+`r sprintf("%.2f", comp_int$adj.P.Val)`, null) &mdash; the progression channel
+recovers `r sprintf("%.0f%%", 100 * prog_int$logFC / pt_int$logFC)` of the
+total interaction. The amyloid **main** effects, by contrast, split across
+*both* channels (composition `r sprintf("%+.2f", ct_get("composition_cf", "nlgf_in_maptki")$logFC)` /
+`r sprintf("%+.2f", ct_get("composition_cf", "nlgf_in_p301s")$logFC)` and
+progression `r sprintf("%+.2f", ct_get("progression_cf", "nlgf_in_maptki")$logFC)` /
+`r sprintf("%+.2f", ct_get("progression_cf", "nlgf_in_p301s")$logFC)`, all
+significant): amyloid both makes more DAM cells *and* advances them, whereas
+the tau background adds only the progression piece. Two corroborating
+progression measures agree: the fraction of cells past the DAM-onset threshold
+has the strongest interaction
+(`r sprintf("%+.2f", fp_int$logFC)`, FDR `r sprintf("%.3f", fp_int$adj.P.Val)`;
+absolutes `r sprintf("%.0f%%", 100 * bg_get("frac_past", "MAPTKI"))` /
+`r sprintf("%.0f%%", 100 * bg_get("frac_past", "P301S"))` at baseline &rarr;
+`r sprintf("%.0f%%", 100 * bg_get("frac_past", "NLGF_MAPTKI"))` /
+`r sprintf("%.0f%%", 100 * bg_get("frac_past", "NLGF_P301S"))` under amyloid),
+and within-homeostatic advancement is significant
+(`r sprintf("%+.2f", wh_int$logFC)`, FDR
+`r sprintf("%.3f", wh_int$adj.P.Val)`) &mdash; the amplification pushes even
+homeostatic-labelled cells rightward, which is advancement that *cannot* be a
+composition artefact.
+
+```{r trajectory-decomposition, fig.width = 7.4, fig.height = 3.8, fig.cap = "Progression-vs-composition decomposition of the amyloid and interaction contrasts (logFC +/- approximate 95% CI; filled = FDR < 0.10). Amyloid main effects load on BOTH channels; the tau x amyloid interaction loads on PROGRESSION only (composition null), so the dynamics interaction is non-redundant with the section-22 composition layer."}
+dd <- ct[ct$measure %in% c("composition_cf", "progression_cf") &
+         ct$contrast %in% c("nlgf_in_maptki", "nlgf_in_p301s", "interaction"), ]
+dd$channel  <- factor(ifelse(dd$measure == "composition_cf",
+                             "composition", "progression"),
+                      levels = c("composition", "progression"))
+dd$contrast <- factor(dd$contrast,
+                      levels = rev(c("nlgf_in_maptki", "nlgf_in_p301s",
+                                     "interaction")))
+dd$lo <- dd$logFC - 1.96 * dd$se
+dd$hi <- dd$logFC + 1.96 * dd$se
+ggplot(dd, aes(logFC, contrast)) +
+  geom_vline(xintercept = 0, linetype = 2, colour = "grey50") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2) +
+  geom_point(aes(fill = sig), shape = 21, size = 3) +
+  scale_fill_manual(values = c(`TRUE` = "#B0344D", `FALSE` = "white"),
+                    name = sprintf("FDR<%.2f", par$padj_cut)) +
+  facet_wrap(~ channel) +
+  labs(x = "logFC (pseudotime units)", y = NULL,
+       title = "Interaction loads on progression, not composition") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+Cross-method concordance is reported in full, discordance included. Two of
+three independent methods corroborate the Slingshot ordering: the nested
+all-states Slingshot at Spearman
+`r sprintf("%.2f", cc_get("slingshot_clean", "slingshot_all"))` and CellRank2
+velocity-free DAM-fate probability at
+`r sprintf("%.2f", cc_get("slingshot_clean", "cellrank_dam_fate"))`. The
+third, scanpy diffusion pseudotime (DPT), is the outlier
+(`r sprintf("%.2f", cc_get("slingshot_clean", "dpt"))`): DPT has weak dynamic
+range on this graded activation continuum and is pulled by the peripheral
+IFN/proliferative geometry, so it disagrees with both Slingshot *and* CellRank
+(DPT&ndash;CellRank `r sprintf("%.2f", cc_get("dpt", "cellrank_dam_fate"))`).
+This is exactly the kind of method-sensitivity the maximal-triangulation
+design was meant to surface; it is reported, not smoothed. The CellRank
+DAM-fate probability itself carries a positive but non-significant interaction
+(`r sprintf("%+.3f", cr_int$logFC)`, FDR
+`r sprintf("%.2f", cr_int$adj.P.Val)`), direction-concordant with the
+pseudotime headline.
+
+```{r trajectory-concordance, fig.width = 5.6, fig.height = 4.6, fig.cap = "Cross-method per-cell pseudotime concordance (Spearman). Slingshot-clean, the nested all-states Slingshot and CellRank2 agree; scanpy DPT is the known-weak outlier on this graded continuum (negative correlation with all curve-based methods)."}
+cm  <- conc$cor_mat
+ord <- c("slingshot_clean", "slingshot_all", "cellrank_dam_fate", "dpt")
+cm  <- cm[ord, ord]
+cdf <- as.data.frame(as.table(cm))
+names(cdf) <- c("m1", "m2", "rho")
+ggplot(cdf, aes(m1, m2, fill = rho)) +
+  geom_tile(colour = "grey92") +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 3.2) +
+  scale_fill_gradientn(colours = diverging, limits = c(-1, 1),
+                       name = "Spearman") +
+  labs(x = NULL, y = NULL,
+       title = "Cross-method pseudotime concordance") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 25, hjust = 1))
+```
+
+## Verdict
+
+The synthesis is read per comparison axis, absence reported as evidence and no
+axis privileged. Thresholds restated once: BH-FDR &lt; 0.10 on the locked
+2&times;2 factorial over per-replicate pseudotime summaries, Slingshot on the
+15-dimension harmony embedding, root validated against three potency proxies,
+ordering cross-checked against three independent methods.
+
+**Overall.** The dynamics layer delivers a clean, new-evidence-class result on
+both the amyloid axis and &mdash; uniquely among the orthogonal layers &mdash;
+the divergence axis. Amyloid strongly advances microglia along the
+homeostatic&rarr;DAM activation pseudotime in both tau backgrounds
+(`nlgf_in_maptki` `r sprintf("%+.2f", pt_nm$logFC)`, `nlgf_in_p301s`
+`r sprintf("%+.2f", pt_np$logFC)`, both FDR &lt; 1e-5), and the tau (P301S)
+background **supra-additively amplifies** that advance (interaction
+`r sprintf("%+.2f", pt_int$logFC)`, FDR `r sprintf("%.3f", pt_int$adj.P.Val)`).
+The decomposition shows this interaction is carried by genuine
+**progression** (`r sprintf("%+.2f", prog_int$logFC)`, FDR
+`r sprintf("%.3f", prog_int$adj.P.Val)`), **not composition**
+(`r sprintf("%+.2f", comp_int$logFC)`, null), so it is non-redundant with the
+section-22 tissue-composition layer (whose interaction was null) and reveals a
+tau&times;amyloid effect invisible to discrete composition. The null
+composition-interaction here is exactly consistent with the section-22
+SpatialDecon and the human cross-species interaction layers, confirming this
+readout is a new channel rather than a restatement.
+
+```{r trajectory-verdict-build}
+tj_verdict <- tibble::tibble(
+  axis = c("amyloid_activation", "interaction_metabolic",
+           "synaptic_suppression"),
+  dynamics_endpoint = c(
+    "mean homeostatic->DAM pseudotime + fraction-past-DAM-threshold",
+    "interaction on pseudotime, decomposed into progression vs composition",
+    "no trajectory endpoint (synaptic/engulfment programme)"),
+  result = c(
+    sprintf(paste0("amyloid advances pseudotime in both backgrounds (logFC ",
+                   "%+.2f nlgf_in_maptki, FDR %.1e; %+.2f nlgf_in_p301s, FDR ",
+                   "%.1e); mean pt %.1f/%.1f -> %.1f/%.1f; frac-past ",
+                   "%.0f%%/%.0f%% -> %.0f%%/%.0f%%"),
+            pt_nm$logFC, pt_nm$adj.P.Val, pt_np$logFC, pt_np$adj.P.Val,
+            bg_get("mean_pt", "MAPTKI"), bg_get("mean_pt", "P301S"),
+            bg_get("mean_pt", "NLGF_MAPTKI"), bg_get("mean_pt", "NLGF_P301S"),
+            100 * bg_get("frac_past", "MAPTKI"),
+            100 * bg_get("frac_past", "P301S"),
+            100 * bg_get("frac_past", "NLGF_MAPTKI"),
+            100 * bg_get("frac_past", "NLGF_P301S")),
+    sprintf(paste0("interaction %+.2f (FDR %.3f) carried by progression ",
+                   "(%+.2f, FDR %.3f) not composition (%+.2f, FDR %.2f); ",
+                   "frac-past interaction %+.2f (FDR %.3f)"),
+            pt_int$logFC, pt_int$adj.P.Val, prog_int$logFC,
+            prog_int$adj.P.Val, comp_int$logFC, comp_int$adj.P.Val,
+            fp_int$logFC, fp_int$adj.P.Val),
+    "no dynamics endpoint (synaptic axis is not a microglial activation state)"),
+  verdict = c(
+    "corroborated (new evidence class: activation dynamics)",
+    "corroborated as a progression effect (positive, significant, non-composition)",
+    "no dynamics endpoint (honest non-finding)"))
+readr::write_tsv(tj_verdict,
+                 file.path(params$results_dir, "trajectory_verdict.tsv"))
+```
+
+```{r trajectory-verdict-table, results = "asis"}
+knitr::kable(
+  tj_verdict[, c("axis", "dynamics_endpoint", "verdict")],
+  col.names = c("Axis", "Dynamics endpoint", "Verdict"),
+  caption = paste0(
+    "Per-axis activation-trajectory verdict. The amyloid-activation axis is ",
+    "corroborated as a dynamics/progression effect; the tau x amyloid ",
+    "interaction is corroborated as a PROGRESSION effect (positive, FDR ",
+    sprintf("%.3f", pt_int$adj.P.Val), ", composition-null) -- the project's ",
+    "first significant interaction in an orthogonal layer; the synaptic axis ",
+    "has no trajectory endpoint. Full column in ",
+    "storage/results/trajectory_verdict.tsv."))
+```
+
+**The boundary conditions, restated as the verdict's caveats.** Pseudotime is
+a single inferred activation ordering, not developmental or chronological time,
+and the asserted homeostatic root is *not* the most-potent state by any
+root-free proxy &mdash; the direction rests on Slingshot monotonicity and
+marker biology, so the axis is read as activation progression, never as time
+or potency. One of three cross-check methods (DPT) disagrees, a known weakness
+of diffusion pseudotime on a graded continuum; the two curve/fate-based
+methods agree. The interaction, though positive and significant, is a single
+inferred ordering partly entangled with composition, which is why the
+decomposition &mdash; isolating the `r sprintf("%.0f%%", 100 * prog_int$logFC / pt_int$logFC)`
+progression share &mdash; is the load-bearing evidence and the result is
+weighted as **suggestive** corroboration rather than proof. Within those
+bounds the layer is a clean, falsifiable dynamics readout: amyloid advances
+microglia along the activation continuum in both tau backgrounds, and the
+P301S tau background supra-additively amplifies that advance through genuine
+within-state progression, not cluster reshuffling.
+
+## Gene-level differential dynamics at the interaction
+
+```{r trajectory-dynamics-load}
+td      <- readRDS(file.path(params$cache_dir, "trajectory_dynamics.rds"))
+dyn_int <- td$interaction
+dyn_vs  <- td$vs_static
+dyn_par <- td$params
+arc_m   <- td$arc_m_synergy
+am_get  <- function(m) arc_m[arc_m$measure == m, ]   # M-002 aggregate synergy
+
+# Significance counts: interaction / omnibus / association (nested), thresholds
+# fixed in the cache (dyn_par$padj_cut), read straight so prose never drifts.
+sig_genes   <- dyn_int[!is.na(dyn_int$adj.P.Val) & dyn_int$adj.P.Val < dyn_par$padj_cut, ]
+n_dyn_sig   <- nrow(sig_genes)
+n_omni_sig  <- sum(td$omnibus$adj.P.Val     < dyn_par$padj_cut, na.rm = TRUE)
+n_assoc_sig <- sum(td$association$adj.P.Val < dyn_par$padj_cut, na.rm = TRUE)
+
+# Static-vs-dynamic honesty: of the dynamic hits, how many reach static
+# (section-24 matched-power Microglia interaction) significance, and the floor
+# static FDR among them.
+vs_sig          <- dyn_vs[dyn_vs$gene %in% sig_genes$gene, ]
+n_static_sig_nb <- sum(vs_sig$stat_nb_adj.P.Val < dyn_par$padj_cut, na.rm = TRUE)
+n_static_sig_pb <- sum(vs_sig$stat_pb_adj.P.Val < dyn_par$padj_cut, na.rm = TRUE)
+min_static_nb   <- min(vs_sig$stat_nb_adj.P.Val, na.rm = TRUE)
+
+# Ambient / non-microglial-lineage markers -- a heuristic honesty FLAG (genes
+# are NOT removed; the raw genome-wide result is reported and the flag annotates
+# the contamination caveat). Canonical RBC / endothelial-vascular / myelin sets.
+ambient_markers <- c(
+  "Hba-a1", "Hba-a2", "Hbb-bs", "Hbb-bt", "Hbb-b1",     # haemoglobin / RBC
+  "Ly6c1", "Ramp2", "Cldn5", "Flt1", "Pecam1", "Vtn",   # endothelial / vascular
+  "Igfbp7", "Enpp2", "Ttr",                             # vascular / choroid plexus
+  "Mal", "Plp1", "Mbp", "Mobp", "Mog")                  # myelin / oligodendrocyte
+sig_genes$ambient <- sig_genes$symbol %in% ambient_markers
+
+# Ribosomal / translation genes -- the programme's one coherent enrichment and a
+# second, orthogonal confound to the ambient flag (trajectory dynamics of
+# translation machinery track cell-state / RNA content, not microglial
+# signalling). FLAGGED for honesty, not removed.
+sig_genes$ribosomal <- grepl("^(Rps|Rpl)", sig_genes$symbol)
+n_ribo_sig <- sum(sig_genes$ribosomal)
+ribo_bg    <- mean(grepl("^(Rps|Rpl)", dyn_int$symbol[!is.na(dyn_int$adj.P.Val)]))
+ribo_fold  <- (n_ribo_sig / n_dyn_sig) / ribo_bg
+```
+
+The interaction above is an **aggregate** rate effect: a per-replicate
+mean-pseudotime shift, mechanism-agnostic, naming no gene. This final subsection
+deepens it (it post-dates the verdict above) by asking whether a *gene-level*
+tau&times;amyloid interaction lives in the **dynamics of expression along the
+pseudotime** &mdash; a question two facts make pointed. First, the project's
+*static* gene-level interaction &mdash; the same 2&times;2 contrast applied to
+expression within a fixed cluster set &mdash; collapses to essentially **zero
+genes at matched power in every cell type, microglia included** (section 24).
+Second, an aggregate mean shift could in principle arise with no gene having a
+tau-modulated, pseudotime-localised amyloid response: it could be pure
+reshuffling of cells along a fixed family of curves. The question that sits
+exactly in that gap is whether there exist **genes whose amyloid response is
+localised to a pseudotime window and is modulated by the tau background** that a
+static pseudobulk contrast cannot see. A positive answer would be the project's
+first gene-level positive interaction and would hand the aggregate progression
+synergy a candidate mechanism; a null would say the synergy lives only in
+aggregate rate, with no gene-specific dynamic signature. **Either outcome is a
+clean finding; neither is fished for.**
+
+**Method, thresholds stated first.** The readout is lineage differential
+expression with **tradeSeq** negative-binomial GAMs (Van den Berge 2020): a
+separate smoother of pseudotime is fit per genotype on the clean
+homeostatic&rarr;DAM lineage (`conditions` = the four genotypes,
+`nknots` = `r dyn_par$nknots`), genome-wide over the
+`r format(dyn_par$gene_set_size, big.mark = ",")` genes expressed in at least 1%
+of on-lineage cells (`r format(td$n_fitted, big.mark = ",")` fitted; the
+remainder rank-deficient). The interaction is a **difference-of-differences Wald
+contrast** on the smoother coefficients &mdash; the identical linear algebra
+tradeSeq's `conditionTest` uses for a single pairwise pattern difference, with
+the pairwise &plusmn;1 replaced by the locked 2&times;2 weights
+`(NLGF_P301S&minus;P301S)&minus;(NLGF_MAPTKI&minus;MAPTKI)` per knot &mdash; and
+was fixed before any gene was inspected. Significance is BH-FDR &lt;
+`r sprintf("%.2f", dyn_par$padj_cut)`. Per the anti-anchoring guardrail the
+targeted interaction is reported alongside the **omnibus** `conditionTest` (do
+the four smoothers differ at all) and the per-gene **association** test (is the
+gene dynamic at all), never the interaction alone. The same arc-M caveats hold
+verbatim: pseudotime is a single inferred **activation ordering**, not
+developmental time, and the substates are transcriptionally close.
+
+On-lineage cell counts per genotype &mdash; MAPTKI
+`r format(td$on_lineage_counts$n_cells[1], big.mark = ",")`, P301S
+`r format(td$on_lineage_counts$n_cells[2], big.mark = ",")`, NLGF_MAPTKI
+`r format(td$on_lineage_counts$n_cells[3], big.mark = ",")`, NLGF_P301S
+`r format(td$on_lineage_counts$n_cells[4], big.mark = ",")` &mdash; are all
+well-powered, the amyloid genotypes carrying roughly twice the cells (DAM
+expansion); no condition is thin.
+
+The targeted contrast finds **`r n_dyn_sig` genes with a significant
+tau&times;amyloid interaction in their pseudotime dynamics** at FDR &lt;
+`r sprintf("%.2f", dyn_par$padj_cut)`, correctly nested inside the omnibus
+(`r format(n_omni_sig, big.mark = ",")` genotype-varying genes) and the
+association test (`r format(n_assoc_sig, big.mark = ",")` dynamic genes) &mdash;
+every interaction gene is, as it must be, both genotype-varying and dynamic. The
+full set is tabulated below; the per-genotype smoother curves for the strongest
+hits follow, where the four genotype lines diverging in *shape* (not merely in
+level) is the interaction made visible.
+
+```{r trajectory-dynamics-table}
+# DT::datatable of all FDR<0.10 interaction-dynamics genes (mirrors the section-17
+# ledger datatable style). effect_magnitude = L2 norm of the diff-of-differences
+# across knots; effect_peak = its signed value at the peak-effect pseudotime.
+# The static columns are the section-24 matched-power Microglia interaction FDRs
+# (NEBULA / pseudobulk) -- the static-vs-dynamic honesty join.
+dyn_view <- sig_genes |>
+  dplyr::transmute(
+    symbol,
+    gene,
+    waldStat         = round(waldStat, 2),
+    df,
+    interaction_FDR  = signif(adj.P.Val, 3),
+    effect_magnitude = round(effect_l2, 2),
+    effect_peak      = round(effect_peak, 2),
+    ambient          = ifelse(ambient, "ambient", "")) |>
+  dplyr::left_join(
+    dplyr::select(dyn_vs, gene,
+                  static_NEBULA_FDR     = stat_nb_adj.P.Val,
+                  static_pseudobulk_FDR = stat_pb_adj.P.Val),
+    by = "gene") |>
+  dplyr::mutate(static_NEBULA_FDR     = signif(static_NEBULA_FDR, 3),
+                static_pseudobulk_FDR = signif(static_pseudobulk_FDR, 3)) |>
+  dplyr::select(-gene) |>
+  dplyr::arrange(dplyr::desc(waldStat))
+
+DT::datatable(
+  dyn_view,
+  rownames   = FALSE,
+  filter     = "top",
+  extensions = c("Buttons", "FixedHeader"),
+  caption    = paste0(
+    "All ", n_dyn_sig, " genes with a significant tau x amyloid interaction in ",
+    "their homeostatic->DAM pseudotime dynamics (tradeSeq diff-of-differences ",
+    "Wald, BH-FDR < ", sprintf("%.2f", dyn_par$padj_cut), "). `ambient` flags ",
+    "canonical RBC / endothelial / myelin transcripts (heuristic; genes are NOT ",
+    "removed). The two static columns are the section-24 matched-power Microglia ",
+    "interaction FDRs -- all >> 0.10, the static-vs-dynamic dissociation."),
+  options = list(
+    pageLength  = 12,
+    lengthMenu  = list(c(10, 12, 25, 50, -1), c("10", "12", "25", "50", "All")),
+    autoWidth   = FALSE, scrollX = TRUE, fixedHeader = TRUE,
+    dom         = "Bfrtip",
+    order       = list(list(1, "desc")),
+    buttons     = list("copy", "csv",
+                       list(extend = "colvis", text = "Column visibility")))) |>
+  DT::formatStyle("ambient",
+                  target = "row",
+                  backgroundColor = DT::styleEqual("ambient", "#F7E7E7",
+                                                   default = "white"))
+```
+
+```{r trajectory-dynamics-smoothers, fig.width = 8.4, fig.height = 8.4, fig.cap = "Per-genotype fitted expression smoothers (NB-GAM, 95% CI ribbon) along the homeostatic -> DAM pseudotime for the 12 strongest interaction-dynamics genes. The four genotype curves differing in SHAPE is the difference-of-differences interaction; cool colours = amyloid-free (MAPTKI, P301S), warm = amyloid (NLGF). Panels marked (ambient) carry canonical RBC/endothelial/myelin markers and are shown for honesty, not as microglial mechanism."}
+n_panel <- 12L
+top_g   <- head(sig_genes[order(-sig_genes$waldStat), ], n_panel)
+top_g   <- top_g[top_g$gene %in% names(td$smoothers), ]   # guard (top-20 cached)
+panel_lab <- ifelse(top_g$ambient, paste0(top_g$symbol, " (ambient)"), top_g$symbol)
+sm_df <- do.call(rbind, lapply(seq_len(nrow(top_g)), function(i) {
+  d <- td$smoothers[[top_g$gene[i]]]
+  d$symbol <- panel_lab[i]
+  d
+}))
+sm_df$symbol <- factor(sm_df$symbol, levels = panel_lab)
+plot_condition_smoothers(
+  sm_df, panel_col = "symbol", ncol = 3L,
+  title = "Genotype expression smoothers: top interaction-dynamics genes")
+```
+
+**The load-bearing comparison is against the static contrast.** Of the
+`r n_dyn_sig` genes with a significant *dynamic* interaction,
+**`r n_static_sig_nb` reach static significance** under the section-24
+matched-power Microglia interaction (NEBULA), and `r n_static_sig_pb` under
+matched pseudobulk; the *smallest* static-NEBULA FDR anywhere in the
+dynamic-hit set is `r sprintf("%.2f", min_static_nb)`. The two readouts are
+therefore essentially disjoint: differential dynamics recovers an entire gene
+programme that the static matched contrast &mdash; approximately zero genes,
+section 24 &mdash; cannot see at all. The scatter below makes the dissociation
+explicit: the dynamic hits (red) sit high on the dynamic axis yet hug zero on
+the static axis.
+
+```{r trajectory-dynamics-vs-static, fig.width = 6.6, fig.height = 5, fig.cap = "Static vs dynamic interaction significance, per gene (-log10 BH-FDR). x = section-24 matched-power Microglia interaction (static NEBULA); y = tradeSeq pseudotime-dynamics interaction. Dashed lines = FDR 0.10. The dynamic hits (red) are all static-null (left of the vertical line): the dynamics layer is a non-redundant readout, not a re-detection of the static signal."}
+sc <- dyn_vs
+sc$dyn_sig <- !is.na(sc$dyn_adj.P.Val) & sc$dyn_adj.P.Val < dyn_par$padj_cut
+sc$x <- -log10(pmax(sc$stat_nb_adj.P.Val, 1e-300))
+sc$y <- -log10(pmax(sc$dyn_adj.P.Val,     1e-300))
+sc <- sc[is.finite(sc$x) & is.finite(sc$y), ]
+thr <- -log10(dyn_par$padj_cut)
+ggplot(sc, aes(x, y)) +
+  geom_point(aes(colour = dyn_sig), size = 0.5, alpha = 0.4) +
+  geom_hline(yintercept = thr, linetype = 2, colour = "grey40") +
+  geom_vline(xintercept = thr, linetype = 2, colour = "grey40") +
+  scale_colour_manual(values = c(`TRUE` = "#B0344D", `FALSE` = "grey78"),
+                      name = sprintf("dynamic FDR<%.2f", dyn_par$padj_cut),
+                      labels = c(`TRUE` = "interaction-dynamic", `FALSE` = "other")) +
+  labs(x = "static interaction  -log10 FDR  (section 24 matched NEBULA)",
+       y = "dynamic interaction  -log10 FDR  (tradeSeq diff-of-differences)",
+       title = "Dynamics recovers genes the static contrast cannot") +
+  theme_classic()
+```
+
+**Read against the aggregate result, this is outcome (a):** the gene-level
+dynamics recovers a programme static matched-power DE cannot, handing the
+aggregate progression synergy (mean pseudotime interaction
+`r sprintf("%+.2f", am_get("mean_pt")$logFC)`, FDR
+`r sprintf("%.3f", am_get("mean_pt")$adj.P.Val)`; progression channel
+`r sprintf("%+.2f", am_get("progression_cf")$logFC)`, FDR
+`r sprintf("%.3f", am_get("progression_cf")$adj.P.Val)`; composition channel
+null, `r sprintf("%+.2f", am_get("composition_cf")$logFC)`, FDR
+`r sprintf("%.2f", am_get("composition_cf")$adj.P.Val)`) a candidate gene-level
+signature &mdash; the supra-additive advance is accompanied by a definite set of
+genes whose activation-trajectory *shape* is tau-modulated under amyloid, not
+merely a faster traversal of fixed curves.
+
+**The load-bearing caveat, carried into the section-17 ledger gate.** The top of
+the ranking is a *mixture*. Genuine amyloid- and microglia-relevant genes
+(Aplp1, an APP-family member; Ddit4/REDD1, a stress&ndash;mTOR effector; Ctla2a;
+Ptgds; C1ql3) sit alongside classic ambient / non-microglial-lineage transcripts
+&mdash; haemoglobins (Hbb-bt, Hba-a2), endothelial-vascular markers (Ly6c1,
+Ramp2, Enpp2) and myelin (Mal) &mdash; flagged in the table and figure. A
+genotype-varying *ambient* gradient along pseudotime would generate exactly this
+dynamic-interaction signature with no microglial biology involved, so a
+substantial fraction of the programme is plausibly ambient and **no clean
+microglial mechanism is asserted here**. A second, orthogonal confound compounds
+this: the programme's one coherent enrichment is **ribosomal / translation
+genes** (`r n_ribo_sig` of `r n_dyn_sig`,
+`r sprintf("%.0f", ribo_fold)`&times; over the fitted background), whose
+trajectory dynamics track cell-state and RNA content rather than a microglial
+signalling mechanism &mdash; and which are precisely why a nominal Myc-target
+overlap here would be spurious rather than evidence of the Gsk3b / Myc effectors
+hypothesis 3B names (both of which are *absent* from the 110). Together the
+ambient and ribosomal flags cover roughly a quarter of the programme. The honest
+reading is that differential dynamics is a genuinely non-redundant layer that
+recovers the project's first gene-level positive interaction and gives the
+progression synergy a candidate signature, tempered by real ambient- and
+ribosomal-contamination caveats &mdash; all of which the integrated claims ledger
+(section 17) must weigh before any scored feed.

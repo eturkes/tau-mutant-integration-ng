@@ -1,0 +1,81 @@
+# Bulk proteomics: aggregate to protein groups, normalise, DE
+
+The proteomics TSV is a Spectronaut-style PTM report containing
+phospho-, oxidation- and carbamidomethyl-modified peptides from the
+TiO2-enriched fraction. We aggregate intensities per `PG.ProteinGroups`
+(summing peptide-level intensities across all rows of the same PG), log2,
+median-normalise across samples and fit `limma`.
+
+```{r proteomics-de}
+prot_path <- file.path(params$cache_dir, "de_proteomics.rds")
+de_proteomics <- cache_or_run(prot_path, {
+  # Identify intensity columns.
+  int_cols <- grep("PTM\\.Quantity$", colnames(prot_raw), value = TRUE)
+  meta_map <- match_intensity_columns(int_cols, sample_key)
+  use_cols <- meta_map$column[!is.na(meta_map$genotype)]
+  meta <- meta_map[!is.na(meta_map$genotype), , drop = FALSE]
+  meta$genotype <- factor(meta$genotype, levels = genotype_levels)
+  rownames(meta) <- meta$column
+
+  # Aggregate to PG by summing peptide intensities (matching MaxLFQ-style behaviour).
+  pg <- prot_raw$PG.ProteinGroups
+  mat <- as.matrix(prot_raw[, use_cols])
+  mat[mat == 0 | !is.finite(mat)] <- NA_real_
+
+  ag <- rowsum(mat, group = pg, na.rm = TRUE)
+  # Restore NAs where all entries were NA after rowsum (rowsum yields 0).
+  zero_to_na <- function(m) { m[m == 0] <- NA_real_; m }
+  ag <- zero_to_na(ag)
+  log_mat <- log2(ag)
+  log_mat <- log_mat[rowSums(!is.na(log_mat)) >= 8, ]
+  log_mat <- median_normalise(log_mat)
+  log_mat <- prevalence_filter(log_mat, meta$genotype, min_present = 3, min_groups = 2)
+
+  design <- model.matrix(~ 0 + genotype, data = meta)
+  colnames(design) <- sub("^genotype", "", colnames(design))
+  cm <- make_contrast_matrix(design)
+  fit <- fit_limma_log(log_mat, group = meta$genotype, design = design,
+                       contrasts = cm)
+  # Map PG -> gene symbol via the first PG.Genes for that PG.
+  pg_gene <- prot_raw |>
+    dplyr::distinct(PG.ProteinGroups, PG.Genes) |>
+    dplyr::group_by(PG.ProteinGroups) |>
+    dplyr::summarise(symbol = dplyr::first(PG.Genes), .groups = "drop")
+  for (cn in names(fit$top)) {
+    fit$top[[cn]] <- dplyr::left_join(fit$top[[cn]],
+      pg_gene, by = c("feature" = "PG.ProteinGroups"))
+  }
+  list(meta = meta, design = design, contrasts = cm, fit = fit,
+       log_matrix = log_mat)
+})
+
+cat(sprintf("Proteomics: %d PGs analysed, %d samples\n",
+            nrow(de_proteomics$log_matrix), nrow(de_proteomics$meta)))
+
+prot_summary <- purrr::imap_dfr(de_proteomics$fit$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_total  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+    n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(prot_summary, caption = "Proteomics DE: significant PG counts")
+```
+
+```{r proteomics-pca, fig.width = 5, fig.height = 4}
+pc <- prcomp(t(de_proteomics$log_matrix |>
+                 (function(m) { m[is.na(m)] <- 0; m })()),
+             center = TRUE, scale. = FALSE)
+pc_df <- data.frame(
+  PC1 = pc$x[, 1], PC2 = pc$x[, 2],
+  genotype = de_proteomics$meta$genotype,
+  label = de_proteomics$meta$label
+)
+ggplot(pc_df, aes(PC1, PC2, colour = genotype, label = label)) +
+  geom_point(size = 3) +
+  ggrepel::geom_text_repel(size = 3, max.overlaps = 20) +
+  scale_colour_manual(values = genotype_colours) +
+  theme_bw() + labs(title = "Proteomics PCA (zero-imputed)")
+```

@@ -1,0 +1,69 @@
+# Things that should not be tracked by Git and so are stored elsewhere.
+# Storage holds data, caches, logs, and results — none tracked. Exclude the
+# children of /storage/ rather than the directory itself so the figures subtree
+# below can be re-included (once a directory is excluded outright, files inside
+# it cannot be re-included). Inter-session agent memory now lives in /.agent/
+# (tracked in full — no rule needed), not under storage/.
+/storage/*
+# Capstone publication figure (arc P): the committed deliverable is the static
+# PNG (built out-of-knit by scripts/build_capstone_figure.py, not regenerated
+# inside any knit), so re-include it under the /storage/* exclude (re-include the
+# directory, then its children, then whitelist the wanted files).
+!/storage/figures/
+/storage/figures/*
+!/storage/figures/*.png
+
+# Environmental variables
+.env
+
+# Project-local Python virtual env used by R/ccc_inference.R (LIANA+
+# bridge via reticulate). Recreate via `python3 -m venv .venv &&
+# ./.venv/bin/pip install liana==1.7.1 anndata scipy pandas`.
+/.venv/
+
+# Project-local micromamba binary + py3.10 env for the SCENIC lane (arc K):
+# pyscenic 0.12.1 needs Python <=3.10 / numpy <1.24, so it cannot live in the
+# 3.12 .venv. Recreate from scripts/scenic_env.yml (micromamba create -n scenic
+# python=3.10 pyscenic=0.12.1; then pin setuptools<81 to restore pkg_resources).
+/.micromamba/
+
+# HPC related files
+nohup.out
+
+# Transient knit artefacts
+/knit.log
+/analysis_files/
+/analysis_cache/
+# summary.Rmd is self-contained, so /summary_files/ is normally absent;
+# ignore it (and the cache dir) in case it is knit with self_contained off.
+/summary_files/
+/summary_cache/
+# synthesis.Rmd (integrated cross-arc conclusion) is likewise self-contained.
+/synthesis_files/
+/synthesis_cache/
+# Knitted HTML reports: regenerate via rmarkdown::render(); untracked because
+# each re-knit is a ~30 MB blob that bloats git history. Past blobs remain in
+# history until a coordinated filter-repo/BFG purge (which touches the remote).
+/analysis.html
+/summary.html
+/synthesis.html
+# Default base-graphics device dump from non-interactive R (Rscript) calls
+# that plot without an explicit device; recurs from smoke tests / scripts.
+Rplots.pdf
+
+# OmnipathR runtime logs (created by decoupleR::get_collectri() and any
+# other OmnipathR-backed calls; one file per process invocation).
+/omnipathr-log/
+*.Rcheck/
+.Rhistory
+.RData
+.Rproj.user/
+
+# Claude session state: keep personal/local settings and the skills tree
+# untracked, but TRACK the shared settings.json (the permissions.deny Read()
+# policy referenced by CLAUDE.md) and commands/ (the /session-prompt session-boot slash
+# command) so they survive fresh clones/sessions, the same re-inclusion pattern
+# used for storage/figures above.
+/.claude/*
+!/.claude/settings.json
+!/.claude/commands/

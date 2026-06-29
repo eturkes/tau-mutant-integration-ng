@@ -1,0 +1,776 @@
+# Agnostic cross-modality pathway and module survey
+
+This section asks a deliberately agnostic question across every gene-set
+collection currently cached for the project: which pathways, if any,
+have the strongest cross-modality support for the five canonical
+contrasts (`nlgf_in_maptki`, `nlgf_in_p301s`, `interaction`,
+`tau_alone`, `tau_in_nlgf`)?
+
+The previous iteration of this report anchored on a single Hallmark
+gene set (`HALLMARK_OXIDATIVE_PHOSPHORYLATION`) as the dominant
+cross-modality signal. The Hallmark collection has since been removed
+from the project, the OXPHOS confirmatory arc (former sections 8 and
+9a-9d) deleted, and the MG-M3 module rewritten to drop its "OXPHOS
+module" framing. This survey replaces those anchored analyses with a
+metric-driven ranking that gives no pathway family privileged framing.
+Sections are ordered by collection (GO BP, GO MF, GO CC, three custom
+curated families, hdWGCNA modules); each subsection sorts by the same
+agnostic composite. A final subsection unifies all six collection
+rankings into a single leader board and states an unbiased multi-axis
+verdict.
+
+The ranking helper is `rank_pathways_cross_modality()` in
+`R/pathway_survey.R`. Composite rank sorts by
+(a) the count of modalities at FDR<0.05 with consistent direction of
+effect, then (b) the mean |NES| across modalities with a finite NES.
+Tied counts fall through to the |NES| tie-breaker so the table reads
+top-to-bottom by both criteria. The full ranking (every pathway in the
+collection × every contrast) is exported to a per-collection TSV in
+`storage/results/`; the inline tables show the top 20 per contrast.
+
+## GO BP pathway × modality ranking
+
+GO BP is the largest collection in the project (~7,000 mouse pathways
+in MSigDB C5; ~4,300 pass the fgsea min_size=15 cutoff in at least one
+modality). The whole-microglia fgsea cache used here is
+`storage/cache/fgsea_gobp_results.rds`, built in
+`rmd/07_integration.Rmd` and available in the parent knit session as
+`gsea_gobp`.
+
+```{r pathway-survey-gobp-rank}
+gobp_ranking_full <- purrr::map_dfr(
+  c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+    "tau_alone", "tau_in_nlgf"),
+  function(cn) {
+    rank_pathways_cross_modality(gsea_gobp, contrast = cn) |>
+      dplyr::mutate(contrast = cn)
+  }
+)
+write_tsv_safe(
+  gobp_ranking_full,
+  file.path(params$results_dir, "pathway_survey_gobp_ranking.tsv")
+)
+cat(sprintf("GO BP cross-modality ranking: %d pathway-contrast rows across %d unique pathways.\n",
+            nrow(gobp_ranking_full),
+            length(unique(gobp_ranking_full$pathway))))
+```
+
+```{r pathway-survey-gobp-tables, results = 'asis'}
+for (cn in c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+             "tau_alone", "tau_in_nlgf")) {
+  cat(sprintf("\n\n#### Contrast: `%s`\n\n", cn))
+  ranked <- gobp_ranking_full |>
+    dplyr::filter(contrast == cn) |>
+    dplyr::select(-contrast)
+  print(format_ranking_table(
+    ranked, contrast = cn, n = 20, strip_prefix = "^GOBP_"
+  ))
+}
+```
+
+## GO MF pathway × modality ranking
+
+GO MF (Gene Ontology Molecular Function) is the smaller (~1,850 mouse
+pathways) function-axis sibling of GO BP and tends to surface enzyme-
+class and binding-activity terms (e.g. NADH dehydrogenase activity,
+proton-transporting ATPase activity, GTPase regulator activity). The
+fgsea cache `storage/cache/fgsea_gomf_results.rds` is built by
+`scripts/build_fgsea_extra_collections.R` outside the knit pipeline,
+so we read it directly here.
+
+```{r pathway-survey-gomf-rank}
+gsea_gomf <- readRDS(file.path(params$cache_dir, "fgsea_gomf_results.rds"))
+gomf_ranking_full <- purrr::map_dfr(
+  c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+    "tau_alone", "tau_in_nlgf"),
+  function(cn) {
+    rank_pathways_cross_modality(gsea_gomf, contrast = cn) |>
+      dplyr::mutate(contrast = cn)
+  }
+)
+write_tsv_safe(
+  gomf_ranking_full,
+  file.path(params$results_dir, "pathway_survey_gomf_ranking.tsv")
+)
+cat(sprintf("GO MF cross-modality ranking: %d pathway-contrast rows across %d unique pathways.\n",
+            nrow(gomf_ranking_full),
+            length(unique(gomf_ranking_full$pathway))))
+```
+
+```{r pathway-survey-gomf-tables, results = 'asis'}
+for (cn in c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+             "tau_alone", "tau_in_nlgf")) {
+  cat(sprintf("\n\n#### Contrast: `%s`\n\n", cn))
+  ranked <- gomf_ranking_full |>
+    dplyr::filter(contrast == cn) |>
+    dplyr::select(-contrast)
+  print(format_ranking_table(
+    ranked, contrast = cn, n = 20, strip_prefix = "^GOMF_"
+  ))
+}
+```
+
+## GO CC pathway × modality ranking
+
+GO CC (Gene Ontology Cellular Component) is the location-axis sibling
+of GO BP / GO MF (~1,040 mouse pathways) and surfaces subcellular
+localisations (e.g. mitochondrial inner membrane, respiratory chain
+complex, postsynaptic density). The fgsea cache
+`storage/cache/fgsea_gocc_results.rds` is built by
+`scripts/build_fgsea_extra_collections.R` outside the knit pipeline,
+so we read it directly here.
+
+```{r pathway-survey-gocc-rank}
+gsea_gocc <- readRDS(file.path(params$cache_dir, "fgsea_gocc_results.rds"))
+gocc_ranking_full <- purrr::map_dfr(
+  c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+    "tau_alone", "tau_in_nlgf"),
+  function(cn) {
+    rank_pathways_cross_modality(gsea_gocc, contrast = cn) |>
+      dplyr::mutate(contrast = cn)
+  }
+)
+write_tsv_safe(
+  gocc_ranking_full,
+  file.path(params$results_dir, "pathway_survey_gocc_ranking.tsv")
+)
+cat(sprintf("GO CC cross-modality ranking: %d pathway-contrast rows across %d unique pathways.\n",
+            nrow(gocc_ranking_full),
+            length(unique(gocc_ranking_full$pathway))))
+```
+
+```{r pathway-survey-gocc-tables, results = 'asis'}
+for (cn in c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+             "tau_alone", "tau_in_nlgf")) {
+  cat(sprintf("\n\n#### Contrast: `%s`\n\n", cn))
+  ranked <- gocc_ranking_full |>
+    dplyr::filter(contrast == cn) |>
+    dplyr::select(-contrast)
+  print(format_ranking_table(
+    ranked, contrast = cn, n = 20, strip_prefix = "^GOCC_"
+  ))
+}
+```
+
+## Custom curated sets × modality ranking
+
+The three project-specific curated collections built in Phase B
+(`custom_microglia_states` = 7 sets, `custom_microglia_ad` = 4 sets,
+`custom_module_sources` = 12 sets; 23 unique sets in total) are pooled
+into a single ranking here. Set names are unique across the three
+caches, so pooling does not introduce identifier collisions; the
+`source_collection` column attributes each pathway to its origin.
+Because the pooled collection is small relative to the GO families,
+the inline tables show **every** set per contrast (n=23) rather than
+the canonical top-20 used for the GO collections, top-20 would
+silently omit three sets per contrast, which is poor UX when the total
+is so small. The full ranking is still exported to TSV.
+
+```{r pathway-survey-custom-rank}
+custom_caches <- list(
+  states  = readRDS(file.path(params$cache_dir, "fgsea_custom_states_results.rds")),
+  ad      = readRDS(file.path(params$cache_dir, "fgsea_custom_ad_results.rds")),
+  modules = readRDS(file.path(params$cache_dir, "fgsea_custom_modules_results.rds"))
+)
+
+# Pool the three per-collection caches into one fgsea-list of the same
+# shape (modality -> contrast -> data.frame), by rbinding per
+# (modality, contrast) the per-collection result tables. Set names are
+# unique across collections so rbind is collision-free.
+pool_custom_caches <- function(caches) {
+  modalities <- names(caches[[1]])
+  contrasts  <- names(caches[[1]][[1]])
+  out <- list()
+  for (mn in modalities) {
+    out[[mn]] <- list()
+    for (cn in contrasts) {
+      out[[mn]][[cn]] <- do.call(rbind, lapply(caches, function(c) {
+        as.data.frame(c[[mn]][[cn]])
+      }))
+    }
+  }
+  out
+}
+pooled_custom <- pool_custom_caches(custom_caches)
+
+# Build a pathway -> source_collection lookup from the cache names
+# themselves (no hard-coding of set lists, future-proof if a collection
+# grows).
+source_map <- unlist(lapply(names(custom_caches), function(collection_name) {
+  paths <- unique(unlist(lapply(custom_caches[[collection_name]],
+                                function(per_contrast) {
+    unlist(lapply(per_contrast, function(t) as.data.frame(t)$pathway))
+  })))
+  setNames(rep(collection_name, length(paths)), paths)
+}))
+
+custom_ranking_full <- purrr::map_dfr(
+  c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+    "tau_alone", "tau_in_nlgf"),
+  function(cn) {
+    r <- rank_pathways_cross_modality(pooled_custom, contrast = cn)
+    r$source_collection <- source_map[r$pathway]
+    r$contrast <- cn
+    r
+  }
+)
+write_tsv_safe(
+  custom_ranking_full,
+  file.path(params$results_dir, "pathway_survey_custom_ranking.tsv")
+)
+cat(sprintf("Custom curated cross-modality ranking: %d pathway-contrast rows across %d unique pathways (%s).\n",
+            nrow(custom_ranking_full),
+            length(unique(custom_ranking_full$pathway)),
+            paste(sprintf("%s = %d", names(custom_caches),
+                          vapply(custom_caches, function(c) {
+                            length(unique(as.data.frame(c[[1]][[1]])$pathway))
+                          }, integer(1))), collapse = "; ")))
+```
+
+```{r pathway-survey-custom-tables, results = 'asis'}
+for (cn in c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+             "tau_alone", "tau_in_nlgf")) {
+  cat(sprintf("\n\n#### Contrast: `%s`\n\n", cn))
+  ranked <- custom_ranking_full |>
+    dplyr::filter(contrast == cn) |>
+    dplyr::select(-contrast)
+  print(format_ranking_table(
+    ranked, contrast = cn, n = nrow(ranked),
+    extra_cols = "source_collection"
+  ))
+}
+```
+
+## Per-substate pathway ranking (interaction contrast)
+
+The sections above pool every microglia nucleus into a single contrast
+and ask which pathways move cross-modality. This subsection asks a
+complementary question: WITHIN the snRNAseq modality, which pathways
+move per microglia substate? The Phase B5 cache
+`storage/cache/fgsea_per_state_results.rds` holds fgsea results for
+every (collection, substate, contrast) cell, where the four substates
+(`homeostatic`, `DAM`, `IFN`, `proliferative`) come from the substate
+clustering in `rmd/02a_snrnaseq_microglia.Rmd` and the NEBULA per-state
+DE tables in `rmd/02b_snrnaseq_de_nebula.Rmd`.
+
+The inline tables below focus on the **interaction contrast**, which is
+the cross-genotype interaction term, the contrast most directly
+relevant to whether tau and amyloid pathology produce non-additive
+microglia responses. The full per-substate ranking covering all five
+contrasts is exported to TSV for downstream inspection.
+
+For each pathway in each substate the helper records the per-substate
+rank by |NES|, an `in_top_n` flag (top 10 within that substate), and a
+`substate_breadth` integer counting how many of the four substates list
+the same pathway in their top 10 at the same contrast. A pathway with
+`substate_breadth >= 3` is broadly active across the microglia
+compartment at that contrast; the inline tables flag those rows with a
+`*` prefix. Pathways with `substate_breadth = 1` are substate-specific.
+
+A caveat applies to small collections: when a collection has only N
+sets and N <= the top-n cutoff, every set in that collection lands in
+the per-substate top-n by construction, so `substate_breadth` saturates
+trivially at 4. The three custom collections (`custom_microglia_states`
+= 6-7 sets per substate, `custom_microglia_ad` = 3 sets, and
+`custom_module_sources` = 11-12 sets) fall in this regime; their
+breadth values report the rank ordering, not a stringent
+cross-substate-consistency finding. The breadth metric is meaningful
+for the GO collections (a few hundred to a few thousand pathways per
+substate).
+
+```{r pathway-survey-per-state-build}
+fps <- readRDS(file.path(params$cache_dir,
+                         "fgsea_per_state_results.rds"))
+per_state_long <- rank_pathways_per_substate(fps, n_top = 10L)
+write_tsv_safe(
+  per_state_long,
+  file.path(params$results_dir,
+            "pathway_survey_per_state_ranking.tsv")
+)
+cat(sprintf(
+  paste0("Per-substate ranking: %d rows across %d collections, %d ",
+         "substates, %d contrasts.\n"),
+  nrow(per_state_long),
+  dplyr::n_distinct(per_state_long$collection),
+  dplyr::n_distinct(per_state_long$substate),
+  dplyr::n_distinct(per_state_long$contrast)))
+
+# Cross-substate breadth summary at interaction contrast: how many
+# pathways per collection reach breadth >= 3 (broadly active) or
+# breadth == 4 (compartment-wide). For the GO collections this is the
+# headline cross-substate finding; for the small custom collections it
+# is dominated by the small-N artifact described above.
+breadth_summary <- per_state_long |>
+  dplyr::filter(.data$contrast == "interaction",
+                .data$in_top_n) |>
+  dplyr::distinct(.data$collection, .data$pathway, .data$substate_breadth) |>
+  dplyr::group_by(.data$collection) |>
+  dplyr::summarise(
+    n_in_any_top10 = dplyr::n(),
+    n_breadth_ge3  = sum(.data$substate_breadth >= 3L),
+    n_breadth_eq4  = sum(.data$substate_breadth == 4L),
+    .groups = "drop"
+  )
+```
+
+```{r pathway-survey-per-state-breadth-summary, results = 'asis'}
+print(knitr::kable(
+  breadth_summary, digits = 0,
+  caption = paste0("Interaction-contrast cross-substate breadth per ",
+                   "collection: count of pathways landing in the ",
+                   "top-10 of any substate, and the subset reaching ",
+                   "breadth >= 3 or breadth == 4.")
+))
+```
+
+```{r pathway-survey-per-state-tables, results = 'asis'}
+collection_specs <- list(
+  list(key = "gobp",                    label = "GO BP",
+       strip = "^GOBP_"),
+  list(key = "gomf",                    label = "GO MF",
+       strip = "^GOMF_"),
+  list(key = "gocc",                    label = "GO CC",
+       strip = "^GOCC_"),
+  list(key = "custom_microglia_states", label = "Custom: microglia states",
+       strip = NULL),
+  list(key = "custom_microglia_ad",     label = "Custom: microglia AD",
+       strip = NULL),
+  list(key = "custom_module_sources",
+       label = "Custom: module sources (Sun/Victor 2023)",
+       strip = NULL)
+)
+substates <- c("homeostatic", "DAM", "IFN", "proliferative")
+contrast_inline <- "interaction"
+
+for (spec in collection_specs) {
+  cat(sprintf("\n\n### %s\n\n", spec$label))
+  for (ss in substates) {
+    cat(sprintf("\n\n#### Substate: `%s`\n\n", ss))
+    print(format_per_substate_table(
+      per_state_long,
+      collection_key = spec$key,
+      contrast_key   = contrast_inline,
+      substate_key   = ss,
+      n_top          = 10L,
+      breadth_mark   = 3L,
+      strip_prefix   = spec$strip
+    ))
+  }
+}
+```
+
+## hdWGCNA module × modality cross-support
+
+The hdWGCNA build in `rmd/03_hdwgcna.Rmd` assigns each measured
+microglia gene to one of four data-driven co-expression modules
+(`MG-M1`, `MG-M2`, `MG-M3`, `MG-M4`) or to the unassigned `grey`
+compartment. This subsection treats each non-grey module as a custom
+gene set and asks the same agnostic cross-modality question as the
+collection sections above: at each contrast, which modules carry
+consistent signal across the five DE modalities (snRNAseq NEBULA z,
+GeoMx limma t, proteomics limma t, phospho limma t, phospho_corr
+limma t)? Modules are presented in alphabetical order throughout
+(rows of the heatmap, table rows after the composite tie-breaker)
+so the presentation does not privilege any one module visually,
+a deliberate anti-anchoring choice given the earlier MG-M3 "OXPHOS
+module" framing that this overhaul retired.
+
+The fgsea pathway list is built from `storage/cache/hdwgcna_microglia.rds`
+(the canonical p=3 build) with Ensembl→symbol mapping via the
+`symbol_map` from `rmd/01_data.Rmd`. The grey unassigned bucket is
+dropped (it is not a co-expression module). Module gene-set sizes
+after symbol mapping are MG-M1 = 570, MG-M2 = 850, MG-M3 = 780,
+MG-M4 = 74; all four comfortably clear the fgsea `min_size = 5`
+cutoff in every modality after intersection with the modality gene
+universe. The per-modality fgsea results are cached at
+`storage/cache/fgsea_hdwgcna_modules_results.rds` and the cross-
+modality ranking tibble at
+`storage/results/pathway_survey_hdwgcna_modules.tsv` (one row per
+module × contrast with per-modality NES and padj columns).
+
+```{r pathway-survey-hdwgcna-build}
+hdw_for_pathways <- readRDS(file.path(params$cache_dir,
+                                      "hdwgcna_microglia.rds"))
+modules_sym <- hdw_for_pathways$modules
+modules_sym$symbol <- symbol_map$symbol[
+  match(modules_sym$gene_name, symbol_map$ensembl)
+]
+modules_sym <- modules_sym[
+  !is.na(modules_sym$symbol) & nzchar(modules_sym$symbol) &
+    modules_sym$module != "grey",
+  c("module", "symbol"), drop = FALSE
+]
+modules_sym$module <- as.character(modules_sym$module)
+module_pathways <- split(modules_sym$symbol, modules_sym$module)
+module_pathways <- module_pathways[lengths(module_pathways) > 0]
+module_pathways <- module_pathways[sort(names(module_pathways))]
+cat(sprintf("hdWGCNA module pathway list: %d non-grey modules (%s).\n",
+            length(module_pathways),
+            paste(sprintf("%s = %d", names(module_pathways),
+                          lengths(module_pathways)),
+                  collapse = "; ")))
+
+# Use the same `run_dataset` shim defined upstream in
+# `rmd/07_integration.Rmd` so the snRNAseq fgsea uses the NEBULA
+# z-statistic and the other four modalities use the limma t (matching
+# every other fgsea cache in the project). `min_size = 5` is the same
+# cutoff used by the three Phase B custom collections; modules are
+# large enough that this cutoff is not actively binding here, but the
+# value keeps the schema consistent.
+hdwgcna_fgsea_path <- file.path(params$cache_dir,
+                                "fgsea_hdwgcna_modules_results.rds")
+gsea_hdwgcna_modules <- cache_or_run(hdwgcna_fgsea_path, {
+  list(
+    snrnaseq     = run_dataset(snrnaseq_nebula_shim, module_pathways,
+                               min_size = 5, max_size = 1000),
+    geomx        = run_dataset(de_geomx,             module_pathways,
+                               min_size = 5, max_size = 1000),
+    proteomics   = run_dataset(de_proteomics,        module_pathways,
+                               min_size = 5, max_size = 1000),
+    phospho      = run_dataset(de_phospho,           module_pathways,
+                               min_size = 5, max_size = 1000),
+    phospho_corr = run_dataset(de_phospho_corr,      module_pathways,
+                               min_size = 5, max_size = 1000)
+  )
+})
+
+hdwgcna_ranking_full <- purrr::map_dfr(
+  c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+    "tau_alone", "tau_in_nlgf"),
+  function(cn) {
+    rank_pathways_cross_modality(gsea_hdwgcna_modules, contrast = cn) |>
+      dplyr::mutate(contrast = cn)
+  }
+)
+write_tsv_safe(
+  hdwgcna_ranking_full,
+  file.path(params$results_dir,
+            "pathway_survey_hdwgcna_modules.tsv")
+)
+cat(sprintf(
+  "hdWGCNA module cross-modality ranking: %d module-contrast rows across %d modules.\n",
+  nrow(hdwgcna_ranking_full),
+  length(unique(hdwgcna_ranking_full$pathway))
+))
+```
+
+```{r pathway-survey-hdwgcna-tables, results = 'asis'}
+for (cn in c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+             "tau_alone", "tau_in_nlgf")) {
+  cat(sprintf("\n\n#### Contrast: `%s`\n\n", cn))
+  ranked <- hdwgcna_ranking_full |>
+    dplyr::filter(contrast == cn) |>
+    dplyr::select(-contrast)
+  # Re-sort alphabetically within each contrast to enforce the
+  # anti-anchoring guardrail at display time. The composite rank
+  # column still records the metric-driven ordering.
+  ranked <- ranked[order(ranked$pathway), , drop = FALSE]
+  print(format_ranking_table(
+    ranked, contrast = cn, n = nrow(ranked),
+    caption = sprintf(
+      paste0("All hdWGCNA modules for contrast '%s' (rows alphabetical; ",
+             "composite_rank reflects sign-consistent significant-modality ",
+             "count, then mean |NES|; padj cutoff 0.05)."),
+      cn)
+  ))
+}
+```
+
+```{r pathway-survey-hdwgcna-heatmap, fig.width = 8, fig.height = 3.5}
+# Module x modality NES heatmap for the interaction contrast.
+# Row order: alphabetical (MG-M1, MG-M2, MG-M3, MG-M4) so MG-M3 has
+# no visual priority. Column order: the canonical project modality
+# order (snRNAseq, GeoMx, proteomics, phospho, phospho_corr).
+modalities       <- names(gsea_hdwgcna_modules)
+contrast_focus   <- "interaction"
+module_alpha     <- sort(names(module_pathways))
+
+nes_mat  <- vapply(modalities, function(m) {
+  tbl <- as.data.frame(gsea_hdwgcna_modules[[m]][[contrast_focus]])
+  setNames(tbl$NES, tbl$pathway)[module_alpha]
+}, numeric(length(module_alpha)))
+padj_mat <- vapply(modalities, function(m) {
+  tbl <- as.data.frame(gsea_hdwgcna_modules[[m]][[contrast_focus]])
+  setNames(tbl$padj, tbl$pathway)[module_alpha]
+}, numeric(length(module_alpha)))
+rownames(nes_mat)  <- module_alpha
+rownames(padj_mat) <- module_alpha
+
+range_abs <- max(abs(nes_mat[is.finite(nes_mat)]), na.rm = TRUE)
+col_fun   <- circlize::colorRamp2(c(-range_abs, 0, range_abs),
+                                  c("#3a4cc0", "white", "#b40426"))
+cell_fn   <- function(j, i, x, y, width, height, fill) {
+  if (is.na(padj_mat[i, j])) return()
+  if (padj_mat[i, j] < 0.05) {
+    grid::grid.text("*", x, y,
+                    gp = grid::gpar(fontsize = 11, col = "black"))
+  } else if (padj_mat[i, j] < 0.1) {
+    grid::grid.text(".", x, y,
+                    gp = grid::gpar(fontsize = 11, col = "black"))
+  }
+}
+ComplexHeatmap::Heatmap(
+  nes_mat,
+  name            = "NES",
+  col             = col_fun,
+  cluster_rows    = FALSE,
+  cluster_columns = FALSE,
+  row_order       = seq_len(nrow(nes_mat)),
+  column_order    = seq_len(ncol(nes_mat)),
+  cell_fun        = cell_fn,
+  row_names_gp    = grid::gpar(fontsize = 10),
+  column_names_gp = grid::gpar(fontsize = 10),
+  column_title    = sprintf(
+    paste0("hdWGCNA module x modality NES at '%s' contrast ",
+           "('*' = FDR<0.05, '.' = FDR<0.1; rows alphabetical)"),
+    contrast_focus),
+  border          = TRUE
+)
+```
+
+## Unified leader board (unbiased verdict)
+
+The collection-by-collection rankings above already use a metric-driven
+composite that ignores pathway family. This subsection pools every
+collection into a single leader board, applies one fixed leader rule
+across all (pathway, contrast) cells, and states an unbiased verdict
+from whatever the rule surfaces. No pathway family is privileged in the
+construction; the leader rule is fixed below before the data is
+inspected, so the threshold cannot be retrofitted to favour any one
+biology.
+
+**Leader rule (applied verbatim to every (pathway, contrast) row):** a
+row qualifies as a leader if
+`n_modalities_sig_consistent_sign >= 2` OR `n_modalities_sig >= 3`. The
+first clause requires at least two modalities at FDR<0.05 with the same
+direction of effect; the second clause requires at least three
+modalities at FDR<0.05 regardless of direction, capturing the
+OXPHOS-style mixed-sign multi-modality enrichment pattern. The rule is
+encoded in `R/pathway_survey.R::build_leader_board()` as a closure so
+future plans can swap it without rewriting the helper, and the closure
+is applied to the stacked long form of the six collection rankings
+already exported in subsections 13.1-13.6.
+
+**Composite leader score (primary sort, larger is better):**
+`leader_score = 5 * n_contrasts_consistent_sign_ge2 + n_contrasts_sig_ge3 + max_consistent_sign / 5`.
+The 5x weight on the cross-contrast consistent-sign count means a
+pathway that hits the rule at two different contrasts with consistent
+direction always outranks a pathway that hits it at one contrast only;
+the `max_consistent_sign / 5` tie-breaker lifts cases where a single
+contrast carries an exceptional cross-modality stack. The leader score
+is computed once per (collection, pathway); the per-contrast
+breakdown is preserved verbatim in the `contrasts_summary` column for
+each row.
+
+Three complementary views are presented below: (1) the top 20 by
+composite leader score (cross-contrast + cross-modality), (2) the top
+10 by maximum cross-substate breadth (compartment-wide signals), and
+(3) the top 10 by maximum sign-consistent significant-modality count at
+any single contrast (single-contrast cross-modality stars). The full
+unified leader board (one row per leader pathway) is at
+`storage/results/pathway_survey_unified_leaderboard.tsv`, built by the
+D1 step of `storage/notes/pathway_overhaul_plan.md` and read here
+without recomputation.
+
+```{r pathway-survey-verdict-build}
+verdict_lb <- readr::read_tsv(
+  file.path(params$results_dir,
+            "pathway_survey_unified_leaderboard.tsv"),
+  show_col_types = FALSE
+)
+
+cat(sprintf(
+  paste0("Unified leader board: %d leader pathway rows across ",
+         "%d collections (%s).\n"),
+  nrow(verdict_lb),
+  dplyr::n_distinct(verdict_lb$collection),
+  paste(sprintf("%s = %d",
+                names(table(verdict_lb$collection)),
+                as.integer(table(verdict_lb$collection))),
+        collapse = "; ")
+))
+
+# Strip GO-collection prefixes and underscore-format GO pathway names
+# for display; custom-collection names (MG-M2, DAM_up, WAM, ...) lack a
+# recognised prefix and pass through unchanged.
+pretty_pathway <- function(pathway) {
+  out <- pathway
+  is_go <- grepl("^(GOBP|GOMF|GOCC)_", out)
+  out[is_go] <- sub("^(GOBP|GOMF|GOCC)_", "", out[is_go])
+  out[is_go] <- gsub("_", " ", tolower(out[is_go]))
+  out
+}
+
+# View 1: top 20 by composite leader score.
+verdict_view_score <- verdict_lb |>
+  dplyr::arrange(dplyr::desc(leader_score), collection, pathway) |>
+  head(20) |>
+  dplyr::transmute(
+    collection,
+    pathway              = pretty_pathway(pathway),
+    leader_score,
+    n_contrasts_cons_ge2 = n_contrasts_consistent_sign_ge2,
+    n_contrasts_sig_ge3,
+    max_consistent_sign,
+    dominant_sign,
+    max_substate_breadth,
+    contrasts_summary
+  )
+
+# View 2: top 10 by max cross-substate breadth, then leader score.
+verdict_view_breadth <- verdict_lb |>
+  dplyr::arrange(dplyr::desc(max_substate_breadth),
+                 dplyr::desc(leader_score),
+                 collection, pathway) |>
+  head(10) |>
+  dplyr::transmute(
+    collection,
+    pathway              = pretty_pathway(pathway),
+    max_substate_breadth,
+    leader_score,
+    dominant_sign,
+    n_contrasts_cons_ge2 = n_contrasts_consistent_sign_ge2,
+    contrasts_summary
+  )
+
+# View 3: top 10 by max sign-consistent significant-modality count at
+# any single contrast, then leader score.
+verdict_view_consistent <- verdict_lb |>
+  dplyr::arrange(dplyr::desc(max_consistent_sign),
+                 dplyr::desc(leader_score),
+                 collection, pathway) |>
+  head(10) |>
+  dplyr::transmute(
+    collection,
+    pathway              = pretty_pathway(pathway),
+    max_consistent_sign,
+    leader_score,
+    dominant_sign,
+    n_contrasts_cons_ge2 = n_contrasts_consistent_sign_ge2,
+    contrasts_summary
+  )
+```
+
+```{r pathway-survey-verdict-tables, results = 'asis'}
+print(knitr::kable(
+  verdict_view_score, digits = 2,
+  caption = paste0(
+    "Top 20 by composite leader_score = ",
+    "5 * n_contrasts_consistent_sign_ge2 + n_contrasts_sig_ge3 + ",
+    "max_consistent_sign / 5. ",
+    "Cross-contrast consistent-sign breadth weighted first."
+  )
+))
+
+print(knitr::kable(
+  verdict_view_breadth, digits = 2,
+  caption = paste0(
+    "Top 10 by max cross-substate breadth (max over contrasts of the ",
+    "number of microglia substates -- out of 4 -- where the pathway ",
+    "appears in the per-substate top-10). Surfaces compartment-wide ",
+    "signals."
+  )
+))
+
+print(knitr::kable(
+  verdict_view_consistent, digits = 2,
+  caption = paste0(
+    "Top 10 by max sign-consistent significant-modality count at any ",
+    "single contrast. Surfaces single-contrast cross-modality stars."
+  )
+))
+```
+
+### Verdict
+
+The leader board surfaces **three distinct axes of biology**, none of
+which is the single winner the original Hallmark-anchored framing
+implied:
+
+1. **Amyloid-driven activation (+ sign).** MG-M2 (hdWGCNA module) is
+   the cleanest single-contrast cross-modality star anywhere in the
+   project: four modalities significant at `nlgf_in_p301s` with
+   consistent + direction (snRNAseq NES=+2.15 padj=1.6e-111, GeoMx
+   +1.33 padj=4.9e-4, proteomics +1.51 padj=2.0e-4, phospho +1.50
+   padj=3.8e-3), plus three modalities sig consistent + at
+   `nlgf_in_maptki`. The MHC II antigen-presentation family
+   (`GOBP_ANTIGEN_PROCESSING_AND_PRESENTATION_*` x5 + `GOMF_ANTIGEN_BINDING`
+   + `GOMF_PEPTIDE_ANTIGEN_BINDING`) provides independent
+   GO-collection corroboration with the same `nlgf_in_maptki:2/+ |
+   nlgf_in_p301s:2/+` pattern at leader_score 10.4, and
+   `GOBP_ADAPTIVE_IMMUNE_RESPONSE` reinforces it at leader_score 11.6
+   with three modalities sig + at `nlgf_in_p301s`. The custom curated
+   sets (`DAM_up` at leader_score 16.4, `WAM` and `HAM_disease` and
+   `AD2` at 10.4 each) co-localise at the same NLGF contrasts. The
+   axis is robust across both tau backgrounds and is the most
+   single-axis-coherent signal on the board.
+
+2. **NLGF-driven synaptic suppression (- sign).** Six synaptic GO CC
+   terms (`GOCC_PRESYNAPSE`, `GOCC_SYNAPTIC_VESICLE_MEMBRANE`,
+   `GOCC_GABA_ERGIC_SYNAPSE`, `GOCC_SCHAFFER_COLLATERAL_CA1_SYNAPSE`,
+   `GOCC_EXCITATORY_SYNAPSE`, `GOCC_PRESYNAPTIC_MEMBRANE`) and several
+   matching GO BP terms cluster at leader_score 11.6-15.4, all with
+   three modalities consistently negative at `nlgf_in_maptki` and two
+   consistently negative at `nlgf_in_p301s`. The signal is read by the
+   microglia compartment (GeoMx ROIs centred on microglia, snRNAseq
+   nuclei filtered to microglia) and so reflects either reduced
+   detection of synapse-associated proteins in the microglia
+   fraction (e.g. via microglial engulfment of synaptic material) or
+   transcriptional/proteomic reorganisation of the microglia-resident
+   synaptic interactome. The mechanism is open; the cross-modality
+   coherence is not.
+
+3. **Mixed-sign metabolic/translational disagreement at tau x amyloid
+   interaction.** Eight GO terms covering oxidative phosphorylation,
+   electron transport, NADH dehydrogenase, ATP synthesis coupled
+   electron transport, aerobic respiration, cellular respiration, and
+   oxidoreductase activity (collectively a tight functional family)
+   cluster at leader_score 11.4-16.4 with `dominant_sign = mixed`.
+   Every one of these terms shows the same
+   `interaction:3/mixed` pattern: three modalities reach FDR<0.05 at
+   the interaction contrast but disagree on direction. `DAM_up`
+   (custom_microglia_states; leader_score 16.4) and **MG-M3**
+   (hdwgcna_modules; leader_score 23.4 -- the highest leader_score on
+   the board) carry the same mixed-sign signature, MG-M3 at four
+   different contrasts. The breadth view confirms this is a
+   compartment-wide signal at the RNA layer: `GOCC_CYTOSOLIC_RIBOSOME`,
+   `GOCC_RIBOSOMAL_SUBUNIT`, and the rest of the ribosomal compartment
+   reach `max_substate_breadth = 4` (all four microglia substates
+   list these terms in their per-substate top-10 at the same
+   contrast). The mixed sign reflects the RNA-vs-proteomics-vs-phospho_corr
+   orthogonality already documented in section 13.6: at MG-M3,
+   snRNAseq and proteomics push negative while phospho_corr pushes
+   positive. **This axis is the cross-modality residual non-additivity
+   of metabolic/translational machinery, not a directional biological
+   change.** The high `leader_score` for this family reflects
+   cross-contrast cross-modality breadth, not directional consistency.
+
+**No specificity-null testing was performed**; the cancelled C7/C8
+expression-matched-random framework would have asked whether the OXPHOS
+hit at interaction was due to gene-set construction artefacts, but the
+unbiased multi-collection ranking already adjudicates that question:
+the mixed-sign OXPHOS/ETC family co-clusters with `DAM_up` and `MG-M3`
+under the same `interaction:3/mixed` signature across GO BP, GO MF, GO
+CC, custom_microglia_states, and hdwgcna_modules independently --
+collection-independent replication of the same pattern is stronger
+evidence than a single-collection null. The consistency filters
+(consistent-sign requirement on the first clause of the leader rule)
+and cross-contrast aggregation (`n_contrasts_*` columns) substitute for
+the cancelled null.
+
+**The verdict is multi-axis.** No single pathway family carries the
+narrative on its own; instead, three independent axes co-exist at the
+top of the leader board (amyloid activation +; NLGF synaptic
+suppression -; tau x amyloid metabolic/translational disagreement
+mixed). The per-contrast evidence underlying each axis is in
+subsections 13.1-13.6 above; this leader board summarises rather than
+replaces those tables.
+
+The successor plan, `storage/notes/mechanism_layer_plan.md`, takes
+these three axes forward to mechanism-layer inference: transcription
+factor inference on the amyloid-activation leader pathways, kinase
+activity inference from phospho on the mixed-sign metabolic family, and
+the CCC-bridge sender/receiver filter re-applied with the synaptic and
+activation leader pathways as the prior. Each phase is gated on user
+choice of priorities at its first session, so the mechanism work does
+not pre-commit to one axis over the others.

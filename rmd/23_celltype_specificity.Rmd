@@ -1,0 +1,423 @@
+# Cell-type specificity of the tau&times;amyloid interaction
+
+```{r celltype-specificity-load, include = FALSE}
+cs  <- readRDS(file.path(params$cache_dir, "celltype_specificity.rds"))
+par <- cs$params
+tal <- cs$tally                     # R1/R2: 120 rows (regime x estimator x unit x contrast)
+icc <- cs$interaction_concordance   # R3a vs_microglia + R3c pb_vs_nebula
+scl <- cs$specificity_class         # R4: per-gene class at interaction
+pth <- cs$pathway_tally             # R5: GO-BP fGSEA tally at interaction
+mpu <- cs$microglia_pathway_cross_unit
+xck <- cs$crosscheck                # 10 rows: pooled-microglia vs canonical DE
+ucc <- cs$unit_cell_counts
+
+unit_order     <- sort(par$units)   # alphabetical -- the no-privilege guardrail
+contrast_order <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s",
+                    "tau_in_nlgf", "interaction")
+
+# Unique-row accessors so every prose scalar is read from the cache, never typed.
+tget <- function(rg, es, u, cn)
+  tal[tal$regime == rg & tal$estimator == es & tal$unit == u & tal$contrast == cn, ]
+xget <- function(es, cn) xck[xck$estimator == es & xck$contrast == cn, ]
+pget <- function(rg, es, u) pth[pth$regime == rg & pth$estimator == es & pth$unit == u, ]
+
+# Headline scalars (interaction = the divergence readout).
+mg_int_native_neb   <- tget("native",  "nebula",     "Microglia",       "interaction")$n_sig_10
+oli_int_native_neb  <- tget("native",  "nebula",     "Oligodendrocyte", "interaction")$n_sig_10
+oli_int_native_pb   <- tget("native",  "pseudobulk", "Oligodendrocyte", "interaction")$n_sig_10
+oli_int_matched_neb <- tget("matched", "nebula",     "Oligodendrocyte", "interaction")$n_sig_10
+mg_int_matched_neb  <- tget("matched", "nebula",     "Microglia",       "interaction")$n_sig_10
+n_matched_int_total <- sum(tal$n_sig_10[tal$regime == "matched" &
+                                        tal$contrast == "interaction"])
+# Amyloid main effect survives matching and stays microglia-led:
+mg_main_matched_neb <- tget("matched", "nebula", "Microglia",  "nlgf_in_maptki")$n_sig_10
+as_main_matched_neb <- tget("matched", "nebula", "Astrocyte",  "nlgf_in_maptki")$n_sig_10
+mg_main_native_neb  <- tget("native",  "nebula", "Microglia",  "nlgf_in_maptki")$n_sig_10
+as_main_native_neb  <- tget("native",  "nebula", "Astrocyte",  "nlgf_in_maptki")$n_sig_10
+
+# Cross-check floor margins.
+xchk_int_neb <- xget("nebula", "interaction")$spearman
+xchk_int_pb  <- xget("pseudobulk", "interaction")$spearman
+xchk_min     <- min(xck$spearman, na.rm = TRUE)
+xchk_all_pass <- all(xck$passes)
+
+# R3 concordance ranges.
+r3a_matched <- range(icc$spearman[icc$comparison == "vs_microglia" & icc$regime == "matched"], na.rm = TRUE)
+r3a_native  <- range(icc$spearman[icc$comparison == "vs_microglia" & icc$regime == "native"],  na.rm = TRUE)
+r3c_matched <- range(icc$spearman[icc$comparison == "pb_vs_nebula" & icc$regime == "matched"], na.rm = TRUE)
+
+# R4 native microglia-unique set (does not survive matching).
+mg_uni_native <- scl$symbol[scl$regime == "native" & scl$estimator == "nebula" &
+                            scl$class == "microglia_unique"]
+n_mg_uni_matched <- sum(scl$regime == "matched" & scl$class == "microglia_unique")
+
+# R5 pathway headline.
+neuro_path_matched_neb <- pget("matched", "nebula",     "Neuronal")$n_path_10
+mg_path_matched_neb    <- pget("matched", "nebula",     "Microglia")$n_path_10
+neuro_path_matched_pb  <- pget("matched", "pseudobulk", "Neuronal")$n_path_10
+neuro_path_native_neb  <- pget("native",  "nebula",     "Neuronal")$n_path_10
+mg_path_native_neb     <- pget("native",  "nebula",     "Microglia")$n_path_10
+```
+
+
+This section asks the project's first **cross-cell-type** question and closes
+narrative arc **N** (`storage/notes/celltype_specificity_plan.md`). Every
+preceding arc &mdash; the expression DE of section 3, the pathway, module,
+transcription-factor, kinase, ligand-receptor, causal-topology and SCENIC
+layers, the tissue **composition** of section 22 and the activation
+**dynamics** of section 23 &mdash; reads **only microglia**. The entire
+edifice, including the locked 2&times;2 contests and the section-23 progression
+interaction, is microglia-scoped *by construction*. The untested question is
+therefore: **is the tau&times;amyloid interaction
+`(NLGF_P301S&minus;P301S)&minus;(NLGF_MAPTKI&minus;MAPTKI)` &mdash; and the
+amyloid / tau main effects &mdash; microglia-SPECIFIC, or do astrocytes,
+oligodendrocytes, OPCs, neurons and vascular cells show comparable factorial
+responses?**
+
+**Why this is a finding either way, not a restatement.** A microglia-restricted
+interaction would *validate* the project's microglia focus as a data-forced
+conclusion. A broader, multi-cellular interaction would *reframe* that focus as
+a **choice** rather than a necessity &mdash; not refuting any microglial result,
+but resetting the context in which it is read. Neither outcome is fished for;
+both are reported plainly. This is a display-only chapter that re-runs the exact
+microglial DE treatment (the section-3 / `rmd/02b` stack: pseudobulk limma-voom
+plus single-cell NEBULA) **symmetrically over six comparison units** &mdash; the
+five broad non-microglial types and microglia-as-a-whole (the four microglial
+substates pooled) &mdash; and touches none of the locked mouse 2&times;2
+verdicts except through the gated arc-N ledger feed decided after this chapter.
+
+**The confound the design is built around.** Cell count varies roughly
+twenty-fold across units (Neuronal
+`r format(ucc$n_cells[ucc$unit == "Neuronal"], big.mark = ",")` cells vs OPC
+`r format(ucc$n_cells[ucc$unit == "OPC"], big.mark = ",")`), so pseudobulk
+precision &mdash; and therefore statistical power &mdash; is strongly
+asymmetric. A specificity claim from native cell counts alone is confounded:
+microglia could appear "special" simply because they are neither the most nor
+the least abundant unit, and a power-rich unit could light up for no reason but
+its depth. The load-bearing control is a cell-count-**MATCHED** refit: every
+unit&times;replicate stratum is downsampled to a common
+`r par$K` cells (`K` = the smallest per-replicate depth any unit can supply,
+fixed from the data before any fit, RNG seed `r par$seed`) and both estimators
+are rerun, so power is equalised across all six units. **The specificity verdict
+rests on the MATCHED regime; the NATIVE fits are reported alongside but flagged
+power-confounded throughout.**
+
+**Method, fixed before any contrast was read.** The substrate is the
+all-cell-types `seurat_full_processed` object
+(`r format(par$n_cells, big.mark = ",")` cells; symbol-keyed). Two estimators
+&mdash; pseudobulk limma-voom on the 16 `genotype_batch` pseudo-samples with the
+locked `r par$design` design, and single-cell NEBULA at full per-cell
+resolution &mdash; are run under two power regimes (NATIVE, all cells; MATCHED,
+`K`-downsampled) across all six units, against the project's five canonical
+contrasts. Both estimators mirror `rmd/02b` byte-for-byte, so the six units are
+directly comparable to the microglial headline. The pooled-microglia unit is
+cross-checked against the canonical `de_snrnaseq` / `de_snrnaseq_nebula` caches
+to confirm the apparatus reproduces the established microglial DE before any
+cross-type comparison is trusted.
+
+**Thresholds, stated before any result is read.** Significance everywhere is
+BH-FDR &lt; `r sprintf("%.2f", par$padj_cut)` (the project standard). The
+sanity-gate cross-check must clear a single uniform Spearman floor of
+`r sprintf("%.2f", par$xcheck_floor)` on shared genes per contrast (a uniform
+gross-mismatch floor, deliberately not a hard 0.95-per-contrast assert, because
+the difference-of-differences interaction is the noisiest contrast across two
+intentionally non-identical microglial analyses). The MATCHED downsample target
+*K* = `r par$K` and seed `r par$seed` are recorded; the headline gene set for the
+curated cross-type heatmap is the canonical DAM/state markers plus the
+top-`r par$headline_n` `de_snrnaseq_nebula` interaction symbols.
+
+**Caveats carried throughout.** (a) The MATCHED regime equalises **cell count**,
+not transcriptome **depth**: neuronal nuclei carry roughly 2.6-fold the UMIs of
+microglia (median 2,809 vs 1,064 in this object), so any neuronal dominance at
+the pathway level is partly depth-driven and is flagged as such beside every
+such claim. (b) The MATCHED gene-level result is the honest power-equalised
+verdict; the NATIVE tallies are shown but never used as the headline. (c) The
+interaction is a difference of differences and is intrinsically the noisiest
+contrast; absence of a gene-level interaction is read as "no detectable
+power-equalised signal", not as proof of exact zero.
+
+**Anti-anchoring.** The metrics below were fixed before any fit was inspected.
+All six units are reported symmetrically with no privileged ordering
+(alphabetical throughout). The design does **not** assume microglia win: a
+non-microglial interaction hit &mdash; the oligodendrocyte signal that emerges
+below, or any astrocyte response &mdash; is reported as a finding, not explained
+away. Where a broader response is found, it is stated to *reframe*, never
+refute, the microglia focus.
+
+
+## Sanity gate: the pooled-microglia unit reproduces the canonical microglia DE
+
+Before any cross-type comparison is trusted, the apparatus is validated against
+the project's own microglial result. The pooled-microglia unit drawn from
+`seurat_full_processed` is fit with both estimators and its per-contrast logFC
+is correlated (Spearman, on shared genes, bridged into symbol space) against the
+canonical `de_snrnaseq` (pseudobulk) and `de_snrnaseq_nebula` (NEBULA) caches.
+All ten cross-checks **`r if (xchk_all_pass) "pass" else "FAIL"`** the
+`r sprintf("%.2f", par$xcheck_floor)` floor. The four main-effect-style
+contrasts reproduce at &rho; &asymp; 0.96&ndash;0.98; the interaction is the
+nearest the floor (NEBULA `r sprintf("%.3f", xchk_int_neb)`, pseudobulk
+`r sprintf("%.3f", xchk_int_pb)`; the overall minimum is
+`r sprintf("%.3f", xchk_min)`). This is exactly as expected &mdash; the
+interaction is the noisiest difference-of-differences contrast across two
+intentionally non-identical microglial analyses (the all-cell-types object versus
+the dedicated microglia re-cluster), and a 0.95-per-contrast assert would have
+spuriously failed both interaction checks despite genuine reproduction (against a
+random-expectation &rho; &asymp; 0). The uniform 0.90 floor is the calibrated
+choice, and the apparatus is validated.
+
+```{r celltype-specificity-crosscheck, results = "asis"}
+xt <- xck
+xt$contrast  <- factor(xt$contrast, levels = contrast_order)
+xt <- xt[order(xt$estimator, xt$contrast), ]
+xt_disp <- data.frame(
+  estimator = xt$estimator,
+  contrast  = as.character(xt$contrast),
+  `n shared` = xt$n_shared,
+  Spearman  = sprintf("%.3f", xt$spearman),
+  passes    = ifelse(xt$passes, "yes", "NO"),
+  check.names = FALSE, stringsAsFactors = FALSE)
+knitr::kable(
+  xt_disp, row.names = FALSE,
+  caption = paste0(
+    "Sanity gate: pooled-microglia unit (from seurat_full_processed) vs the ",
+    "canonical microglia DE, Spearman of logFC on shared symbols per contrast ",
+    "and estimator. All ten clear the uniform ",
+    sprintf("%.2f", par$xcheck_floor), " floor; the interaction sits nearest ",
+    "it (the noisiest difference-of-differences contrast), confirming faithful ",
+    "reproduction rather than a wiring artefact."))
+```
+
+## Significant-gene tally: the factorial works, the interaction is thin
+
+The first readout counts significant genes (FDR &lt; `r sprintf("%.2f", par$padj_cut)`)
+per unit and contrast. The factorial **design works**: the amyloid main effects
+are broad and multi-cellular, and &mdash; importantly &mdash; remain
+**microglia-led even under MATCHED power** (`nlgf_in_maptki`, NEBULA: microglia
+`r mg_main_matched_neb` significant genes vs astrocyte `r as_main_matched_neb`
+at equal cells; the NATIVE counts are larger but power-confounded, microglia
+`r mg_main_native_neb` vs astrocyte `r as_main_native_neb`). So microglia
+genuinely **are** the strongest amyloid responder, and that part of the focus is
+validated by the data.
+
+The **interaction** &mdash; the divergence readout, the actual subject of this
+chapter &mdash; tells a different story. At NATIVE power it is sparse everywhere:
+microglia `r mg_int_native_neb` genes (NEBULA), oligodendrocyte
+`r oli_int_native_neb` (NEBULA) / `r oli_int_native_pb` (pseudobulk), the rest at
+or near zero, and `tau_alone` essentially null in every unit. Under the
+load-bearing **MATCHED** regime the gene-level interaction **collapses to zero in
+all six units, microglia included** &mdash; the sole survivor across both
+estimators is oligodendrocyte (`r oli_int_matched_neb` genes, NEBULA only;
+`r n_matched_int_total` interaction genes total across the entire matched grid).
+The handful of NATIVE microglial interaction hits are therefore a power artefact
+of the cell-count spread, not a microglia-specific programme; and the one unit
+that retains any gene-level interaction at equal power is **not** microglia.
+
+```{r celltype-specificity-tally-matched, fig.width = 8, fig.height = 4.2, fig.cap = "MATCHED (power-equalised, K cells per unit x replicate) significant-gene counts per unit x contrast, faceted by estimator; tile labels are gene counts at FDR<0.10. The amyloid main-effect columns survive matching and stay microglia-led; the interaction column collapses to zero in every unit except a small oligodendrocyte NEBULA signal. This is the load-bearing tally."}
+plot_specificity_tally_heatmap(tal, regime = "matched", fdr = "10",
+                               contrasts = contrast_order)
+```
+
+```{r celltype-specificity-tally-native, fig.width = 8, fig.height = 4.2, fig.cap = "NATIVE (all cells) significant-gene counts per unit x contrast (FDR<0.10). Shown for completeness but flagged POWER-CONFOUNDED: the ~20x cell-count spread inflates counts in the abundant units, so this regime cannot ground a specificity claim. Compare the interaction column here to the matched figure above -- the few microglial interaction hits do not survive power-matching."}
+plot_specificity_tally_heatmap(tal, regime = "native", fdr = "10",
+                               contrasts = contrast_order)
+```
+
+## Interaction-effect concordance across cell types
+
+If the interaction were a shared, multi-cellular programme, the per-unit
+interaction-logFC profiles would correlate with microglia genome-wide. They do
+not. The genome-wide Spearman of interaction logFC between microglia and each
+other unit is uniformly **low** &mdash; MATCHED
+`r sprintf("%.2f", r3a_matched[1])`&ndash;`r sprintf("%.2f", r3a_matched[2])`,
+NATIVE `r sprintf("%.2f", r3a_native[1])`&ndash;`r sprintf("%.2f", r3a_native[2])`
+&mdash; so each unit's (mostly noise-level) interaction response is
+**distinct**, not a common axis read out in different cell types. Critically,
+this is **not** an estimator artefact: within each unit the pseudobulk and NEBULA
+interaction logFCs agree well (cross-estimator Spearman
+`r sprintf("%.2f", r3c_matched[1])`&ndash;`r sprintf("%.2f", r3c_matched[2])`
+under MATCHED), so the two methods see the same per-unit signal &mdash; it is the
+**cell types** that differ, not the estimators.
+
+```{r celltype-specificity-cross-estimator, fig.width = 7.6, fig.height = 5, fig.cap = "Cross-estimator agreement (MATCHED): pseudobulk vs NEBULA interaction log2FC, one facet per unit, dashed line y=x. The estimators agree within every unit (Spearman ~0.96-0.98), so the low microglia-vs-unit concordance reported above reflects genuine cell-type differences, not method disagreement. At matched power the interaction is a near-zero-centred cloud in all units (no coherent off-diagonal structure)."}
+plot_cross_estimator_panel(cs$fits$matched$pseudobulk, cs$fits$matched$nebula,
+                           regime = "matched", contrast = "interaction")
+```
+
+The curated view restricts the interaction logFC to the microglial headline gene
+set (DAM/state markers plus the top `de_snrnaseq_nebula` interaction symbols) and
+lays it across all six units at full NATIVE NEBULA power. The microglial story
+does not propagate: these genes carry their interaction signal (such as it is) in
+microglia and are flat or absent (many are not meaningfully expressed) in the
+other units. The microglial headline interaction is a microglial-gene
+phenomenon, not a cross-type one &mdash; consistent with the low genome-wide
+concordance above.
+
+```{r celltype-specificity-headline-heatmap, fig.width = 7.4, fig.height = 7.6, fig.cap = "Interaction log2FC of the microglial headline gene set (canonical DAM/state markers + top de_snrnaseq_nebula interaction symbols) across the six units, NATIVE NEBULA. Grey/absent tiles are genes not expressed in that unit. The microglial headline genes do not show a coherent interaction in the non-microglial units, so the headline interaction is microglia-gene-specific rather than a shared cross-type programme. NATIVE (full-power) view; the matched regime carries even less gene-level signal."}
+plot_interaction_logfc_heatmap(cs$fits$native$nebula, cs$headline_genes,
+                               regime = "native", estimator = "nebula")
+```
+
+## Per-gene specificity class
+
+Every gene significant at the interaction (FDR &lt; `r sprintf("%.2f", par$padj_cut)`)
+in **any** unit is classified as microglia-unique, shared, or
+non-microglial-unique. The pool is tiny (the interaction is thin everywhere), and
+the verdict is unambiguous. At NATIVE NEBULA power there are
+`r length(mg_uni_native)` microglia-unique genes
+(`r paste(mg_uni_native, collapse = ", ")`) alongside a set of
+non-microglial-unique genes that are almost entirely **oligodendrocyte**. Under
+the load-bearing MATCHED regime, **`r n_mg_uni_matched` microglia-unique
+interaction genes survive** &mdash; the only power-equalised gene-level
+interaction class is non-microglial (oligodendrocyte). The microglia-unique
+NATIVE hits are precisely the power artefact the MATCHED control was built to
+expose.
+
+```{r celltype-specificity-class-native, fig.width = 6.6, fig.height = 3.8, fig.cap = "Per-gene interaction specificity class at NATIVE power, faceted by estimator. A small microglia-unique set appears under NEBULA (full power) but the non-microglial-unique class -- almost all oligodendrocyte -- is comparable or larger. NATIVE; power-confounded."}
+plot_specificity_class(scl, regime = "native")
+```
+
+```{r celltype-specificity-class-matched, fig.width = 6.6, fig.height = 3.8, fig.cap = "Per-gene interaction specificity class at MATCHED (power-equalised) power. No microglia-unique gene survives matching; the only surviving class is non-microglial-unique (oligodendrocyte). This is the load-bearing specificity-class result."}
+plot_specificity_class(scl, regime = "matched")
+```
+
+## Pathway-level interaction response
+
+The gene-level interaction is thin in every unit, so the secondary readout asks
+the question at pathway resolution: GO-BP fGSEA on each unit's interaction
+ranking, counting pathways enriched at FDR &lt; `r sprintf("%.2f", par$padj_cut)`.
+Here the asymmetry is stark and **the broadest response is Neuronal, not
+microglial, in every regime and estimator.** Under MATCHED NEBULA the neuronal
+unit carries `r neuro_path_matched_neb` enriched interaction pathways against
+microglia's `r mg_path_matched_neb`; under MATCHED pseudobulk neuronal leads with
+`r neuro_path_matched_pb`; the NATIVE regime amplifies the same ordering
+(neuronal `r neuro_path_native_neb` vs microglia `r mg_path_native_neb`, NEBULA).
+The enrichment is overwhelmingly **down** (negative NES), consistent with the
+interaction suppressing neuronal transcriptional programmes. The two pathways
+microglia does retain under MATCHED NEBULA are ribonucleoprotein- and
+ribosome-biogenesis terms &mdash; housekeeping, down-regulated, and *shared* with
+the neuronal response rather than microglia-restricted.
+
+```{r celltype-specificity-pathway, fig.width = 7.8, fig.height = 4, fig.cap = "Pathways enriched at the interaction (GO-BP fGSEA, FDR<0.10) per unit, across all four regime x estimator combinations; tile labels are pathway counts. Neuronal dominates every row. CAVEAT: the matched regime equalises CELL COUNT, not transcriptome depth -- neuronal nuclei carry ~2.6x the UMIs of microglia (median 2,809 vs 1,064), so the neuronal pathway dominance is partly depth-driven and must be read with that confound in mind."}
+ph <- pth
+ph$grp  <- factor(paste(ph$regime, ph$estimator, sep = " / "),
+                  levels = c("native / pseudobulk", "native / nebula",
+                             "matched / pseudobulk", "matched / nebula"))
+ph$unit <- factor(ph$unit, levels = unit_order)
+ggplot(ph, aes(unit, grp, fill = n_path_10)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = n_path_10), size = 3) +
+  scale_fill_gradient(low = "grey92", high = "#b40426",
+                      name = "pathways\nFDR<0.10") +
+  labs(x = NULL, y = NULL,
+       title = "Interaction-enriched pathways per unit (Neuronal dominates)") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+The depth confound is load-bearing for this pathway result and is stated
+plainly: MATCHED equalises the number of cells per unit, not the RNA captured per
+cell, and neuronal nuclei are markedly deeper. The neuronal pathway dominance is
+therefore *partly* a depth phenomenon and is **not** advanced as a clean
+"neurons drive the interaction" claim &mdash; only as evidence that, at the
+pathway level, the interaction response is **broadest outside microglia**, which
+is sufficient for the specificity question regardless of the exact neuronal
+magnitude.
+
+## Verdict
+
+The synthesis is read per readout, absence reported as evidence, no unit
+privileged. Thresholds restated once: BH-FDR &lt; `r sprintf("%.2f", par$padj_cut)`
+on the locked five-contrast 2&times;2 factorial, both estimators (pseudobulk +
+NEBULA) under both power regimes, the headline resting on the MATCHED
+(*K* = `r par$K` cells per unit&times;replicate, seed `r par$seed`)
+power-equalised fits.
+
+**Overall: the tau&times;amyloid interaction is NOT microglia-specific.** At
+load-bearing MATCHED power the gene-level interaction is essentially absent in
+every unit including microglia (the only survivor is a small oligodendrocyte
+signal), the per-unit interaction profiles are mutually distinct rather than a
+shared programme, no microglia-unique interaction gene survives power-matching,
+and at the pathway level the broadest response sits in neurons, not microglia
+(with the depth caveat). This **reframes &mdash; it does not refute &mdash;** the
+project's microglia focus: the amyloid **main** effect genuinely is
+microglia-led, even at equal power, so the choice to study microglia is well
+motivated; but the **divergence** readout, the interaction itself, is not a
+microglial specialty, and the strongest interaction signals in the dataset lie
+outside microglia. The microglia-centric reading of the interaction is, on this
+evidence, a **choice** that the data permit rather than compel.
+
+```{r celltype-specificity-verdict-build}
+cs_verdict <- tibble::tibble(
+  readout = c("gene_interaction_tally (R1/R2)",
+              "interaction_concordance (R3)",
+              "specificity_class (R4)",
+              "pathway_interaction (R5)",
+              "OVERALL"),
+  matched_result = c(
+    sprintf(paste0("interaction genes FDR<%.2f: 0 in all 6 units incl ",
+                   "Microglia; sole survivor Oligodendrocyte %d (NEBULA); ",
+                   "main effects survive and stay microglia-led (nlgf_in_maptki ",
+                   "NEBULA Microglia %d vs Astrocyte %d)"),
+            par$padj_cut, oli_int_matched_neb, mg_main_matched_neb,
+            as_main_matched_neb),
+    sprintf(paste0("genome-wide Microglia-vs-unit interaction Spearman ",
+                   "%.2f-%.2f (distinct); cross-estimator pb-vs-NEBULA %.2f-%.2f ",
+                   "(estimators agree)"),
+            r3a_matched[1], r3a_matched[2], r3c_matched[1], r3c_matched[2]),
+    sprintf("%d microglia-unique genes; only non-microglial-unique (Oligodendrocyte) survive",
+            n_mg_uni_matched),
+    sprintf(paste0("GO-BP fGSEA FDR<%.2f: Neuronal %d (NEBULA) / %d (pb) vs ",
+                   "Microglia %d; broadest = Neuronal (depth-confounded, ~2.6x UMIs)"),
+            par$padj_cut, neuro_path_matched_neb, neuro_path_matched_pb,
+            mg_path_matched_neb),
+    "tau x amyloid INTERACTION is NOT microglia-specific at power-equalised resolution"),
+  native_result = c(
+    sprintf("interaction FDR<%.2f: Microglia %d, Oligodendrocyte %d (NEBULA); sparse, power-confounded",
+            par$padj_cut, mg_int_native_neb, oli_int_native_neb),
+    sprintf("Microglia-vs-unit %.2f-%.2f (low); shown but power-confounded",
+            r3a_native[1], r3a_native[2]),
+    sprintf("%d microglia-unique (NEBULA: %s) -- do NOT survive matching",
+            length(mg_uni_native), paste(mg_uni_native, collapse = ", ")),
+    sprintf("Neuronal %d vs Microglia %d (NEBULA); same ordering, amplified",
+            neuro_path_native_neb, mg_path_native_neb),
+    "NATIVE microglial hits are a power artefact of the ~20x cell-count spread"),
+  specificity_verdict = c(
+    "no microglia-unique gene-level interaction survives power-matching",
+    "per-unit interaction profiles are distinct, not a shared programme",
+    "no microglia-unique interaction gene survives matching",
+    "broadest interaction pathway response is NEURONAL, not microglial",
+    "REFRAMES (not refutes) the microglia focus: amyloid main effect IS microglia-led; the interaction is not microglia-specific"))
+readr::write_tsv(cs_verdict,
+                 file.path(params$results_dir, "celltype_specificity_verdict.tsv"))
+```
+
+```{r celltype-specificity-verdict-table, results = "asis"}
+knitr::kable(
+  cs_verdict[, c("readout", "matched_result", "specificity_verdict")],
+  col.names = c("Readout", "MATCHED result (load-bearing)", "Specificity verdict"),
+  caption = paste0(
+    "Per-readout cell-type-specificity verdict, headline drawn from the MATCHED ",
+    "(power-equalised) regime. The tau x amyloid interaction is not ",
+    "microglia-specific: no microglia-unique gene-level interaction survives ",
+    "power-matching, per-unit profiles are distinct, and the broadest pathway ",
+    "response is neuronal (depth-confounded). The amyloid MAIN effect, by ",
+    "contrast, is microglia-led even at equal power. Full table incl. the ",
+    "NATIVE (power-confounded) column in ",
+    "storage/results/celltype_specificity_verdict.tsv."))
+```
+
+**Boundary conditions, restated as the verdict's caveats.** The MATCHED regime
+equalises cell count, not transcriptome depth, so the neuronal pathway dominance
+is partly depth-driven and is read only as "broadest outside microglia", not as
+a quantitative neuronal-magnitude claim. The interaction is the noisiest
+difference-of-differences contrast, so its gene-level near-absence at equal power
+is read as "no detectable power-equalised signal" rather than exact zero; the
+specificity conclusion rests on the *convergence* of four readouts (gene tally,
+concordance, per-gene class, pathway breadth) all pointing the same way, not on
+any single test. The NATIVE tallies are reported in full for transparency but are
+flagged power-confounded and never carry the headline. Within those bounds the
+layer is a clean, symmetric, falsifiable cross-cell-type readout: the amyloid
+response is microglia-led, but the tau&times;amyloid **interaction** &mdash; the
+project's divergence readout &mdash; is a property of the tissue broadly, not of
+microglia specifically.

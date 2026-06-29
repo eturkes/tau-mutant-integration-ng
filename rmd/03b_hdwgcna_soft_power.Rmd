@@ -1,0 +1,392 @@
+## hdWGCNA soft-power sensitivity
+
+The auto-pick rule (lowest power with scale-free R^2 >= 0.8) chose
+soft-power 3 for the canonical build. This sub-section stress-tests
+that choice by rerunning the entire pipeline at p=6 and p=8 (see
+`scripts/build_hdwgcna.R --soft-power N`) and asking whether the
+MG-M3 module persists, dissolves into MG-M2 (DAM), or fragments.
+The chunks below no-op gracefully if the sensitivity caches are
+absent so a default knit on a partially-built tree still succeeds.
+
+```{r hdwgcna-soft-power-load}
+# Load p=3 (canonical) + p=6 + p=8 hdWGCNA builds into a single named
+# list `hdw_scan`. Only entries with both caches present are kept; any
+# missing run is skipped downstream rather than failing the knit.
+hdw_scan <- list()
+if (!is.null(hdw) && !is.null(hdw_de)) {
+  hdw_scan[["p3"]] <- list(hdw = hdw, hdw_de = hdw_de)
+}
+for (p in c(6L, 8L)) {
+  c_micro <- file.path(params$cache_dir,
+                       sprintf("hdwgcna_microglia_p%d.rds", p))
+  c_de    <- file.path(params$cache_dir,
+                       sprintf("hdwgcna_module_de_p%d.rds", p))
+  if (file.exists(c_micro) && file.exists(c_de)) {
+    hdw_scan[[sprintf("p%d", p)]] <- list(
+      hdw    = readRDS(c_micro),
+      hdw_de = readRDS(c_de)
+    )
+  }
+}
+cat(sprintf("Soft-power scan: %d build(s) loaded (%s).\n",
+            length(hdw_scan),
+            paste(names(hdw_scan), collapse = ", ")))
+if (length(hdw_scan) >= 2L) {
+  cat("Chosen soft_power per run:\n")
+  # soft_power is stored as integer in override builds (p6/p8) and as
+  # double in the auto-pick build (p3); coerce both to a numeric vector.
+  print(vapply(hdw_scan, function(x) x$hdw$soft_power, numeric(1L)))
+}
+```
+
+```{r hdwgcna-soft-power-curve, fig.width = 9, fig.height = 4}
+# Scale-free R^2 + mean connectivity vs power, with the chosen-per-run
+# power highlighted. The power tables are derived from identical
+# metacells/datExpr (seed fixed) so we draw one curve and mark all three
+# chosen points on it.
+if (length(hdw_scan) >= 2L) {
+  pt <- hdw_scan[["p3"]]$hdw$power_table
+  chosen <- vapply(hdw_scan, function(x) x$hdw$soft_power, numeric(1L))
+  pt$tag <- factor(ifelse(pt$Power %in% chosen,
+                          paste0("p=", pt$Power), NA_character_),
+                   levels = paste0("p=", sort(unique(chosen))))
+
+  p1 <- ggplot2::ggplot(pt, ggplot2::aes(Power, SFT.R.sq)) +
+    ggplot2::geom_hline(yintercept = 0.8, linetype = "dashed",
+                        colour = "grey60") +
+    ggplot2::geom_line(colour = "grey40") +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::geom_point(data = subset(pt, !is.na(tag)),
+                        ggplot2::aes(colour = tag), size = 3.5) +
+    ggplot2::scale_colour_brewer("chosen", palette = "Set1") +
+    ggplot2::labs(title = "Scale-free topology fit",
+                  x = "soft-thresholding power",
+                  y = expression(R^2)) +
+    ggplot2::theme_bw()
+  p2 <- ggplot2::ggplot(pt, ggplot2::aes(Power, mean.k.)) +
+    ggplot2::geom_line(colour = "grey40") +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::geom_point(data = subset(pt, !is.na(tag)),
+                        ggplot2::aes(colour = tag), size = 3.5) +
+    ggplot2::scale_colour_brewer("chosen", palette = "Set1") +
+    ggplot2::scale_y_log10() +
+    ggplot2::labs(title = "Mean connectivity",
+                  x = "soft-thresholding power",
+                  y = "mean k (log10)") +
+    ggplot2::theme_bw()
+  print(patchwork::wrap_plots(p1, p2, ncol = 2))
+}
+```
+
+```{r hdwgcna-soft-power-modules}
+# Per-run module count (incl. grey) and size summary. Higher power
+# expectations: fewer genes pass the connectivity threshold, more sit
+# in grey, surviving modules are tighter.
+if (length(hdw_scan) >= 2L) {
+  size_summary <- do.call(rbind, lapply(names(hdw_scan), function(run) {
+    mm <- hdw_scan[[run]]$hdw$module_meta
+    data.frame(
+      power         = run,
+      soft_power    = hdw_scan[[run]]$hdw$soft_power,
+      n_modules_all = nrow(mm),
+      n_modules_nongrey = sum(mm$module != "grey"),
+      n_genes_total = sum(mm$n_genes),
+      n_genes_grey  = sum(mm$n_genes[mm$module == "grey"]),
+      n_genes_assigned = sum(mm$n_genes[mm$module != "grey"]),
+      largest_module = mm$module[which.max(mm$n_genes - 1e9 * (mm$module == "grey"))],
+      largest_module_size = max(mm$n_genes[mm$module != "grey"])
+    )
+  }))
+  print(knitr::kable(size_summary,
+                     caption = "Module count and size per soft-power run"))
+
+  per_module <- do.call(rbind, lapply(names(hdw_scan), function(run) {
+    mm <- hdw_scan[[run]]$hdw$module_meta
+    data.frame(power = run, module = as.character(mm$module),
+               n_genes = mm$n_genes)
+  }))
+  per_module_wide <- tidyr::pivot_wider(per_module, names_from = power,
+                                        values_from = n_genes,
+                                        values_fill = 0L)
+  print(knitr::kable(per_module_wide,
+                     caption = "Genes per module across soft-power runs (0 = absent)"))
+}
+```
+
+```{r hdwgcna-soft-power-overlap, fig.width = 11, fig.height = 4.5}
+# Cross-tabulation of module assignment between p=3 and each other run.
+# We expect (incl. grey):
+#   - diagonal/dominant mapping = module preservation (good for MG-M3 robustness),
+#   - off-diagonal smear / dissolution into grey = power destabilises modules.
+# Adjusted Rand Index summarises the overall agreement (1 = identical).
+ari <- function(a, b) {
+  # Pair-counting ARI on two integer/character partitions of equal length.
+  # No external package; uses the standard contingency formula.
+  tab <- table(a, b)
+  n   <- sum(tab)
+  ch2 <- function(x) x * (x - 1L) / 2
+  Cn  <- ch2(n)
+  if (Cn == 0L) return(NA_real_)
+  sum_ai <- sum(ch2(rowSums(tab)))
+  sum_bj <- sum(ch2(colSums(tab)))
+  exp_ix <- sum_ai * sum_bj / Cn
+  max_ix <- 0.5 * (sum_ai + sum_bj)
+  if (max_ix == exp_ix) return(NA_real_)
+  (sum(ch2(tab)) - exp_ix) / (max_ix - exp_ix)
+}
+
+if (length(hdw_scan) >= 2L) {
+  mods_by_power <- lapply(hdw_scan, function(x)
+    x$hdw$modules[, c("gene_name", "module"), drop = FALSE])
+  # All runs see the same datExpr (gene_fraction = 0.05, identical metacells)
+  # so gene_name sets should match. Inner-join defensively anyway.
+  ari_vec <- numeric(0)
+  for (run in setdiff(names(hdw_scan), "p3")) {
+    j <- dplyr::inner_join(mods_by_power[["p3"]], mods_by_power[[run]],
+                            by = "gene_name", suffix = c("_p3", paste0("_", run)))
+    a <- as.character(j[[paste0("module_p3")]])
+    b <- as.character(j[[paste0("module_", run)]])
+    ari_vec[run] <- ari(a, b)
+  }
+  cat("Adjusted Rand Index vs p=3 (incl. grey, all genes):\n")
+  print(round(ari_vec, 3))
+
+  # Cross-tabulation heatmaps (p=3 rows x p=N cols), one panel per
+  # comparison run. Row/col order: numeric module name order, grey last.
+  mod_order <- function(m) {
+    m <- as.character(m)
+    nums <- suppressWarnings(as.integer(sub("^MG-M", "", m)))
+    nums[is.na(nums)] <- 1e6  # grey to the end
+    m[order(nums)]
+  }
+  panels <- lapply(setdiff(names(hdw_scan), "p3"), function(run) {
+    j <- dplyr::inner_join(mods_by_power[["p3"]], mods_by_power[[run]],
+                            by = "gene_name", suffix = c("_p3", paste0("_", run)))
+    a <- factor(j[[paste0("module_p3")]],
+                levels = mod_order(unique(j[[paste0("module_p3")]])))
+    b <- factor(j[[paste0("module_", run)]],
+                levels = mod_order(unique(j[[paste0("module_", run)]])))
+    xt <- as.matrix(unclass(table(a, b)))
+    list(run = run, xt = xt)
+  })
+
+  # Use a shared colour scale across panels so cross-panel reading is fair.
+  max_count <- max(vapply(panels, function(p) max(p$xt), numeric(1L)))
+  col_fun <- circlize::colorRamp2(c(0, max_count / 2, max_count),
+                                  c("white", "#fec44f", "#993404"))
+
+  # Draw heatmaps separately (rather than ComplexHeatmap's `+`
+  # concatenation) to avoid the row-alignment requirement when the
+  # comparison runs differ in module count.
+  for (panel in panels) {
+    ComplexHeatmap::draw(
+      ComplexHeatmap::Heatmap(
+        panel$xt,
+        name = "n_genes",
+        col  = col_fun,
+        cluster_rows    = FALSE,
+        cluster_columns = FALSE,
+        row_order       = seq_len(nrow(panel$xt)),
+        column_order    = seq_len(ncol(panel$xt)),
+        row_title       = "p=3 module",
+        column_title    = sprintf("%s module  (ARI vs p=3 = %.3f)",
+                                  panel$run, ari_vec[panel$run]),
+        cell_fun = function(j, i, x, y, w, h, fill) {
+          v <- panel$xt[i, j]
+          if (v > 0) grid::grid.text(v, x, y,
+                                     gp = grid::gpar(fontsize = 7))
+        },
+        row_names_gp    = grid::gpar(fontsize = 9),
+        column_names_gp = grid::gpar(fontsize = 9),
+        border          = TRUE
+      )
+    )
+  }
+}
+```
+
+```{r hdwgcna-soft-power-mg3-tracking}
+# Track MG-M3 (the canonical p=3 module of interest) through p=6 and p=8:
+#   (a) Jaccard of MG-M3 vs each non-grey module at the other powers ->
+#       identify the "MG-M3-equivalent" module at each power.
+#   (b) Map each MG-M3 hub gene to its module at p=6 and p=8; tabulate
+#       the destination distribution. If most hubs land in the same
+#       non-grey module, MG-M3 persists. If they scatter or sink to grey,
+#       the module is power-fragile.
+if (length(hdw_scan) >= 2L) {
+  mg3_genes_p3 <- mods_by_power[["p3"]]$gene_name[
+    mods_by_power[["p3"]]$module == "MG-M3"
+  ]
+  cat(sprintf("MG-M3 at p=3 has %d genes.\n", length(mg3_genes_p3)))
+
+  pairwise_jaccard <- function(target_genes, mods_other) {
+    by_mod <- split(mods_other$gene_name, as.character(mods_other$module))
+    sapply(by_mod, function(g) {
+      length(intersect(g, target_genes)) /
+        max(1L, length(union(g, target_genes)))
+    })
+  }
+  jacc <- lapply(setdiff(names(hdw_scan), "p3"), function(run) {
+    j <- pairwise_jaccard(mg3_genes_p3, mods_by_power[[run]])
+    data.frame(power = run, module = names(j), jaccard = unname(j))
+  })
+  jacc_tbl <- do.call(rbind, jacc)
+  jacc_tbl <- jacc_tbl[order(jacc_tbl$power, -jacc_tbl$jaccard), , drop = FALSE]
+  # Best non-grey module per power
+  jacc_nongrey <- jacc_tbl[jacc_tbl$module != "grey", , drop = FALSE]
+  best_tbl <- jacc_nongrey |>
+    dplyr::group_by(power) |>
+    dplyr::slice_max(jaccard, n = 1L, with_ties = FALSE) |>
+    dplyr::ungroup() |>
+    as.data.frame()
+  print(knitr::kable(best_tbl, digits = 3,
+                     caption = paste0("Best-matching non-grey module to ",
+                                       "p=3 MG-M3 at each power")))
+  print(knitr::kable(jacc_tbl, digits = 3,
+                     caption = paste0("Per-module Jaccard vs p=3 MG-M3 ",
+                                       "at each power (grey shown)")))
+
+  # Hub-level tracking: where do MG-M3 hubs at p=3 land?
+  mg3_hubs <- hdw_scan[["p3"]]$hdw$hub_genes
+  mg3_hubs <- mg3_hubs[mg3_hubs$module == "MG-M3", , drop = FALSE]
+  mg3_hubs$symbol <- symbol_map$symbol[
+    match(mg3_hubs$gene_name, symbol_map$ensembl)
+  ]
+  mg3_hubs$symbol <- ifelse(is.na(mg3_hubs$symbol) | !nzchar(mg3_hubs$symbol),
+                            mg3_hubs$gene_name, mg3_hubs$symbol)
+  for (run in setdiff(names(hdw_scan), "p3")) {
+    mg3_hubs[[paste0("module_", run)]] <- mods_by_power[[run]]$module[
+      match(mg3_hubs$gene_name, mods_by_power[[run]]$gene_name)
+    ]
+  }
+  hub_display <- mg3_hubs[, c("symbol", "kME",
+                              grep("^module_p", colnames(mg3_hubs),
+                                   value = TRUE)),
+                          drop = FALSE]
+  hub_display <- hub_display[order(-hub_display$kME), , drop = FALSE]
+  print(knitr::kable(hub_display, digits = 3,
+                     caption = "MG-M3 hub gene destinations at higher powers"))
+
+  hub_dest_summary <- do.call(rbind, lapply(
+    setdiff(names(hdw_scan), "p3"),
+    function(run) {
+      v <- mg3_hubs[[paste0("module_", run)]]
+      out <- as.data.frame(table(v, useNA = "ifany"))
+      out$power <- run
+      out
+    }))
+  colnames(hub_dest_summary)[1L] <- "destination_module"
+  hub_dest_summary <- hub_dest_summary[, c("power", "destination_module", "Freq")]
+  print(knitr::kable(hub_dest_summary,
+                     caption = "MG-M3 hub destination tally per power"))
+
+  write_tsv_safe(jacc_tbl,
+                 file.path(params$results_dir,
+                           "hdwgcna_soft_power_mg3_jaccard.tsv"))
+  write_tsv_safe(hub_display,
+                 file.path(params$results_dir,
+                           "hdwgcna_soft_power_mg3_hubs.tsv"))
+}
+```
+
+```{r hdwgcna-soft-power-de}
+# Per-power module DE: how many modules survive FDR<0.05 at each contrast?
+# We expect the MG-M3-equivalent module to retain its strong tau_in_nlgf /
+# interaction signal if MG-M3 truly represents a coherent transcriptional
+# response (and not an artefact of the soft-power choice).
+if (length(hdw_scan) >= 2L) {
+  de_summary <- do.call(rbind, lapply(names(hdw_scan), function(run) {
+    do.call(rbind, lapply(names(hdw_scan[[run]]$hdw_de$top), function(ct) {
+      t <- hdw_scan[[run]]$hdw_de$top[[ct]]
+      data.frame(
+        power     = run,
+        contrast  = ct,
+        n_modules = nrow(t),
+        n_sig     = sum(t$adj.P.Val < 0.05, na.rm = TRUE),
+        min_padj  = suppressWarnings(min(t$adj.P.Val, na.rm = TRUE))
+      )
+    }))
+  }))
+  de_summary_wide <- tidyr::pivot_wider(
+    de_summary[, c("power", "contrast", "n_sig")],
+    names_from = power, values_from = n_sig, values_fill = 0L,
+    names_prefix = "n_sig_"
+  )
+  print(knitr::kable(de_summary_wide,
+                     caption = paste0("n_sig at FDR<0.05 per contrast, ",
+                                       "per soft-power run")))
+
+  # MG-M3-equivalent module DE across the 5 contrasts -- the headline
+  # robustness check. Pull MG-M3 (p=3) and the best-Jaccard module per
+  # higher power; compare logFC + padj on each contrast.
+  best_per_run <- setNames(
+    c("MG-M3", best_tbl$module),
+    c("p3", as.character(best_tbl$power))
+  )
+  mg3_de_xpower <- do.call(rbind, lapply(names(best_per_run), function(run) {
+    mod <- best_per_run[[run]]
+    do.call(rbind, lapply(names(hdw_scan[[run]]$hdw_de$top), function(ct) {
+      t <- hdw_scan[[run]]$hdw_de$top[[ct]]
+      r <- t[as.character(t$module) == mod, , drop = FALSE]
+      if (nrow(r) == 0L) return(NULL)
+      data.frame(
+        power     = run,
+        module    = mod,
+        contrast  = ct,
+        logFC     = r$logFC,
+        P.Value   = r$P.Value,
+        adj.P.Val = r$adj.P.Val
+      )
+    }))
+  }))
+  print(knitr::kable(mg3_de_xpower, digits = 4,
+                     caption = paste0("DE on the MG-M3-equivalent module ",
+                                       "across soft-power runs")))
+
+  write_tsv_safe(de_summary,
+                 file.path(params$results_dir,
+                           "hdwgcna_soft_power_de_summary.tsv"))
+  write_tsv_safe(mg3_de_xpower,
+                 file.path(params$results_dir,
+                           "hdwgcna_soft_power_mg3_de.tsv"))
+}
+```
+
+```{r hdwgcna-soft-power-summary}
+# Plain-English headline: how robust is MG-M3 to soft-power choice?
+# The check is binary: (a) does the best-matching module at each higher
+# power overlap >= 0.5 with p=3 MG-M3, and (b) does its tau_in_nlgf
+# logFC remain in the same direction with comparable magnitude?
+if (length(hdw_scan) >= 2L && exists("best_tbl") && exists("mg3_de_xpower")) {
+  mg3_p3_tau <- mg3_de_xpower$logFC[
+    mg3_de_xpower$power == "p3" & mg3_de_xpower$contrast == "tau_in_nlgf"
+  ]
+  for (rr in seq_len(nrow(best_tbl))) {
+    run  <- as.character(best_tbl$power[rr])
+    mod  <- as.character(best_tbl$module[rr])
+    jc   <- best_tbl$jaccard[rr]
+    tau_lfc <- mg3_de_xpower$logFC[
+      mg3_de_xpower$power == run & mg3_de_xpower$contrast == "tau_in_nlgf"
+    ]
+    tau_padj <- mg3_de_xpower$adj.P.Val[
+      mg3_de_xpower$power == run & mg3_de_xpower$contrast == "tau_in_nlgf"
+    ]
+    same_sign <- length(tau_lfc) == 1L && length(mg3_p3_tau) == 1L &&
+      !is.na(tau_lfc) && !is.na(mg3_p3_tau) &&
+      sign(tau_lfc) == sign(mg3_p3_tau)
+    verdict <- if (isTRUE(jc >= 0.5) && same_sign) {
+      "PERSISTS"
+    } else if (isTRUE(jc >= 0.3)) {
+      "RESHAPES (moderate overlap)"
+    } else {
+      "DISSOLVES"
+    }
+    cat(sprintf(paste0("Soft-power %s: MG-M3 -> %s (Jaccard %.3f). ",
+                        "tau_in_nlgf logFC %.2f (padj %.2g). [%s]\n"),
+                run, mod, jc,
+                if (length(tau_lfc)  == 1L) tau_lfc  else NA_real_,
+                if (length(tau_padj) == 1L) tau_padj else NA_real_,
+                verdict))
+  }
+}
+```

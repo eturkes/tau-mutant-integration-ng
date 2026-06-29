@@ -1,0 +1,209 @@
+---
+title: "Microglia divergence in tau and amyloid AD mouse models"
+subtitle: "Integrated snRNAseq + GeoMx + (phospho)proteomics analysis"
+author: "Claude (autonomous agent)"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: !expr 'local({ source("R/report.R", local = TRUE); report_theme() })'
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    fig_width: 8
+    fig_height: 6
+params:
+  publication_mode: false   # when TRUE, masks MAPTKI-involving phosphoproteomics outputs
+  recompute_snrnaseq: false # when TRUE, rebuilds the microglia subset and DE caches
+  cache_dir: "storage/cache"
+  results_dir: "storage/results"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  fig.align = "center", dev = "png", dpi = 110,
+  cache = FALSE
+)
+project_root <- normalizePath(".")
+knitr::opts_knit$set(root.dir = project_root)
+options(width = 110, future.globals.maxSize = 32 * 1024^3)
+
+source("R/helpers.R")
+dir.create(params$cache_dir,   recursive = TRUE, showWarnings = FALSE)
+dir.create(params$results_dir, recursive = TRUE, showWarnings = FALSE)
+```
+
+# Scientific question and design
+
+This analysis investigates how introducing aggressive amyloid pathology
+(NLGF knock-in) reshapes microglia in two different tau backgrounds:
+
+* baseline humanised tau (MAPTKI), which has essentially no tau pathology;
+* mild tau pathology (P301S knock-in at the MAPT locus).
+
+The biologically informative readout is the *divergence* between the
+amyloid response in those two tau backgrounds, captured by the interaction
+contrast
+
+$$\Delta_{tau\,context} \;=\; (\mathrm{NLGF\_P301S} - \mathrm{P301S})
+\;-\; (\mathrm{NLGF\_MAPTKI} - \mathrm{MAPTKI}).$$
+
+Four datasets are integrated:
+
+| Dataset             | Modality                    | Samples / units     |
+|---------------------|-----------------------------|---------------------|
+| `snrnaseq.rds`      | single-nucleus RNAseq       | 286,287 nuclei      |
+| `geomx.rds`         | spatial transcriptomics     | 91 microglia AOIs   |
+| `proteomics_*.tsv`  | bulk TiO2-enriched proteome | 16 samples (24M)    |
+| `phospho_*.tsv`     | bulk phosphoproteome (sites)| 16 samples (24M)    |
+
+All four datasets are restricted to the same four mouse genotypes at the
+same age, and analyses focus on microglia (snRNAseq via `broad_annotations`,
+GeoMx by experimental design, bulk proteomics as a tissue context for
+microglial signals).
+
+```{r show-params, results = "asis"}
+cat(sprintf("- publication_mode (mask MAPTKI phospho): **%s**\n",
+            params$publication_mode))
+cat(sprintf("- recompute_snrnaseq: **%s**\n", params$recompute_snrnaseq))
+```
+
+## Headline integrated biological model
+
+The project's evidence adjudicates three per-axis biological contests
+(amyloid-activation, synaptic-suppression, interaction-metabolic)
+against pairs of competing biological models, with four cross-axis
+themes and a cross-axis Cdk5 integrator slot as supplementary
+entities; the structured ledger of 92 atomic evidence claims (75 Phase
+H rows + 6 Phase I rows from the section 18 per-state NF-kB
+attenuation test, 2 Phase J rows from the section 20 causal
+signalling-network reconstruction, 2 Phase K rows from the section 21
+SCENIC data-driven regulon recovery, 2 Phase L rows from the section
+22 GeoMx spatial-deconvolution tissue-composition layer, 2 Phase
+M rows from the section 23 snRNAseq activation-pseudotime trajectory
+layer, 2 Phase N rows from the section 24 cross-cell-type
+interaction-specificity layer, plus 1 Phase O row from the section 23
+gene-level differential-dynamics interaction layer) and the per-contest plus per-entity
+adjudication are rendered in section 17.
+
+Tau attenuates amyloid-driven NF-kB inflammation (axis 1, Hyp-1B beats
+Hyp-1A by net-support margin 18 after the Phase I per-state test, up
+from 6 at Phase H); NLGF-driven synaptic suppression is mediated by
+TREM2 / APP-fragment-mediated clearance rather than classical
+complement (axis 2, Hyp-2B beats Hyp-2A by margin 12, with a residual
+TAM-kinase Pros1-Mertk route narrowly surviving at specific cross-tool
+microglia-microglia nodes); a qualitatively new mechanism (Gsk3b
+activation, biosynthetic TF suppression, axon-guidance LR rewiring)
+emerges at the tau x amyloid interaction (axis 3, Hyp-3B beats Hyp-3A
+by margin 55). The cross-axis theme ranking is **T-Inflammation (31
+supports) > T-Synergy (30) > T-Compartment-suppression (17) >
+T-Tau-attenuates (12) > Hyp-0 Cdk5 (7)** (the Phase N scope-validation
+row N-001 edges T-Inflammation one past T-Synergy on raw count, though
+T-Synergy keeps more Strong-graded support), with T-Tau-attenuates having
+moved up from 5 supports to 11 after the per-state NF-kB attenuation
+test established that the whole-microglia Rela sign-reversal is
+GLOBAL across microglia substates (4 of 4 carrying the attenuation
+under the chapter's cross-layer gate, DAM the lead carrier), then to
+12 with the Phase J causal-topology probe; Hyp-0
+(Cdk5 cross-axis integrator) is the most evenly distributed entity in
+the adjudication.
+
+Two findings sit at the headline of the synthesis: Gsk3b activation
+at the interaction is the project's strongest single-mechanism
+result (padj 0.00152, the kinase signature of T-Synergy), and at
+the synaptic-suppression axis the canonical complement-mediated
+pruning hypothesis is refined to a TREM2 / APP-fragment-mediated
+route, a literature-relevant adjustment to how amyloid-driven
+microglial synaptic reorganisation is mechanistically read.
+
+Section content lives in `rmd/`. Each child Rmd contributes one
+top-level theme and is knitted in order in the same R session as this
+parent, so globals built earlier (e.g. `microglia_seurat`, `symbol_map`,
+`de_*`, `hub_sym`, `oxphos_le_*`) flow naturally into later children.
+
+```{r child-data, child = "rmd/01_data.Rmd"}
+```
+
+```{r child-snrnaseq-qc, child = "rmd/02a_snrnaseq_qc.Rmd"}
+```
+
+```{r child-snrnaseq-de, child = "rmd/02b_snrnaseq_de.Rmd"}
+```
+
+```{r child-snrnaseq-triangulation, child = "rmd/02c_snrnaseq_triangulation.Rmd"}
+```
+
+```{r child-snrnaseq-substate-de, child = "rmd/02d_snrnaseq_substate_de.Rmd"}
+```
+
+```{r child-snrnaseq-substate-pathway, child = "rmd/02e_snrnaseq_substate_pathway.Rmd"}
+```
+
+```{r child-hdwgcna, child = "rmd/03_hdwgcna.Rmd"}
+```
+
+```{r child-hdwgcna-soft-power, child = "rmd/03b_hdwgcna_soft_power.Rmd"}
+```
+
+```{r child-geomx, child = "rmd/04_geomx.Rmd"}
+```
+
+```{r child-proteomics, child = "rmd/05_proteomics.Rmd"}
+```
+
+```{r child-phospho, child = "rmd/06_phospho.Rmd"}
+```
+
+```{r child-phospho-corr, child = "rmd/06b_phospho_corr.Rmd"}
+```
+
+```{r child-integration, child = "rmd/07_integration.Rmd"}
+```
+
+```{r child-divergence, child = "rmd/10_divergence.Rmd"}
+```
+
+```{r child-ccc, child = "rmd/11_ccc.Rmd"}
+```
+
+```{r child-pathway-survey, child = "rmd/12_pathway_survey.Rmd"}
+```
+
+```{r child-tf-inference, child = "rmd/13_tf_inference.Rmd"}
+```
+
+```{r child-kinase-inference, child = "rmd/14_kinase_inference.Rmd"}
+```
+
+```{r child-ccc-mechanism, child = "rmd/15_ccc_mechanism.Rmd"}
+```
+
+```{r child-biological-model, child = "rmd/16_biological_model.Rmd"}
+```
+
+```{r child-nfkb-attenuation, child = "rmd/17_nfkb_attenuation.Rmd"}
+```
+
+```{r child-human-validation, child = "rmd/18_human_validation.Rmd"}
+```
+
+```{r child-causal-network, child = "rmd/19_causal_network.Rmd"}
+```
+
+```{r child-scenic-regulons, child = "rmd/20_scenic_regulons.Rmd"}
+```
+
+```{r child-spatial-deconvolution, child = "rmd/21_spatial_deconvolution.Rmd"}
+```
+
+```{r child-trajectory, child = "rmd/22_trajectory.Rmd"}
+```
+
+```{r child-celltype-specificity, child = "rmd/23_celltype_specificity.Rmd"}
+```
+
+```{r child-session, child = "rmd/99_session.Rmd"}
+```

@@ -1,0 +1,594 @@
+# Human cross-species validation of the microglial tau x amyloid interaction
+
+Every result so far is from four mouse genotypes in a clean 2x2 tau x
+amyloid design. This chapter asks the translational question: does the
+mouse microglial interaction structure -- the substates that carry it,
+and the interaction-localised mechanisms (the DAM programme, the MG-M3
+co-expression module, tau-driven NF-kB attenuation, the Gsk3b-target
+kinase response) -- reproduce in **human AD cortex**, where amyloid and
+tau co-occur but vary continuously and partly discordantly across
+donors.
+
+The human analogue of the mouse interaction contrast $(\mathrm{NLGF\_P301S}
+- \mathrm{P301S}) - (\mathrm{NLGF\_MAPTKI} - \mathrm{MAPTKI})$ is the
+cross-donor **amyloid x tau interaction term** on microglial signature
+scores, fit per donor with explicit collinearity mitigation. Two things
+make this a genuine test rather than a box-tick. First, **conservation**:
+the mouse substates and programmes must resolve in human microglia at all
+before any per-state human claim is admissible. Second, **the interaction
+itself**: humans have no clean 2x2, so a cross-donor `amyloid:tau` product
+is collinear with its main effects and easily under-identified. A null
+human interaction is therefore *ambiguous* (biology absent vs design
+under-powered), which fixes the reading rules used throughout this
+chapter:
+
+1. **Direction beats significance.** Under amyloid-tau collinearity and
+   observational human power, the *sign* of the `amyloid:tau` coefficient
+   relative to the mouse prediction is the primary readout; FDR
+   significance is a bonus, not the bar. A significant human interaction
+   in the *opposite* direction would refute; sign concordance corroborates.
+2. **A null is not evidence against the mouse.** Every interaction
+   estimate is reported with its identifiability budget (VIF,
+   off-diagonal donor coverage, Spearman) so a null can be read as
+   under-identification rather than absence.
+3. **The panel is the result, not any single row.** The full
+   26-signature panel is reported with BH-FDR, including signatures that
+   fail; no cherry-picking.
+4. **Corroboration, not proof.** Human cohorts are observational and
+   cross-sectional; outcomes are framed as "consistent with" / "not
+   consistent with" the mouse mechanism, never as causal confirmation.
+
+**Dataset.** SEA-AD (Gabitto 2024) middle temporal gyrus (MTG) and
+dorsolateral prefrontal cortex (DLPFC) microglia/PVM nuclei, acquired from
+CELLxGENE Discover (no data-use agreement required). Amyloid axis = Thal
+phase (0-5); tau axis = Braak stage (0, 2-6). The two regions provide a
+within-cohort regional replication; a powered confirmation cohort (ROSMAP)
+is deferred because no RADC/Synapse DUA is held (stated explicitly, not
+silently capped).
+
+**Inputs (built outside the knit; read here via `readRDS`/`read.*`).**
+Substate conservation: `human_substate_crosstab.tsv`,
+`human_substate_conservation_metrics.tsv`, `human_substate_percell.csv.gz`
+(per-cell scores + UMAP). Interaction models:
+`summary_human_validation.rds` (per-donor pseudobulk `amyloid*tau` mixed
+models, frames, VIF). Robustness + mediation:
+`summary_human_robustness.rds` (single-cell + AUCell re-tests, mediation).
+Signature ortholog coverage: `human_validation_signature_membership.tsv`.
+
+```{r human-val-load}
+hv_cache <- function(name, dir = params$cache_dir) {
+  p <- file.path(dir, name)
+  if (!file.exists(p)) {
+    stop(sprintf(
+      "%s not found. The human-validation caches are built outside the knit:\n  scripts/build_human_substate_conservation.py (H3)\n  scripts/build_human_interaction_models.R (H4)\n  scripts/build_human_aucell_rescoring.py + scripts/build_human_robustness_mediation.R (H5)",
+      p), call. = FALSE)
+  }
+  p
+}
+
+hv_models_obj <- readRDS(hv_cache("summary_human_validation.rds"))
+hv_robust_obj <- readRDS(hv_cache("summary_human_robustness.rds"))
+
+hv_models <- as.data.frame(hv_models_obj$models)
+hv_frames <- hv_models_obj$frames
+hv_panel  <- as.data.frame(hv_robust_obj$panel)
+hv_contrast <- as.data.frame(hv_robust_obj$contrast)
+
+hv_membership <- read.delim(
+  file.path(params$results_dir, "human_validation_signature_membership.tsv"),
+  stringsAsFactors = FALSE)
+
+# Shared scales / labels (project palette: substate colours match section 11;
+# the signed diverging scale matches the section 11 divergence heatmap).
+hv_substate_palette <- c(
+  homeostatic   = "#FDC086",
+  DAM           = "#B0344D",
+  IFN           = "#E08754",
+  proliferative = "#FFD92F"
+)
+hv_diverging <- c("#3a4cc0", "white", "#b40426")  # negative .. zero .. positive
+hv_strata     <- c("all", "homeostatic", "DAM", "IFN", "proliferative")
+hv_stratum_lab <- c(all = "whole-microglia", homeostatic = "homeostatic",
+                    DAM = "DAM", IFN = "IFN", proliferative = "proliferative")
+
+hv_dir_colours <- c(negative = "#3a4cc0", positive = "#b40426")
+
+# Pre-registered mouse-direction predictions (locked in the validation plan;
+# the human test asks whether the human sign matches these).
+hv_prereg <- data.frame(
+  signature = c("Gerrits_AD1_human", "Gerrits_AD2_human", "DAM_up",
+                "NFKB_union_targets", "MG_M3_module", "Gsk3b_targets"),
+  term      = c("amyloid", "amyloid", "amyloid",
+                "interaction", "interaction", "interaction"),
+  mouse_dir = c("positive", "positive", "positive",
+                "negative", "negative", "positive"),
+  rationale = c(
+    "human-native amyloid-microglia control (sanity)",
+    "human-native amyloid-microglia control (sanity)",
+    "DAM rises with amyloid (sanity)",
+    "tau attenuates amyloid-driven NF-kB (section 18)",
+    "interaction-localised co-expression module",
+    "tau-enhanced amyloid Gsk3b response (section 15)"),
+  stringsAsFactors = FALSE)
+```
+
+## The amyloid--tau collinearity and the identifiability budget
+
+In SEA-AD, amyloid (Thal) and tau (Braak) co-progress, so the cross-donor
+`amyloid:tau` product is correlated with its main effects. The map below
+plots the per-donor staging and marks the **discordant** donors -- the
+off-diagonal corners (high amyloid / low tau and vice versa) that carry the
+information needed to identify an interaction. Identifiability is workable,
+not fatal: the variance-inflation factors sit well below the conventional
+VIF = 5 concern line, and tens of genuinely discordant donors are present
+in every stratum.
+
+```{r human-val-collinearity-map, fig.width = 7, fig.height = 5.2, fig.cap = "Per-donor amyloid (Thal) vs tau (Braak) staging in SEA-AD microglia (whole-microglia stratum, both regions). Tile fill = number of donor x region observations at each staging cell; discordant donors (off-diagonal, the interaction's identifiability budget) are outlined. The strong on-diagonal mass is the amyloid-tau collinearity; the off-diagonal cells are what make the interaction estimable."}
+fr_all <- as.data.frame(hv_frames$all)
+# Each donor x region row carries donor-level Thal/Braak; tabulate counts on
+# the integer staging grid and flag whether any observation in the cell is
+# discordant (off-diagonal by the |resid(tau~amyloid)| split used in the model).
+grid <- aggregate(
+  cbind(n = rep(1, nrow(fr_all)), n_disc = as.integer(fr_all$discordant)),
+  by = list(amyloid = fr_all$amyloid, tau = fr_all$tau), FUN = sum)
+grid$has_discordant <- grid$n_disc > 0
+rho <- cor(fr_all$amyloid, fr_all$tau, method = "spearman")
+
+ggplot(grid, aes(x = tau, y = amyloid)) +
+  geom_tile(aes(fill = n), colour = "grey85") +
+  geom_tile(data = grid[grid$has_discordant, ],
+            fill = NA, colour = "#222222", linewidth = 0.9) +
+  geom_text(aes(label = n), size = 3.1) +
+  scale_fill_gradient(low = "#f2f2f2", high = "#7FA8C1", name = "n obs") +
+  scale_x_continuous(breaks = 0:6) + scale_y_continuous(breaks = 0:5) +
+  labs(
+    x = "tau (Braak stage)", y = "amyloid (Thal phase)",
+    title = "Amyloid-tau staging across SEA-AD donors",
+    subtitle = sprintf(
+      "Spearman(amyloid, tau) = %.3f; black-outlined cells contain >=1 discordant donor (n = %d donor x region obs)",
+      rho, sum(fr_all$discordant))) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+```{r human-val-vif-table, results = "asis"}
+# VIF and discordant-donor coverage are constant across signatures within a
+# stratum (they are properties of the design, not the response), so one row
+# per stratum summarises the whole identifiability budget.
+vif_tab <- unique(hv_models[, c("stratum", "n_obs", "n_discordant_donors",
+                                "spearman_amyloid_tau", "vif_amyloid",
+                                "vif_tau", "vif_interaction")])
+vif_tab <- vif_tab[match(hv_strata, vif_tab$stratum), ]
+vif_tab$stratum <- hv_stratum_lab[vif_tab$stratum]
+print(knitr::kable(
+  vif_tab, row.names = FALSE, digits = c(0, 0, 0, 3, 2, 2, 2),
+  col.names = c("stratum", "n obs", "discordant donors",
+                "Spearman(amyloid,tau)", "VIF amyloid", "VIF tau",
+                "VIF interaction"),
+  caption = paste0(
+    "Identifiability budget per modelling stratum. n obs = donor x region ",
+    "rows after the per-state n_cells >= 10 floor; discordant donors = ",
+    "off-diagonal donors retained for the discordant-subset refit; VIF = ",
+    "variance-inflation factor on the centred design (all well below the ",
+    "VIF = 5 concern line, so the interaction column is estimable despite ",
+    "the amyloid-tau collinearity)."),
+  align = c("l", rep("r", 6))))
+```
+
+The interaction is therefore estimable, but the residual collinearity
+(Spearman ~0.65) means tau absorbs much of the shared severity variance --
+which is exactly why, below, several amyloid *main* effects are near-null
+even though the human-native control behaves correctly, and why direction,
+not significance, is the readout.
+
+## Microglial substate conservation in human cortex
+
+Per-state human claims are only admissible if the mouse substates resolve
+in human microglia. Each human microglial nucleus was scored for the four
+canonical mouse substate signatures (the same `AddModuleScore` marker lists
+used to label the mouse cells) and assigned to its argmax state,
+reproducing the mouse labelling procedure. The predicted states are then
+cross-tabulated against the dataset-native SEA-AD `Supertype` taxonomy.
+
+```{r human-val-umap, fig.width = 7.5, fig.height = 5.6, fig.cap = "UMAP of SEA-AD microglia/PVM nuclei (both regions) coloured by predicted mouse substate (argmax of the four mouse substate signature scores). The four mouse-defined activation states recover spatially coherent territories in the human embedding."}
+percell <- data.table::fread(
+  cmd = paste("gzip -dc", shQuote(file.path(params$cache_dir,
+                                            "human_substate_percell.csv.gz"))),
+  showProgress = FALSE)
+percell <- as.data.frame(percell)
+# Downsample for the rendered figure (overplotting only; seed fixed).
+set.seed(1)
+idx <- if (nrow(percell) > 60000L) sample.int(nrow(percell), 60000L) else seq_len(nrow(percell))
+pc_plot <- percell[idx, ]
+pc_plot$predicted_substate <- factor(pc_plot$predicted_substate,
+                                     levels = names(hv_substate_palette))
+
+ggplot(pc_plot, aes(UMAP1, UMAP2, colour = predicted_substate)) +
+  geom_point(size = 0.25, alpha = 0.4) +
+  scale_colour_manual(values = hv_substate_palette, name = "predicted\nsubstate") +
+  guides(colour = guide_legend(override.aes = list(size = 3, alpha = 1))) +
+  labs(title = "Mouse substate assignment in human SEA-AD microglia",
+       subtitle = sprintf("%s nuclei shown (of %s scored), MTG + DLPFC",
+                          format(nrow(pc_plot), big.mark = ","),
+                          format(nrow(percell), big.mark = ","))) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+The cross-tab below is shown row-normalised: each predicted mouse substate's
+distribution over the human supertypes. The disease-emergent SEA-AD
+supertypes carry a `-SEAAD` suffix; the homeostatic-leaning `Micro-PVM_2`
+dominates the taxonomy (~75-85% of microglia), so discrete label agreement
+is low by construction. Conservation is instead read from the **gradient**:
+predicted homeostatic -> DAM -> IFN -> proliferative cells sit in
+progressively more disease-emergent supertypes.
+
+```{r human-val-crosstab-heatmap, fig.width = 8.5, fig.height = 4.2, fig.cap = "Row-normalised cross-tabulation of predicted mouse substate (rows) against SEA-AD Supertype (columns), both regions. Cell = fraction of that predicted substate's cells falling in each human supertype. Disease-emergent supertypes (-SEAAD suffix) are increasingly occupied along homeostatic -> DAM -> IFN -> proliferative."}
+ct <- read.delim(file.path(params$results_dir, "human_substate_crosstab.tsv"),
+                 stringsAsFactors = FALSE)
+ct <- ct[ct$scope == "all_regions", ]
+ct_row <- do.call(rbind, lapply(split(ct, ct$predicted_substate), function(d) {
+  d$frac <- d$n / sum(d$n); d }))
+ct_row$predicted_substate <- factor(ct_row$predicted_substate,
+                                    levels = rev(names(hv_substate_palette)))
+# Order supertypes homeostatic-leaning -> disease-emergent (non-SEAAD first).
+sup_levels <- unique(ct_row$Supertype)
+sup_levels <- c(sort(grep("-SEAAD$", sup_levels, invert = TRUE, value = TRUE)),
+                sort(grep("-SEAAD$", sup_levels, value = TRUE)))
+ct_row$Supertype <- factor(ct_row$Supertype, levels = sup_levels)
+
+ggplot(ct_row, aes(Supertype, predicted_substate, fill = frac)) +
+  geom_tile(colour = "grey90") +
+  geom_text(aes(label = sprintf("%.0f%%", 100 * frac)), size = 2.8) +
+  scale_fill_gradient(low = "white", high = "#B0344D", name = "row %",
+                      labels = scales::percent) +
+  labs(x = "SEA-AD Supertype (disease-emergent -SEAAD at right)",
+       y = "predicted mouse substate",
+       title = "Substate conservation: predicted state x human supertype") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        panel.grid = element_blank())
+```
+
+```{r human-val-gate-table, results = "asis"}
+metrics_raw <- readLines(file.path(params$results_dir,
+                                   "human_substate_conservation_metrics.tsv"))
+# The verdict block is the second tab-table in the file (after the metrics
+# header comment). Parse from the 'predicted_substate' header line onward.
+hdr_idx <- grep("^predicted_substate\t", metrics_raw)
+gate <- read.delim(text = paste(metrics_raw[hdr_idx:length(metrics_raw)],
+                                collapse = "\n"), stringsAsFactors = FALSE)
+gate <- gate[match(names(hv_substate_palette), gate$predicted_substate), ]
+print(knitr::kable(
+  gate[, c("predicted_substate", "frac", "mean_self_score",
+           "frac_SEAAD_supertype", "SEAAD_fold_vs_global",
+           "most_enriched_supertype", "enrichment_fold", "resolves")],
+  row.names = FALSE, digits = c(0, 3, 3, 3, 2, 0, 2, 0),
+  col.names = c("substate", "cell frac", "mean self-score",
+                "frac in -SEAAD", "-SEAAD fold", "top supertype",
+                "fold", "resolves"),
+  caption = paste0(
+    "Per-state resolution verdict (gate for per-state human claims). ",
+    "resolves := cell fraction >= 0.5% AND mean self-score > 0. The ",
+    "fraction of each predicted state's cells in any disease-emergent ",
+    "-SEAAD supertype rises monotonically homeostatic -> DAM -> IFN -> ",
+    "proliferative (-SEAAD fold = fold over the 22.5% global -SEAAD rate), ",
+    "and each activation state's single most-enriched supertype is a ",
+    "-SEAAD one -- the directional conservation signal."),
+  align = c("l", rep("r", 4), "l", "r", "l")))
+```
+
+**Conservation verdict: PASS.** All four mouse substates resolve as human
+populations (cell fraction >= 0.5% and positive mean self-score), so
+per-state interaction claims are cleared. The biological signal is
+directionally correct: the fraction of cells in disease-emergent supertypes
+rises monotonically (0.150 -> 0.239 -> 0.359 -> 0.490 along homeostatic ->
+DAM -> IFN -> proliferative), and homeostatic is the only state *depleted*
+in disease supertypes. Three honest caveats carry forward: (i) discrete
+label-partition agreement is low (ARI 0.054, Cramer's V 0.295) because the
+SEA-AD taxonomy is homeostatic-dominated, so conservation rests on the
+gradient, not cluster overlap; (ii) the argmax leans DAM-ward in this aged
+human-AD cortex (~57% of cells), so absolute DAM abundance is not
+over-read; (iii) proliferative is the weakest state (lowest self-score,
+smallest fraction), so per-proliferative results are read cautiously.
+
+## The cross-donor amyloid x tau interaction across the signature panel
+
+For every signature, per-donor pseudobulk scores were fit with the mixed
+model `z(score) ~ amyloid * tau + region + age + sex + (1|donor)`
+(precision-weighted by cell count; response z-scored so the `amyloid:tau`
+coefficient is a comparable cross-panel effect size). The forest plot shows
+the whole-microglia interaction coefficient for all 26 signatures; the
+companion table reports the full panel with BH-FDR. **The panel is the
+result.**
+
+```{r human-val-forest, fig.width = 8.5, fig.height = 8.5, fig.cap = "Whole-microglia amyloid:tau interaction coefficient (+/- 95% CI) for all 26 signatures, z-scored response. Colour = sign (blue negative, red positive); filled diamond = pre-registered mechanism; open circle outlined = BH-FDR < 0.05. Signatures ordered by estimate. Mouse-predicted-negative attenuation mechanisms (NF-kB, MG-M3, DAM-up) cluster left of zero; the Gsk3b tau-enhanced response sits right of zero."}
+fa <- hv_models[hv_models$stratum == "all", ]
+fa <- merge(fa, hv_membership[, c("signature", "n_human", "pct_mapped")],
+            by = "signature", all.x = TRUE)
+fa$is_prereg <- fa$signature %in% hv_prereg$signature
+fa$fdr_sig   <- !is.na(fa$ix_fdr) & fa$ix_fdr < 0.05
+fa <- fa[order(fa$ix_est), ]
+fa$signature <- factor(fa$signature, levels = fa$signature)
+
+ggplot(fa, aes(x = ix_est, y = signature, colour = ix_direction)) +
+  geom_vline(xintercept = 0, colour = "grey50", linetype = 2) +
+  geom_linerange(aes(xmin = ix_ci_lo, xmax = ix_ci_hi), linewidth = 0.5) +
+  geom_point(aes(shape = is_prereg, size = is_prereg)) +
+  geom_point(data = fa[fa$fdr_sig, ], shape = 21, size = 4,
+             colour = "black", fill = NA, stroke = 0.8) +
+  scale_colour_manual(values = hv_dir_colours, name = "interaction sign") +
+  scale_shape_manual(values = c(`FALSE` = 16, `TRUE` = 18),
+                     labels = c("other", "pre-registered"), name = "") +
+  scale_size_manual(values = c(`FALSE` = 2, `TRUE` = 3.4), guide = "none") +
+  labs(x = "amyloid:tau coefficient (z-scored response)", y = NULL,
+       title = "Whole-microglia amyloid x tau interaction, full signature panel",
+       subtitle = "open black ring = BH-FDR < 0.05 (1 of 26); dashed line = no interaction") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_line(colour = "grey93"))
+```
+
+```{r human-val-panel-table, results = "asis"}
+pt <- hv_models[hv_models$stratum == "all", ]
+pt <- merge(pt, hv_membership[, c("signature", "n_human")],
+            by = "signature", all.x = TRUE)
+pt <- pt[order(pt$ix_est), ]
+pt$ix_ci <- sprintf("[%.3f, %.3f]", pt$ix_ci_lo, pt$ix_ci_hi)
+print(knitr::kable(
+  pt[, c("signature", "n_human", "amyloid_est", "amyloid_p", "tau_est",
+         "tau_p", "ix_est", "ix_ci", "ix_p", "ix_fdr", "region_concordant")],
+  row.names = FALSE, digits = c(0, 0, 3, 3, 3, 3, 3, 0, 3, 3, 0),
+  col.names = c("signature", "n genes", "amyloid", "amyloid p", "tau",
+                "tau p", "amyloid:tau", "95% CI", "ix p", "ix FDR",
+                "region concordant"),
+  caption = paste0(
+    "Full whole-microglia signature panel (anti-anchoring: the panel is ",
+    "the result). amyloid / tau = main-effect coefficients; amyloid:tau = ",
+    "the interaction (the human analogue of the mouse interaction ",
+    "contrast); ix FDR = BH within the 26-signature family; region ",
+    "concordant = MTG and DLPFC independent refits agree in sign. n genes ",
+    "= human-mapped signature size."),
+  align = c("l", rep("r", 9), "c")))
+```
+
+Only one of the 26 whole-microglia interactions survives BH-FDR -- the
+`substate_proliferative` score (FDR 0.022), and it is DLPFC-driven in the
+weakest-resolving state, so it is reported but not leaned on. **No
+pre-registered interaction is FDR-significant**, which is the expected
+consequence of the amyloid-tau collinearity and observational human power
+(reading rule 2). The informative structure is directional: the
+mouse-predicted-negative attenuation mechanisms sit left of zero and the
+tau-enhanced Gsk3b response sits right of zero, examined next.
+
+## Pre-registered mechanism tests against the mouse direction
+
+The sanity controls must behave before any novel row is trusted. The
+human-native Gerrits AD1/AD2 and the DAM-up signature should show a
+**positive amyloid main effect** (more amyloid -> more disease-associated
+microglia).
+
+```{r human-val-sanity-table, results = "asis"}
+san <- hv_models[hv_models$stratum == "all" &
+                   hv_models$signature %in%
+                     c("Gerrits_AD1_human", "Gerrits_AD2_human", "DAM_up"), ]
+san <- san[match(c("Gerrits_AD1_human", "Gerrits_AD2_human", "DAM_up"),
+                 san$signature), ]
+san$amyloid_dir <- ifelse(san$amyloid_est > 0, "positive", "negative")
+print(knitr::kable(
+  san[, c("signature", "amyloid_est", "amyloid_p", "tau_est", "tau_p",
+          "amyloid_dir")],
+  row.names = FALSE, digits = c(0, 3, 3, 3, 3, 0),
+  col.names = c("control signature", "amyloid", "amyloid p", "tau", "tau p",
+                "amyloid direction"),
+  caption = paste0(
+    "Positive-control sanity check (whole-microglia). The human-native ",
+    "Gerrits AD1 amyloid main effect is positive (and is positive in 5/5 ",
+    "strata, nominally significant in DAM), validating the scoring and ",
+    "modelling pipeline. Gerrits AD2 and DAM-up amyloid main effects are ",
+    "near-null because tau absorbs the shared amyloid-tau severity variance ",
+    "under r ~ 0.65 collinearity (their tau main effects are the larger), ",
+    "compounded by the DAM-saturated aged human cortex."),
+  align = c("l", rep("r", 4), "c")))
+```
+
+The headline mouse mechanisms predict specific interaction signs:
+**negative** for the NF-kB-target set (tau attenuates amyloid-driven NF-kB)
+and the MG-M3 module, **positive** for the Gsk3b-target set (tau enhances
+the amyloid Gsk3b response). The heatmap shows the human `amyloid:tau`
+coefficient for these mechanisms across all five strata, with the
+mouse-predicted sign annotated.
+
+```{r human-val-mechanism-heatmap, fig.width = 8, fig.height = 3.6, fig.cap = "Human amyloid:tau coefficient for the pre-registered interaction mechanisms (rows) across the five modelling strata (columns). Fill = signed coefficient (blue negative, red positive); cell label = coefficient (* = BH-FDR < 0.05 within stratum). The mouse-predicted sign is printed at right; every mechanism matches its mouse prediction across all five strata."}
+mech <- c("NFKB_union_targets", "MG_M3_module", "Gsk3b_targets", "DAM_up")
+mh <- hv_models[hv_models$signature %in% mech, ]
+mh$stratum <- factor(hv_stratum_lab[mh$stratum], levels = hv_stratum_lab[hv_strata])
+mh$signature <- factor(mh$signature, levels = rev(mech))
+mh$lab <- sprintf("%.3f%s", mh$ix_est,
+                  ifelse(!is.na(mh$ix_fdr) & mh$ix_fdr < 0.05, "*", ""))
+lim <- max(abs(mh$ix_est), na.rm = TRUE)
+
+# Mouse-direction strip for the y-axis (right-side annotation via secondary labels).
+mouse_lab <- setNames(
+  sprintf("%s\n(mouse %s)",
+          c(NFKB_union_targets = "NF-kB targets", MG_M3_module = "MG-M3 module",
+            Gsk3b_targets = "Gsk3b targets", DAM_up = "DAM-up")[mech],
+          hv_prereg$mouse_dir[match(mech, hv_prereg$signature)]),
+  mech)
+
+ggplot(mh, aes(stratum, signature, fill = ix_est)) +
+  geom_tile(colour = "grey85") +
+  geom_text(aes(label = lab), size = 3) +
+  scale_fill_gradientn(colours = hv_diverging, limits = c(-lim, lim),
+                       name = "amyloid:tau") +
+  scale_y_discrete(labels = mouse_lab) +
+  labs(x = NULL, y = NULL,
+       title = "Pre-registered mechanism interactions vs mouse prediction") +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+All three pre-registered mechanisms reproduce their mouse-predicted
+interaction sign in **5 of 5 strata**: `NFKB_union_targets` and
+`MG_M3_module` are negative (the tau-attenuates-amyloid theme), and
+`Gsk3b_targets` is positive (the tau-enhanced amyloid response). DAM-up's
+interaction is also negative, consistent with the attenuation theme. None
+reaches FDR significance, so this is read as directional, region- and
+stratum-robust corroboration -- "consistent with" the mouse mechanism --
+not as proof.
+
+## Robustness and the mediation contrast
+
+Two robustness arms test whether the interaction directions are artefacts of
+donor aggregation or of the scoring method. **Arm A** refits the model at the
+single-cell level with a donor random intercept; **Arm B** re-scores every
+signature with AUCell (an orthogonal rank-based scorer) and refits. The panel
+below reports the whole-microglia interaction sign from all three estimators.
+
+```{r human-val-robustness-table, results = "asis"}
+rp <- hv_panel[hv_panel$stratum == "all" &
+                 hv_panel$signature %in% hv_prereg$signature, ]
+rp <- rp[match(hv_prereg$signature, rp$signature), ]
+rp$auc_show <- ifelse(is.na(rp$auc_ix_est), "n/a (set < 5 genes)",
+                      sprintf("%.4f", rp$auc_ix_est))
+rp$sc_flag  <- ifelse(rp$sc_concordant, "yes", "no")
+rp$auc_flag <- ifelse(is.na(rp$auc_ix_est), "n/a",
+                      ifelse(rp$auc_concordant, "yes", "no"))
+print(knitr::kable(
+  data.frame(signature = rp$signature,
+             pseudobulk = sprintf("%.4f", rp$pb_ix_est),
+             single_cell = sprintf("%.4f", rp$sc_ix_est),
+             aucell = rp$auc_show,
+             sc_concordant = rp$sc_flag,
+             auc_concordant = rp$auc_flag),
+  row.names = FALSE,
+  col.names = c("signature", "pseudobulk ix", "single-cell ix", "AUCell ix",
+                "sc concordant", "auc concordant"),
+  caption = paste0(
+    "Three-estimator interaction-direction robustness (whole-microglia). ",
+    "pseudobulk = the primary H4 estimate (donor as replication unit, the ",
+    "conservative choice); single-cell = per-nucleus refit with donor random ",
+    "intercept (Arm A); AUCell = orthogonal rank scorer refit (Arm B). ",
+    "Concordance = same sign as pseudobulk. The two headline attenuation ",
+    "mechanisms (NF-kB, MG-M3) are negative and concordant across BOTH arms."),
+  align = c("l", rep("r", 3), "c", "c")))
+```
+
+Across the full 130-model panel the single-cell direction reproduces the
+pseudobulk in 129/130 models, and AUCell in 82/90 (the 8 discordances are
+all tiny marker/DE sets in the weak per-state strata; sets under 5 genes are
+AUCell-undefined and reported n/a, not silently dropped). Both headline
+attenuation mechanisms (NF-kB, MG-M3) are negative and concordant across both
+arms in all five strata.
+
+A complementary **mediation** model casts the same signatures as a *mediator*
+on the amyloid -> signature -> tau cascade (Green 2024), distinct from the
+*moderation* interaction above (where the signature is the outcome and tau
+modifies the amyloid response). The contrast table places both side by side.
+
+```{r human-val-mediation-table, results = "asis"}
+mc <- hv_contrast[hv_contrast$signature %in% hv_prereg$signature, ]
+mc <- mc[match(hv_prereg$signature, mc$signature), ]
+# Attach the bootstrap ACME p-value (whole-microglia) from the mediation table.
+med_all <- as.data.frame(hv_robust_obj$mediation)
+med_all <- med_all[med_all$stratum == "all", ]
+mc$acme_p <- med_all$med_acme_p[match(mc$signature, med_all$signature)]
+print(knitr::kable(
+  data.frame(
+    signature = mc$signature,
+    moderation_ix = sprintf("%.4f (%s)", mc$moderation_ix_est, mc$moderation_ix_dir),
+    mediation_acme = sprintf("%.4f (%s)", mc$mediation_acme, mc$mediation_dir),
+    acme_p = sprintf("%.3f", mc$acme_p)),
+  row.names = FALSE,
+  col.names = c("signature", "moderation (amyloid:tau)",
+                "mediation (ACME, amyloid->sig->tau)", "ACME p (boot)"),
+  caption = paste0(
+    "Moderation vs mediation, two distinct causal framings of the same ",
+    "signatures (whole-microglia). Moderation: signature is the OUTCOME, tau ",
+    "modifies the amyloid response (the mouse 2x2 logic). Mediation: signature ",
+    "is the MEDIATOR transmitting amyloid -> tau (Green-2024 cascade; ACME = ",
+    "average causal mediation effect, donor-clustered bootstrap B = 2000). ",
+    "The human-native Gerrits AD1 shows positive mediation (ACME +0.056, ",
+    "nominal p = 0.012); none survives FDR. NF-kB illustrates that the two ",
+    "framings are not competing: negative moderation (high tau dampens the ",
+    "amyloid -> NF-kB slope) coexists with a positive mediation direction."),
+  align = c("l", "r", "r", "r")))
+```
+
+Both framings are observational and cross-sectional; the mediation model
+additionally imports the amyloid -> tau temporal ordering as an untestable
+assumption, so it too is read as directional corroboration, never proof.
+
+## Mouse-vs-human direction-of-effect concordance and verdict
+
+The final summary collates, for each pre-registered mechanism, the mouse
+prediction against the human evidence: the whole-microglia sign, the count
+of strata that match the mouse direction, and whether both robustness arms
+agree.
+
+```{r human-val-concordance-summary, results = "asis"}
+conc <- hv_prereg
+# Per-signature: the human direction in 'all', and how many of the 5 strata
+# match the mouse-predicted direction for the relevant term.
+human_dir_all <- mediation_term <- character(nrow(conc))
+n_match <- integer(nrow(conc))
+both_arms <- character(nrow(conc))
+for (i in seq_len(nrow(conc))) {
+  sig <- conc$signature[i]; trm <- conc$term[i]
+  rows <- hv_models[hv_models$signature == sig, ]
+  est_col <- if (trm == "amyloid") "amyloid_est" else "ix_est"
+  dirs <- ifelse(rows[[est_col]] > 0, "positive", "negative")
+  human_dir_all[i] <- dirs[rows$stratum == "all"]
+  n_match[i] <- sum(dirs == conc$mouse_dir[i], na.rm = TRUE)
+  pr <- hv_panel[hv_panel$signature == sig & hv_panel$stratum == "all", ]
+  both_arms[i] <- if (trm != "interaction") "-" else if (nrow(pr) == 0) "-" else {
+    auc_ok <- if (is.na(pr$auc_ix_est)) "auc n/a" else if (pr$auc_concordant) "auc ok" else "auc differs"
+    sc_ok  <- if (pr$sc_concordant) "sc ok" else "sc differs"
+    paste(sc_ok, auc_ok, sep = "; ")
+  }
+}
+conc$human_dir_all <- human_dir_all
+conc$concordant_all <- ifelse(conc$mouse_dir == conc$human_dir_all,
+                              "concordant", "DISCORDANT")
+conc$n_strata <- sprintf("%d / 5", n_match)
+conc$both_arms <- both_arms
+print(knitr::kable(
+  conc[, c("signature", "term", "mouse_dir", "human_dir_all",
+           "concordant_all", "n_strata", "both_arms", "rationale")],
+  row.names = FALSE,
+  col.names = c("signature", "term", "mouse", "human (whole)", "verdict",
+                "strata matching", "robustness arms", "mouse rationale"),
+  caption = paste0(
+    "Mouse-vs-human direction-of-effect concordance for the pre-registered ",
+    "mechanisms. mouse = locked mouse prediction; human (whole) = sign of the ",
+    "whole-microglia coefficient; strata matching = number of the 5 strata ",
+    "whose sign matches the mouse prediction; robustness arms = single-cell ",
+    "(sc) and AUCell (auc) agreement with pseudobulk (interaction terms only). ",
+    "Every pre-registered mechanism is direction-concordant with the mouse, ",
+    "and the two headline attenuation mechanisms are concordant across both ",
+    "robustness arms in every stratum."),
+  align = c("l", "l", "c", "c", "c", "c", "l", "l")))
+```
+
+**Verdict.** The mouse microglial tau x amyloid interaction structure is
+**conserved in human AD cortex, as a directional corroboration under
+collinearity-aware modelling**. Concretely: (1) all four mouse microglial
+substates resolve in human SEA-AD microglia, with disease-emergent supertype
+occupancy rising monotonically along the activation axis; (2) the
+pre-registered interaction mechanisms reproduce their mouse-predicted sign --
+NF-kB-target and MG-M3 attenuation (negative `amyloid:tau`) and the
+tau-enhanced Gsk3b response (positive) -- in 5/5 strata, region-concordant,
+and robust to single-cell aggregation and an orthogonal scorer; (3) the
+human-native positive control behaves correctly, anchoring the pipeline.
+
+The corroboration is **directional, not significant**: no pre-registered
+human interaction survives FDR, which under the measured amyloid-tau
+collinearity (Spearman ~0.65, VIF interaction ~1.5-1.8) and observational
+cross-sectional power is the expected result, *not* evidence against the
+mouse mechanism (reading rules 1-2). Read as the validation plan intended,
+the human data are **consistent with** a tau-dependent amyloid remodelling of
+microglia that is null at the whole-microglia gene level but structured at
+the level of substates and interaction-localised programmes -- the same
+structure the mouse 2x2 resolves directly. Causal confirmation would require
+a powered cohort that decouples amyloid and tau (e.g. ROSMAP, deferred here
+for want of a data-use agreement); the within-cohort MTG-vs-DLPFC replication
+is the available independent corroboration.

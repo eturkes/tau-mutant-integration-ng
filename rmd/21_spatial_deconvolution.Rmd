@@ -1,0 +1,526 @@
+# GeoMx spatial deconvolution: tissue cell-type composition
+
+This section adds the project's first **cell-composition** readout and
+closes narrative arc **L**
+(`storage/notes/spatial_deconvolution_plan.md`). Every preceding arc reads
+**expression** or **activity**: the pathway survey, the prior-based and
+data-driven transcription-factor layers, the kinase and ligand-receptor
+layers, the claims ledger, the NF-&kappa;B attenuation, the human
+cross-species validation, the causal topology and the SCENIC regulons all
+ask *what the cells are doing*. None asks *how much of each cell type is
+present in tissue*. The GeoMx is the only location-aware modality yet has
+so far been reduced to bulk-ish genotype DE (section 5). Here it is
+deconvolved into per-ROI cell-type and microglial-substate **abundances**,
+using the snRNAseq as the reference, to test whether amyloid reshapes
+microglial composition *in tissue* and whether the tau background modulates
+that reshaping &mdash; the same 2&times;2 interaction the rest of the
+project tracks, now as a composition effect rather than an expression one.
+
+**Why this is an independent readout, not a restatement of the snRNAseq.**
+The snRNAseq substate proportions are sorting- and loading-biased: the
+reference itself shows a large amyloid-driven jump in sorted-nuclei DAM
+counts, which is a number about the dissociation and loading, not about
+tissue. Deconvolving the unsorted GeoMx tissue against that reference gives
+a composition estimate the single-nucleus data cannot provide on its own.
+It is framed throughout as **orthogonal corroboration / honest reporting of
+what resolves**, never as proof; it does not touch the locked mouse
+2&times;2 expression analysis except via an explicit, gated ledger decision
+taken at arc close.
+
+**Method, fixed before any contrast was read.** Deconvolution uses
+`SpatialDecon` (Danaher 2022), the GeoMx-WTA-native log-normal regression
+of normalised expression on a cell-profile matrix with a per-ROI
+negative-probe background. The reference profile is the mean expression
+per `cell_type` over the `r format(286285, big.mark = ",")`-cell
+`seurat_full` object (5 broad classes plus the 4 section-2 microglial
+substates), capped at **`r format(3000, big.mark=",")` cells/type** for the
+profile build and intersected with the GeoMx genes. Because the substates
+are transcriptionally similar, the design is **two-stage** (the gated L1
+choice): stage&nbsp;1 deconvolves a 6-level profile (5 broad + one pooled
+Microglia) for a robust total-microglia abundance; stage&nbsp;2 sub-splits
+that microglial fraction into the 4 substates with a 9-level profile,
+anchored to the stage-1 total. The abundance contrasts mirror the GeoMx
+expression design exactly &mdash; `~ 0 + genotype + slide`, the locked
+2&times;2 factorial through `make_contrast_matrix`, here on
+**log(&beta;&nbsp;+&nbsp;`r 1`)** abundance via limma-trend &mdash; so the
+interaction stays cross-modality-comparable.
+
+**Thresholds, stated before any result is read.** Significance everywhere
+is BH-FDR &lt; 0.10 (the project standard). Profile build:
+`minCellNum = 15`, `minGenes = 100`, `normalize = TRUE`. Log-abundance
+offset = 1. Spatial autocorrelation: per-slide Moran's I with a 999-
+permutation one-sided (positive-autocorrelation) test, reported both raw
+and genotype-residualised. Absolute-count rescaling by nuclei is **not**
+used: 42 of 91 ROIs carry the `-1` missing-nuclei sentinel, so &beta; is
+left on its native `normalize = TRUE` abundance scale.
+
+**Caveats carried throughout.** (a) The snRNAseq reference proportions are
+sorting/loading-biased and the deconvolution is **not** validated against
+ground-truth histology, so every abundance here is a model estimate.
+(b) The four microglial substates are transcriptionally close (quantified
+in the QC below), so per-substate abundance is collinear and the small
+IFN/homeostatic estimates are unstable. (c) GeoMx ROIs are whole-tissue
+geometric samples with **no** plaque, Iba1 or morphology targeting, so any
+shift is regional-bulk composition, not a plaque-niche measurement.
+(d) Single-nucleus reference versus GeoMx-WTA target platform differ in
+capture and segment length.
+
+**Anti-anchoring.** All cell-type and substate abundances are reported
+even-handedly, with the deconvolution QC (profile collinearity, condition
+number, per-ROI fit) stated honestly. A substate that does not resolve
+cleanly is reported as a reference-collinearity finding, never dropped to
+tidy the story. No contrast axis is privileged: the amyloid main effects
+and the tau&times;amyloid interaction are reported side by side.
+
+```{r spatial-decon-load}
+sd     <- readRDS(file.path(params$cache_dir, "spatial_decon.rds"))
+ac     <- sd$abundance_contrasts        # 50 rows: layer/cell_type/contrast/logFC/t/P/adjP/sig
+abg    <- sd$abundance_by_genotype      # 40 rows: layer/cell_type/genotype/mean_*/sd_*
+sa     <- sd$spatial_autocorr           # 48 rows: slide/cell_type/morans_I/expected_I/p_perm/residualised
+meta   <- sd$meta                       # 91 x 6: roi/genotype/slide/x/y/nuclei
+qc6    <- sd$profile6$qc
+qc9    <- sd$profile9$qc
+par    <- sd$params
+stage1 <- sd$stage1                     # 6 x 91 (5 broad + pooled Microglia)
+
+geno_order     <- c("MAPTKI", "P301S", "NLGF_MAPTKI", "NLGF_P301S")
+contrast_order <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+                    "tau_alone", "tau_in_nlgf")
+broad_order    <- sort(unique(ac$cell_type[ac$layer == "stage1_broad"]))
+substate_order <- sort(unique(ac$cell_type[ac$layer == "stage2_substate"]))
+diverging      <- c("#3a4cc0", "white", "#b40426")
+abg$genotype   <- factor(abg$genotype, levels = geno_order)
+
+# Unique-row lookups (each cell_type x contrast and cell_type x genotype is unique).
+ac_get <- function(ct, cn) ac[ac$cell_type == ct & ac$contrast == cn, ]
+f_frac <- function(ct, g)
+  abg$mean_prop[abg$cell_type == ct & as.character(abg$genotype) == g]
+
+# Headline scalars (prose references these so it never drifts from the cache).
+n_roi      <- ncol(stage1)
+n_common   <- par$n_common_genes
+resid_rmse <- sd$beta6$fit_qc$resid_rmse
+n_unres    <- sd$two_stage$n_unresolved
+consist    <- sd$two_stage$consistency_spearman
+
+dam_nm  <- ac_get("Microglia_DAM", "nlgf_in_maptki")
+dam_np  <- ac_get("Microglia_DAM", "nlgf_in_p301s")
+dam_int <- ac_get("Microglia_DAM", "interaction")
+pro_nm  <- ac_get("Microglia_proliferative", "nlgf_in_maptki")
+pro_np  <- ac_get("Microglia_proliferative", "nlgf_in_p301s")
+mic_np  <- ac_get("Microglia", "nlgf_in_p301s")
+
+int_tab   <- ac[ac$contrast == "interaction", ]
+n_int_sig <- sum(int_tab$sig)
+best_int  <- int_tab[which.min(int_tab$adj.P.Val), ]
+n_amy_nm  <- sum(ac$contrast == "nlgf_in_maptki" & ac$sig)
+n_amy_np  <- sum(ac$contrast == "nlgf_in_p301s"  & ac$sig)
+
+sa_raw    <- sa[!sa$residualised, ]
+sa_res    <- sa[sa$residualised, ]
+n_raw_sig <- sum(sa_raw$p_perm < 0.05, na.rm = TRUE)
+n_raw_tot <- sum(!is.na(sa_raw$p_perm))
+n_res_sig <- sum(sa_res$p_perm < 0.05, na.rm = TRUE)
+n_res_tot <- sum(!is.na(sa_res$p_perm))
+res_hit   <- sa_res[!is.na(sa_res$p_perm) & sa_res$p_perm < 0.05, ]
+```
+
+## Deconvolution quality control
+
+The deconvolution rests on `r format(n_common, big.mark = ",")` genes
+common to the snRNAseq reference and the GeoMx target. The first thing to
+report &mdash; before any abundance &mdash; is how well-posed each profile
+is, because the two-stage design exists precisely because the 9-level
+profile is ill-conditioned. The 6-level (broad) profile is well-behaved:
+condition number &kappa;&nbsp;= `r sprintf("%.1f", qc6$condition_number)`
+and maximum between-type column correlation
+`r sprintf("%.3f", qc6$max_abs_celltype_cor)`. The 9-level (substate)
+profile is collinear: &kappa;&nbsp;= `r sprintf("%.1f", qc9$condition_number)`
+and maximum column correlation
+**`r sprintf("%.3f", qc9$max_abs_celltype_cor)`**. That collinearity is
+the anti-anchoring guardrail made quantitative, not hidden: the four
+microglial substates are nearly the same gene-expression vector, so their
+individual abundances cannot be estimated with the stability of the broad
+classes.
+
+```{r spatial-qc-table, results = "asis"}
+qc_tab <- data.frame(
+  Metric = c("profile genes (post-filter)", "reference cells used",
+             "condition number (kappa)", "max |between-type correlation|",
+             "per-ROI residual RMSE"),
+  `6-level (broad)` = c(
+    format(qc6$n_profile_genes, big.mark = ","),
+    format(qc6$n_cells_used, big.mark = ","),
+    sprintf("%.1f", qc6$condition_number),
+    sprintf("%.3f", qc6$max_abs_celltype_cor),
+    sprintf("%.3f", sd$beta6$fit_qc$resid_rmse)),
+  `9-level (substate)` = c(
+    format(qc9$n_profile_genes, big.mark = ","),
+    format(qc9$n_cells_used, big.mark = ","),
+    sprintf("%.1f", qc9$condition_number),
+    sprintf("%.3f", qc9$max_abs_celltype_cor),
+    sprintf("%.3f", sd$beta9$fit_qc$resid_rmse)),
+  check.names = FALSE, stringsAsFactors = FALSE)
+knitr::kable(
+  qc_tab, row.names = FALSE,
+  caption = paste0(
+    "Profile-matrix quality for the two deconvolution stages, over ",
+    format(n_common, big.mark = ","), " common reference-GeoMx genes. ",
+    "The broad profile is well-conditioned; the substate profile is ",
+    "collinear (kappa ", sprintf("%.0f", qc9$condition_number),
+    "), so per-substate abundances are reported with that caveat. ",
+    "Residual RMSE is near-identical because the broad-type fit ",
+    "dominates the global residual."))
+```
+
+The substate collinearity is shown directly below as the 9-level profile's
+between-type correlation matrix. The four `Microglia_*` columns form a
+block correlated at 0.97-0.99 with one another &mdash; effectively one
+profile split four ways &mdash; while the broad classes are well separated.
+This is why stage&nbsp;2 estimates are anchored to the stage-1 total rather
+than trusted alone, and why `SpatialDecon` pushes the smallest, closest
+substates (IFN, homeostatic) toward zero in many ROIs.
+
+```{r spatial-profile9-collinearity, fig.width = 6.8, fig.height = 5.8, fig.cap = "Between-cell-type correlation of the 9-level reference profile (Pearson, log-profile columns; diagonal set to 1). The four microglial substates form a 0.97-0.99 block, the collinearity that motivates the two-stage design and destabilises per-substate abundance."}
+m <- qc9$celltype_cor
+diag(m) <- 1
+ord <- sort(rownames(m))
+m <- m[ord, ord]
+cdf <- as.data.frame(as.table(m))
+names(cdf) <- c("ct1", "ct2", "cor")
+ggplot(cdf, aes(ct1, ct2, fill = cor)) +
+  geom_tile(colour = "grey92") +
+  geom_text(aes(label = sprintf("%.2f", cor)), size = 2.5) +
+  scale_fill_gradientn(colours = c("white", "#fddbc7", "#b40426"),
+                       limits = c(0, 1), name = "Pearson r") +
+  labs(x = NULL, y = NULL,
+       title = "9-level reference profile: between-type collinearity") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 35, hjust = 1))
+```
+
+Two further facts complete the QC. The per-ROI fit residual RMSE is
+`r sprintf("%.3f", resid_rmse)` (identical to three decimals across both
+stages, because the broad-type fit dominates the global residual; the
+4-way microglial split barely moves it). And the two-stage assembly is
+self-consistent: on the `r n_roi - n_unres` ROIs that resolve, the sum of
+the stage-2 substate abundances reproduces the stage-1 microglial total at
+Spearman = `r sprintf("%.3f", consist)`. The remaining
+**`r n_unres` of `r n_roi`** ROIs have all-zero microglial substate
+&beta;&nbsp;in the 9-level fit (no resolvable microglia to split), so their
+stage-2 columns are set NA &mdash; a zero cannot be apportioned &mdash; and
+those ROIs drop from the stage-2 contrasts and from the per-substate
+spatial statistic. The spatial gradient below is therefore reported for the
+broad types only.
+
+## Tissue composition by genotype
+
+With the QC stated, the composition itself. The stage-1 broad profile gives
+the tissue fraction of each of the six classes per genotype; the figure
+reports all six even-handedly. The dominant, robust signal is amyloid-
+driven: in both tau backgrounds the introduction of NLGF raises the
+microglial tissue fraction sharply &mdash; pooled Microglia rises from
+`r sprintf("%.0f%%", 100*f_frac("Microglia","MAPTKI"))` (MAPTKI) and
+`r sprintf("%.0f%%", 100*f_frac("Microglia","P301S"))` (P301S) to
+`r sprintf("%.0f%%", 100*f_frac("Microglia","NLGF_MAPTKI"))` (NLGF_MAPTKI)
+and `r sprintf("%.0f%%", 100*f_frac("Microglia","NLGF_P301S"))`
+(NLGF_P301S) &mdash; while the astrocytic, neuronal, oligodendrocyte and
+vascular fractions fall correspondingly. The microglial *fraction* rises
+even though its absolute &beta;&nbsp;is roughly flat, because the broad
+non-microglial classes are diluted under amyloid; the shift is relative.
+
+```{r spatial-composition-broad, fig.width = 7, fig.height = 4.6, fig.cap = "Stage-1 broad tissue composition: mean per-ROI proportion of each of the six broad cell classes, by genotype (each bar sums to 1). Amyloid (NLGF) raises the microglial fraction in both tau backgrounds and dilutes the other classes."}
+bdf <- abg[abg$layer == "stage1_broad", ]
+bdf$cell_type <- factor(bdf$cell_type, levels = rev(broad_order))
+ggplot(bdf, aes(genotype, mean_prop, fill = cell_type)) +
+  geom_col(colour = "grey95", linewidth = 0.2) +
+  scale_fill_brewer(palette = "Set2", name = "cell class") +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(x = NULL, y = "mean tissue proportion",
+       title = "Broad tissue composition by genotype") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1),
+        panel.grid.major.x = element_blank())
+```
+
+The within-microglia substate composition (stage 2) is the more
+interesting layer and the one to read with the collinearity caveat in hand.
+The headline is a clean **DAM&uarr; / proliferative&darr; substate swap
+under amyloid**: the DAM fraction of microglia rises from
+`r sprintf("%.0f%%", 100*f_frac("Microglia_DAM","MAPTKI"))` /
+`r sprintf("%.0f%%", 100*f_frac("Microglia_DAM","P301S"))` at baseline to
+**`r sprintf("%.0f%%", 100*f_frac("Microglia_DAM","NLGF_MAPTKI"))` /
+`r sprintf("%.0f%%", 100*f_frac("Microglia_DAM","NLGF_P301S"))`** under
+amyloid, and the proliferative fraction is its mirror image
+(`r sprintf("%.0f%%", 100*f_frac("Microglia_proliferative","MAPTKI"))` /
+`r sprintf("%.0f%%", 100*f_frac("Microglia_proliferative","P301S"))` &rarr;
+`r sprintf("%.0f%%", 100*f_frac("Microglia_proliferative","NLGF_MAPTKI"))` /
+`r sprintf("%.0f%%", 100*f_frac("Microglia_proliferative","NLGF_P301S"))`).
+The IFN and homeostatic substates sit near zero throughout &mdash; the
+expected consequence of their near-degenerate profile columns &mdash; and
+their flat estimates are a collinearity artefact, not a biological absence.
+A specific caveat attaches to "proliferative" being the dominant *baseline*
+substate: the proliferative profile plausibly absorbs generic or
+cycling-agnostic microglia in this deconvolution, so its baseline dominance
+should not be read as a literal claim that most baseline microglia
+proliferate.
+
+```{r spatial-composition-substate, fig.width = 7, fig.height = 4.6, fig.cap = "Stage-2 within-microglia substate composition: mean per-ROI substate fraction of the microglial compartment, by genotype (each bar sums to 1). Amyloid drives a DAM-up / proliferative-down swap; IFN and homeostatic sit near zero (substate-collinearity artefact, not biological absence)."}
+sdf <- abg[abg$layer == "stage2_substate", ]
+sdf$cell_type <- factor(sdf$cell_type, levels = rev(substate_order))
+ggplot(sdf, aes(genotype, mean_prop, fill = cell_type)) +
+  geom_col(colour = "grey95", linewidth = 0.2) +
+  scale_fill_brewer(palette = "Dark2", name = "microglial substate") +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(x = NULL, y = "mean within-microglia fraction",
+       title = "Microglial substate composition by genotype") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1),
+        panel.grid.major.x = element_blank())
+```
+
+## Factorial contrasts on cell-type abundance
+
+The composition above is tested with the locked 2&times;2 factorial on
+log(&beta;&nbsp;+&nbsp;`r par$offset`) abundance, design `~ 0 + `
+`r gsub("genotype \\+ slide", "genotype + slide", par$design)`, both
+stages. The heatmap reports every cell type against every contrast; the
+amyloid main effects (`nlgf_in_maptki`, `nlgf_in_p301s`) carry essentially
+all of the significant signal, and the interaction column is empty.
+
+```{r spatial-contrast-heatmap, fig.width = 8, fig.height = 6, fig.cap = "Factorial contrasts on log-abundance, faceted by deconvolution stage. Fill = logFC (blue down, red up); * = FDR < 0.10. The two amyloid main-effect columns carry the signal; the interaction column has no significant cell type in either stage."}
+hm <- ac
+hm$cell_type <- factor(hm$cell_type, levels = rev(c(broad_order, substate_order)))
+hm$contrast  <- factor(hm$contrast, levels = contrast_order)
+hm$star      <- ifelse(hm$sig, "*", "")
+hm$layer     <- factor(hm$layer,
+                        levels = c("stage1_broad", "stage2_substate"),
+                        labels = c("stage 1: broad", "stage 2: substate"))
+lim <- max(abs(hm$logFC), na.rm = TRUE)
+ggplot(hm, aes(contrast, cell_type, fill = logFC)) +
+  geom_tile(colour = "grey90") +
+  geom_text(aes(label = star), size = 4, vjust = 0.78) +
+  facet_grid(layer ~ ., scales = "free_y", space = "free_y") +
+  scale_fill_gradientn(colours = diverging, limits = c(-lim, lim),
+                       name = "logFC") +
+  labs(x = NULL, y = NULL,
+       title = "Abundance contrasts across cell types and stages") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 25, hjust = 1),
+        strip.text.y = element_text(angle = 0))
+```
+
+The microglial rows are tabulated explicitly, since they carry the
+biology. The DAM abundance rises significantly under amyloid in **both**
+backgrounds (logFC `r sprintf("%+.2f", dam_nm$logFC)`,
+FDR `r sprintf("%.1e", dam_nm$adj.P.Val)` at `nlgf_in_maptki`;
+`r sprintf("%+.2f", dam_np$logFC)`,
+FDR `r sprintf("%.1e", dam_np$adj.P.Val)` at `nlgf_in_p301s`), and
+proliferative falls by a matching amount
+(`r sprintf("%+.2f", pro_nm$logFC)` / `r sprintf("%+.2f", pro_np$logFC)`,
+both FDR &lt; `r sprintf("%.0e", max(pro_nm$adj.P.Val, pro_np$adj.P.Val))`).
+The pooled-microglia abundance edges *down* at `nlgf_in_p301s`
+(`r sprintf("%+.2f", mic_np$logFC)`, FDR
+`r sprintf("%.3f", mic_np$adj.P.Val)`) &mdash; consistent with the fraction
+rising while absolute &beta; does not &mdash; underlining that the
+composition signal is the internal DAM redistribution the two-stage split
+isolates, not a change in total microglial &beta;.
+
+```{r spatial-substate-table, results = "asis"}
+mic_ct <- c("Microglia", substate_order)
+M <- matrix("", length(mic_ct), length(contrast_order),
+            dimnames = list(mic_ct, contrast_order))
+for (i in mic_ct) for (j in contrast_order) {
+  r <- ac_get(i, j)
+  M[i, j] <- sprintf("%+.2f%s", r$logFC, ifelse(r$sig, " *", ""))
+}
+knitr::kable(
+  M,
+  caption = paste0(
+    "Log-abundance logFC for the pooled-microglia (stage 1) and four ",
+    "substate (stage 2) rows across the five contrasts (* = FDR < 0.10). ",
+    "DAM up / proliferative down under both amyloid contrasts; nothing ",
+    "significant at the interaction; IFN and homeostatic are fixed at 0 ",
+    "by the substate collinearity. Full table in ",
+    "storage/results/spatial_decon_contrasts.tsv."))
+```
+
+The interaction &mdash; the project's divergence readout, here on tissue
+composition &mdash; is **null at every cell type**:
+`r n_int_sig` of `r nrow(int_tab)` are significant, the smallest FDR being
+`r best_int$cell_type` at `r sprintf("%.2f", best_int$adj.P.Val)`. The DAM
+interaction point estimate is positive
+(`r sprintf("%+.2f", dam_int$logFC)`, i.e. DAM marginally higher on the
+P301S tau background under amyloid, the same direction as the raw fractions
+`r sprintf("%.0f%% > %.0f%%", 100*f_frac("Microglia_DAM","NLGF_P301S"), 100*f_frac("Microglia_DAM","NLGF_MAPTKI"))`
+and the same sign as the snRNAseq) but with
+*t*&nbsp;=&nbsp;`r sprintf("%.2f", dam_int$t)`,
+*p*&nbsp;=&nbsp;`r sprintf("%.2f", dam_int$P.Value)` it does not approach
+significance. The forest plot below shows the interaction effect with
+approximate Wald 95% intervals for all ten cell types: every interval
+crosses zero. The composition layer therefore reproduces the *direction* of
+the tau&times;amyloid interaction on DAM but does **not** corroborate it as
+a composition effect.
+
+```{r spatial-interaction-forest, fig.width = 7, fig.height = 4.4, fig.cap = "Interaction-contrast log-abundance effect by cell type, with approximate Wald 95% intervals (logFC +/- 1.96 x logFC/t). No cell type is significant at FDR 0.10; the DAM point estimate is positive (same direction as the snRNAseq) but its interval crosses zero. Homeostatic and IFN are fixed at 0 (no interval)."}
+fo <- int_tab
+fo$se <- ifelse(fo$t != 0, abs(fo$logFC / fo$t), NA_real_)
+fo$lo <- fo$logFC - 1.96 * fo$se
+fo$hi <- fo$logFC + 1.96 * fo$se
+fo$cell_type <- factor(fo$cell_type, levels = fo$cell_type[order(fo$logFC)])
+ggplot(fo, aes(logFC, cell_type)) +
+  geom_vline(xintercept = 0, colour = "grey60", linetype = "dashed") +
+  geom_errorbarh(aes(xmin = lo, xmax = hi), height = 0.25,
+                 colour = "grey55", na.rm = TRUE) +
+  geom_point(aes(colour = sig), size = 2.4) +
+  scale_colour_manual(values = c(`FALSE` = "grey30", `TRUE` = "#b40426"),
+                      guide = "none") +
+  labs(x = "interaction logFC (log-abundance)", y = NULL,
+       title = "Tissue-composition interaction is null across cell types") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+## Spatial gradient
+
+The GeoMx ROIs carry XY coordinates, so the final question is whether
+abundance is spatially structured within a slide. The map below places each
+ROI at its scan coordinates, coloured by total-microglia abundance and
+faceted by slide; the four slides each mix all genotypes, which is the
+crux of the analysis.
+
+```{r spatial-xy-map, fig.width = 8, fig.height = 6.4, fig.cap = "Per-ROI total-microglia abundance (stage-1 beta) at scan XY coordinates, faceted by slide, shaped by genotype. Each slide mixes genotypes, so a raw spatial gradient is confounded with within-slide genotype composition."}
+xy <- meta
+xy$microglia <- as.numeric(stage1["Microglia", rownames(meta)])
+xy$genotype  <- factor(xy$genotype, levels = geno_order)
+ggplot(xy, aes(x, y, colour = microglia, shape = genotype)) +
+  geom_point(size = 2.3) +
+  facet_wrap(~ slide, scales = "free") +
+  scale_colour_viridis_c(name = "microglia\nabundance", option = "C") +
+  labs(x = "ROI X", y = "ROI Y",
+       title = "Spatial layout of microglial abundance, by slide") +
+  theme_bw() +
+  theme(axis.text = element_text(size = 6),
+        panel.grid.minor = element_blank())
+```
+
+Moran's I confirms the confound. On the raw per-ROI abundances the spatial
+autocorrelation is broadly positive and significant
+(**`r n_raw_sig` of `r n_raw_tot`** slide&times;cell-type tests at
+*p*&nbsp;&lt;&nbsp;0.05), but once genotype is residualised out of each
+abundance the structure collapses to near-null
+(**`r n_res_sig` of `r n_res_tot`**: only `r res_hit$cell_type` on
+"`r res_hit$slide`", I&nbsp;=&nbsp;`r sprintf("%.2f", res_hit$morans_I)`,
+*p*&nbsp;=&nbsp;`r sprintf("%.3f", res_hit$p_perm)`). The paired plot shows
+the collapse test by test. The honest spatial read is therefore **no robust
+within-genotype gradient**: the apparent spatial structure is the spatial
+layout of genotypes on the slide, not an intrinsic abundance gradient.
+(OPC, which deconvolves to ~zero on most slides, has undefined
+autocorrelation there and is dropped from the affected tests.)
+
+```{r spatial-morans-paired, fig.width = 7, fig.height = 4.4, fig.cap = "Per-slide Moran's I for each cell type, raw versus genotype-residualised (one line per slide x cell-type test). Residualising genotype out of the abundances collapses the autocorrelation to near-null, so the raw spatial signal is genotype layout, not an intrinsic gradient."}
+mp <- sa[!is.na(sa$p_perm), ]
+mp$state <- factor(ifelse(mp$residualised, "genotype-\nresidualised", "raw"),
+                   levels = c("raw", "genotype-\nresidualised"))
+mp$key <- paste(mp$slide, mp$cell_type)
+mp$sig <- mp$p_perm < 0.05
+ggplot(mp, aes(state, morans_I, group = key)) +
+  geom_hline(yintercept = 0, colour = "grey70") +
+  geom_line(colour = "grey78", linewidth = 0.4) +
+  geom_point(aes(colour = sig), size = 2) +
+  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#b40426"),
+                      name = "p_perm < 0.05") +
+  labs(x = NULL, y = "Moran's I",
+       title = "Spatial autocorrelation collapses after residualising genotype") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+## Verdict
+
+The synthesis is read per comparison axis, with absence reported as
+evidence and no axis privileged. The thresholds are restated once:
+BH-FDR &lt; 0.10 on the locked 2&times;2 factorial over
+log(&beta;&nbsp;+&nbsp;`r par$offset`) abundance, two-stage SpatialDecon
+profiles (broad &kappa;&nbsp;`r sprintf("%.0f", qc6$condition_number)`,
+substate &kappa;&nbsp;`r sprintf("%.0f", qc9$condition_number)`), Moran's I
+at 999 permutations.
+
+**Overall.** The composition layer delivers one clean, strongly
+significant, genuinely new-evidence-class result &mdash; **amyloid-driven
+DAM tissue expansion** &mdash; and an honest null on the divergence. Under
+amyloid, in both tau backgrounds, the microglial tissue fraction rises and
+its internal composition swaps from proliferative-dominant to DAM-dominant
+(DAM abundance logFC `r sprintf("%+.2f", dam_nm$logFC)` /
+`r sprintf("%+.2f", dam_np$logFC)`, both FDR&nbsp;&lt;&nbsp;0.001). This
+corroborates the amyloid-activation axis as a *tissue-composition*
+phenomenon, distinct from the expression footprints the rest of the project
+counts, and it does so from the unsorted GeoMx tissue rather than the
+sorting-biased single-nucleus proportions. The tau&times;amyloid
+**interaction is null** at the composition level (`r n_int_sig`/`r nrow(int_tab)`
+cell types significant; the DAM point estimate is positive and snRNAseq-
+concordant in sign but *p*&nbsp;=&nbsp;`r sprintf("%.2f", dam_int$P.Value)`),
+and there is **no robust spatial gradient** once genotype layout is removed.
+
+```{r spatial-verdict-build}
+sd_verdict <- tibble::tibble(
+  axis = c("amyloid_activation", "interaction_metabolic",
+           "synaptic_suppression"),
+  composition_endpoint = c(
+    "microglial tissue fraction + within-microglia DAM abundance",
+    "interaction contrast on log-abundance, all 10 cell types",
+    "no cell-type-abundance endpoint (synaptic/engulfment programme)"),
+  result = c(
+    sprintf(paste0("DAM abundance up in both backgrounds (logFC %+.2f ",
+                   "nlgf_in_maptki, FDR %.1e; %+.2f nlgf_in_p301s, FDR ",
+                   "%.1e); proliferative the mirror (%+.2f / %+.2f); pooled-",
+                   "microglia fraction %.0f%%/%.0f%% -> %.0f%%/%.0f%%"),
+            dam_nm$logFC, dam_nm$adj.P.Val, dam_np$logFC, dam_np$adj.P.Val,
+            pro_nm$logFC, pro_np$logFC,
+            100*f_frac("Microglia","MAPTKI"), 100*f_frac("Microglia","P301S"),
+            100*f_frac("Microglia","NLGF_MAPTKI"),
+            100*f_frac("Microglia","NLGF_P301S")),
+    sprintf(paste0("%d/%d cell types significant; DAM interaction %+.2f ",
+                   "(t=%.2f, p=%.2f) positive & snRNAseq-concordant in sign ",
+                   "but null; best FDR %s at %.2f"),
+            n_int_sig, nrow(int_tab), dam_int$logFC, dam_int$t,
+            dam_int$P.Value, best_int$cell_type, best_int$adj.P.Val),
+    paste0("Neuronal abundance falls under amyloid but as broad relative ",
+           "dilution, not a synapse-specific composition claim")),
+  verdict = c(
+    "corroborated (new evidence class: tissue composition)",
+    "not corroborated at the composition level (direction concordant, effect null)",
+    "no composition endpoint (honest non-finding)"))
+readr::write_tsv(sd_verdict,
+                 file.path(params$results_dir, "spatial_decon_verdict.tsv"))
+```
+
+```{r spatial-verdict-table, results = "asis"}
+knitr::kable(
+  sd_verdict[, c("axis", "composition_endpoint", "verdict")],
+  col.names = c("Axis", "Composition endpoint", "Verdict"),
+  caption = paste0(
+    "Per-axis spatial-deconvolution verdict. The amyloid-activation axis is ",
+    "corroborated as a tissue-composition effect (DAM expansion); the ",
+    "interaction is direction-concordant but null; the synaptic-suppression ",
+    "axis has no abundance endpoint. Full result column in ",
+    "storage/results/spatial_decon_verdict.tsv."))
+```
+
+**The boundary conditions, restated as the verdict's caveats.** These
+abundances are model estimates from a sorting-biased single-nucleus
+reference, not histology-validated counts; the substate layer is collinear
+(&kappa;&nbsp;`r sprintf("%.0f", qc9$condition_number)`), so the DAM and
+proliferative estimates are the trustworthy substate signals while IFN and
+homeostatic are collinearity-suppressed; "proliferative" as the dominant
+baseline substate is plausibly a reference-profile artefact rather than a
+literal proliferation claim; the GeoMx ROIs are whole-tissue geometric
+samples with no plaque targeting, so the DAM expansion is regional-bulk
+composition, not a plaque-niche measurement; and the reference and target
+differ in platform. Within those bounds the layer is a clean, falsifiable
+composition readout: amyloid expands the DAM compartment of microglia in
+tissue in both tau backgrounds, the tau background does not significantly
+modulate that expansion, and there is no intrinsic spatial gradient beyond
+the genotype layout of the ROIs.

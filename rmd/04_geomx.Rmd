@@ -1,0 +1,56 @@
+# GeoMx: normalisation and DE
+
+The GeoMx `RNA` assay carries two layers: `counts` holds essentially
+raw integer counts (99.98% of nonzero values are integer; the few
+fractional residues come from upstream GeomxTools background steps),
+and `data` holds the vendor Q3-normalised values: exactly
+`counts / q_norm_qFactors`, where `q_norm_qFactors` lives in
+`meta.data` (median 1.04, range 0.10-7.49). The canonical fit below
+reads the `counts` layer (coerced to integer storage), so it is a
+**raw-counts + voom + edgeR TMM** fit with `slide name` as a
+fixed-effect covariate. No Q3 normalisation is applied here.
+
+Two complementary normalisation audits sit alongside this canonical
+fit: `rmd/09c_geomx_audit.Rmd` swaps `slide` from a fixed-effect block
+to a random effect (via `limma::duplicateCorrelation`), and
+`rmd/09d_geomx_q3_audit.Rmd` adds Q3 back into the pipeline via two
+variants (Q3 → log2 → `limma-trend`, and Q3 → `voom + TMM`) so the
++OXPHOS NES can be evaluated under orthogonal normalisation choices.
+
+```{r geomx-de}
+de_gx_path <- file.path(params$cache_dir, "de_geomx.rds")
+de_geomx <- cache_or_run(de_gx_path, {
+  DefaultAssay(geomx) <- "RNA"
+  cnt <- as.matrix(GetAssayData(geomx, assay = "RNA", layer = "counts"))
+  storage.mode(cnt) <- "integer"
+  meta <- geomx@meta.data
+  meta$genotype <- factor(as.character(meta$genotype), levels = genotype_levels)
+  meta$slide <- factor(meta$`slide name`)
+  design <- model.matrix(~ 0 + genotype + slide, data = meta)
+  colnames(design) <- sub("^genotype", "", colnames(design))
+  colnames(design) <- gsub("[^A-Za-z0-9_]", "_", colnames(design))
+  cm <- make_contrast_matrix(design)
+  fit <- fit_limma_voom(cnt, group = meta$genotype, design = design,
+                        contrasts = cm, min_count = 5)
+  for (cn in names(fit$top)) {
+    fit$top[[cn]] <- dplyr::rename(fit$top[[cn]], symbol = gene)
+  }
+  list(meta = meta, design = design, contrasts = cm, fit = fit)
+})
+
+gx_summary <- purrr::imap_dfr(de_geomx$fit$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_total  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+    n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(gx_summary, caption = "GeoMx DE: significant gene counts")
+```
+
+```{r geomx-volcano, fig.width = 10, fig.height = 4}
+(volcano(de_geomx$fit$top$nlgf_in_maptki, "GeoMx: NLGF in MAPTKI") |
+ volcano(de_geomx$fit$top$nlgf_in_p301s,  "GeoMx: NLGF in P301S"))
+```

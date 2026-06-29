@@ -1,0 +1,1145 @@
+# Cell-cell communication: CellChat + MultiNicheNet
+
+So far the divergence story has been told inside the microglia compartment:
+how does an amyloid pathology (NLGF) reshape microglia *transcription* and
+*pathway activity* differently when introduced into a P301S tau context vs
+a MAPTKI tau-null context? The complement to that intracellular view is
+**intercellular**: how does the *signalling landscape* between microglia
+and the five other cell-type compartments (Astrocyte, Neuronal, OPC,
+Oligodendrocyte, Vascular) shift across the four genotypes, and in
+particular does the tau-context-dependent NLGF response have a
+ligand-receptor (LR) interaction signature?
+
+Two complementary tools are run on the same nine-cell-type partitioning
+(`Astrocyte / Microglia_{DAM,IFN,homeostatic,proliferative} / Neuronal /
+OPC / Oligodendrocyte / Vascular`):
+
+- **CellChat v2.2.0.9001** ([Jin *et al.* 2024](https://doi.org/10.1038/s41596-024-01045-4)):
+  per-condition population-level inference of LR communication
+  probability via a curated CellChatDB.mouse (3,379 LR interactions,
+  293 pathways). Strengths: population-level pathway aggregation
+  (`computeCommunProbPathway`), centrality metrics, comparative
+  visualisation across the 4 genotypes via `mergeCellChat`.
+- **MultiNicheNet 2.1.0** ([Browaeys *et al.* 2023](https://doi.org/10.1101/2023.06.13.544751)):
+  multi-sample, multi-condition LR prioritisation under the same
+  *factorial 2×2 + batch* design used everywhere else in this project,
+  with the same five contrasts (`tau_alone`, `nlgf_in_maptki`,
+  `nlgf_in_p301s`, `tau_in_nlgf`, `interaction`). Strengths: replicates
+  the project-wide statistical framework at LR level, integrates with
+  NicheNet ligand-activity priors, ranks LR pairs by a unified
+  prioritisation score that combines sender DE / receiver DE / fraction
+  expressing.
+
+All compute is pre-baked into three caches (`cellchat_per_condition.rds`
+~1 GB, `cellchat_merged.rds` ~67 MB, `multinichenet_output.rds` ~277 MB);
+this section loads them and produces plots + tables only. See
+`scripts/build_cellchat.R` and `scripts/build_multinichenet.R` for the
+build recipe; both ran on the symbol-keyed `seurat_full_processed.rds`
+to keep gene IDs aligned with CellChatDB and the NicheNet priors.
+
+```{r ccc-load}
+suppressPackageStartupMessages({
+  library(CellChat)
+  library(multinichenetr)
+  library(NMF)
+})
+
+cellchat_per_condition <- readRDS(
+  file.path(params$cache_dir, "cellchat_per_condition.rds"))
+cellchat_merged        <- readRDS(
+  file.path(params$cache_dir, "cellchat_merged.rds"))
+multinichenet_output   <- readRDS(
+  file.path(params$cache_dir, "multinichenet_output.rds"))
+
+# Microglia cell-type label set (used for receiver filtering throughout)
+microglia_cell_types <- c("Microglia_DAM", "Microglia_IFN",
+                          "Microglia_homeostatic", "Microglia_proliferative")
+
+# Project-wide colour palette extended to the 9 cell types. Microglia get
+# warm reds (DAM = strongest), other lineages get distinct hues.
+cell_type_colours <- c(
+  Astrocyte               = "#7FC97F",
+  Microglia_homeostatic   = "#FDC086",
+  Microglia_DAM           = "#B0344D",
+  Microglia_IFN           = "#E08754",
+  Microglia_proliferative = "#FFD92F",
+  Neuronal                = "#386CB0",
+  OPC                     = "#BEAED4",
+  Oligodendrocyte         = "#666666",
+  Vascular                = "#A6CEE3"
+)
+
+# Semantic contrast names (matching the rest of the project) <-> raw
+# MultiNicheNet contrast strings (matching scripts/build_multinichenet.R).
+mnn_contrast_map <- c(
+  tau_alone       = "P301S-MAPTKI",
+  nlgf_in_maptki  = "NLGF_MAPTKI-MAPTKI",
+  nlgf_in_p301s   = "NLGF_P301S-P301S",
+  tau_in_nlgf     = "NLGF_P301S-NLGF_MAPTKI",
+  interaction     = "(NLGF_P301S-P301S)-(NLGF_MAPTKI-MAPTKI)"
+)
+mnn_contrast_levels <- names(mnn_contrast_map)
+
+cat(sprintf("CellChat per-condition list (%d): %s\n",
+            length(cellchat_per_condition),
+            paste(names(cellchat_per_condition), collapse = ", ")))
+cat(sprintf("MultiNicheNet prioritization table: %d rows, %d cols\n",
+            nrow(multinichenet_output$prioritization_tables$group_prioritization_tbl),
+            ncol(multinichenet_output$prioritization_tables$group_prioritization_tbl)))
+```
+
+## (a) Per-condition signalling architecture (CellChat)
+
+The most compact CellChat readout is the **cell-type interaction count
+matrix**, for each genotype, how many significant LR pairs link each
+ordered (sender, receiver) cell-type pair. Differences in the absolute
+volume of communication between conditions are the first-order signal;
+shifts in the cell-type wiring pattern at fixed volume are the second-
+order signal that the comparative analysis below dissects.
+
+```{r ccc-cellchat-circle, fig.width = 13, fig.height = 13}
+# 2x2 grid of weighted aggregated cell-type interaction circles, one per
+# genotype. Edge weight = sum of LR-pair communication probabilities for
+# every (sender, receiver) cell-type pair. Edge colour = sender; node size =
+# cell-type abundance in that condition.
+op <- par(mfrow = c(2L, 2L), mar = c(2, 2, 4, 2))
+on.exit(par(op), add = TRUE)
+for (cond in genotype_levels) {
+  cc <- cellchat_per_condition[[cond]]
+  groupSize <- as.numeric(table(cc@idents))
+  netVisual_circle(
+    cc@net$weight,
+    vertex.weight = groupSize,
+    weight.scale  = TRUE,
+    label.edge    = FALSE,
+    edge.weight.max = max(sapply(cellchat_per_condition,
+                                 function(x) max(x@net$weight))),
+    color.use     = cell_type_colours[levels(cc@idents)],
+    title.name    = sprintf("%s (n_LR_sig = %d)",
+                            cond, nrow(subsetCommunication(cc)))
+  )
+}
+```
+
+```{r ccc-cellchat-count-heatmap, fig.width = 14, fig.height = 7}
+# Per-condition cell-type interaction count heatmap, side-by-side. Reads
+# more cleanly than the circles for counting-level comparisons. ComplexHeatmap
+# is used (rather than CellChat::netVisual_heatmap) to align the colour
+# scale across all four conditions.
+count_mats <- lapply(cellchat_per_condition, function(cc) cc@net$count)
+max_count  <- max(sapply(count_mats, max))
+col_fun_ct <- circlize::colorRamp2(c(0, max_count / 2, max_count),
+                                   c("#f7fbff", "#6baed6", "#08306b"))
+
+ht_list <- NULL
+for (cond in genotype_levels) {
+  m <- count_mats[[cond]]
+  ht <- ComplexHeatmap::Heatmap(
+    m,
+    name             = "n_LR",
+    col              = col_fun_ct,
+    cluster_rows     = FALSE,
+    cluster_columns  = FALSE,
+    show_heatmap_legend = (cond == "MAPTKI"),
+    column_title     = cond,
+    row_title        = if (cond == "MAPTKI") "Sender" else NULL,
+    row_names_gp     = grid::gpar(fontsize = 7),
+    column_names_gp  = grid::gpar(fontsize = 7),
+    column_names_rot = 45,
+    border           = TRUE,
+    cell_fun = function(j, i, x, y, w, h, fill) {
+      v <- m[i, j]
+      if (v > 0) {
+        grid::grid.text(v, x, y, gp = grid::gpar(fontsize = 7))
+      }
+    }
+  )
+  ht_list <- if (is.null(ht_list)) ht else (ht_list + ht)
+}
+ComplexHeatmap::draw(
+  ht_list,
+  column_title = paste(
+    "CellChat per-condition cell-type interaction counts.",
+    "Rows = sender, cols = receiver. Numbers = significant LR pairs."
+  ),
+  column_title_side = "bottom"
+)
+```
+
+```{r ccc-cellchat-condition-summary}
+cellchat_cond_summary <- purrr::imap_dfr(cellchat_per_condition,
+  function(cc, cond) {
+    tibble::tibble(
+      condition       = cond,
+      n_cells         = ncol(cc@data.signaling),
+      n_pathways      = length(cc@netP$pathways),
+      n_LR_sig        = nrow(subsetCommunication(cc)),
+      total_strength  = sum(cc@net$weight),
+      microglia_send  = sum(cc@net$weight[microglia_cell_types, ]),
+      microglia_recv  = sum(cc@net$weight[, microglia_cell_types]),
+      microglia_intra = sum(cc@net$weight[microglia_cell_types,
+                                          microglia_cell_types])
+    )
+  }) |>
+  dplyr::mutate(condition = factor(condition, levels = genotype_levels)) |>
+  dplyr::arrange(condition)
+
+knitr::kable(
+  cellchat_cond_summary,
+  digits  = 3,
+  caption = paste(
+    "Per-condition CellChat summary: n significant LR pairs, total",
+    "communication weight, and microglia-as-sender / -receiver /",
+    "intra-microglia weight subtotals. NLGF arms have ~2x more",
+    "significant LR pairs and ~1.5x more microglia-receiver weight",
+    "than non-NLGF arms."
+  )
+)
+write_tsv_safe(cellchat_cond_summary,
+               file.path(params$results_dir,
+                         "ccc_cellchat_condition_summary.tsv"))
+```
+
+## (b) Differential pathway ranking across conditions
+
+`CellChat::rankNet` compares the **information-flow** of every signalling
+pathway across the merged conditions. We use it twice: once for the two
+pairwise NLGF contrasts (`nlgf_in_maptki`, `nlgf_in_p301s`) and once
+overall to surface pathways that change at all across the 4 genotypes.
+
+```{r ccc-cellchat-ranknet-nlgf, fig.width = 11, fig.height = 9}
+# Two pairwise rankNet panels: one per NLGF contrast. CellChat::rankNet
+# returns a ggplot when `do.stat = TRUE`; we extract `gg.obj` and lay them
+# out side-by-side with patchwork. Pathways are coloured by which arm
+# carries higher info-flow (Mann-Whitney-U test on probability mass).
+g_nlgf_maptki <- CellChat::rankNet(
+  cellchat_merged,
+  mode          = "comparison",
+  comparison    = which(names(cellchat_per_condition) %in%
+                        c("MAPTKI", "NLGF_MAPTKI")),
+  stacked       = FALSE,
+  do.stat       = TRUE,
+  return.data   = FALSE
+)
+g_nlgf_p301s <- CellChat::rankNet(
+  cellchat_merged,
+  mode          = "comparison",
+  comparison    = which(names(cellchat_per_condition) %in%
+                        c("P301S", "NLGF_P301S")),
+  stacked       = FALSE,
+  do.stat       = TRUE,
+  return.data   = FALSE
+)
+# Patchwork-combine the underlying ggplots
+(g_nlgf_maptki + ggplot2::ggtitle("nlgf_in_maptki")) +
+  (g_nlgf_p301s + ggplot2::ggtitle("nlgf_in_p301s"))
+```
+
+```{r ccc-cellchat-ranknet-full, fig.width = 8, fig.height = 12}
+# Overall rankNet across all 4 conditions: pathways stacked-bar style with
+# information-flow contribution per condition. Sorted by total info-flow.
+g_all <- CellChat::rankNet(
+  cellchat_merged,
+  mode        = "comparison",
+  comparison  = seq_along(cellchat_per_condition),
+  stacked     = TRUE,
+  do.stat     = FALSE,
+  return.data = FALSE
+)
+g_all + ggplot2::ggtitle("Information flow per pathway (all 4 conditions)")
+```
+
+```{r ccc-cellchat-pathway-table}
+# Long-form pathway info-flow table for downstream filtering / quoting.
+# Re-uses rankNet's internal computation by calling with return.data = TRUE.
+pathway_flow <- CellChat::rankNet(
+  cellchat_merged,
+  mode        = "comparison",
+  comparison  = seq_along(cellchat_per_condition),
+  stacked     = FALSE,
+  do.stat     = FALSE,
+  return.data = TRUE
+)$signaling.contribution
+pathway_flow$condition <- factor(pathway_flow$group, levels = genotype_levels)
+
+# Wide form: rows = pathway, cols = condition (information flow), plus
+# the NLGF-vs-baseline deltas and the divergence column.
+pathway_flow_wide <- pathway_flow |>
+  dplyr::select(pathway = name, condition, contribution) |>
+  tidyr::pivot_wider(names_from = condition, values_from = contribution,
+                     values_fill = 0) |>
+  dplyr::mutate(
+    nlgf_in_maptki = NLGF_MAPTKI - MAPTKI,
+    nlgf_in_p301s  = NLGF_P301S  - P301S,
+    interaction    = (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI),
+    abs_inter      = abs(interaction)
+  ) |>
+  dplyr::arrange(dplyr::desc(abs_inter))
+
+knitr::kable(
+  head(pathway_flow_wide, 20L) |> dplyr::select(-abs_inter),
+  digits  = 3,
+  caption = paste(
+    "CellChat per-pathway information flow across the 4 genotypes,",
+    "with the project's pairwise NLGF contrasts and the divergence",
+    "`interaction` column. Sorted by |interaction|. Positive",
+    "interaction = NLGF amplifies the pathway more strongly in P301S",
+    "than in MAPTKI; negative = the opposite."
+  )
+)
+write_tsv_safe(pathway_flow_wide,
+               file.path(params$results_dir,
+                         "ccc_cellchat_pathway_information_flow.tsv"))
+```
+
+## (c) Pairwise differential interactions (cell-type level)
+
+`netVisual_diffInteraction` on the merged object visualises the **delta**
+between two conditions' cell-type interaction count matrices as a single
+circle plot (red = up in condition B, blue = up in condition A). We
+produce one such circle per project pairwise contrast, then a manually-
+computed *interaction* delta heatmap that has no direct CellChat
+equivalent (`netVisual_diffInteraction` only takes pairwise comparisons).
+
+```{r ccc-cellchat-diff-interaction, fig.width = 13, fig.height = 13}
+# 2x2 grid of pairwise differential-interaction circles.
+diff_pairs <- list(
+  nlgf_in_maptki = c("MAPTKI",      "NLGF_MAPTKI"),
+  nlgf_in_p301s  = c("P301S",       "NLGF_P301S"),
+  tau_alone      = c("MAPTKI",      "P301S"),
+  tau_in_nlgf    = c("NLGF_MAPTKI", "NLGF_P301S")
+)
+op <- par(mfrow = c(2L, 2L), mar = c(2, 2, 4, 2))
+on.exit(par(op), add = TRUE)
+for (cn in names(diff_pairs)) {
+  pair <- diff_pairs[[cn]]
+  idx  <- match(pair, names(cellchat_per_condition))
+  netVisual_diffInteraction(
+    cellchat_merged,
+    weight.scale = TRUE,
+    comparison   = idx,
+    measure      = "weight",
+    color.use    = cell_type_colours[levels(cellchat_merged@idents$joint)],
+    title.name   = sprintf("%s   (%s -> %s)", cn, pair[1L], pair[2L])
+  )
+}
+```
+
+```{r ccc-cellchat-interaction-delta-heatmap, fig.width = 9, fig.height = 7}
+# Factorial interaction at the cell-type interaction-weight level:
+#   delta_M = (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)
+# Positive cells = sender-receiver pair carries MORE NLGF-driven communication
+# in P301S background than in MAPTKI background (tau-context-amplified
+# signalling).
+weight_mats <- lapply(cellchat_per_condition, function(cc) cc@net$weight)
+delta_int <- (weight_mats$NLGF_P301S - weight_mats$P301S) -
+             (weight_mats$NLGF_MAPTKI - weight_mats$MAPTKI)
+lim <- max(abs(delta_int))
+col_fun_di <- circlize::colorRamp2(c(-lim, 0, lim),
+                                   c("#3a4cc0", "white", "#b40426"))
+ComplexHeatmap::Heatmap(
+  delta_int,
+  name             = "Delta\nweight",
+  col              = col_fun_di,
+  cluster_rows     = FALSE,
+  cluster_columns  = FALSE,
+  row_title        = "Sender",
+  column_title     = paste(
+    "Interaction = (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).",
+    "Positive = tau-context-amplified signalling."
+  ),
+  row_names_gp     = grid::gpar(fontsize = 8),
+  column_names_gp  = grid::gpar(fontsize = 8),
+  column_names_rot = 45,
+  border           = TRUE,
+  cell_fun = function(j, i, x, y, w, h, fill) {
+    v <- delta_int[i, j]
+    if (abs(v) > lim * 0.25) {
+      grid::grid.text(sprintf("%.2f", v), x, y,
+                      gp = grid::gpar(fontsize = 7))
+    }
+  }
+)
+```
+
+```{r ccc-cellchat-interaction-delta-table}
+delta_long <- as.data.frame.table(delta_int, responseName = "delta") |>
+  dplyr::rename(sender = Var1, receiver = Var2) |>
+  dplyr::arrange(dplyr::desc(abs(delta)))
+knitr::kable(
+  head(delta_long, 15L),
+  digits  = 3,
+  caption = paste(
+    "Top 15 sender-receiver cell-type pairs by |interaction delta| in",
+    "CellChat communication weight. Positive = NLGF amplifies the pair",
+    "more strongly in P301S; negative = the opposite."
+  )
+)
+write_tsv_safe(delta_long,
+               file.path(params$results_dir,
+                         "ccc_cellchat_interaction_delta_weights.tsv"))
+```
+
+## (d) Top differential ligand-receptor pairs per contrast (MultiNicheNet)
+
+MultiNicheNet's `prioritization_tables$group_prioritization_tbl` ranks
+every LR pair per contrast by a unified `prioritization_score` that
+combines sender/receiver DE, ligand activity, and fraction expressing.
+We surface the top hits per contrast, first unfiltered, then restricted
+to **microglia receivers** (the divergence-narrative receivers).
+
+```{r ccc-multinichenet-top-lr-all}
+g_tbl <- multinichenet_output$prioritization_tables$group_prioritization_tbl |>
+  dplyr::mutate(contrast_label = names(mnn_contrast_map)[match(contrast, mnn_contrast_map)])
+
+# Top-10 LR pairs per project contrast (any cell type).
+top_lr_all <- g_tbl |>
+  dplyr::filter(!is.na(contrast_label)) |>
+  dplyr::group_by(contrast_label) |>
+  dplyr::arrange(dplyr::desc(prioritization_score), .by_group = TRUE) |>
+  dplyr::slice_head(n = 10L) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    contrast_label = factor(contrast_label, levels = mnn_contrast_levels)
+  ) |>
+  dplyr::arrange(contrast_label, dplyr::desc(prioritization_score))
+
+knitr::kable(
+  top_lr_all |>
+    dplyr::select(contrast_label, sender, receiver, ligand, receptor,
+                  lr_interaction, prioritization_score,
+                  scaled_lfc_ligand, scaled_lfc_receptor,
+                  fraction_expressing_ligand_receptor),
+  digits  = 3,
+  caption = paste(
+    "Top-10 MultiNicheNet ligand-receptor pairs per project contrast",
+    "(any sender-receiver pair). `prioritization_score` is a unified",
+    "rank combining sender / receiver DE + ligand activity + fraction",
+    "expressing. Sorted by descending score within contrast."
+  )
+)
+write_tsv_safe(top_lr_all,
+               file.path(params$results_dir,
+                         "ccc_multinichenet_top_lr_all.tsv"))
+```
+
+```{r ccc-multinichenet-top-lr-microglia}
+# Microglia-receiver subset: restricts to the four microglia substates as
+# receivers, since the project's divergence narrative is microglia-centred.
+top_lr_mg <- g_tbl |>
+  dplyr::filter(!is.na(contrast_label),
+                receiver %in% microglia_cell_types) |>
+  dplyr::group_by(contrast_label) |>
+  dplyr::arrange(dplyr::desc(prioritization_score), .by_group = TRUE) |>
+  dplyr::slice_head(n = 10L) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    contrast_label = factor(contrast_label, levels = mnn_contrast_levels)
+  ) |>
+  dplyr::arrange(contrast_label, dplyr::desc(prioritization_score))
+
+knitr::kable(
+  top_lr_mg |>
+    dplyr::select(contrast_label, sender, receiver, ligand, receptor,
+                  lr_interaction, prioritization_score,
+                  scaled_lfc_ligand, scaled_lfc_receptor,
+                  fraction_expressing_ligand_receptor),
+  digits  = 3,
+  caption = paste(
+    "Top-10 MultiNicheNet ligand-receptor pairs per project contrast,",
+    "restricted to microglia substates as receivers."
+  )
+)
+write_tsv_safe(top_lr_mg,
+               file.path(params$results_dir,
+                         "ccc_multinichenet_top_lr_microglia.tsv"))
+```
+
+```{r ccc-multinichenet-interaction-spotlight}
+# Focus on the divergence interaction contrast: top-25 microglia-receiver
+# LR pairs, with a per-row note about whether the ligand or receptor is
+# also a hdWGCNA hub (when those globals are present).
+inter_label <- "interaction"
+top_int_mg <- g_tbl |>
+  dplyr::filter(contrast_label == inter_label,
+                receiver %in% microglia_cell_types) |>
+  dplyr::arrange(dplyr::desc(prioritization_score)) |>
+  dplyr::slice_head(n = 25L)
+
+# Optional cross-flags (graceful if the upstream globals are missing).
+hub_syms <- if (exists("hub_tbl") && nrow(hub_tbl) > 0L) {
+  unique(hub_tbl$symbol)
+} else character(0)
+
+top_int_mg <- top_int_mg |>
+  dplyr::mutate(
+    ligand_is_hdwgcna_hub   = ligand   %in% hub_syms,
+    receptor_is_hdwgcna_hub = receptor %in% hub_syms
+  )
+
+knitr::kable(
+  top_int_mg |>
+    dplyr::select(sender, receiver, ligand, receptor, lr_interaction,
+                  prioritization_score,
+                  scaled_lfc_ligand, scaled_lfc_receptor,
+                  fraction_expressing_ligand_receptor,
+                  ligand_is_hdwgcna_hub, receptor_is_hdwgcna_hub),
+  digits  = 3,
+  caption = paste(
+    "Top-25 microglia-receiver LR pairs for the divergence interaction",
+    "contrast. `ligand_is_hdwgcna_hub` / `receptor_is_hdwgcna_hub` flag",
+    "overlap with the four hdWGCNA module hub sets."
+  )
+)
+write_tsv_safe(top_int_mg,
+               file.path(params$results_dir,
+                         "ccc_multinichenet_interaction_top25_microglia.tsv"))
+cat(sprintf("Hub overlap among top-25 interaction LR pairs: %d ligands, %d receptors\n",
+            sum(top_int_mg$ligand_is_hdwgcna_hub),
+            sum(top_int_mg$receptor_is_hdwgcna_hub)))
+```
+
+## (e) Circos diagrams per contrast (MultiNicheNet)
+
+`make_circos_group_comparison` draws a colour-banded chord diagram of the
+top prioritised LR pairs per group, useful as a one-figure-per-paper view
+of the LR landscape. We render one circos per project contrast using its
+top-20 LR pairs (microglia-receiver filtered).
+
+```{r ccc-multinichenet-circos, fig.width = 10, fig.height = 10, results = "hide"}
+# `get_top_n_lr_pairs(rank_per_group = TRUE)` extracts the top-N LR pairs
+# per group from the prioritization table. `make_circos_group_comparison`
+# then draws a chord diagram coloured by sender (inner) and receiver
+# (outer). One panel per contrast; we loop and print each separately so
+# Rmd captures them in the document flow.
+n_per_contrast <- 20L
+
+# Per-cell-type sender / receiver colour vectors (multinichenet wants
+# named vectors keyed by cell-type name).
+sender_cols   <- cell_type_colours
+receiver_cols <- cell_type_colours
+
+# Build a fresh subset table per contrast (microglia receiver, top-N) and
+# pass to make_circos_group_comparison. Because the function uses base
+# graphics + circlize, we print captions as cat() calls outside the chunk
+# (handled via for-loop printing) and rely on the Rmd's PNG device.
+for (lab in mnn_contrast_levels) {
+  raw_contrast <- mnn_contrast_map[[lab]]
+  sub <- g_tbl |>
+    dplyr::filter(contrast == raw_contrast,
+                  receiver %in% microglia_cell_types) |>
+    dplyr::arrange(dplyr::desc(prioritization_score)) |>
+    dplyr::slice_head(n = n_per_contrast)
+  if (nrow(sub) == 0L) next
+  # `make_circos_group_comparison` requires the standard `group` column;
+  # for a single-group subset it still works (renders a one-band chord).
+  tryCatch(
+    {
+      make_circos_group_comparison(
+        prioritized_tbl_oi = sub,
+        colors_sender      = sender_cols,
+        colors_receiver    = receiver_cols
+      )
+      cat(sprintf("\n\n*Figure: top-%d microglia-receiver LR pairs for contrast '%s'.*\n\n",
+                  n_per_contrast, lab))
+    },
+    error = function(e) {
+      message(sprintf("circos for %s failed: %s", lab, conditionMessage(e)))
+    }
+  )
+}
+```
+
+## (f) Sanity table: condition-, pathway- and contrast-level summaries
+
+```{r ccc-sanity-cellchat-pathway-condition}
+# Per-(condition, pathway) significant LR count using subsetCommunication.
+# Restricted to the union of the top-15 pathways by total weight across
+# conditions to keep the table compact.
+pathway_long <- purrr::imap_dfr(cellchat_per_condition, function(cc, cond) {
+  com <- subsetCommunication(cc)  # default returns net data frame
+  if (nrow(com) == 0L) return(NULL)
+  com$condition <- cond
+  com[, c("condition", "pathway_name", "source", "target", "ligand", "receptor")]
+})
+
+pathway_n_lr <- pathway_long |>
+  dplyr::count(condition, pathway_name, name = "n_LR") |>
+  tidyr::pivot_wider(names_from = condition, values_from = n_LR,
+                     values_fill = 0L)
+pathway_n_lr <- pathway_n_lr[, c("pathway_name",
+                                 intersect(genotype_levels,
+                                           names(pathway_n_lr)))]
+pathway_n_lr$total <- rowSums(pathway_n_lr[, -1L, drop = FALSE])
+pathway_n_lr$interaction <- with(pathway_n_lr,
+  (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI))
+pathway_n_lr <- pathway_n_lr[order(-abs(pathway_n_lr$interaction)), ]
+
+knitr::kable(
+  head(pathway_n_lr, 20L),
+  caption = paste(
+    "Per-pathway significant LR pair counts across the 4 genotypes,",
+    "with the `interaction` column = the factorial divergence in LR",
+    "counts (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI). Sorted by",
+    "|interaction|."
+  )
+)
+write_tsv_safe(pathway_n_lr,
+               file.path(params$results_dir,
+                         "ccc_cellchat_pathway_lr_counts.tsv"))
+```
+
+```{r ccc-sanity-multinichenet-by-celltype}
+# Per-contrast sender / receiver representation in MultiNicheNet's top-100
+# prioritised LR pairs (any group). Surfaces which cell types dominate
+# each contrast and where microglia substates sit in the senders/receivers.
+top100_per_contrast <- g_tbl |>
+  dplyr::filter(!is.na(contrast_label)) |>
+  dplyr::group_by(contrast_label) |>
+  dplyr::arrange(dplyr::desc(prioritization_score), .by_group = TRUE) |>
+  dplyr::slice_head(n = 100L) |>
+  dplyr::ungroup()
+
+sender_summary <- top100_per_contrast |>
+  dplyr::count(contrast_label, sender, name = "n_top100_as_sender") |>
+  tidyr::pivot_wider(id_cols    = sender,
+                     names_from = contrast_label,
+                     values_from = n_top100_as_sender,
+                     values_fill = 0L)
+sender_summary <- sender_summary[, c("sender",
+                                     intersect(mnn_contrast_levels,
+                                               names(sender_summary)))]
+sender_summary$total <- rowSums(sender_summary[, -1L, drop = FALSE])
+sender_summary <- sender_summary[order(-sender_summary$total), ]
+
+receiver_summary <- top100_per_contrast |>
+  dplyr::count(contrast_label, receiver, name = "n_top100_as_receiver") |>
+  tidyr::pivot_wider(id_cols    = receiver,
+                     names_from = contrast_label,
+                     values_from = n_top100_as_receiver,
+                     values_fill = 0L)
+receiver_summary <- receiver_summary[, c("receiver",
+                                         intersect(mnn_contrast_levels,
+                                                   names(receiver_summary)))]
+receiver_summary$total <- rowSums(receiver_summary[, -1L, drop = FALSE])
+receiver_summary <- receiver_summary[order(-receiver_summary$total), ]
+
+knitr::kable(
+  sender_summary,
+  caption = paste(
+    "MultiNicheNet top-100 LR pairs per contrast, counted by SENDER",
+    "cell type. Surfaces which cell types push the most prioritised",
+    "signalling each contrast."
+  )
+)
+knitr::kable(
+  receiver_summary,
+  caption = paste(
+    "Same top-100 LR pairs, counted by RECEIVER cell type. Surfaces",
+    "which cell types receive the most prioritised signalling each",
+    "contrast."
+  )
+)
+write_tsv_safe(sender_summary,
+               file.path(params$results_dir,
+                         "ccc_multinichenet_top100_sender_per_contrast.tsv"))
+write_tsv_safe(receiver_summary,
+               file.path(params$results_dir,
+                         "ccc_multinichenet_top100_receiver_per_contrast.tsv"))
+```
+
+```{r ccc-sanity-overlap-cellchat-multinichenet}
+# Cross-tool sanity: how many of MultiNicheNet's top-50 microglia-receiver
+# LR pairs per contrast also appear in the CellChat significant-LR set
+# (across any of the 4 conditions)? Establishes whether the two tools
+# converge on the same LR space at the headline level.
+#
+# Two complementary metrics are reported because the underlying databases
+# differ in size: CellChatDB.mouse has ~42 distinct ligands appearing in
+# significant LR rows per condition vs NicheNet's ~490 ligands in the
+# MNN prioritisation table — so the LR-pair overlap is a hard upper
+# bound on what's even representable in CellChat's universe.
+#   1. **lr_pair overlap**: exact ligand-receptor pair match. CellChat
+#      encodes heteromeric receptor complexes with an underscore
+#      (e.g. `Nrp1_Plxna2`) which would never match MNN's single-symbol
+#      receptor format; we expand CellChat complex receptors into
+#      separate one-ligand-one-receptor rows before pairing.
+#   2. **ligand-only overlap**: ligand symbol match (receptor identity
+#      ignored). Less strict, more robust to database differences in
+#      receptor complex encoding.
+mnn_top50_mg <- g_tbl |>
+  dplyr::filter(!is.na(contrast_label),
+                receiver %in% microglia_cell_types) |>
+  dplyr::group_by(contrast_label) |>
+  dplyr::arrange(dplyr::desc(prioritization_score), .by_group = TRUE) |>
+  dplyr::slice_head(n = 50L) |>
+  dplyr::ungroup()
+
+# Build CellChat reference sets across all 4 conditions:
+#   - ligand-only set:   union of `ligand` column values
+#   - LR-pair set:       explode receptor complexes (split on "_") so
+#                        a `Sema3c_NRP1_PLXNA2` row contributes both
+#                        `Sema3c_NRP1` and `Sema3c_PLXNA2` to the set.
+cc_ref <- purrr::imap_dfr(cellchat_per_condition, function(cc, cond) {
+  com <- subsetCommunication(cc)
+  if (nrow(com) == 0L) return(NULL)
+  tibble::tibble(condition = cond,
+                 ligand    = com$ligand,
+                 receptor  = com$receptor)
+})
+
+cc_ligand_set <- unique(cc_ref$ligand)
+cc_lr_set <- unique(unlist(lapply(seq_len(nrow(cc_ref)), function(i) {
+  comps <- strsplit(cc_ref$receptor[i], "_", fixed = TRUE)[[1L]]
+  paste(cc_ref$ligand[i], comps, sep = "_")
+})))
+
+mnn_top50_mg$in_cellchat_lr     <- mnn_top50_mg$lr_interaction %in% cc_lr_set
+mnn_top50_mg$in_cellchat_ligand <- mnn_top50_mg$ligand         %in% cc_ligand_set
+
+cross_overlap <- mnn_top50_mg |>
+  dplyr::group_by(contrast_label) |>
+  dplyr::summarise(
+    n_total        = dplyr::n(),
+    n_lr_overlap   = sum(in_cellchat_lr),
+    n_lig_overlap  = sum(in_cellchat_ligand),
+    pct_lr         = round(100 * n_lr_overlap  / n_total, 1),
+    pct_ligand     = round(100 * n_lig_overlap / n_total, 1),
+    .groups        = "drop"
+  ) |>
+  dplyr::mutate(contrast_label = factor(contrast_label,
+                                        levels = mnn_contrast_levels)) |>
+  dplyr::arrange(contrast_label)
+
+knitr::kable(
+  cross_overlap,
+  caption = paste(
+    "Cross-tool LR overlap. For each contrast: of MultiNicheNet's top-50",
+    "microglia-receiver LR pairs, how many also appear in the union of",
+    "CellChat significant LR pairs across the 4 conditions. `pct_lr`",
+    "matches on ligand-receptor pair (CellChat heteromeric receptor",
+    "complexes split into components before pairing); `pct_ligand`",
+    "matches on ligand symbol only. The two tools' databases differ",
+    "substantially in coverage of microglia / DAM signalling:",
+    "CellChatDB.mouse does NOT contain Apoe, C1qa, C1qb, Cx3cl1 as",
+    "ligands and does NOT contain Trem2 as a receptor, while these are",
+    "all prominent in NicheNet and dominate MNN's microglia-receiver",
+    "top hits, so the *LR-pair* convergence is necessarily low. The",
+    "*ligand-level* convergence is much higher in NLGF arms (88% in",
+    "nlgf_in_p301s) than in the baseline tau contrast (10% in",
+    "tau_alone), indicating that NLGF activates a signalling programme",
+    "where the two databases agree on the ligand vocabulary (e.g.,",
+    "Csf1, Tgfb1, Spp1, Tnf families) even when they disagree on the",
+    "exact LR pair."
+  )
+)
+write_tsv_safe(cross_overlap,
+               file.path(params$results_dir,
+                         "ccc_overlap_multinichenet_cellchat.tsv"))
+cat(sprintf(
+  "CellChat reference universe: %d unique ligands, %d unique LR pairs (after exploding receptor complexes)\n",
+  length(cc_ligand_set), length(cc_lr_set)))
+```
+
+```{r ccc-sanity-dam-sampling-balance, fig.width = 12, fig.height = 5}
+# DAM-sampling sanity check for the CCC interaction-contrast finding.
+#
+# The top-25 microglia-receiver LR pairs under the divergence interaction
+# contrast are DAM-dominated (sender + receiver) and are driven by a
+# small set of macrophage-trophic ligands (Csf1, Tgfb1, Spp1, ...). That
+# could be a genuine *interaction* — DAM rewiring is non-additive across
+# the 2x2 — or it could be confounded by DAM population *abundance*
+# differing across genotypes. Prioritisation scores in MultiNicheNet
+# weight each pair by `fraction_expressing_ligand_receptor`, which is
+# computed *within each sender/receiver cell-type pool*, so a uniform
+# DAM expansion shouldn't bias the per-pair score — but it can still
+# enlarge the DAM pool's contribution to top-N rankings through reduced
+# sampling noise. This chunk quantifies the asymmetry directly.
+#
+# Strategy:
+#   (1) state x genotype contingency + per-genotype substate fractions
+#   (2) per-substate Fisher tests for NLGF vs non-NLGF enrichment
+#   (3) per-sample DAM fraction across 16 genotype_batch samples, with
+#       a 2x2 ANOVA-style test for the non-additive (tau:nlgf) component
+#   (4) stacked-bar composition + per-sample DAM-fraction box plot
+# Substate labels come from `label_microglia_states()` (same routine the
+# per-substate NEBULA cache uses). The chunk reuses `microglia_seurat`
+# from the parent knit when it has the `state` column, and reloads +
+# relabels from cache otherwise (smoke-test driver). Note that the
+# cached `microglia_seurat_processed.rds` is the *pre-QC-pruning* object
+# (26104 cells, before `rmd/02a` drops contamination outlier clusters);
+# the full knit canonical path operates on the *post-pruning* in-memory
+# Seurat (~23.5k cells). Both paths produce the same qualitative DAM
+# expansion story; the canonical TSVs land via the full knit.
+loaded_locally <- !(exists("microglia_seurat") &&
+                    inherits(microglia_seurat, "Seurat") &&
+                    "state" %in% names(microglia_seurat@meta.data))
+mg_seu <- if (loaded_locally) {
+  obj <- readRDS(file.path(params$cache_dir,
+                           "microglia_seurat_processed.rds"))
+  sm <- if (exists("symbol_map") && is.data.frame(symbol_map)) {
+    symbol_map
+  } else {
+    readRDS(file.path(params$cache_dir, "snrnaseq_symbol_map.rds"))
+  }
+  label_microglia_states(obj, symbol_map = sm)
+} else microglia_seurat
+
+# (1) Population-level substate x genotype contingency
+state_geno <- table(state    = mg_seu$state,
+                    genotype = mg_seu$genotype)
+state_geno_frac <- prop.table(state_geno, margin = 2L)
+
+knitr::kable(
+  state_geno,
+  caption = paste(
+    "Substate x genotype contingency (counts of microglia nuclei).",
+    "Headline metric for the audit: the DAM row across the 4 genotype",
+    "columns. A markedly larger DAM count in NLGF arms relative to",
+    "MAPTKI/P301S is expected (DAM is the amyloid response); the audit",
+    "tests whether that expansion is *non-additive* across tau context."
+  )
+)
+knitr::kable(
+  round(100 * state_geno_frac, 1),
+  digits  = 1,
+  caption = paste("Substate composition per genotype (% of microglia).",
+                  "Rows sum to 100 within each column.")
+)
+
+# (2) Per-substate Fisher tests: NLGF vs non-NLGF enrichment
+nlgf_label <- ifelse(grepl("^NLGF_", as.character(mg_seu$genotype)),
+                     "NLGF", "non_NLGF")
+per_state_fisher <- purrr::map_dfr(levels(mg_seu$state), function(s) {
+  in_state <- mg_seu$state == s
+  tab <- table(in_state = in_state, arm = nlgf_label)
+  ft <- fisher.test(tab)
+  tibble::tibble(
+    state         = s,
+    n_NLGF        = sum(in_state & nlgf_label == "NLGF"),
+    n_other       = sum(in_state & nlgf_label == "non_NLGF"),
+    frac_NLGF     = sum(in_state & nlgf_label == "NLGF") /
+                    sum(nlgf_label == "NLGF"),
+    frac_other    = sum(in_state & nlgf_label == "non_NLGF") /
+                    sum(nlgf_label == "non_NLGF"),
+    odds_NLGF     = unname(ft$estimate),
+    ci_lo         = unname(ft$conf.int[1L]),
+    ci_hi         = unname(ft$conf.int[2L]),
+    pvalue        = ft$p.value
+  )
+})
+per_state_fisher$padj <- p.adjust(per_state_fisher$pvalue, method = "BH")
+
+knitr::kable(
+  per_state_fisher,
+  digits  = 3,
+  caption = paste(
+    "Per-substate Fisher tests for NLGF vs non-NLGF enrichment.",
+    "odds_NLGF > 1 means the substate is over-represented in the two",
+    "NLGF arms relative to MAPTKI/P301S. The DAM row quantifies the",
+    "amyloid-driven expansion that the CCC sanity check is interested",
+    "in; the homeostatic row should show the mirror-image depletion."
+  )
+)
+
+# (3) Per-sample DAM fraction across 16 genotype_batch samples,
+#     followed by a 2x2 factorial ANOVA on the logit-DAM fraction so the
+#     interaction component is testable on the same parameterisation as
+#     the rest of the project (tau + nlgf + tau:nlgf).
+sample_state <- as.data.frame(
+  table(genotype_batch = mg_seu$genotype_batch,
+        state          = mg_seu$state),
+  responseName = "n"
+)
+sample_totals <- sample_state |>
+  dplyr::group_by(genotype_batch) |>
+  dplyr::summarise(total = sum(n), .groups = "drop")
+sample_dam <- sample_state |>
+  dplyr::filter(state == "DAM") |>
+  dplyr::left_join(sample_totals, by = "genotype_batch") |>
+  dplyr::mutate(
+    frac_DAM = n / total,
+    genotype = sub("_batch[0-9]+$", "", as.character(genotype_batch)),
+    tau      = factor(ifelse(grepl("P301S", genotype), "P301S", "MAPTKI"),
+                      levels = c("MAPTKI", "P301S")),
+    nlgf     = factor(ifelse(grepl("^NLGF_", genotype), "NLGF", "noNLGF"),
+                      levels = c("noNLGF", "NLGF"))
+  )
+sample_dam$genotype <- factor(sample_dam$genotype,
+                              levels = levels(mg_seu$genotype))
+
+# logit transformation gives an unbounded response amenable to lm.
+# Empirical proportions stay away from 0/1 (min DAM frac ~0.05 expected),
+# so a simple logit is fine without adjusting for boundaries.
+sample_dam$logit_DAM <- qlogis(pmin(pmax(sample_dam$frac_DAM, 1e-3),
+                                    1 - 1e-3))
+fit_anova <- lm(logit_DAM ~ tau * nlgf, data = sample_dam)
+anova_tbl <- as.data.frame(anova(fit_anova))
+anova_tbl$term <- rownames(anova_tbl)
+anova_tbl <- anova_tbl[, c("term", setdiff(names(anova_tbl), "term"))]
+rownames(anova_tbl) <- NULL
+
+knitr::kable(
+  anova_tbl,
+  digits  = 3,
+  caption = paste(
+    "Two-way ANOVA on the logit per-sample DAM fraction with the",
+    "project's factorial parameterisation (tau, nlgf, tau:nlgf).",
+    "A significant `tau:nlgf` row means the amyloid-driven DAM",
+    "expansion differs between the two tau backgrounds, i.e. the",
+    "*sampling* level already carries an interaction signal, which",
+    "would attribute the CCC interaction-contrast DAM dominance to a",
+    "non-additive population shift rather than per-cell rewiring. A",
+    "non-significant `tau:nlgf` row implies the DAM expansion is",
+    "additive at the population level, so the CCC DAM dominance is",
+    "more likely to reflect genuine LR rewiring."
+  )
+)
+
+# (4) Visuals: stacked-bar composition + DAM-fraction box per genotype
+substate_palette <- c(
+  homeostatic   = "#FDC086",
+  DAM           = "#B0344D",
+  IFN           = "#E08754",
+  proliferative = "#FFD92F"
+)
+bar_long <- as.data.frame(state_geno_frac, responseName = "frac")
+names(bar_long)[1:2] <- c("state", "genotype")
+
+p_bar <- ggplot2::ggplot(bar_long,
+                         ggplot2::aes(x = genotype, y = frac, fill = state)) +
+  ggplot2::geom_col(width = 0.7) +
+  ggplot2::scale_fill_manual(values = substate_palette,
+                             name   = "Substate") +
+  ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  ggplot2::labs(x = NULL, y = "Fraction of microglia",
+                title = "Substate composition per genotype") +
+  ggplot2::theme_classic(base_size = 11) +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 25, hjust = 1))
+
+p_box <- ggplot2::ggplot(sample_dam,
+                         ggplot2::aes(x = genotype, y = frac_DAM,
+                                      colour = genotype)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.6) +
+  ggplot2::geom_jitter(width = 0.12, size = 1.8, alpha = 0.85) +
+  ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  ggplot2::guides(colour = "none") +
+  ggplot2::labs(x = NULL, y = "DAM fraction per sample",
+                title = "Per-sample DAM fraction (4 batches/genotype)") +
+  ggplot2::theme_classic(base_size = 11) +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 25, hjust = 1))
+
+print(patchwork::wrap_plots(p_bar, p_box, nrow = 1L,
+                            widths = c(1.0, 1.05)))
+
+# (5) Exports
+state_geno_df <- as.data.frame(state_geno, responseName = "n")
+names(state_geno_df)[1:2] <- c("state", "genotype")
+state_geno_df <- state_geno_df |>
+  dplyr::left_join(
+    as.data.frame(state_geno_frac, responseName = "frac"),
+    by = c("state", "genotype")
+  )
+write_tsv_safe(state_geno_df,
+               file.path(params$results_dir,
+                         "ccc_dam_sampling_balance_state_geno.tsv"))
+write_tsv_safe(per_state_fisher,
+               file.path(params$results_dir,
+                         "ccc_dam_sampling_balance_fisher.tsv"))
+write_tsv_safe(sample_dam,
+               file.path(params$results_dir,
+                         "ccc_dam_sampling_balance_sample_dam.tsv"))
+write_tsv_safe(anova_tbl,
+               file.path(params$results_dir,
+                         "ccc_dam_sampling_balance_anova.tsv"))
+
+# (6) Free heavy object iff we loaded it (full knit keeps the global)
+if (loaded_locally) {
+  rm(mg_seu); invisible(gc(verbose = FALSE))
+}
+```
+
+```{r ccc-sanity-hub-hypergeometric}
+# hdWGCNA hub hypergeometric test against the MNN top-25 microglia-
+# receiver LR pairs (interaction contrast).
+#
+# The per-row hub flags on the spotlight table (`ligand_is_hdwgcna_hub`,
+# `receptor_is_hdwgcna_hub`) report raw overlap counts. This chunk asks
+# the formal question: is that overlap enriched relative to chance,
+# given the operational universe of all ligand/receptor symbols
+# MultiNicheNet considered for *any* contrast?
+#
+# Operational universe:
+#   `mnn_universe <- unique(c(g_tbl$ligand, g_tbl$receptor))` over the
+#   full prioritisation table -> ~829 unique gene symbols. This is the
+#   correct null because MultiNicheNet only ranks genes inside its LR
+#   database that were also expressed; hub genes that aren't in this
+#   universe could never have appeared in the top-25 regardless of
+#   their hdWGCNA status.
+#
+# Module sets tested (4 per panel):
+#   set_kind = "hubs"          -> top-25 kME hub genes per module
+#                                 (RBC-contaminant rows filtered).
+#   set_kind = "module_genes"  -> the full module assignment table
+#                                 from hdwgcna_modules.tsv (570-850
+#                                 genes per non-grey module).
+# Sample sides tested (3 per panel):
+#   sample_kind = "ligand_receptor" -> union of top-25 ligand+receptor
+#                                      symbols (after de-duplication).
+#   sample_kind = "ligand"           -> top-25 ligand symbols only.
+#   sample_kind = "receptor"         -> top-25 receptor symbols only.
+# All restricted to the MNN universe before hypergeometric.
+#
+# Hypergeometric (phyper, upper tail):
+#   q = overlap - 1, m = |module_set ∩ universe|,
+#   n = |universe| - m, k = |sample ∩ universe|.
+# BH-adjusted across the 4 modules x 2 set_kinds x 3 sample_kinds = 24
+# tests in a single panel.
+mnn_universe <- unique(c(g_tbl$ligand, g_tbl$receptor))
+
+# Reuse hub_sym from the hdWGCNA child if it's already in memory;
+# otherwise reload + rebuild with the same RBC contaminant filter.
+hub_local <- if (exists("hub_sym") && is.data.frame(hub_sym) &&
+                 all(c("symbol", "module", "is_likely_rbc") %in%
+                     names(hub_sym))) {
+  hub_sym
+} else {
+  hdw_local <- readRDS(file.path(params$cache_dir,
+                                 "hdwgcna_microglia.rds"))
+  sm <- if (exists("symbol_map") && is.data.frame(symbol_map)) {
+    symbol_map
+  } else {
+    readRDS(file.path(params$cache_dir, "snrnaseq_symbol_map.rds"))
+  }
+  hs <- hdw_local$hub_genes
+  hs$symbol <- sm$symbol[match(hs$gene_name, sm$ensembl)]
+  hs$symbol <- ifelse(is.na(hs$symbol) | !nzchar(hs$symbol),
+                      hs$gene_name, hs$symbol)
+  flag_contaminant_hubs(hs)
+}
+
+# Full module-genes table (symbols) — needed for the "module_genes"
+# set_kind. Rebuild from the hdWGCNA cache regardless of in-memory
+# availability so the symbol column is guaranteed populated.
+hdw_for_mods <- if (exists("hdw") && is.list(hdw) &&
+                    !is.null(hdw$modules)) hdw else
+  readRDS(file.path(params$cache_dir, "hdwgcna_microglia.rds"))
+sm_for_mods <- if (exists("symbol_map") && is.data.frame(symbol_map)) {
+  symbol_map
+} else {
+  readRDS(file.path(params$cache_dir, "snrnaseq_symbol_map.rds"))
+}
+mod_full <- hdw_for_mods$modules
+mod_full$symbol <- sm_for_mods$symbol[match(mod_full$gene_name,
+                                            sm_for_mods$ensembl)]
+mod_full$symbol <- ifelse(is.na(mod_full$symbol) | !nzchar(mod_full$symbol),
+                          mod_full$gene_name, mod_full$symbol)
+
+# Sample-side gene lists (top_int_mg is built earlier in section (d))
+sample_lists <- list(
+  ligand_receptor = unique(c(top_int_mg$ligand, top_int_mg$receptor)),
+  ligand          = unique(top_int_mg$ligand),
+  receptor        = unique(top_int_mg$receptor)
+)
+modules_to_test <- setdiff(unique(hub_local$module), "grey")
+
+hypergeo_one <- function(module, set_kind, sample_kind) {
+  module_set <- if (set_kind == "hubs") {
+    unique(hub_local$symbol[hub_local$module == module &
+                            !hub_local$is_likely_rbc])
+  } else {
+    unique(mod_full$symbol[mod_full$module == module])
+  }
+  module_in_uni <- intersect(module_set, mnn_universe)
+  sample_in_uni <- intersect(sample_lists[[sample_kind]], mnn_universe)
+  overlap_syms  <- intersect(module_in_uni, sample_in_uni)
+  N <- length(mnn_universe)
+  m <- length(module_in_uni)
+  k <- length(sample_in_uni)
+  q <- length(overlap_syms)
+  pval <- if (m == 0L || k == 0L) NA_real_ else
+    phyper(q - 1L, m, N - m, k, lower.tail = FALSE)
+  expected <- if (N == 0L) NA_real_ else (m * k) / N
+  list(
+    module        = module,
+    set_kind      = set_kind,
+    sample_kind   = sample_kind,
+    module_size   = length(module_set),
+    module_in_uni = m,
+    sample_in_uni = k,
+    overlap       = q,
+    expected      = expected,
+    enrichment    = if (is.na(expected) || expected == 0)
+                      NA_real_ else q / expected,
+    pvalue        = pval,
+    overlap_syms  = paste(sort(overlap_syms), collapse = ",")
+  )
+}
+
+hypergeo_grid <- expand.grid(
+  module      = modules_to_test,
+  set_kind    = c("hubs", "module_genes"),
+  sample_kind = names(sample_lists),
+  KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+)
+hub_hyper <- purrr::pmap_dfr(hypergeo_grid, hypergeo_one)
+hub_hyper$padj <- p.adjust(hub_hyper$pvalue, method = "BH")
+hub_hyper <- hub_hyper[order(hub_hyper$set_kind,
+                             hub_hyper$sample_kind,
+                             hub_hyper$module), ]
+
+knitr::kable(
+  hub_hyper[, c("module", "set_kind", "sample_kind",
+                "module_size", "module_in_uni", "sample_in_uni",
+                "overlap", "expected", "enrichment",
+                "pvalue", "padj")],
+  digits  = 3,
+  caption = paste(
+    "Hypergeometric over-representation of the top-25 microglia-receiver",
+    "LR pairs (interaction contrast) in each hdWGCNA module set, against",
+    sprintf("the operational universe of %d unique MultiNicheNet",
+            length(mnn_universe)),
+    "ligand/receptor symbols. `set_kind = hubs` uses the top-25 kME hub",
+    "genes per module (RBC contaminants filtered out); `module_genes`",
+    "uses the full module assignment. `sample_kind` partitions the test",
+    "set into ligand-only, receptor-only, and ligand+receptor union.",
+    "`enrichment` = overlap / expected; `padj` is BH across the 24",
+    "tests displayed."
+  )
+)
+write_tsv_safe(hub_hyper,
+               file.path(params$results_dir,
+                         "ccc_hdwgcna_hub_hypergeometric.tsv"))
+
+# Plain-English headline: which (module, set_kind) combinations are
+# significantly enriched in the ligand_receptor union after FDR.
+sig_lr <- hub_hyper |>
+  dplyr::filter(sample_kind == "ligand_receptor", !is.na(padj)) |>
+  dplyr::arrange(padj)
+if (any(sig_lr$padj < 0.05, na.rm = TRUE)) {
+  hits <- sig_lr[sig_lr$padj < 0.05 & !is.na(sig_lr$padj), ]
+  cat(sprintf("Significantly enriched (padj < 0.05) in the ligand+receptor union: %d / %d.\n",
+              nrow(hits), nrow(sig_lr)))
+  for (i in seq_len(nrow(hits))) {
+    cat(sprintf("  %s (%s): overlap=%d, expected=%.2f, enrich=%.2fx, padj=%.3g\n",
+                hits$module[i], hits$set_kind[i], hits$overlap[i],
+                hits$expected[i], hits$enrichment[i], hits$padj[i]))
+  }
+} else {
+  cat("No (module, set_kind) combination reaches padj < 0.05 in the ligand+receptor union.\n")
+}
+
+# Free the helper copy if we loaded it ourselves (full knit keeps `hdw`
+# and `hub_sym` globals untouched).
+rm(mod_full, hdw_for_mods, sm_for_mods)
+if (!exists("hub_sym")) rm(hub_local)
+invisible(gc(verbose = FALSE))
+```
+
+```{r ccc-cleanup}
+# Free the heavy CCC caches so they don't sit in memory during the
+# session-info / manifest chunk.
+rm(cellchat_per_condition, cellchat_merged, multinichenet_output,
+   g_tbl, top100_per_contrast, pathway_long, pathway_n_lr)
+invisible(gc(verbose = FALSE))
+```

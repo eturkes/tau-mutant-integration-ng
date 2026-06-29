@@ -1,0 +1,162 @@
+# snRNAseq: microglia reprocessing and QC
+
+We re-run SCTransform on the microglia subset using the `glmGamPoi` backend,
+followed by Harmony integration across batches, UMAP and Leiden-style
+clustering. Outlier clusters with non-microglia transcriptional signatures
+or anomalous QC are subsequently dropped.
+
+```{r snrnaseq-recluster, fig.width = 10, fig.height = 4}
+processed_path <- file.path(params$cache_dir, "microglia_seurat_processed.rds")
+
+microglia_seurat <- cache_or_run(processed_path, overwrite = params$recompute_snrnaseq, {
+  obj <- microglia_seurat
+  obj <- Seurat::SCTransform(
+    obj, assay = "RNA",
+    vst.flavor = "v2", method = "glmGamPoi",
+    vars.to.regress = c("percent_mt", "percent_contam"),
+    verbose = FALSE
+  )
+  obj <- Seurat::RunPCA(obj, assay = "SCT", npcs = 30, verbose = FALSE)
+  obj <- harmony::RunHarmony(
+    obj, group.by.vars = c("batch", "sex"),
+    assay.use = "SCT", reduction.use = "pca",
+    reduction.save = "harmony", verbose = FALSE
+  )
+  obj <- Seurat::RunUMAP(obj, reduction = "harmony", dims = 1:20, verbose = FALSE)
+  obj <- Seurat::FindNeighbors(obj, reduction = "harmony", dims = 1:20, verbose = FALSE)
+  for (res in c(0.2, 0.4, 0.6)) {
+    obj <- Seurat::FindClusters(obj, resolution = res, verbose = FALSE)
+  }
+  obj
+})
+
+Seurat::Idents(microglia_seurat) <- "SCT_snn_res.0.4"
+p_umap <- Seurat::DimPlot(microglia_seurat, group.by = "SCT_snn_res.0.4",
+                          label = TRUE, repel = TRUE) +
+  ggtitle("Microglia clusters (Harmony + SCT v2, res 0.4)")
+p_gt <- Seurat::DimPlot(microglia_seurat, group.by = "genotype",
+                        cols = genotype_colours) +
+  ggtitle("Microglia by genotype")
+p_umap | p_gt
+```
+
+## Marker-based QC and cluster pruning
+
+```{r snrnaseq-markers, fig.width = 9, fig.height = 6}
+canonical <- list(
+  Microglia    = c("Cx3cr1", "P2ry12", "Tmem119", "Trem2", "Csf1r", "Hexb"),
+  DAM          = c("Cst7", "Apoe", "Lpl", "Itgax", "Spp1", "Tyrobp"),
+  IFN          = c("Ifit3", "Isg15", "Stat1", "Oasl2"),
+  Proliferative= c("Mki67", "Top2a", "Cenpf"),
+  Oligo_contam = c("Mbp", "Plp1", "Mog"),
+  Neuron_contam= c("Snap25", "Stmn2", "Rbfox3"),
+  Astro_contam = c("Aqp4", "Gfap", "Slc1a2")
+)
+# Map symbols to row IDs (ENSEMBL).
+symbol_to_id <- function(syms) {
+  hit <- symbol_map$ensembl[match(syms, symbol_map$symbol)]
+  setNames(hit[!is.na(hit)], syms[!is.na(hit)])
+}
+canonical_ids <- lapply(canonical, symbol_to_id)
+canonical_ids <- canonical_ids[lengths(canonical_ids) > 0]
+
+# Use SCT data slot for visual inspection.
+DefaultAssay(microglia_seurat) <- "SCT"
+present <- unique(unlist(canonical_ids))
+present <- present[present %in% rownames(microglia_seurat)]
+
+dot_data <- Seurat::DotPlot(microglia_seurat, features = present,
+                            group.by = "SCT_snn_res.0.4")$data
+dot_data$symbol <- symbol_map$symbol[match(as.character(dot_data$features.plot),
+                                           symbol_map$ensembl)]
+dot_data$module <- NA_character_
+for (m in names(canonical_ids)) {
+  dot_data$module[dot_data$features.plot %in% canonical_ids[[m]]] <- m
+}
+ggplot(dot_data,
+       aes(x = symbol, y = id, size = pct.exp, colour = avg.exp.scaled)) +
+  geom_point() +
+  scale_colour_gradient2(low = "#3a4cc0", mid = "white", high = "#b40426") +
+  facet_grid(. ~ module, scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  labs(x = NULL, y = "cluster (res 0.4)", title = "Canonical markers by cluster")
+```
+
+```{r snrnaseq-prune}
+# Score each cluster on contamination markers vs microglia markers.
+score_module <- function(obj, ids, name) {
+  ids <- ids[ids %in% rownames(obj)]
+  if (length(ids) == 0) return(rep(NA_real_, ncol(obj)))
+  Matrix::colMeans(GetAssayData(obj, assay = "SCT", layer = "data")[ids, , drop = FALSE])
+}
+micro_score    <- score_module(microglia_seurat, canonical_ids$Microglia)
+oligo_score    <- score_module(microglia_seurat, canonical_ids$Oligo_contam)
+neuron_score   <- score_module(microglia_seurat, canonical_ids$Neuron_contam)
+astro_score    <- score_module(microglia_seurat, canonical_ids$Astro_contam)
+
+cluster_scores <- microglia_seurat@meta.data |>
+  tibble::as_tibble(rownames = "cell") |>
+  dplyr::mutate(
+    micro = micro_score, oligo = oligo_score,
+    neuron = neuron_score, astro = astro_score
+  ) |>
+  dplyr::group_by(SCT_snn_res.0.4) |>
+  dplyr::summarise(
+    n = dplyr::n(),
+    micro_mean    = mean(micro,    na.rm = TRUE),
+    oligo_mean    = mean(oligo,    na.rm = TRUE),
+    neuron_mean   = mean(neuron,   na.rm = TRUE),
+    astro_mean    = mean(astro,    na.rm = TRUE),
+    pct_mt        = mean(percent_mt,     na.rm = TRUE),
+    pct_contam    = mean(percent_contam, na.rm = TRUE),
+    nFeature_mean = mean(nFeature_RNA,   na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(dplyr::desc(n))
+cluster_scores
+
+# Define outlier rule: clusters with contamination signal > microglia, or with
+# extreme pct_contam / pct_mt, or fewer than 50 nuclei.
+outlier_clusters <- cluster_scores |>
+  dplyr::filter(
+    n < 50 |
+    pct_contam > quantile(cluster_scores$pct_contam, 0.95) + 5 |
+    (oligo_mean  > micro_mean) |
+    (neuron_mean > micro_mean) |
+    (astro_mean  > micro_mean)
+  ) |>
+  dplyr::pull(SCT_snn_res.0.4) |>
+  as.character()
+cat("Outlier clusters dropped:\n"); print(outlier_clusters)
+
+keep <- !(as.character(microglia_seurat$SCT_snn_res.0.4) %in% outlier_clusters)
+microglia_seurat <- microglia_seurat[, keep]
+cat(sprintf("After pruning: %d nuclei across %d clusters.\n",
+            ncol(microglia_seurat),
+            length(unique(microglia_seurat$SCT_snn_res.0.4))))
+```
+
+## Microglia substate annotation
+
+```{r snrnaseq-substate, fig.width = 9, fig.height = 5}
+# Annotate four substates (homeostatic, DAM, IFN, proliferative) via
+# AddModuleScore -> argmax. Logic is centralised in label_microglia_states()
+# so the per-substate NEBULA build script gets identical labels.
+microglia_seurat <- label_microglia_states(microglia_seurat,
+                                           symbol_map = symbol_map)
+
+state_tab <- table(microglia_seurat$state, microglia_seurat$genotype)
+state_prop <- prop.table(state_tab, margin = 2)
+print(round(state_prop * 100, 2))
+
+state_df <- as.data.frame(state_prop)
+names(state_df) <- c("state", "genotype", "prop")
+ggplot(state_df, aes(genotype, prop, fill = state)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() +
+  labs(x = NULL, y = "% of microglia", fill = "state",
+       title = "Microglia substate composition by genotype")
+```

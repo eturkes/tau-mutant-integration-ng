@@ -1,0 +1,817 @@
+# Integrated biological model
+
+This section is the synthesis chapter for the project. Sections 1-16
+emitted per-modality DE, per-axis pathway / TF / kinase / LR verdicts,
+and the three mechanism-layer verdicts that closed the Phase G arc.
+None of those sections compute an integrated reading: a reader who
+finishes section 16 has 14 columns of TSV evidence per axis but no
+explicit answer to "which competing biological model does the
+project's evidence actually favour, and how strongly?". This chapter
+closes that gap as a **structured hypothesis-comparison synthesis**
+rather than a free narrative, the stance was locked at the start of
+Phase H (`storage/notes/biological_model_plan.md` §H0) to insulate the
+synthesis from training-data drift toward canonical AD-microglia
+stories.
+
+The synthesis proceeds in five movements. Subsection 17.1 names the
+eleven competing biological entities adjudicated by this chapter (six
+per-axis contest models in three pairwise contests, one cross-axis
+integrator slot, and four cross-axis themes). Subsection 17.2 renders
+the 92-row claims ledger (75 Phase H rows + 6 Phase I rows from the
+per-state NF-kB attenuation test reported in section 18, 2 Phase J
+rows from the causal signalling-network reconstruction reported in
+section 20, 2 Phase K rows from the SCENIC data-driven regulon
+recovery reported in section 21, 2 Phase L rows from the GeoMx
+spatial-deconvolution tissue-composition layer reported in section 22,
+2 Phase M rows from the snRNAseq microglial activation-pseudotime
+trajectory layer reported in section 23, 2 Phase N rows from the
+cross-cell-type interaction-specificity layer reported in section 24,
+plus 1 Phase O row from the gene-level differential-dynamics
+interaction layer also reported in section 23)
+that records every atomic evidence claim the chapter draws on. Subsection 17.3 renders the H3 adjudication
+arithmetic in two parts: per-axis-contest favoured-model verdicts and
+cross-axis entity support tallies. Subsection 17.4 lists the testable
+predictions that would upgrade Suggestive claims, resurrect
+contradicted models, or strengthen low-support themes. Subsection 17.5
+states the integrated biological reading the project's evidence
+currently supports, phrased as a working synthesis grounded in the
+ledger, not as an authoritative conclusion.
+
+No new computation is performed in this section. Every claim, every
+adjudication column, and every verdict is derived from the H2 ledger
+(`storage/results/biological_model_claims_ledger.tsv`) and the H3
+adjudication tables (`storage/results/biological_model_adjudication.tsv`
+and `storage/results/biological_model_contest_verdicts.tsv`), which
+were emitted by `scripts/build_biological_model_ledger.R` and
+`scripts/build_biological_model_adjudication.R` respectively. The
+chapter is a structured reading of those three TSVs.
+
+```{r biological-model-load-tsvs}
+# H2 ledger (built outside the knit by scripts/build_biological_model_ledger.R;
+# readRDS-equivalent explicit load per the cache-loading convention in
+# CLAUDE.md for caches built outside the knit).
+biomodel_ledger <- readr::read_tsv(
+  file.path(params$results_dir, "biological_model_claims_ledger.tsv"),
+  show_col_types = FALSE
+)
+
+# H3 adjudication (per-entity table and per-contest verdicts; both built by
+# scripts/build_biological_model_adjudication.R outside the knit).
+biomodel_adjudication <- readr::read_tsv(
+  file.path(params$results_dir, "biological_model_adjudication.tsv"),
+  show_col_types = FALSE
+)
+biomodel_verdicts <- readr::read_tsv(
+  file.path(params$results_dir, "biological_model_contest_verdicts.tsv"),
+  show_col_types = FALSE
+)
+
+cat(sprintf(
+  "Loaded biological-model synthesis tables: ledger %d rows x %d cols; adjudication %d rows x %d cols; verdicts %d rows x %d cols.\n",
+  nrow(biomodel_ledger), ncol(biomodel_ledger),
+  nrow(biomodel_adjudication), ncol(biomodel_adjudication),
+  nrow(biomodel_verdicts), ncol(biomodel_verdicts)
+))
+```
+
+## Competing biological models being adjudicated
+
+The eleven entities below are the targets of the adjudication. The six
+**per-axis contest models** are paired head-to-head within their axis
+(Hyp-1A vs Hyp-1B at amyloid_activation, Hyp-2A vs Hyp-2B at synaptic_suppression,
+Hyp-3A vs Hyp-3B at interaction_metabolic) so that each contest yields a
+single favoured-model verdict in subsection 17.3.1. The remaining five
+entities (Hyp-0 plus four cross-axis themes) are adjudicated as
+stand-alone support tallies in subsection 17.3.2, the four themes
+intentionally overlap with the per-axis contest models (e.g.
+T-Tau-attenuates subsumes Hyp-1B; T-Synergy subsumes Hyp-3B), so a single
+claim row commonly populates both a per-axis model column and the
+theme column it inherits. The hybrid scheme was locked at the H1
+decision gate (`storage/notes/biological_model_plan.md` §H1
+deliverable 1) over the flat-themes-only and per-axis-only
+alternatives because the per-axis contests cleanly inherit the axis
+structure of the project's verdicts, the themes surface cross-axis
+patterns that no single contest would, and Hyp-0 captures the Cdk5
+top-5-at-all-three-axes integrator finding without forcing it into a
+per-axis contest where it does not naturally belong.
+
+```{r biological-model-entity-catalogue, results = "asis"}
+# Build the structured entity catalogue from the adjudication TSV's
+# id / type / contest_id / name columns, plus hand-authored
+# entity_statement + key_prediction cells distilled from the H1
+# deliverable-1 prose (storage/notes/biological_model_plan.md
+# lines 161-269; the verbatim model definitions). Statements and
+# predictions are paraphrased here for compactness; the long-form
+# versions are in the plan body.
+entity_prose <- tibble::tribble(
+  ~entity_id, ~entity_statement, ~key_prediction,
+
+  "Hyp-1A",
+  "Amyloid drives a canonical DAM-state inflammatory program; the program is qualitatively identical in MAPTKI and P301S backgrounds; tau contributes no inflammatory modulator at axis 1.",
+  "Matched-direction matched-magnitude TF / kinase / LR / pathway signals at `nlgf_in_maptki` and `nlgf_in_p301s` with no informative interaction-contrast signal at axis 1.",
+
+  "Hyp-1B",
+  "Amyloid drives NF-kB-led inflammation in MAPTKI; tau on the amyloid background SUPPRESSES this program. Rela sign-reversal is the load-bearing signature.",
+  "Rela score sign-flip (positive at `nlgf_in_maptki` / `nlgf_in_p301s`, negative at `interaction`); Nfkb1 score-attenuation at interaction; coordinated Spi1 / Nfkb1 / Rela asymmetric reading.",
+
+  "Hyp-2A",
+  "NLGF-driven synaptic suppression is mediated by canonical C1q / C3 / Mertk-Pros1 / Tyro3-Axl complement-tagging plus receptor-mediated engulfment.",
+  "Classical complement LR pairs (C1q-family, C3, Mertk-Pros1, Tyro3-Axl) at the top of the axis-2 cell-cell communication ranking.",
+
+  "Hyp-2B",
+  "NLGF-driven synaptic suppression is mediated by TREM2-mediated clearance plus APP-fragment uptake plus synaptic-adhesion modulation, not by classical complement.",
+  "Apoe-Trem2, App-Cd74, Cd200-Cd200r1, Vcan-Cd44, Ncam1-ligand pairs at the top of axis-2 rankings instead of classical complement.",
+
+  "Hyp-3A",
+  "The interaction contrast is arithmetically the difference of single-insult arms; no qualitatively new mechanism emerges at the tau x amyloid interface.",
+  "Mechanism-layer signals at the interaction are smaller-than-amyloid-alone in magnitude or absent; no interaction-specific TF / kinase / LR signature.",
+
+  "Hyp-3B",
+  "A qualitatively new mechanism emerges at the interaction: Gsk3b activation, coordinated TF biosynthetic suppression (Myc / Creb1 / Tp53 / Jun), and axon-guidance LR rewiring at the LR layer.",
+  "All three layers carry interaction-contrast-specific sign or magnitude patterns that are not inferrable from either single-insult arm.",
+
+  "Hyp-0",
+  "Cdk5 acts as a cross-axis kinase integrator: it ranks in the kinase top 5 at all three axes (ranks 2 / 2 / 4) and its KSN substrate footprint scales with the axis universe (81 / 263 / 153 sites).",
+  "Cdk5-substrate enrichment in claims at every axis; CDK5R1 / CDK5R2 expression continuity across genotypes; cross-axis TF or pathway concordance traceable to Cdk5 substrates.",
+
+  "T-Inflammation",
+  "A unified inflammatory program drives both axes 1 and 2; amyloid and tau act additively on a canonical DAM inflammatory state, qualitatively the same regardless of tau background.",
+  "Axis-1 TF / kinase activations replicate at axis-2 contrasts; no qualitative interaction-specific mechanism at axis 3. Theme subsumes Hyp-1A and Hyp-2A jointly.",
+
+  "T-Compartment-suppression",
+  "NLGF suppresses the synaptic compartment via classical complement-mediated pruning at axis 2.",
+  "Axis-2 evidence shows synaptic GO term suppression AND classical complement LR pairs at the top of axis-2 rankings. Theme subsumes Hyp-2A.",
+
+  "T-Tau-attenuates",
+  "Tau modifies the amyloid program rather than amplifying it; specifically, tau suppresses amyloid-driven NF-kB at the interaction contrast (Rela sign-reversal).",
+  "Positive Rela at NLGF arms, negative Rela at interaction; coordinated NF-kB-family asymmetric reading across contrasts. Theme subsumes Hyp-1B.",
+
+  "T-Synergy",
+  "A qualitatively new mechanism emerges at the tau x amyloid interface that is not present in either single-insult arm.",
+  "(a) Gsk3b activation specifically at interaction; (b) coordinated TF suppression (Myc / Creb1 / Tp53 / Jun) at interaction; (c) interaction-specific LR rewiring (axon-guidance, Gpc3-Unc5c, Sema6a-Plxna4 sign-flip). Theme subsumes Hyp-3B."
+)
+
+structural_type_lookup <- c(
+  contest_model = "Per-axis contest model",
+  m0            = "Cross-axis integrator",
+  theme         = "Cross-axis theme"
+)
+axis_or_scope <- function(entity_type, contest_id) {
+  ifelse(entity_type == "contest_model", contest_id, "cross-axis")
+}
+
+entity_catalogue <- biomodel_adjudication |>
+  dplyr::select(entity_id, entity_type, contest_id, entity_name) |>
+  dplyr::mutate(
+    structural_type     = unname(structural_type_lookup[entity_type]),
+    axis_or_scope       = axis_or_scope(entity_type, contest_id)
+  ) |>
+  dplyr::left_join(entity_prose, by = "entity_id") |>
+  dplyr::select(
+    structural_type, entity_id, axis_or_scope, entity_name,
+    entity_statement, key_prediction
+  ) |>
+  dplyr::arrange(
+    factor(structural_type, levels = unname(structural_type_lookup)),
+    entity_id
+  )
+
+print(knitr::kable(
+  entity_catalogue,
+  col.names = c("Structural type", "ID", "Axis or scope",
+                "Entity name", "Biological statement", "Key prediction"),
+  caption = paste0(
+    "The 11 competing biological entities adjudicated by this ",
+    "chapter. Per-axis contest models (Hyp-1A/Hyp-1B, Hyp-2A/Hyp-2B, Hyp-3A/Hyp-3B) ",
+    "are paired head-to-head within their axis and yield a binary ",
+    "favoured-model verdict in subsection 17.3.1; the cross-axis ",
+    "integrator (Hyp-0) and the four cross-axis themes are adjudicated ",
+    "as stand-alone support tallies in subsection 17.3.2. Themes ",
+    "intentionally subsume per-axis models (e.g. T-Tau-attenuates ",
+    "subsumes Hyp-1B); ledger rows can support both simultaneously."
+  )
+))
+```
+
+## Claims ledger
+
+The H2 ledger records `r nrow(biomodel_ledger)` atomic evidence claims
+across the project's modalities, axes, and mechanism layers. Each row
+carries an `effect_size` cell with a concrete number string and a
+`primary_evidence_source` pointer at the TSV row or section the claim
+distils. The `supports_models` and `contradicts_models` cells tag each
+claim against zero or more of the 11 entities defined in 17.1, which
+is what makes the H3 groupby arithmetic in 17.3 unambiguous. The
+confidence grade is one of Strong / Moderate / Suggestive per the
+H1-locked three-tier rules (Strong = >=2-modality consistent sign +
+primary-tool FDR<0.10 + explicit cross-axis or cross-layer
+corroboration; Moderate = primary-tool FDR<0.10 but lacks one of those
+replication arms; Suggestive = top-N of primary tool without
+significance, or with a structural caveat such as Interpretation A
+entanglement or n_cells_used = 1).
+
+```{r biological-model-ledger-distribution, results = "asis"}
+# A compact distribution summary so the reader sees what is in the
+# ledger before scrolling its interactive view below.
+grade_dist  <- as.list(table(biomodel_ledger$confidence_grade))
+axis_dist   <- as.list(table(biomodel_ledger$axis))
+layer_dist  <- as.list(table(biomodel_ledger$layer))
+fmt_dist <- function(x) paste(sprintf("%s=%d", names(x), unlist(x)), collapse = ", ")
+cat(sprintf(
+  paste0("Ledger composition: confidence-grade %s; axis %s; layer %s. ",
+         "The ledger is rendered below as a `DT::datatable` so that ",
+         "the reader can filter or sort live (e.g. set ",
+         "confidence_grade = Strong, set supports_models to contain ",
+         "Hyp-3B, sort by axis) without re-running the chapter.\n\n"),
+  fmt_dist(grade_dist), fmt_dist(axis_dist), fmt_dist(layer_dist)
+))
+```
+
+```{r biological-model-ledger-datatable}
+# DT::datatable for the 92-row ledger (75 Phase H rows + 6 Phase I rows
+# added 2026-05-25 per the section 18 per-state NF-kB attenuation test,
+# 2 Phase J rows added 2026-06-04 per the section 20 causal
+# signalling-network reconstruction, 2 Phase K rows added
+# 2026-06-05 per the section 21 SCENIC data-driven regulon recovery,
+# 2 Phase L rows added 2026-06-05 per the section 22 GeoMx
+# spatial-deconvolution tissue-composition layer, 2 Phase M rows
+# added 2026-06-06 per the section 23 snRNAseq activation-pseudotime
+# trajectory layer, 2 Phase N rows added 2026-06-06 per the
+# section 24 cross-cell-type interaction-specificity layer, plus 1 Phase O
+# row added 2026-06-08 per the section 23 gene-level differential-dynamics
+# interaction layer). Default visible columns are the
+# narrative essentials; the audit-trail columns (corroborating_evidence,
+# notes, n_replicates_in_modalities, n_replicates_in_layers) are
+# loaded but hidden by default and toggleable via the Column visibility
+# button. Confidence-grade and supports/contradicts columns are
+# filterable via the search panes at column footers.
+ledger_view <- biomodel_ledger |>
+  dplyr::select(
+    claim_id, axis, layer, claim, direction, effect_size,
+    confidence_grade, supports_models, contradicts_models,
+    primary_evidence_source, corroborating_evidence,
+    n_replicates_in_modalities, n_replicates_in_layers, notes
+  )
+
+DT::datatable(
+  ledger_view,
+  rownames  = FALSE,
+  filter    = "top",
+  extensions = c("Buttons", "FixedHeader"),
+  options   = list(
+    pageLength    = 15,
+    lengthMenu    = c(10, 15, 25, 50, 92),
+    autoWidth     = FALSE,
+    scrollX       = TRUE,
+    fixedHeader   = TRUE,
+    dom           = "Bfrtip",
+    buttons       = list(
+      "copy", "csv",
+      list(extend = "colvis", text = "Column visibility")
+    ),
+    columnDefs    = list(
+      # Hide audit-trail columns by default; user can re-show them via
+      # the Column visibility button. Indices are 0-based.
+      list(visible = FALSE,
+           targets = c(9, 10, 11, 12, 13))
+    )
+  ),
+  caption = "H2 biological-model claims ledger (filterable, sortable). Click the Column visibility button to surface the hidden audit-trail columns (`primary_evidence_source`, `corroborating_evidence`, `n_replicates_in_modalities`, `n_replicates_in_layers`, `notes`)."
+)
+```
+
+## Model adjudication
+
+The adjudication arithmetic was emitted by H3 as a single-pass groupby
+on the H2 ledger's `supports_models` and `contradicts_models` membership
+cells. Two tables surface the result: per-axis contest verdicts (one
+row per contest, a binary favoured-model verdict against the head-to-
+head competitor) and per-entity stand-alone tallies (one row per
+entity, including the Hyp-0 integrator and the four cross-axis themes,
+which do not compete head-to-head with each other).
+
+### Per-axis contest verdicts
+
+```{r biological-model-contest-verdicts-table, results = "asis"}
+verdict_view <- biomodel_verdicts |>
+  dplyr::transmute(
+    contest_id,
+    model_a = sprintf("%s - %s", model_a_id, model_a_name),
+    a_support   = model_a_support_count,
+    a_contradict = model_a_contradict_count,
+    a_net       = model_a_net_support,
+    a_strong    = model_a_n_strong_supports,
+    model_b = sprintf("%s - %s", model_b_id, model_b_name),
+    b_support   = model_b_support_count,
+    b_contradict = model_b_contradict_count,
+    b_net       = model_b_net_support,
+    b_strong    = model_b_n_strong_supports,
+    favoured_model,
+    margin     = favoured_by_margin,
+    tie_break  = tie_break_rule_invoked
+  )
+print(knitr::kable(
+  verdict_view, digits = 0,
+  col.names = c("Contest", "Model A", "A sup", "A con", "A net",
+                "A Strong", "Model B", "B sup", "B con", "B net",
+                "B Strong", "Favoured", "Margin", "Tie-break"),
+  caption = paste0(
+    "Per-axis contest favoured-model verdicts. `sup` / `con` / ",
+    "`net` are support_count / contradict_count / net_support ",
+    "derived from the H2 ledger; `Strong` is the number of ledger ",
+    "rows supporting the model that carry a Strong confidence grade. ",
+    "`Margin` is the favoured model's net_support minus the loser's ",
+    "net_support; `Tie-break` is `no_tie_break_needed` for all three ",
+    "contests (every verdict resolves at the first arithmetic level)."
+  )
+))
+```
+
+**Axis 1 (amyloid_activation): Hyp-1B beats Hyp-1A by net-support margin 18
+(34 - 16) after the Phase I lift and the Phase K + Phase L + Phase M + Phase N Suggestive rows, up from
+margin 6 (24 - 18) at the end of Phase H.** The decisive evidence for Hyp-1B is the Rela sign-reversal
+across contrasts (positive at `nlgf_in_maptki` / `nlgf_in_p301s`,
+negative at `interaction`; H2-006 Strong with cross-axis corroboration
+at H2-072) plus the coordinated NF-kB-family asymmetric reading that
+Hyp-1A does not predict; nine ledger rows now actively contradict Hyp-1A
+(the original three at Phase H were H2-007 per-contrast asymmetric
+reading, H2-028 ifn_nlgf_asymmetry 8x P301S-specific gene differential,
+and H2-072 cross-axis Rela sign-reversal; the six Phase I rows I-001
+through I-006 each contradict Hyp-1A by per-substate replication of the
+interaction sign-reversal plus the formal compositional adjudication).
+Hyp-1A retains 25 supporting rows (the matched-direction TF / kinase
+/ pathway claims at the two NLGF arms plus the Phase K Spi1 regulon-
+existence row K-001, the Phase L DAM tissue-expansion row L-001,
+the Phase M amyloid-progression row M-001, and the Phase N
+cross-cell-type microglia-led row N-001,
+which each support BOTH amyloid models and so lift each net by one
+without moving the margin; Hyp-1B does not contradict them because
+matched-direction support and asymmetric-reading support are
+non-exclusive evidence) but its single 1-row inflammatory baseline
+cannot account for the sign-flip, and the per-substate replication in
+Phase I rules out the alternative explanation that the sign-flip is a
+whole-microglia aggregation artefact. The 11 Strong supports for Hyp-1B
+vs 6 for Hyp-1A break in Hyp-1B's favour at the strong-evidence level
+even more decisively after Phase I (Hyp-1B gained 4 Strong rows from
+the Phase I set: I-001 / I-002 / I-005 / I-006).
+
+**Axis 2 (synaptic_suppression): Hyp-2B beats Hyp-2A by net-support margin
+12 (8 - (-4)).** The decisive evidence for Hyp-2B is the cluster of
+axis-restricted LR rows (Apoe-Trem2 ranks 9 + 10; App-Cd74 ranks 12 +
+20; the 49/100 axis-2 microglia-involving fraction) plus the absence
+of classical complement pairs (C1q-family, C3, Mertk-Pros1, Tyro3-Axl)
+in the top 800 axis-restricted leader cells. The H2 ledger flags an
+explicit scope ambiguity: while Hyp-2A is contradicted on the
+axis-restricted view (rows H2-035 / H2-036 / H2-037 / H2-038 / H2-039
+/ H2-045), Pros1-Mertk does appear strongly in the cross-tool leader
+board (`ccc_lr_cross_tool_leaderboard.tsv` leader_score 15.4, 6
+microglia-microglia rows), H2-040 carries the cross-tool Pros1-Mertk
+row as the sole Moderate support for Hyp-2A, narrowing the verdict to
+"Hyp-2B wins on axis-restricted scope; Hyp-2A's classical-complement
+mechanism survives narrowly as a cross-tool efferocytosis signal at a
+specific microglia-microglia node". The contest still resolves in
+Hyp-2B's favour but the scope qualification is important and is named
+explicitly in 17.5.
+
+**Axis 3 (interaction_metabolic): Hyp-3B beats Hyp-3A by net-support margin
+55 (28 - (-27)).** Hyp-3A is unanimously contradicted: every axis-3
+ledger row that supports Hyp-3B (Gsk3b activation padj 0.00152 at
+H2-051; Mapk14 / Cdk5 / Cdk1 supporting kinase rows; Myc / Creb1 /
+Tp53 / Jun coordinated TF suppression; OXPHOS / ETC family, ribosomal,
+MG-M3 module pathway support; Sema6a-Plxna4 sole 5/5-contrast G3
+leader sign-flip at H2-057; Gpc3-Unc5c / Entpd1-Adora1 / L1cam-Ephb2
+LR rows) also contradicts Hyp-3A by mutual exclusion of "no
+interaction-specific mechanism". This is the largest margin of the
+three contests and reflects how decisively axis 3 falls to the synergy
+mechanism, the Gsk3b padj 0.00152 is the strongest single-kinase
+result of the entire project, and 8 of the 28 Hyp-3B-supporting rows
+carry the Strong confidence grade (17 Moderate, 3 Suggestive). The
+1-row gap between Hyp-3B's support_count of 28 and Hyp-3A's
+contradict_count of 27 is the LR-layer row H2-063 ("51 of the top 100
+axis-3 LR pairs involve a microglia sender or receiver") that supports
+Hyp-3B but leaves its `contradicts_models` cell empty, a
+microglia-involving-rate context claim that documents substantial
+microglia-mediated LR signal at the interaction axis without being
+directly model-discriminating against Hyp-3A's "no interaction-specific
+mechanism".
+
+### Cross-axis entity support tallies
+
+```{r biological-model-entity-tally, results = "asis"}
+entity_tally_view <- biomodel_adjudication |>
+  dplyr::select(
+    entity_id, entity_type, contest_id, entity_name,
+    support_count, contradict_count, net_support,
+    n_strong_supports, n_moderate_supports, n_suggestive_supports
+  ) |>
+  dplyr::arrange(dplyr::desc(net_support), dplyr::desc(n_strong_supports))
+
+print(knitr::kable(
+  entity_tally_view,
+  col.names = c("ID", "Type", "Contest", "Entity name",
+                "Sup", "Con", "Net", "Strong", "Mod", "Sug"),
+  caption = paste0(
+    "Per-entity stand-alone support tallies, sorted by net_support ",
+    "descending then by n_strong_supports descending. All 11 entities ",
+    "are included; per-axis contest models are listed alongside ",
+    "themes and Hyp-0 to make the cross-entity ranking explicit. ",
+    "`Sup` / `Con` / `Net` = support_count / contradict_count / ",
+    "net_support; Strong / Mod / Sug = confidence-grade decomposition ",
+    "of the supporting rows."
+  )
+))
+```
+
+```{r biological-model-axis-anchoring-table, results = "asis"}
+# Per-axis breakdown of supports for the cross-axis entities (Hyp-0 +
+# 4 themes). This is the data pattern the H3 completion note flagged
+# as the single-axis anchoring observation: each theme draws bulk
+# support from one axis; Hyp-0 is the most evenly distributed entity.
+axis_anchor_view <- biomodel_adjudication |>
+  dplyr::filter(entity_type %in% c("integrator", "theme")) |>
+  dplyr::transmute(
+    entity_id,
+    entity_name,
+    amyloid_activation     = support_at_amyloid_activation,
+    synaptic_suppression   = support_at_synaptic_suppression,
+    interaction_metabolic  = support_at_interaction_metabolic,
+    cross_axis             = support_at_cross_axis,
+    total                  = support_count,
+    primary_axis_share     = sprintf(
+      "%d/%d (%.0f%%)",
+      pmax(support_at_amyloid_activation,
+           support_at_synaptic_suppression,
+           support_at_interaction_metabolic,
+           support_at_cross_axis),
+      support_count,
+      100 * pmax(support_at_amyloid_activation,
+                 support_at_synaptic_suppression,
+                 support_at_interaction_metabolic,
+                 support_at_cross_axis) / support_count
+    )
+  ) |>
+  dplyr::arrange(dplyr::desc(total))
+
+print(knitr::kable(
+  axis_anchor_view,
+  col.names = c("ID", "Entity name", "Axis 1", "Axis 2", "Axis 3",
+                "Cross", "Total", "Primary-axis share"),
+  caption = paste0(
+    "Per-axis support breakdown for the 5 cross-axis entities ",
+    "(Hyp-0 + 4 themes). The `Primary-axis share` column gives the ",
+    "fraction of total support drawn from the single axis with the ",
+    "most rows, the diagnostic for single-axis anchoring."
+  )
+))
+```
+
+The headline pattern is **single-axis anchoring** of three of the four
+cross-axis themes: T-Inflammation draws 28 of 31 supports from axis 1
+(90%); T-Compartment-suppression draws 16 of 17 supports from axis 2
+(94%); T-Synergy draws 27 of 30 supports from axis 3 (90%). Each
+"cross-axis" theme is, on the project's evidence, predominantly the
+cross-axis-friendly framing of a single-axis finding rather than a
+genuinely distributed signal across axes. The exceptions are
+**T-Tau-attenuates** (1 / 0 / 2 / 9 split across the 4 axis slots
+after the Phase I and Phase J lifts, heavily cross_axis-anchored at
+75% because the 6 Phase I per-state rows plus the Phase J NF-kB-route
+row J-002 are all tagged cross_axis, given they test the
+axis-1-to-axis-3 sign-reversal at per-substate resolution and probe
+its upstream signalling route)
+and **Hyp-0** (1 / 1 / 2 / 3, the most evenly distributed entity
+of all 11, with 5 Strong-graded rows distributed across axes plus
+the cross-axis section). Hyp-0's evenness vindicates the H1 decision
+to admit it as a stand-alone integrator slot rather than forcing it
+into a per-axis contest, and it remains the most-distributed
+cross-axis claim the project's evidence supports even after Phase I.
+
+The cross-entity ranking puts **Hyp-1B at the top (34 supports, 11
+Strong)** after the Phase I, Phase K, Phase L, Phase M, and Phase N lifts, ahead of T-Inflammation
+(31 supports, 6 Strong), T-Synergy (30 supports, 9 Strong), Hyp-3B (28 supports, 8
+Strong) and the remaining adjudicated entities (T-Compartment-
+suppression 17, T-Tau-attenuates 12, Hyp-2B 8, Hyp-0 7). The Phase N
+N-001 row lifts T-Inflammation just past T-Synergy on raw count, but
+T-Synergy retains more Strong-graded support (9 vs 6), so the new order
+is a single Suggestive scope-validation nudge, not a confidence reordering. The
+contradicted contest models (Hyp-1A 16 net, Hyp-2A -4 net, Hyp-3A
+-27 net) sit at the bottom; Hyp-3A's net of -27 reflects the unanimous
+mutual-exclusion contradiction described in the axis-3 verdict above,
+and Hyp-1A's net of 16 (down from 18 at Phase H, the dip held by the six
+Phase I rows that each contradict the qualitatively-identical-amyloid-
+response prediction by per-substate replication of the interaction
+sign-reversal, then nudged up one by the margin-neutral Phase N N-001
+support).
+
+## Open questions and testable predictions
+
+The ledger's `notes` column on each Moderate / Suggestive row sketches
+what additional evidence would upgrade the row to Strong, what
+experiment would resurrect a contradicted model, or what observation
+would lift a low-support theme. The numbered list below distils those
+into the project's most informative outstanding questions, grouped by
+the structural slot each addresses.
+
+1. **Axis-2 TF + kinase non-finding: positive route to closure.** The
+   axis-2 TF + kinase non-finding rows (H2-029 / H2-030 / H2-031 at
+   the TF layer; H2-032 / H2-033 / H2-074 at the kinase layer) are
+   honest absences at FDR<0.10 in the axis-restricted view. The
+   non-finding currently supports T-Compartment-suppression by
+   *absence* (no transcriptional or kinase driver explains the
+   synaptic GO term suppression at this resolution; the mechanism is
+   plausibly intercellular only). Predictions that would upgrade these
+   rows from Suggestive to Strong, or open a new contest: (a) a
+   curated synaptic-clearance prior collection (similar to the KSN /
+   CollecTRI priors used here but oriented at synaptic adhesion +
+   engulfment ligands) applied to the same axis-2 axis-restricted
+   universe; (b) a Cdk5-substrate-restricted GSEA at the axis-2
+   contrasts (would directly test the Hyp-0 integrator framing at axis
+   2 against the synaptic suppression evidence); (c) a per-substate
+   NEBULA fit restricted to MG_DAM cells at axis-2 contrasts to
+   surface within-substate transcriptional drivers that whole-
+   microglia NEBULA dilutes.
+2. **Hyp-2A scope ambiguity: Pros1-Mertk vs the axis-restricted absence.**
+   The Hyp-2A vs Hyp-2B verdict resolves in Hyp-2B's favour on axis-restricted
+   scope, but the H2-040 cross-tool Pros1-Mertk row keeps Hyp-2A
+   partially alive as a TAM-kinase efferocytosis signal at specific
+   microglia-microglia nodes. Predictions that would settle the scope
+   ambiguity: (a) a cell-type-resolved Pros1-Mertk validation in
+   GeoMx microglia AOIs (would confirm whether the cross-tool signal
+   is genuinely microglia-microglia or driven by a different sender);
+   (b) a Mertk-knockout NLGF cross to directly test whether classical
+   complement / TAM efferocytosis is functionally required for the
+   synaptic suppression phenotype; (c) a re-analysis of the axis-2
+   leader board with the cross-tool leader rule (`n_tools_sig_consistent_sign
+   >= 2` in any genotype at any axis-2-relevant contrast) rather than
+   the axis-restricted average score, to see whether Pros1-Mertk
+   surfaces in the top 20 under the cross-tool scoring.
+3. **Hyp-3A resurrection: what would the no-interaction hypothesis need
+   to look like?** Hyp-3A is unanimously contradicted (0 supports, 26
+   contradicts). The only way to resurrect Hyp-3A on the project's
+   evidence would be (a) a re-pseudobulking under a different design
+   matrix that eliminates the Gsk3b interaction signal (e.g. a
+   genotype:batch interaction term that absorbs the interaction
+   variance); (b) replication of the interaction signal in an
+   independent cohort showing that the Gsk3b / Myc / axon-guidance
+   pattern is cohort-specific rather than biology; (c) demonstration
+   that the interaction-restricted gene universe is a poor proxy for
+   true interaction biology (e.g. via a permutation null on the axis
+   3 universe). The current evidence is too consistent across layers
+   for Hyp-3A to be a viable alternative without one of these.
+4. **T-Tau-attenuates support: predictions (a) and (b) RESOLVED by the
+   Phase I per-state NF-kB attenuation test (section 18).** The theme
+   stood at 5 supports / 3 Strong at the end of Phase H. Phase I
+   executed predictions (a) and (b) jointly: (a) an NF-kB-target GSEA
+   restricted to the union of CollecTRI's Rela / Nfkb1 / Nfkb2 / Rel /
+   Relb / A0A979HLR9 target genes at the interaction contrast, and
+   (b) a per-substate analysis covering ALL 4 microglia substates (not
+   just MG_homeostatic). The verdict tier resolved to **Global
+   attenuation**: 4 of 4 microglia substates independently carry NF-kB
+   suppression at the interaction under the cross-layer gate (TF
+   complex consensus < 0 AND GSEA union NES < 0 AND >=1 layer at
+   FDR<0.10 within state), with MG_DAM as the lead carrier (consensus
+   p=7e-11, GSEA padj=0.027) and MG_homeostatic close behind
+   (consensus p=5e-8, GSEA padj=0.091). The section 11 substate-
+   composition ANOVA (tau:nlgf F=1.03 p=0.330) formally ruled out
+   "state-driven-by-abundance" as the alternative explanation,
+   establishing that the per-state signal is transcriptional rather
+   than compositional. The Phase I rows (I-001..I-006) lifted
+   T-Tau-attenuates from 5 supports / 3 Strong to 11 / 7. Prediction
+   (c), the tau-knockout-on-NLGF arm, remains unresolved because
+   the project does not have that cohort; it remains the highest-
+   value experimental follow-up for confirming tau's causal role in
+   the attenuation rather than ruling out other genotype confounders.
+5. **Hyp-0 integrator framing: Cdk5-substrate enrichment as the load-
+   bearing test.** Hyp-0 is the strongest cross-axis claim with 5
+   Strong rows distributed across axes (the most evenly distributed
+   entity of all 11). The integrator framing predicts that Cdk5
+   substrates (as defined by the KSN substrate set; 81 / 263 / 153
+   sites at the three axes) are enriched in the top-N differentially
+   expressed genes / phosphorylated sites at every axis. A direct
+   test would be a Cdk5-substrate-restricted GSEA at all three axes
+   (predicted significant enrichment at every axis if Hyp-0 is correct;
+   significant at axis 3 only if Hyp-0 is an axis-3-anchored Gsk3b /
+   tau-kinase covariate rather than a true integrator). The H2
+   ledger does not currently emit such a test as a claim row; a
+   future H-phase round could add it.
+
+## Integrated model statement
+
+The project's evidence currently favours the following integrated
+biological reading of how amyloid reshapes microglia under different
+tau backgrounds. Each clause is grounded in the per-axis contest
+verdict (17.3.1) and cross-axis theme tally (17.3.2); none of it is
+asserted beyond what the H2 ledger and H3 adjudication support.
+
+**Per-axis verdicts.** At the amyloid-activation axis (axis 1), the
+project favours **Hyp-1B over Hyp-1A** by net-support margin 18 (lifted
+from 6 by the Phase I per-state NF-kB attenuation test reported in
+section 18): amyloid drives a robust NF-kB-led inflammatory program
+in MAPTKI, and tau on the amyloid background SUPPRESSES (rather than
+amplifies) that program at the interaction contrast, with Rela
+sign-reversal as the load-bearing signature now corroborated by
+per-substate replication in all four microglia substates. At the
+synaptic-suppression axis (axis 2),
+the project favours **Hyp-2B over Hyp-2A** on axis-restricted scope by
+net-support margin 12: NLGF-driven synaptic suppression is mediated
+by TREM2-mediated clearance plus APP-fragment uptake plus synaptic-
+adhesion modulation, NOT by canonical C1q / C3 complement-tagging,
+although the cross-tool Pros1-Mertk signal narrowly keeps a TAM-
+kinase efferocytosis route alive at specific microglia-microglia
+nodes. At the interaction axis (axis 3), the project favours **Hyp-3B
+over Hyp-3A** by net-support margin 55: a qualitatively new mechanism
+emerges at the tau x amyloid interface that is not present in either
+single-insult arm, anchored by the project's strongest single-kinase
+result (Gsk3b activation, padj 0.00152) and reinforced by coordinated
+TF biosynthetic suppression (Myc / Creb1 / Tp53 / Jun) and axon-
+guidance LR rewiring at the LR layer.
+
+**Cross-axis integration.** Layered on top of the three per-axis
+verdicts, the cross-axis themes rank **T-Inflammation (31 supports, 6
+Strong) > T-Synergy (30 supports, 9 Strong) > T-Compartment-
+suppression (17 supports, 8 Strong) > T-Tau-attenuates (12 supports,
+7 Strong)** as the project's currently best-supported cross-axis
+readings, though T-Inflammation's narrow lead over T-Synergy on raw
+count rests on the single Suggestive Phase N scope-validation row
+(N-001) while T-Synergy retains more Strong-graded support (9 vs 6), so
+the two remain effectively co-leading. T-Tau-attenuates lifted from its Phase H position of 5
+supports / 3 Strong to 11 / 7 after the Phase I per-state NF-kB
+attenuation test (section 18, rows I-001..I-006) demonstrated that the
+whole-microglia Rela sign-reversal that anchored Phase H is
+independently carried by all four microglia substates (MG_DAM as the
+lead carrier, MG_homeostatic close behind, MG_IFN and MG_proliferative
+weaker but sign-consistent), with the section 11 substate-composition
+ANOVA (tau:nlgf F=1.03 p=0.330) formally ruling out the
+compositional-artefact alternative. The Phase J causal-topology probe
+(section 20, row J-002) adds one further Suggestive support, bringing
+T-Tau-attenuates to 12 / 7 by crediting the recovered Gsk3b-rooted
+upstream route to the NF-kB regulatory module. The Phase K SCENIC
+data-driven regulon layer (section 21, rows K-001 / K-002) adds two
+further Suggestive supports to T-Inflammation (lifting it to 28 / 6) by
+recovering Spi1 and Rel as de novo motif-supported microglial regulons
+independently of the section-14 CollecTRI prior; both rows are margin-
+neutral by construction (they corroborate regulon EXISTENCE, not
+activity direction, and the controlled prior-swap is mostly discordant),
+so the three locked contest verdicts are unchanged. The Phase L GeoMx
+spatial-deconvolution tissue-composition layer (section 22, rows
+L-001 / L-002) then adds one further Suggestive support to
+T-Inflammation (lifting it to 29 / 6) plus one honest non-corroboration
+that feeds no model. L-001 records that the DAM microglial compartment
+expands as a fraction of deconvolved tissue under amyloid in both tau
+backgrounds (within-microglia DAM fraction 0.18/0.18 -> 0.79/0.93;
+DAM abundance logFC +0.40 at nlgf_in_maptki, FDR 3.5e-5, and +0.53 at
+nlgf_in_p301s, FDR 2.4e-7) -- a composition-scoped existence claim,
+deliberately distinct from the section-8 snRNAseq differential
+expression, that like K-001 supports BOTH amyloid models by
+construction and so is margin-neutral (the amyloid margin holds at 18).
+L-002 records the NULL composition interaction (0 of 10 cell types
+FDR<0.10 at the interaction, best Astrocyte adj.P 0.25; Microglia_DAM
+interaction logFC +0.13, t=0.98, p=0.33) as an honest non-corroboration
+with empty supports / contradicts -- NOT as evidence for any model --
+and is the compositional counterpart to the section-11 substate-
+composition ANOVA, reinforcing that the interaction signal is
+transcriptional rather than compositional. Both Phase L rows are graded
+Suggestive rather than Strong because the composition estimate is
+model-dependent (a sorting-biased microglial reference, no histology
+ground truth, kappa=35 substate collinearity that suppresses the IFN
+and homeostatic interaction terms, whole-tissue non-plaque ROIs), so
+the three locked contest verdicts remain unchanged. The Phase M
+snRNAseq activation-pseudotime trajectory layer (section 23, rows
+M-001 / M-002) then adds one further Suggestive support to
+T-Inflammation (lifting it to 30 / 6) and one to T-Synergy (lifting it
+to 30 / 9), introducing a new `dynamics` evidence class -- how far
+each microglion sits along the homeostatic->DAM activation continuum
+(Slingshot on the harmony embedding, root = homeostatic) -- that
+neither the discrete substate expression DE nor the discrete tissue
+composition (Phase L) can resolve. M-001 records that the amyloid main
+effect advances this progression under NLGF in both tau backgrounds
+(mean homeostatic->DAM pseudotime logFC +7.87 at nlgf_in_maptki, FDR
+8.9e-7, and +10.32 at nlgf_in_p301s, FDR 3.7e-8; fraction past the
+DAM-onset threshold 4%/4% -> 40%/59%), and -- like K-001 and L-001 --
+supports BOTH amyloid models by construction (a shared
+amyloid-activation premise that does not discriminate the
+tau-modulation contest), so the amyloid margin holds at 18. M-002
+records the project's first POSITIVE and significant interaction in a
+non-expression layer: the P301S background supra-additively amplifies
+the amyloid-driven progression (interaction on mean pseudotime logFC
++2.46, FDR 0.077; fraction-past-threshold interaction +0.19, FDR
+0.013), and the load-bearing progression-vs-composition decomposition
+attributes it to genuine within-state PROGRESSION (progression channel
++2.30, FDR 0.077, ~94% of the total) rather than the discrete
+composition reshuffling that was null at L-002 (composition channel
++0.13, FDR 0.81) -- with even homeostatic-labelled cells advancing at
+the interaction (within_homeostatic +2.68, FDR 0.077), which cannot be
+a composition artefact. Per the user-approved M5 gate (option B) this
+interaction is recorded THEMATICALLY against T-Synergy only -- not
+scored against the Hyp-3A / Hyp-3B contest -- because pseudotime is
+mechanism-agnostic (it evidences synergy in progression RATE, not the
+specific Gsk3b / Myc / axon-guidance mechanism Hyp-3B names), so the
+interaction margin holds at 55. Both Phase M rows are graded
+Suggestive rather than Strong because pseudotime is a single inferred
+ordering partly confounded with composition (guardrail #1): the
+asserted homeostatic root is NOT the most-potent state by any
+root-free proxy (RNA entropy 3/4, n_genes 3/4, CytoTRACE2 4/4), so the
+axis is an ACTIVATION ordering rather than developmental potency or
+time; and 1 of 3 cross-check methods (scanpy DPT, rho -0.09) disagrees
+while the two curve / fate methods agree (nested Slingshot rho 0.98,
+CellRank2 rho 0.57). The three locked contest verdicts therefore
+remain unchanged at 18 / 12 / 55. The Phase N cross-cell-type
+interaction-specificity layer (section 24, rows N-001 / N-002) then adds
+one further Suggestive support to T-Inflammation (lifting it to 31 / 6)
+plus one honest reframing that feeds no model, introducing a new
+`specificity` evidence class -- the tau x amyloid factorial refit in all
+six broad cell-type units (Astrocyte, Microglia-pooled, Neuronal,
+Oligodendrocyte, OPC, Vascular) x two estimators (pseudobulk +
+single-cell NEBULA) x two power regimes (NATIVE / cell-count-MATCHED at
+K=289 per unit x replicate), the project's first cross-cell-type readout
+where every prior row scored microglia only. N-001 records that the
+amyloid MAIN effect is microglia-LED even under cell-count matching
+(MATCHED nlgf_in_maptki NEBULA Microglia 625 vs next-highest Astrocyte
+218; pseudobulk 232 vs 29; microglia lead in both tau backgrounds and
+both estimators DESPITE a 2.64x median-UMI depth disadvantage), a
+comparative validation that the microglia-scoped ledger never had; like
+K-001 / L-001 / M-001 it supports BOTH amyloid models by construction
+(margin-neutral, amyloid holds at 18) and is the row that lifts
+T-Inflammation past T-Synergy on raw count. N-002 records the load-
+bearing reframing: the tau x amyloid INTERACTION is NOT
+microglia-specific -- at MATCHED power the gene-level interaction
+collapses to ~0 in all six units including microglia (sole survivor
+Oligodendrocyte, 6 genes NEBULA, a NON-microglial type; the 4 NATIVE
+microglia interaction genes do not survive matching), the per-unit
+interaction profiles are mutually distinct (Microglia-vs-unit Spearman
+0.08-0.15) rather than a shared programme, and the broadest pathway-
+level interaction response is Neuronal, not Microglia. Per the
+user-approved N5 gate (option C, feed both halves) N-002 FEEDS NO MODEL
+(empty supports / contradicts, mirroring L-002): it is NOT scored
+against Hyp-3A because the full-power microglia interaction the axis-3
+contest rests on stays real (the MATCHED ~0 is a comparability statement
+at the deliberately severe K=289 downsample, not a positive
+no-interaction result), NOT for Hyp-3B because it is mechanism-agnostic
+and about other cell types, and NOT for T-Synergy because the distinct
+per-unit profiles mean the breadth is not a shared supra-additive
+programme (tagging it would overclaim cross-cell-type mechanistic unity,
+unlike M-002's genuine within-microglia progression synergy). Both Phase
+N rows are graded Suggestive because MATCHED equalises cell COUNT not
+transcriptome DEPTH (the Neuronal pathway dominance is read only as
+"broadest outside microglia", never a quantitative neuronal-magnitude
+claim) and the readout is single-dataset; the reframing is that the
+amyloid response validates the microglia focus while the divergence
+readout does not, so the three locked contest verdicts remain unchanged
+at 18 / 12 / 55. Finally, the Phase O gene-level
+differential-dynamics layer (section 23, row O-001) resolves the M-002
+aggregate interaction to genes: a tradeSeq NB-GAM difference-of-differences
+Wald along the homeostatic→DAM pseudotime finds 110 genes (FDR<0.10) whose
+expression-trajectory *shape* is tau × amyloid-modulated: the project's first
+gene-level positive interaction, and a non-redundant `dynamics_de` evidence
+class that the section-24 matched-power static interaction cannot detect (0 of
+110 reach FDR<0.10 in either estimator). Per the user-approved O5 gate (ALT-1,
+always-margin-neutral) O-001 FEEDS NO MODEL (empty supports / contradicts,
+mirroring L-002 / N-002): the pre-registered overlap test, locked before the
+genes were interpreted, found Hyp-3B's named effectors absent (Gsk3b and Myc
+both missing; canonical axon-guidance 1 of 110, at chance), so the
+scored-contest branch was not triggered, and because O-001 is the gene-level
+companion of M-002 from the same tradeSeq fit, scoring T-Synergy would
+double-count that theme. It is held at Suggestive by a quality caveat, roughly
+a quarter of the 110 genes are ambient (7) or ribosomal / translation (20)
+confounds, so no clean microglial mechanism is asserted, and the three locked
+contest verdicts once more remain unchanged at 18 / 12 / 55. The per-axis-anchoring analysis
+(17.3.2) flags that all three of the highest-support themes draw
+90-94% of their support from a single axis, so the cross-axis framing
+is mostly a re-statement of the per-axis verdicts in theme-overlay
+language, each theme is the cross-axis-friendly framing of its
+dominant axis's favoured-model verdict. The genuine cross-axis claim is **Hyp-0
+(Cdk5 cross-axis integrator)**, which is the most evenly distributed
+entity in the adjudication (1 / 1 / 2 / 3 split across axes and the
+cross-axis section, 5 Strong rows total). Hyp-0's strongest evidence is
+the Cdk5 top-5-at-all-three-axes ranking with substrate footprint
+that scales with the axis universe size; its testable prediction
+(Cdk5-substrate enrichment at every axis) is not yet directly tested
+by a claim row and is the project's highest-value follow-up.
+
+**Integrated reading.** Putting these together: in MAPTKI mice,
+amyloid drives a canonical DAM inflammatory program with NF-kB at its
+transcriptional core (Hyp-1A's matched-direction support is genuine; the
+program is real). On top of that, tau pathology in the P301S
+background reshapes how amyloid acts on microglia in two qualitatively
+distinct ways. First, tau ATTENUATES the amyloid-driven NF-kB
+inflammation specifically at the interaction (T-Tau-attenuates,
+anchored at axis 1's Hyp-1B sign-reversal verdict, with the per-state
+test in section 18 establishing that this attenuation is GLOBAL across
+microglia substates rather than localised to one substate or driven by
+a substate-composition shift). Second, at the
+interaction itself, a qualitatively new mechanism emerges that is not
+the arithmetic sum of single-insult arms: Gsk3b activation,
+biosynthetic / translational TF suppression, axon-guidance LR
+rewiring, mitochondrial / ribosomal pathway reorganisation
+(T-Synergy, anchored at axis 3's Hyp-3B verdict). Independently, the
+synaptic compartment is suppressed by NLGF via a TREM2 / APP-fragment-
+mediated route rather than classical complement (T-Compartment-
+suppression, anchored at axis 2's Hyp-2B verdict, with a residual
+TAM-kinase route partially surviving at specific microglia-microglia
+nodes). Cdk5 ties the three axes together as a candidate cross-axis
+kinase integrator (Hyp-0), most plausibly because Cdk5 substrates
+participate in all three axis biologies (DAM inflammatory regulation,
+synaptic adhesion / engulfment, tau / cytoskeletal phosphorylation).
+This reading is what the project's evidence currently supports; it is
+NOT an authoritative scientific conclusion, and the 17.4 testable
+predictions name the experiments that would either harden, refine, or
+overturn it.

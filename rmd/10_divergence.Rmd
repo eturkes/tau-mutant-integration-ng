@@ -1,0 +1,157 @@
+# Divergence: tau-context dependent NLGF response
+
+Genes (and pathways) whose NLGF response *differs* between MAPTKI and
+P301S backgrounds. We define an effect-size based shortlist using the
+interaction contrast and the two NLGF contrasts in snRNAseq (the deepest
+microglial dataset) and overlay the corresponding signal in the other
+three modalities.
+
+```{r divergence-shortlist, fig.width = 9, fig.height = 8}
+# Use the NEBULA interaction (single-cell mixed model) as the shortlist
+# driver because pseudobulk interaction is under-powered with n = 16.
+sn_int <- de_snrnaseq_nebula$top$interaction |>
+  dplyr::filter(!is.na(symbol)) |>
+  dplyr::group_by(symbol) |>
+  dplyr::summarise(
+    t         = t[which.max(abs(t))],
+    logFC     = logFC[which.max(abs(logFC))],
+    adj.P.Val = suppressWarnings(min(adj.P.Val, na.rm = TRUE)),
+    .groups   = "drop"
+  ) |>
+  dplyr::mutate(adj.P.Val = ifelse(is.infinite(adj.P.Val), NA_real_, adj.P.Val)) |>
+  dplyr::arrange(adj.P.Val)
+strict <- sn_int |>
+  dplyr::filter(adj.P.Val < 0.05, abs(logFC) > 0.5)
+# If even NEBULA produces a small strict set, fall back to top by nominal p
+# so the heatmap is still informative.
+shortlist <- if (nrow(strict) >= 10) {
+  strict |> dplyr::pull(symbol) |> head(40)
+} else {
+  sn_int |> dplyr::arrange(adj.P.Val) |>
+    dplyr::filter(abs(logFC) > 0.5) |>
+    dplyr::pull(symbol) |> head(40)
+}
+cat(sprintf("Divergence shortlist (n=%d): NEBULA strict filter yielded %d.\n",
+            length(shortlist), nrow(strict)))
+
+contrast_order <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction")
+modality_order <- c("snrnaseq", "geomx", "proteomics", "phospho")
+heat_tbl <- integration_tbl |>
+  dplyr::filter(symbol %in% shortlist, contrast %in% contrast_order)
+heat_long <- heat_tbl |>
+  tidyr::pivot_longer(dplyr::all_of(modality_order),
+                      names_to = "modality", values_to = "logFC") |>
+  dplyr::mutate(
+    contrast = factor(contrast, levels = contrast_order),
+    modality = factor(modality, levels = modality_order),
+    cell     = paste(contrast, modality, sep = " | ")
+  ) |>
+  dplyr::arrange(contrast, modality)
+
+cell_levels <- unique(heat_long$cell)
+mat <- heat_long |>
+  dplyr::select(symbol, cell, logFC) |>
+  tidyr::pivot_wider(names_from = cell, values_from = logFC) |>
+  tibble::column_to_rownames("symbol") |>
+  as.matrix()
+mat <- mat[, cell_levels, drop = FALSE]
+mat[!is.finite(mat)] <- 0
+
+if (nrow(mat) >= 2 && ncol(mat) >= 2) {
+  col_fun <- circlize::colorRamp2(c(-2, 0, 2),
+                                  c("#3a4cc0", "white", "#b40426"))
+  col_contrast <- factor(sub(" \\|.*", "", colnames(mat)),
+                         levels = contrast_order)
+  top_anno <- ComplexHeatmap::HeatmapAnnotation(
+    contrast = col_contrast,
+    col = list(contrast = setNames(
+      c("#7FA8C1", "#B0344D", "#444444"), contrast_order)),
+    annotation_legend_param = list(contrast = list(title = "contrast")),
+    show_annotation_name = FALSE
+  )
+  ComplexHeatmap::Heatmap(
+    mat, name = "log2FC",
+    col = col_fun,
+    cluster_columns = FALSE,
+    cluster_rows = TRUE,
+    column_order = seq_len(ncol(mat)),
+    top_annotation = top_anno,
+    row_title = "snRNAseq interaction-top genes",
+    row_names_gp = grid::gpar(fontsize = 7),
+    column_names_gp = grid::gpar(fontsize = 7),
+    border = TRUE
+  )
+} else {
+  cat("Divergence heatmap skipped: too few rows/cols.\n")
+}
+```
+
+## Pathway-level divergence ranking
+
+Pathway-level divergence ranking has moved to the agnostic cross-modality
+pathway survey in section 12.
+
+# Microglia differential abundance (miloR)
+
+`miloR` tests for differential abundance of microglia neighbourhoods
+across genotypes. We focus on the two NLGF contrasts.
+
+```{r milo, fig.width = 9, fig.height = 5}
+milo_path <- file.path(params$cache_dir, "milo.rds")
+milo_obj <- cache_or_run(milo_path, overwrite = params$recompute_snrnaseq, {
+  sce <- Seurat::as.SingleCellExperiment(microglia_seurat, assay = "SCT")
+  SingleCellExperiment::reducedDim(sce, "HARMONY") <-
+    Seurat::Embeddings(microglia_seurat, "harmony")
+  m <- miloR::Milo(sce)
+  m <- miloR::buildGraph(m, k = 30, d = 20, reduced.dim = "HARMONY")
+  m <- miloR::makeNhoods(m, prop = 0.05, k = 30, d = 20,
+                         refined = TRUE, reduced_dims = "HARMONY")
+  m <- miloR::countCells(m,
+                         meta.data = as.data.frame(SummarizedExperiment::colData(m)),
+                         sample = "genotype_batch")
+  m <- miloR::calcNhoodDistance(m, d = 20, reduced.dim = "HARMONY")
+  m
+})
+
+meta_milo <- microglia_seurat@meta.data |>
+  dplyr::distinct(genotype_batch, genotype, batch, sex) |>
+  dplyr::mutate(genotype = factor(genotype, levels = genotype_levels)) |>
+  as.data.frame()
+rownames(meta_milo) <- meta_milo$genotype_batch
+
+milo_res_path <- file.path(params$cache_dir, "milo_da.rds")
+milo_results <- cache_or_run(milo_res_path, overwrite = params$recompute_snrnaseq, {
+  out <- list()
+  for (cn in names(contrast_definitions)) {
+    pair <- contrast_definitions[[cn]]
+    sub <- meta_milo[meta_milo$genotype %in% pair, , drop = FALSE]
+    sub$genotype <- droplevels(sub$genotype)
+    sub$genotype <- factor(sub$genotype, levels = pair)
+    rownames(sub) <- sub$genotype_batch
+    # batch covariate may be confounded with genotype in some pair subsets; fall
+    # back to genotype-only design if model matrix is rank-deficient.
+    safe_design <- tryCatch({
+      mm <- model.matrix(~ batch + genotype, data = sub)
+      if (qr(mm)$rank < ncol(mm)) stop("rank-deficient")
+      as.formula("~ batch + genotype")
+    }, error = function(e) as.formula("~ genotype"))
+    da <- miloR::testNhoods(milo_obj, design = safe_design,
+                            design.df = sub,
+                            reduced.dim = "HARMONY")
+    out[[cn]] <- da
+  }
+  out
+})
+
+milo_summary <- purrr::imap_dfr(milo_results, function(da, cn) {
+  data.frame(
+    contrast = cn,
+    n_nhoods = nrow(da),
+    n_sig    = sum(da$SpatialFDR < 0.1, na.rm = TRUE),
+    n_up     = sum(da$SpatialFDR < 0.1 & da$logFC > 0, na.rm = TRUE),
+    n_down   = sum(da$SpatialFDR < 0.1 & da$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(milo_summary,
+             caption = "miloR differential abundance summary (microglia neighbourhoods)")
+```

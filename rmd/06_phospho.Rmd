@@ -1,0 +1,70 @@
+# Bulk phosphoproteomics: site-level limma
+
+We restrict to the first 16 sample columns, build a site-level matrix
+indexed by `Gene-pSite`, log2 + median-normalise and run `limma`. In
+publication mode (parameter `publication_mode`) MAPTKI-containing
+contrasts are masked from the published tables/figures, while still being
+computed for internal review.
+
+```{r phospho-de}
+phos_path <- file.path(params$cache_dir, "de_phospho.rds")
+de_phospho <- cache_or_run(phos_path, {
+  int_cols <- grep("PTM\\.Quantity$", colnames(phos_raw), value = TRUE)
+  meta_map <- match_intensity_columns(int_cols, sample_key)
+  use_cols <- meta_map$column[!is.na(meta_map$genotype)]
+  meta <- meta_map[!is.na(meta_map$genotype), , drop = FALSE]
+  meta$genotype <- factor(meta$genotype, levels = genotype_levels)
+  rownames(meta) <- meta$column
+
+  feat_id   <- phos_raw[["Gene-pSite"]]
+  keep_rows <- !is.na(feat_id) & feat_id != ""
+  feat_id   <- feat_id[keep_rows]
+  mat <- as.matrix(phos_raw[keep_rows, use_cols])
+  mat[mat == 0 | !is.finite(mat)] <- NA_real_
+  # Many Gene-pSite entries repeat across rows (different charges); combine by summing.
+  mat <- rowsum(mat, group = feat_id, na.rm = TRUE)
+  mat[mat == 0] <- NA_real_
+  log_mat <- log2(mat)
+  log_mat <- log_mat[rowSums(!is.na(log_mat)) >= 8, ]
+  log_mat <- median_normalise(log_mat)
+  log_mat <- prevalence_filter(log_mat, meta$genotype, min_present = 3, min_groups = 2)
+
+  design <- model.matrix(~ 0 + genotype, data = meta)
+  colnames(design) <- sub("^genotype", "", colnames(design))
+  cm <- make_contrast_matrix(design)
+  fit <- fit_limma_log(log_mat, group = meta$genotype, design = design,
+                       contrasts = cm)
+  # Add symbol + site info via the first row hit per Gene-pSite.
+  site_meta <- phos_raw |>
+    dplyr::distinct(`Gene-pSite`, PG.Genes, PG.ProteinGroups,
+                    PTM.SiteAA, PTM.SiteLocation)
+  for (cn in names(fit$top)) {
+    fit$top[[cn]] <- dplyr::left_join(fit$top[[cn]], site_meta,
+      by = c("feature" = "Gene-pSite")) |>
+      dplyr::rename(symbol = PG.Genes)
+  }
+  list(meta = meta, design = design, contrasts = cm, fit = fit,
+       log_matrix = log_mat)
+})
+
+cat(sprintf("Phospho: %d sites analysed, %d samples\n",
+            nrow(de_phospho$log_matrix), nrow(de_phospho$meta)))
+
+phos_summary <- purrr::imap_dfr(de_phospho$fit$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_total  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    n_up     = sum(tbl$adj.P.Val < 0.05 & tbl$logFC > 0, na.rm = TRUE),
+    n_down   = sum(tbl$adj.P.Val < 0.05 & tbl$logFC < 0, na.rm = TRUE)
+  )
+})
+knitr::kable(phos_summary, caption = "Phosphoproteomics DE: significant site counts")
+
+if (isTRUE(params$publication_mode)) {
+  masked <- c("nlgf_in_maptki", "tau_alone", "interaction")
+  for (cn in masked) de_phospho$fit$top[[cn]]$logFC <- NA_real_
+  cat("Publication mode: masked logFC for MAPTKI-containing contrasts:\n  ",
+      paste(masked, collapse = ", "), "\n")
+}
+```

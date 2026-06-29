@@ -1,0 +1,484 @@
+## snRNAseq unsupervised co-expression modules (hdWGCNA)
+
+The per-substate NEBULA differential-expression analyses above use
+*pre-defined* substate labels. A complementary unsupervised view comes
+from co-expression modules built directly from the microglia data with
+no a priori gene-set or substate definitions.
+We use **hdWGCNA** with metacells pooled within state x genotype strata
+(k = 25, reduction = harmony), construct a signed network across all
+metacells, identify modules via dynamic tree cut, and compute Harmony-
+batch-corrected eigengenes per cell. Per-module DE then aggregates MEs
+to the same `genotype_batch` pseudosamples used everywhere else (16 ids,
+4 per genotype) and fits the project-wide 2x2 factorial limma with
+`batch` as a fixed effect. The five canonical contrasts are emitted.
+
+The cache is built outside the Rmd by `scripts/build_hdwgcna.R`; the
+chunks below consume the lightweight summary.
+
+```{r hdwgcna-load}
+hdw_cache <- file.path(params$cache_dir, "hdwgcna_microglia.rds")
+hdw_de_cache <- file.path(params$cache_dir, "hdwgcna_module_de.rds")
+hdw <- NULL
+hdw_de <- NULL
+if (file.exists(hdw_cache) && file.exists(hdw_de_cache)) {
+  hdw    <- readRDS(hdw_cache)
+  hdw_de <- readRDS(hdw_de_cache)
+  cat(sprintf("hdWGCNA cache loaded.  soft_power=%d, n_modules=%d (incl. grey).\n",
+              hdw$soft_power, nrow(hdw$module_meta)))
+  print(knitr::kable(hdw$module_meta,
+                     caption = "Module sizes (genes per module)"))
+} else {
+  cat(sprintf(paste0("hdWGCNA cache not found at %s and/or %s; skipping.\n",
+                     "  Build via `Rscript scripts/build_hdwgcna.R`.\n"),
+              hdw_cache, hdw_de_cache))
+}
+```
+
+```{r hdwgcna-soft-power, fig.width = 9, fig.height = 4}
+# Scale-free fit and connectivity as a function of soft-thresholding
+# power. The chosen power is the lowest power with R^2 >= 0.8 (default).
+if (!is.null(hdw)) {
+  pt <- hdw$power_table
+  pt$chosen <- pt$Power == hdw$soft_power
+  p1 <- ggplot2::ggplot(pt, ggplot2::aes(Power, SFT.R.sq)) +
+    ggplot2::geom_hline(yintercept = 0.8, linetype = "dashed", colour = "grey60") +
+    ggplot2::geom_line(colour = "grey40") +
+    ggplot2::geom_point(ggplot2::aes(colour = chosen), size = 2.5) +
+    ggplot2::scale_colour_manual(values = c(`TRUE` = "#b40426",
+                                            `FALSE` = "black"),
+                                 guide = "none") +
+    ggplot2::labs(title = "Scale-free topology fit",
+                  x = "soft-thresholding power",
+                  y = expression(R^2)) +
+    ggplot2::theme_bw()
+  p2 <- ggplot2::ggplot(pt, ggplot2::aes(Power, mean.k.)) +
+    ggplot2::geom_line(colour = "grey40") +
+    ggplot2::geom_point(ggplot2::aes(colour = chosen), size = 2.5) +
+    ggplot2::scale_colour_manual(values = c(`TRUE` = "#b40426",
+                                            `FALSE` = "black"),
+                                 guide = "none") +
+    ggplot2::scale_y_log10() +
+    ggplot2::labs(title = "Mean connectivity",
+                  x = "soft-thresholding power",
+                  y = "mean k (log10)") +
+    ggplot2::theme_bw()
+  print(patchwork::wrap_plots(p1, p2, ncol = 2))
+}
+```
+
+```{r hdwgcna-module-state-heatmap, fig.width = 10, fig.height = 5}
+# Mean module eigengene per (state, genotype) cell pool. Tells us which
+# modules are state-enriched (DAM/IFN/...) and which respond to genotype.
+if (!is.null(hdw)) {
+  ME <- as.matrix(hdw$MEs_cells)
+  meta <- hdw$cell_meta
+  stopifnot(nrow(ME) == nrow(meta))
+  mods <- setdiff(colnames(ME), c("grey", "MG-M0"))
+  ME <- ME[, mods, drop = FALSE]
+  # Reorder modules by their first-appearing number (MG-M1, MG-M2, ...)
+  ord <- order(suppressWarnings(as.integer(sub("^MG-M", "", mods))))
+  ME <- ME[, ord, drop = FALSE]
+
+  states <- c("homeostatic", "DAM", "IFN", "proliferative")
+  genos  <- c("MAPTKI", "P301S", "NLGF_MAPTKI", "NLGF_P301S")
+  sg <- paste(meta$state, meta$genotype, sep = " | ")
+  agg <- do.call(rbind, lapply(split(seq_len(nrow(ME)), sg), function(idx)
+    colMeans(ME[idx, , drop = FALSE])))
+  # Order rows: state first, genotype second
+  meta_grid <- expand.grid(genotype = genos, state = states,
+                           stringsAsFactors = FALSE)
+  meta_grid$key <- paste(meta_grid$state, meta_grid$genotype, sep = " | ")
+  agg <- agg[match(meta_grid$key, rownames(agg)), , drop = FALSE]
+  rownames(agg) <- meta_grid$key
+
+  col_fun <- circlize::colorRamp2(c(-0.05, 0, 0.05),
+                                  c("#3a4cc0", "white", "#b40426"))
+  row_split <- factor(meta_grid$state, levels = states)
+  ComplexHeatmap::Heatmap(
+    agg,
+    name = "mean ME",
+    col = col_fun,
+    cluster_rows    = FALSE,
+    cluster_columns = TRUE,
+    row_split       = row_split,
+    row_title_rot   = 0,
+    row_names_gp    = grid::gpar(fontsize = 8),
+    column_names_gp = grid::gpar(fontsize = 9),
+    column_title    = "Module",
+    border          = TRUE,
+    heatmap_legend_param = list(legend_height = grid::unit(3, "cm"))
+  )
+}
+```
+
+```{r hdwgcna-module-de}
+# Per-module DE under the 2x2 factorial + batch covariate. n_modules is
+# small so the multiple-testing burden is trivial. Export long-form TSV.
+if (!is.null(hdw_de)) {
+  de_long <- dplyr::bind_rows(lapply(names(hdw_de$top), function(ct) {
+    dplyr::mutate(hdw_de$top[[ct]], contrast = ct)
+  }))
+  write_tsv_safe(de_long,
+                 file.path(params$results_dir, "hdwgcna_module_de.tsv"))
+  hdw_de_summary <- de_long |>
+    dplyr::group_by(contrast) |>
+    dplyr::summarise(
+      n_modules = dplyr::n(),
+      n_sig_FDR05 = sum(adj.P.Val < 0.05, na.rm = TRUE),
+      min_padj  = suppressWarnings(min(adj.P.Val, na.rm = TRUE)),
+      .groups = "drop"
+    )
+  print(knitr::kable(hdw_de_summary, digits = 4,
+                     caption = "Per-module DE summary (FDR<0.05) over five contrasts"))
+
+  # Top hits per contrast (each module's strongest contrast).
+  top_per_contrast <- de_long |>
+    dplyr::group_by(contrast) |>
+    dplyr::arrange(P.Value, .by_group = TRUE) |>
+    dplyr::slice_head(n = 3) |>
+    dplyr::select(contrast, module, logFC, P.Value, adj.P.Val)
+  print(knitr::kable(top_per_contrast, digits = 4,
+                     caption = "Top 3 modules per contrast (by P)"))
+}
+```
+
+```{r hdwgcna-module-de-heatmap, fig.width = 8, fig.height = 4}
+# Visual summary: per-module logFC across the five contrasts. Heatmap
+# colour = logFC, '*' annotation = FDR<0.05.
+if (!is.null(hdw_de)) {
+  ct_order <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s",
+                "tau_in_nlgf", "interaction")
+  fc_mat <- sapply(ct_order, function(ct) {
+    setNames(hdw_de$top[[ct]]$logFC, hdw_de$top[[ct]]$module)
+  })
+  pa_mat <- sapply(ct_order, function(ct) {
+    setNames(hdw_de$top[[ct]]$adj.P.Val, hdw_de$top[[ct]]$module)
+  })
+  ord <- order(suppressWarnings(as.integer(sub("^MG-M", "", rownames(fc_mat)))))
+  fc_mat <- fc_mat[ord, , drop = FALSE]
+  pa_mat <- pa_mat[ord, , drop = FALSE]
+
+  range_abs <- max(abs(fc_mat[is.finite(fc_mat)]), na.rm = TRUE)
+  col_fun <- circlize::colorRamp2(c(-range_abs, 0, range_abs),
+                                  c("#3a4cc0", "white", "#b40426"))
+  cell_fn <- function(j, i, x, y, width, height, fill) {
+    if (!is.na(pa_mat[i, j]) && pa_mat[i, j] < 0.05) {
+      grid::grid.text("*", x, y,
+                      gp = grid::gpar(fontsize = 10, col = "black"))
+    } else if (!is.na(pa_mat[i, j]) && pa_mat[i, j] < 0.1) {
+      grid::grid.text(".", x, y,
+                      gp = grid::gpar(fontsize = 10, col = "black"))
+    }
+  }
+  ComplexHeatmap::Heatmap(
+    fc_mat,
+    name           = "logFC",
+    col            = col_fun,
+    cluster_rows   = FALSE,
+    cluster_columns = FALSE,
+    column_order   = seq_len(ncol(fc_mat)),
+    cell_fun       = cell_fn,
+    row_names_gp   = grid::gpar(fontsize = 9),
+    column_names_gp = grid::gpar(fontsize = 9),
+    column_title   = "Per-module logFC across 5 contrasts ('*' = FDR<0.05, '.' = FDR<0.1)",
+    border         = TRUE
+  )
+}
+```
+
+```{r hdwgcna-module-enrichment}
+# Module gene-set overlap (hypergeometric) against canonical microglia
+# substate markers (homeostatic / DAM / IFN / proliferative).
+# hdWGCNA stores module membership in Ensembl space; project gene sets are
+# in symbol space. Map Ensembl -> symbol, drop unmapped rows, and run the
+# hypergeometric in symbol space with the mapped universe.
+if (!is.null(hdw)) {
+  modules_sym <- hdw$modules
+  modules_sym$symbol <- symbol_map$symbol[
+    match(modules_sym$gene_name, symbol_map$ensembl)
+  ]
+  modules_sym <- modules_sym[
+    !is.na(modules_sym$symbol) & nzchar(modules_sym$symbol), , drop = FALSE
+  ]
+  enr_universe <- unique(modules_sym$symbol)
+
+  state_markers <- canonical_microglia_markers
+  gene_sets <- setNames(state_markers, paste0("substate_", names(state_markers)))
+  enr <- module_enrichment(modules_sym, gene_sets,
+                            gene_col   = "symbol",
+                            module_col = "module",
+                            universe   = enr_universe)
+  write_tsv_safe(enr,
+                 file.path(params$results_dir,
+                           "hdwgcna_module_enrichment.tsv"))
+  cat(sprintf("Enrichment: universe=%d symbols, %d module x set tests.\n",
+              length(enr_universe), nrow(enr)))
+  enr_sig <- enr |>
+    dplyr::filter(P.Value < 0.05) |>
+    dplyr::arrange(P.Value) |>
+    dplyr::select(module, gene_set, n_overlap, n_module, n_gene_set,
+                  odds_ratio, P.Value, adj.P.Val, overlap)
+  if (nrow(enr_sig) == 0) {
+    cat("No module-vs-set overlap reached P<0.05.\n")
+  } else {
+    enr_print <- enr_sig
+    enr_print$overlap <- vapply(strsplit(enr_print$overlap, ";"), function(g) {
+      if (length(g) == 0L) return("")
+      if (length(g) <= 8L) paste(g, collapse = ", ")
+      else paste0(paste(g[1:8], collapse = ", "), ", ... (+", length(g) - 8L, ")")
+    }, character(1))
+    print(knitr::kable(head(enr_print, 25), digits = 3,
+                       caption = paste0("Top module-vs-gene-set overlaps ",
+                                        "(hypergeometric, P<0.05; top 25 shown)")))
+  }
+}
+```
+
+### Per-substate module-eigengene interaction
+
+The whole-microglia MG-M3 collapse (`tau_in_nlgf` logFC -3.80, padj 6.7e-4)
+could in principle be carried by a single substate or be uniform across
+microglial substates. To distinguish, we pseudobulk the **cell-level
+MG-Mx eigengenes per (state, genotype_batch)**, then re-fit the same 2x2
+factorial + batch limma within each substate.
+
+```{r hdwgcna-module-de-per-state, fig.width = 9, fig.height = 5}
+if (!is.null(hdw) && !is.null(hdw_de)) {
+  hdw_de_state <- fit_module_de_per_state(
+    MEs_cells = hdw$MEs_cells,
+    meta      = hdw$cell_meta,
+    verbose   = FALSE
+  )
+
+  # Long-form: one row per (state, module, contrast)
+  state_long <- dplyr::bind_rows(lapply(names(hdw_de_state), function(st) {
+    fit_st <- hdw_de_state[[st]]
+    if (is.null(fit_st)) return(NULL)
+    dplyr::bind_rows(lapply(names(fit_st$top), function(ct) {
+      dplyr::mutate(fit_st$top[[ct]], contrast = ct, state = st,
+                    cells_used = fit_st$cells_used)
+    }))
+  }))
+  state_long <- state_long[, c("state", "module", "contrast",
+                               "logFC", "t", "P.Value", "adj.P.Val",
+                               "cells_used")]
+  write_tsv_safe(state_long,
+                 file.path(params$results_dir,
+                           "hdwgcna_module_de_per_state.tsv"))
+
+  states_ord    <- c("homeostatic", "DAM", "IFN", "proliferative")
+  contrasts_ord <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s",
+                     "tau_in_nlgf", "interaction")
+  modules_ord   <- sort(setdiff(unique(state_long$module),
+                                c("grey", "MG-M0")))
+
+  # Focused kable on MG-M3.
+  mg3_state <- state_long |>
+    dplyr::filter(module == "MG-M3") |>
+    dplyr::mutate(
+      state    = factor(state, levels = states_ord),
+      contrast = factor(contrast, levels = contrasts_ord)
+    ) |>
+    dplyr::arrange(contrast, state) |>
+    dplyr::select(state, contrast, logFC, P.Value, adj.P.Val, cells_used)
+  print(knitr::kable(mg3_state, digits = 4,
+                     caption = paste0("MG-M3 eigengene DE ",
+                                       "per substate (n = 16 pseudo-",
+                                       "samples per state, batch ",
+                                       "covariate retained).")))
+
+  # Per-state x contrast logFC heatmap, row-split by module.
+  hm_long <- state_long |>
+    dplyr::filter(module %in% modules_ord) |>
+    dplyr::mutate(
+      state    = factor(state, levels = states_ord),
+      contrast = factor(contrast, levels = contrasts_ord),
+      module   = factor(module, levels = modules_ord),
+      row_key  = paste(module, state, sep = " | ")
+    )
+  row_keys <- as.character(unique(hm_long$row_key[order(hm_long$module,
+                                                       hm_long$state)]))
+  fc_mat <- matrix(NA_real_, nrow = length(row_keys),
+                   ncol = length(contrasts_ord),
+                   dimnames = list(row_keys, contrasts_ord))
+  pa_mat <- fc_mat
+  for (i in seq_len(nrow(hm_long))) {
+    r <- as.character(hm_long$row_key[i])
+    c <- as.character(hm_long$contrast[i])
+    fc_mat[r, c] <- hm_long$logFC[i]
+    pa_mat[r, c] <- hm_long$adj.P.Val[i]
+  }
+  row_split <- factor(sub(" \\| .+", "", row_keys), levels = modules_ord)
+  rng <- max(abs(fc_mat[is.finite(fc_mat)]), na.rm = TRUE)
+  col_fun <- circlize::colorRamp2(c(-rng, 0, rng),
+                                  c("#3a4cc0", "white", "#b40426"))
+  cell_fn <- function(j, i, x, y, width, height, fill) {
+    pa <- pa_mat[i, j]
+    if (is.na(pa)) return(invisible(NULL))
+    if (pa < 0.05) grid::grid.text("*", x, y,
+                                   gp = grid::gpar(fontsize = 10,
+                                                   col = "black"))
+    else if (pa < 0.1) grid::grid.text(".", x, y,
+                                       gp = grid::gpar(fontsize = 10,
+                                                       col = "black"))
+  }
+  short_rows <- sub("^MG-M[0-9]+ \\| ", "", row_keys)
+  ComplexHeatmap::Heatmap(
+    fc_mat,
+    name            = "logFC",
+    col             = col_fun,
+    cluster_rows    = FALSE,
+    cluster_columns = FALSE,
+    column_order    = seq_len(ncol(fc_mat)),
+    row_split       = row_split,
+    row_title_rot   = 0,
+    row_labels      = short_rows,
+    row_names_gp    = grid::gpar(fontsize = 8),
+    column_names_gp = grid::gpar(fontsize = 9),
+    cell_fun        = cell_fn,
+    column_title    = paste0("Per-substate module-eigengene DE",
+                             " ('*' = FDR<0.05, '.' = FDR<0.1)"),
+    border          = TRUE
+  )
+}
+```
+
+### Module hub connectivity vs whole-microglia interaction logFC
+
+If a module captures a coherent transcriptional response, its
+**most-connected** members (highest within-module `kME`) should also
+carry the **largest per-gene interaction logFCs**. Below we plot, for
+every gene in each non-grey module, the module-internal kME against the
+whole-microglia NEBULA interaction `logFC`.
+
+```{r hdwgcna-kme-vs-nebula, fig.width = 10, fig.height = 8}
+if (!is.null(hdw) && exists("de_snrnaseq_nebula") &&
+    !is.null(de_snrnaseq_nebula)) {
+  nebula_int <- de_snrnaseq_nebula$top$interaction
+  # NEBULA top stores Ensembl `gene` + `symbol`; modules store `gene_name`
+  # (Ensembl). Use Ensembl for the join to avoid symbol-ambiguity.
+  modules_mg <- hdw$modules
+  modules_mg$symbol <- symbol_map$symbol[
+    match(modules_mg$gene_name, symbol_map$ensembl)
+  ]
+  modules_mg <- modules_mg[modules_mg$module != "grey", , drop = FALSE]
+
+  # Long-form: gene x module-of-membership with own-module kME +
+  # NEBULA interaction stats.
+  kme_long <- do.call(rbind, lapply(unique(as.character(modules_mg$module)),
+                                    function(m) {
+    own_kME_col <- paste0("kME_", m)
+    if (!own_kME_col %in% colnames(modules_mg)) return(NULL)
+    sub <- modules_mg[modules_mg$module == m, , drop = FALSE]
+    sub$kME_own <- sub[[own_kME_col]]
+    sub$module  <- m
+    sub[, c("gene_name", "symbol", "module", "kME_own"), drop = FALSE]
+  }))
+  kme_long <- merge(kme_long, nebula_int[, c("gene", "logFC", "P.Value",
+                                              "adj.P.Val")],
+                    by.x = "gene_name", by.y = "gene", all.x = TRUE)
+
+  # Per-module Spearman rho between kME and |logFC|; reported alongside.
+  cor_tbl <- kme_long |>
+    dplyr::filter(!is.na(logFC) & !is.na(kME_own)) |>
+    dplyr::group_by(module) |>
+    dplyr::summarise(
+      n             = dplyr::n(),
+      rho_signed    = suppressWarnings(cor(kME_own, logFC,
+                                            method = "spearman")),
+      rho_absolute  = suppressWarnings(cor(kME_own, abs(logFC),
+                                            method = "spearman")),
+      .groups       = "drop"
+    )
+  print(knitr::kable(cor_tbl, digits = 3,
+                     caption = paste0("kME (own module) vs whole-microglia",
+                                       " NEBULA interaction logFC - ",
+                                       "Spearman rho, per module")))
+
+  # Facet plot: one panel per module, x = kME, y = logFC, colour = LE.
+  modules_ord <- sort(setdiff(unique(as.character(kme_long$module)),
+                              c("grey", "MG-M0")))
+  kme_long$module <- factor(kme_long$module, levels = modules_ord)
+  p <- ggplot2::ggplot(
+    kme_long[!is.na(kme_long$logFC), ],
+    ggplot2::aes(x = kME_own, y = logFC)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed",
+                        colour = "grey60") +
+    ggplot2::geom_point(colour = "grey50", alpha = 0.5, size = 0.7) +
+    ggplot2::geom_smooth(method = "lm", formula = y ~ x,
+                         colour = "black", se = FALSE,
+                         linewidth = 0.4) +
+    ggplot2::facet_wrap(~ module, scales = "free_x") +
+    ggplot2::labs(
+      title = paste0("Module kME vs whole-microglia NEBULA ",
+                     "interaction logFC"),
+      x     = "kME (within own module)",
+      y     = "NEBULA interaction logFC"
+    ) +
+    ggplot2::theme_bw()
+  print(p)
+
+  # Export full long-form for follow-up.
+  write_tsv_safe(kme_long,
+                 file.path(params$results_dir,
+                           "hdwgcna_kme_vs_nebula_interaction.tsv"))
+}
+```
+
+```{r hdwgcna-modules-tsv}
+# Export full module assignment + kME table for downstream use, plus a
+# module-level summary with the top hub genes (as symbols) per module.
+# The displayed hub list excludes likely red-blood-cell contamination
+# (Hbb-bs etc.) via `flag_contaminant_hubs()`; the raw `hdwgcna_modules.
+# tsv` and `hdwgcna_module_hubs.tsv` exports retain the full unfiltered
+# assignment so downstream consumers can see the contamination flag.
+if (!is.null(hdw)) {
+  mod_tbl <- hdw$modules
+  mod_tbl$symbol <- symbol_map$symbol[
+    match(mod_tbl$gene_name, symbol_map$ensembl)
+  ]
+  keep_cols <- intersect(c("gene_name", "symbol", "module", "color",
+                           grep("^kME_", colnames(mod_tbl), value = TRUE)),
+                         colnames(mod_tbl))
+  write_tsv_safe(mod_tbl[, keep_cols, drop = FALSE],
+                 file.path(params$results_dir, "hdwgcna_modules.tsv"))
+
+  hub_sym <- hdw$hub_genes
+  hub_sym$symbol <- symbol_map$symbol[
+    match(hub_sym$gene_name, symbol_map$ensembl)
+  ]
+  hub_sym$symbol <- ifelse(is.na(hub_sym$symbol) | !nzchar(hub_sym$symbol),
+                           hub_sym$gene_name, hub_sym$symbol)
+  hub_sym <- flag_contaminant_hubs(hub_sym)
+  write_tsv_safe(hub_sym,
+                 file.path(params$results_dir, "hdwgcna_module_hubs.tsv"))
+
+  n_flagged <- sum(hub_sym$is_likely_rbc)
+  if (n_flagged > 0L) {
+    flagged_rows <- hub_sym[hub_sym$is_likely_rbc,
+                            c("symbol", "module", "kME"), drop = FALSE]
+    cat(sprintf(paste0("RBC-contaminant filter flagged %d hub row(s); ",
+                        "excluded from the displayed top-5 below.\n"),
+                n_flagged))
+    print(knitr::kable(flagged_rows, digits = 3,
+                       caption = paste0("Hub genes flagged as likely",
+                                         " RBC contamination",
+                                         " (excluded from display only)")))
+  }
+
+  hub_top5 <- hub_sym |>
+    dplyr::filter(!is.na(display_rank) & display_rank <= 5L) |>
+    dplyr::arrange(module, display_rank) |>
+    dplyr::group_by(module) |>
+    dplyr::summarise(hubs_top5 = paste(symbol, collapse = ", "),
+                     .groups   = "drop")
+  module_summary <- hdw$module_meta |>
+    dplyr::left_join(hub_top5, by = "module") |>
+    dplyr::filter(module != "grey")
+  print(knitr::kable(module_summary, digits = 3,
+                     caption = paste0("Module summary: size, colour, ",
+                                       "top-5 hub genes by kME ",
+                                       "(RBC contaminants filtered out)")))
+}
+```

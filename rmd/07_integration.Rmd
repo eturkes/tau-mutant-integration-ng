@@ -1,0 +1,261 @@
+# Cross-modality integration
+
+## Gene-level log2FC table
+
+Per contrast, we collect the log2FC for every dataset, harmonised on gene
+symbol. The phosphoproteomics input is aggregated to gene level by taking
+the maximum absolute log2FC across sites per gene per contrast.
+
+```{r integration-table}
+integ_path <- file.path(params$cache_dir, "integration_table.rds")
+# The snRNAseq column sources from the single-cell NEBULA fit; the
+# pseudobulk logFC is kept alongside as `snrnaseq_pb` for cross-checking.
+integration_tbl <- cache_or_run(integ_path, {
+  contrasts <- names(contrast_definitions)
+  contrasts <- c(contrasts, "interaction")
+  build_one <- function(cn) {
+    safe_min <- function(x) {
+      if (all(is.na(x))) NA_real_ else suppressWarnings(min(x, na.rm = TRUE))
+    }
+    sn_pb <- de_snrnaseq$fit$top[[cn]] |>
+      dplyr::transmute(symbol, snrnaseq_pb = logFC, snrnaseq_pb_p = adj.P.Val) |>
+      dplyr::filter(!is.na(symbol), symbol != "") |>
+      dplyr::group_by(symbol) |>
+      dplyr::summarise(snrnaseq_pb   = mean(snrnaseq_pb, na.rm = TRUE),
+                       snrnaseq_pb_p = safe_min(snrnaseq_pb_p),
+                       .groups = "drop")
+    sn <- de_snrnaseq_nebula$top[[cn]] |>
+      dplyr::transmute(symbol, snrnaseq = logFC, snrnaseq_p = adj.P.Val) |>
+      dplyr::filter(!is.na(symbol), symbol != "") |>
+      dplyr::group_by(symbol) |>
+      dplyr::summarise(snrnaseq   = mean(snrnaseq, na.rm = TRUE),
+                       snrnaseq_p = safe_min(snrnaseq_p),
+                       .groups = "drop") |>
+      dplyr::full_join(sn_pb, by = "symbol")
+    gx <- de_geomx$fit$top[[cn]] |>
+      dplyr::transmute(symbol, geomx = logFC, geomx_p = adj.P.Val)
+    pr <- de_proteomics$fit$top[[cn]] |>
+      dplyr::transmute(symbol, proteomics = logFC, proteomics_p = adj.P.Val) |>
+      dplyr::filter(!is.na(symbol)) |>
+      dplyr::group_by(symbol) |>
+      dplyr::summarise(proteomics   = mean(proteomics, na.rm = TRUE),
+                       proteomics_p = safe_min(proteomics_p),
+                       .groups = "drop")
+    aggregate_site_level <- function(df, value_col, p_col) {
+      df |>
+        dplyr::filter(!is.na(symbol)) |>
+        dplyr::group_by(symbol) |>
+        dplyr::summarise(
+          "{value_col}" := {
+            v  <- .data[[value_col]]
+            ok <- !is.na(v)
+            if (any(ok)) v[ok][which.max(abs(v[ok]))] else NA_real_
+          },
+          "{p_col}" := suppressWarnings(min(.data[[p_col]], na.rm = TRUE)),
+          .groups = "drop"
+        ) |>
+        dplyr::mutate(
+          "{p_col}" := ifelse(is.infinite(.data[[p_col]]), NA_real_, .data[[p_col]])
+        )
+    }
+    ph <- de_phospho$fit$top[[cn]] |>
+      dplyr::transmute(symbol, phospho = logFC, phospho_p = adj.P.Val) |>
+      aggregate_site_level("phospho", "phospho_p")
+    pc <- de_phospho_corr$fit$top[[cn]] |>
+      dplyr::transmute(symbol, phospho_corr = logFC,
+                       phospho_corr_p = adj.P.Val) |>
+      aggregate_site_level("phospho_corr", "phospho_corr_p")
+    out <- sn |>
+      dplyr::full_join(gx, by = "symbol") |>
+      dplyr::full_join(pr, by = "symbol") |>
+      dplyr::full_join(ph, by = "symbol") |>
+      dplyr::full_join(pc, by = "symbol") |>
+      dplyr::mutate(contrast = cn)
+    out
+  }
+  do.call(rbind, lapply(contrasts, build_one))
+})
+
+cat(sprintf("Integration table: %d gene-contrast rows.\n", nrow(integration_tbl)))
+head(integration_tbl, 5)
+write_tsv_safe(integration_tbl,
+               file.path(params$results_dir, "integration_logfc_per_contrast.tsv"))
+```
+
+## Per-contrast modality concordance
+
+```{r concordance-plots, fig.width = 10, fig.height = 8}
+plot_for <- function(cn, title_suffix) {
+  sub <- integration_tbl |> dplyr::filter(contrast == cn)
+  p1 <- concordance_plot(sub, "snrnaseq", "geomx",
+                         label_col = "symbol",
+                         x_lab = "snRNAseq log2FC", y_lab = "GeoMx log2FC",
+                         title = paste0("snRNAseq vs GeoMx | ", title_suffix))
+  p2 <- concordance_plot(sub, "snrnaseq", "proteomics",
+                         label_col = "symbol",
+                         x_lab = "snRNAseq log2FC", y_lab = "Proteomics log2FC",
+                         title = paste0("snRNAseq vs Proteomics | ", title_suffix))
+  p3 <- concordance_plot(sub, "geomx", "proteomics",
+                         label_col = "symbol",
+                         x_lab = "GeoMx log2FC", y_lab = "Proteomics log2FC",
+                         title = paste0("GeoMx vs Proteomics | ", title_suffix))
+  p4 <- concordance_plot(sub, "proteomics", "phospho",
+                         label_col = "symbol",
+                         x_lab = "Proteomics log2FC", y_lab = "Phospho log2FC",
+                         title = paste0("Proteomics vs Phospho | ", title_suffix))
+  (p1 | p2) / (p3 | p4)
+}
+plot_for("nlgf_in_maptki", "NLGF effect in MAPTKI")
+plot_for("nlgf_in_p301s",  "NLGF effect in P301S")
+plot_for("interaction",    "interaction (tau-dependent NLGF response)")
+```
+
+## Concordance summary
+
+```{r concordance-summary}
+modalities <- c("snrnaseq", "geomx", "proteomics", "phospho", "phospho_corr")
+pairs <- t(combn(modalities, 2))
+concord_tbl <- purrr::map_dfr(unique(integration_tbl$contrast), function(cn) {
+  sub <- integration_tbl |> dplyr::filter(contrast == cn)
+  apply(pairs, 1, function(p) {
+    x <- sub[[p[1]]]; y <- sub[[p[2]]]
+    ok <- is.finite(x) & is.finite(y)
+    if (sum(ok) < 20) return(c(p[1], p[2], cn, NA, NA, sum(ok)))
+    c(p[1], p[2], cn,
+      round(cor(x[ok], y[ok], method = "spearman"), 3),
+      round(cor(x[ok], y[ok], method = "pearson"), 3),
+      sum(ok))
+  }) |>
+    t() |>
+    as.data.frame() |>
+    setNames(c("x", "y", "contrast", "spearman", "pearson", "n"))
+})
+concord_tbl$spearman <- as.numeric(concord_tbl$spearman)
+concord_tbl$pearson  <- as.numeric(concord_tbl$pearson)
+concord_tbl$n        <- as.integer(concord_tbl$n)
+knitr::kable(concord_tbl,
+             caption = "Spearman / Pearson concordance of log2FC between modalities")
+write_tsv_safe(concord_tbl,
+               file.path(params$results_dir, "modality_concordance.tsv"))
+```
+
+# Joint pathway analysis (fgsea)
+
+We compute fgsea on the moderated `t`-statistic for the contrasts of
+interest, separately per dataset, against MSigDB C5 GO:BP (mouse), then
+look for pathways that are concordantly enriched across modalities. GO:BP
+is a fine-grained ontology-based collection (~7k pathways), so the
+displayed output is restricted to the top hits per contrast per modality;
+the full table is persisted to
+`storage/results/fgsea_gobp_per_contrast.tsv` for downstream use.
+
+(Additional collections: GO MF, GO CC, and custom curated sets, are
+introduced in section 12, the agnostic pathway survey. The GO MF and GO
+CC fgsea result caches are built ahead of the knit by
+`scripts/build_fgsea_extra_collections.R`, which writes
+`storage/cache/fgsea_gomf_results.rds`,
+`storage/cache/fgsea_gocc_results.rds`, and the corresponding per-contrast
+TSVs to `storage/results/`; that script is idempotent and skips
+already-built caches unless `--overwrite` is passed.)
+
+```{r fgsea-setup}
+prep_t <- function(top_tbl, gene_col = "symbol") {
+  tbl <- top_tbl |> dplyr::filter(!is.na(.data[[gene_col]]),
+                                  .data[[gene_col]] != "")
+  tbl <- tbl[!duplicated(tbl[[gene_col]]), ]
+  tbl
+}
+
+run_dataset <- function(de_obj, pathways, gene_col = "symbol",
+                        min_size = 10, max_size = 500) {
+  contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+                 "tau_alone", "tau_in_nlgf")
+  out <- lapply(contrasts, function(cn) {
+    tbl <- prep_t(de_obj$fit$top[[cn]], gene_col)
+    if (!"t" %in% names(tbl)) tbl$t <- tbl$logFC
+    run_fgsea_for_contrast(tbl, pathways, stat_col = "t",
+                           gene_col = gene_col,
+                           min_size = min_size, max_size = max_size)
+  })
+  names(out) <- contrasts
+  out
+}
+
+# The snRNAseq fgsea ranking uses NEBULA's z-statistic (under-powered
+# pseudobulk would dampen the interaction signal). NEBULA's output is
+# wrapped in a fit-shaped list so `run_dataset` works unchanged.
+snrnaseq_nebula_shim <- list(fit = list(top = de_snrnaseq_nebula$top))
+```
+
+```{r fgsea-gobp}
+gobp <- get_gobp()
+
+gobp_path <- file.path(params$cache_dir, "fgsea_gobp_results.rds")
+gsea_gobp <- cache_or_run(gobp_path, {
+  list(
+    snrnaseq     = run_dataset(snrnaseq_nebula_shim, gobp,
+                               min_size = 15, max_size = 500),
+    geomx        = run_dataset(de_geomx,             gobp,
+                               min_size = 15, max_size = 500),
+    proteomics   = run_dataset(de_proteomics,        gobp,
+                               min_size = 15, max_size = 500),
+    phospho      = run_dataset(de_phospho,           gobp,
+                               min_size = 15, max_size = 500),
+    phospho_corr = run_dataset(de_phospho_corr,      gobp,
+                               min_size = 15, max_size = 500)
+  )
+})
+
+joint_gobp <- purrr::map_dfr(
+  c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+    "tau_alone", "tau_in_nlgf"),
+  function(cn) {
+    extract <- function(name) {
+      tbl <- gsea_gobp[[name]][[cn]] |> as.data.frame()
+      tbl[, c("pathway", "NES", "padj")] |>
+        setNames(c("pathway", paste0("nes_", name), paste0("padj_", name)))
+    }
+    Reduce(function(a, b) dplyr::full_join(a, b, by = "pathway"),
+           lapply(names(gsea_gobp), extract)) |>
+      dplyr::mutate(contrast = cn)
+  }
+)
+write_tsv_safe(joint_gobp,
+               file.path(params$results_dir, "fgsea_gobp_per_contrast.tsv"))
+cat(sprintf("GO BP joint table: %d pathway-contrast rows.\n", nrow(joint_gobp)))
+```
+
+```{r fgsea-gobp-top}
+# Rank GO BP terms per contrast by geometric mean of -log10(padj) across
+# modalities (require at least 2 finite padj), then keep the top 8 per
+# contrast for display.
+nes_cols  <- grep("^nes_",  names(joint_gobp), value = TRUE)
+padj_cols <- grep("^padj_", names(joint_gobp), value = TRUE)
+gobp_ranked <- joint_gobp
+gobp_ranked$score <- apply(as.matrix(gobp_ranked[, padj_cols]), 1, function(r) {
+  r <- r[is.finite(r) & r > 0]
+  if (length(r) < 2) return(NA_real_)
+  exp(mean(log(-log10(r))))
+})
+gobp_ranked$consistent <- apply(as.matrix(gobp_ranked[, nes_cols]), 1, function(r) {
+  r <- r[is.finite(r)]
+  if (length(r) < 2) return(NA)
+  all(sign(r) == sign(r[1]))
+})
+gobp_top <- gobp_ranked |>
+  dplyr::filter(!is.na(score),
+                contrast %in% c("nlgf_in_maptki", "nlgf_in_p301s",
+                                "interaction",    "tau_in_nlgf")) |>
+  dplyr::group_by(contrast) |>
+  dplyr::arrange(dplyr::desc(score), .by_group = TRUE) |>
+  dplyr::slice_head(n = 8) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    pathway = gsub("_", " ", tolower(sub("^GOBP_", "", pathway)))
+  )
+knitr::kable(
+  gobp_top[, c("contrast", "pathway", nes_cols, "score", "consistent")],
+  digits   = 3,
+  caption  = "Top GO BP terms per contrast (geomean -log10(padj) across modalities)"
+)
+```

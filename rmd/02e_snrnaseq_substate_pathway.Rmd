@@ -1,0 +1,214 @@
+### Per-substate pathway localisation (fgsea)
+
+The whole-microglia fgsea (built in the integration section and Phase B
+builder scripts) identifies pathways with interaction-level support
+against the four microglia substates collapsed together. To check
+whether those signals are driven by a single substate or are distributed
+across the four substates (homeostatic, DAM, IFN, proliferative), we
+re-run fgsea on the per-state NEBULA `t`-statistics against all six
+gene-set collections used elsewhere in the report: GO BP, GO MF, GO CC,
+and the three project-specific curated families (custom_microglia_states
+from B2, custom_microglia_ad from B3, custom_module_sources from B4).
+The GO collections retain the canonical `min_size = 15` cutoff; the
+three custom collections use `min_size = 5` because their tightest sets
+(homeostatic_core at 15 mouse symbols, IRM at 28, etc.) drop further
+after intersecting with each substate's measured-gene universe.
+
+```{r snrnaseq-substate-fgsea}
+gobp           <- get_gobp()
+gomf           <- get_gomf()
+gocc           <- get_gocc()
+custom_states  <- get_custom_microglia_states()
+custom_ad      <- get_custom_microglia_ad()
+custom_modules <- get_custom_module_sources()
+
+substate_fgsea_path <- file.path(params$cache_dir,
+                                 "fgsea_per_state_results.rds")
+fgsea_per_state <- cache_or_run(substate_fgsea_path, {
+  list(
+    gobp                    = run_fgsea_per_state(de_snrnaseq_nebula_per_state,
+                                                  gobp,
+                                                  min_size = 15, max_size = 500),
+    gomf                    = run_fgsea_per_state(de_snrnaseq_nebula_per_state,
+                                                  gomf,
+                                                  min_size = 15, max_size = 500),
+    gocc                    = run_fgsea_per_state(de_snrnaseq_nebula_per_state,
+                                                  gocc,
+                                                  min_size = 15, max_size = 500),
+    custom_microglia_states = run_fgsea_per_state(de_snrnaseq_nebula_per_state,
+                                                  custom_states,
+                                                  min_size = 5,  max_size = 500),
+    custom_microglia_ad     = run_fgsea_per_state(de_snrnaseq_nebula_per_state,
+                                                  custom_ad,
+                                                  min_size = 5,  max_size = 500),
+    custom_module_sources   = run_fgsea_per_state(de_snrnaseq_nebula_per_state,
+                                                  custom_modules,
+                                                  min_size = 5,  max_size = 500)
+  )
+})
+
+flatten_fgsea_per_state <- function(nested, collection) {
+  purrr::imap_dfr(nested, function(per_contrast, state) {
+    purrr::imap_dfr(per_contrast, function(tbl, contrast) {
+      df <- as.data.frame(tbl)[, c("pathway", "NES", "padj", "size")]
+      df$collection <- collection
+      df$state      <- state
+      df$contrast   <- contrast
+      df
+    })
+  })
+}
+fgsea_per_state_long <- purrr::imap_dfr(fgsea_per_state,
+                                        flatten_fgsea_per_state)
+write_tsv_safe(fgsea_per_state_long,
+               file.path(params$results_dir,
+                         "fgsea_per_state.tsv"))
+collection_counts <- table(fgsea_per_state_long$collection)
+cat("Per-state fgsea rows by collection:\n")
+for (cn in names(collection_counts)) {
+  cat(sprintf("  %-26s %d\n", cn, collection_counts[[cn]]))
+}
+cat(sprintf("Total: %d rows (6 collections x 4 substates x 5 contrasts x per-collection pathway counts).\n",
+            nrow(fgsea_per_state_long)))
+```
+
+```{r snrnaseq-substate-fgsea-gobp-heatmap, fig.width = 9, fig.height = 9}
+hm_int <- fgsea_per_state_long |>
+  dplyr::filter(collection == "gobp", contrast == "interaction") |>
+  dplyr::select(pathway, state, NES, padj) |>
+  tidyr::pivot_wider(id_cols = pathway, names_from = state,
+                     values_from = c(NES, padj),
+                     names_glue = "{.value}_{state}")
+nes_cols  <- grep("^NES_",  names(hm_int), value = TRUE)
+padj_cols <- grep("^padj_", names(hm_int), value = TRUE)
+sig_any <- apply(as.matrix(hm_int[, padj_cols]) < 0.1, 1,
+                 function(r) any(r, na.rm = TRUE))
+hm_int <- hm_int[sig_any, , drop = FALSE]
+if (nrow(hm_int) == 0) {
+  cat("No GO BP pathway with padj<0.1 in any state for the interaction.\n")
+} else {
+  # GO BP has ~7000 terms; cap the heatmap to the top 40 by max |NES|
+  # across states so labels stay legible. The full per-state GO BP table
+  # is exported in fgsea_per_state.tsv above.
+  mat <- as.matrix(hm_int[, nes_cols])
+  rownames(mat) <- gsub("_", " ", sub("^GOBP_", "", hm_int$pathway))
+  colnames(mat) <- sub("^NES_", "", colnames(mat))
+  mat[!is.finite(mat)] <- 0
+  if (nrow(mat) > 40) {
+    keep <- order(apply(abs(mat), 1, max, na.rm = TRUE),
+                  decreasing = TRUE)[seq_len(40)]
+    mat <- mat[keep, , drop = FALSE]
+  }
+  col_fun <- circlize::colorRamp2(c(-2.5, 0, 2.5),
+                                  c("#3a4cc0", "white", "#b40426"))
+  ComplexHeatmap::Heatmap(
+    mat, name = "NES",
+    col = col_fun,
+    row_title = "GO BP pathway",
+    column_title = sprintf(
+      "Per-state GO BP NES (interaction contrast, top %d by max |NES|)",
+      nrow(mat)),
+    cluster_columns = FALSE,
+    row_names_gp = grid::gpar(fontsize = 7),
+    column_names_gp = grid::gpar(fontsize = 9),
+    border = TRUE
+  )
+}
+```
+
+```{r snrnaseq-substate-fgsea-gobp-top-per-state}
+gobp_top_per_state <- fgsea_per_state_long |>
+  dplyr::filter(collection == "gobp", contrast == "interaction",
+                is.finite(padj)) |>
+  dplyr::group_by(state) |>
+  dplyr::arrange(padj, .by_group = TRUE) |>
+  dplyr::slice_head(n = 10) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(pathway = gsub("_", " ",
+                               sub("^GOBP_", "", pathway))) |>
+  dplyr::select(state, pathway, NES, padj, size)
+print(knitr::kable(gobp_top_per_state, digits = 3,
+                   caption = "Top 10 GO BP interaction terms per state (by padj)"))
+```
+
+Comprehensive cross-modality pathway ranking across all gene-set
+collections (GO BP, GO MF, GO CC, and three custom curated families) is
+reserved for the agnostic pathway survey introduced later in this
+report.
+
+### Sparse whole-microglia hits at 1% per-state prevalence
+
+Several whole-microglia top interaction hits (Plac9, Cd276, AI504432)
+are expressed in fewer than 5% of cells per substate and therefore
+drop out of the canonical 5% per-state NEBULA fit. To check whether
+the per-state signal is genuinely absent or merely filtered, we
+re-fit NEBULA at the whole-microglia threshold of 1% per state and
+look up the missing genes. The 5% fit remains the published per-state
+reference (better stable variance estimates per state).
+
+```{r snrnaseq-substate-sparse-1pct}
+sparse_cache <- file.path(params$cache_dir,
+                          "de_snrnaseq_nebula_per_state_1pct.rds")
+if (file.exists(sparse_cache)) {
+  per_state_1pct <- readRDS(sparse_cache)
+
+  whole_top <- de_snrnaseq_nebula$top$interaction |>
+    dplyr::filter(is.finite(P.Value)) |>
+    dplyr::arrange(P.Value) |>
+    head(20)
+
+  in_5pct_genes <- unique(unlist(
+    purrr::map(de_snrnaseq_nebula_per_state, ~ .x$top$interaction$gene)
+  ))
+  filtered_out <- whole_top$gene[!whole_top$gene %in% in_5pct_genes]
+  in_some_states <- whole_top$gene[whole_top$gene %in% in_5pct_genes &
+    !sapply(whole_top$gene, function(g) {
+      all(vapply(de_snrnaseq_nebula_per_state,
+                 function(fit) g %in% fit$top$interaction$gene,
+                 logical(1)))
+    })]
+  target_sparse <- unique(c(filtered_out, in_some_states))
+  cat(sprintf("Whole-microglia top-20 hits affected by the 5%% per-state filter: %d\n",
+              length(target_sparse)))
+
+  sparse_long <- purrr::imap_dfr(per_state_1pct, function(fit, st) {
+    tbl <- fit$top$interaction
+    idx <- match(target_sparse, tbl$gene)
+    data.frame(
+      gene        = target_sparse,
+      symbol      = symbol_map$symbol[match(target_sparse,
+                                            symbol_map$ensembl)],
+      state       = st,
+      logFC       = tbl$logFC[idx],
+      P.Value     = tbl$P.Value[idx],
+      adj.P.Val   = tbl$adj.P.Val[idx],
+      convergence = tbl$convergence[idx]
+    )
+  })
+  sparse_wide <- sparse_long |>
+    dplyr::mutate(neg_log10p = -log10(pmax(P.Value, 1e-300))) |>
+    dplyr::select(gene, symbol, state, logFC, neg_log10p, adj.P.Val) |>
+    tidyr::pivot_wider(id_cols = c(gene, symbol),
+                       names_from = state,
+                       values_from = c(logFC, neg_log10p, adj.P.Val),
+                       names_glue = "{state}_{.value}") |>
+    dplyr::left_join(
+      whole_top |> dplyr::select(gene, whole_logFC = logFC,
+                                 whole_P = P.Value,
+                                 whole_padj = adj.P.Val),
+      by = "gene"
+    )
+  print(knitr::kable(sparse_wide, digits = 3,
+                     caption = paste0(
+                       "Whole-microglia top interaction hits at 1% per-state ",
+                       "prevalence: per-state interaction logFC and -log10(P) ",
+                       "with the whole-microglia reference. NA entries mean the ",
+                       "gene fell below 1% even at the relaxed threshold in that state.")))
+  write_tsv_safe(sparse_wide,
+                 file.path(params$results_dir,
+                           "nebula_per_state_sparse_1pct.tsv"))
+} else {
+  cat(sprintf("Sparse 1%% cache not found at %s; skipping.\n", sparse_cache))
+  cat("  (Build via `Rscript scripts/build_per_state_nebula_1pct.R`.)\n")
+}
+```

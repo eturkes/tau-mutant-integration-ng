@@ -1,0 +1,454 @@
+# Causal signalling network reconstruction
+
+This is the final mechanism-layer section and the topological capstone of
+narrative arc **J** (`storage/notes/causal_network_plan.md`). The
+mechanism layer produced *endpoint activities* in isolation: kinases
+(section 15; Gsk3b strongest, interaction axis), transcription factors
+(section 14; Spi1 / Nfkb1 / Sp3 on the amyloid axis, Myc / Creb1 / Tp53 /
+Jun on the interaction axis), and ligand-receptor pairs (section 16). None
+of those layers said anything about the **wiring between** the upstream
+kinase signal and the downstream transcriptional signal. This section
+reconstructs, per contrast, the directed signed signalling subnetwork that
+connects them, solved as an integer linear program (ILP) over the OmniPath
+prior-knowledge network by CARNIVAL.
+
+Two headline questions motivate the reconstruction:
+
+* **(a)** is the interaction-axis Gsk3b kinase signal topologically wired
+  to the interaction-axis transcription factors (Myc and the other
+  section-14.3 axis-3 leaders)?
+* **(b)** does the tau-driven NF-&kappa;B attenuation read out at section
+  18 have a recoverable upstream signalling path?
+
+**The two endpoints (no new inference).** This section re-uses caches
+already on disk. The **upstream** seeds are kinase activities from the
+corrected bulk-phosphoproteome (`kinase_activity_decoupler.rds`, the
+`phospho_corrected` modality from section 15); the **downstream**
+measurements are TF activities aggregated across snRNAseq + GeoMx +
+proteomics (`tf_activity_decoupler_split.rds`, the split-complex
+re-derivation built for this layer so CollecTRI complexes resolve to
+single-protein symbols). A kinase enters as a signed perturbation
+(`inputObj`) and a TF enters as a signed measurement (`measObj`); CARNIVAL
+finds the smallest signed subnetwork of the prior network that is
+consistent with both.
+
+**Thresholds, stated before any result is read.**
+
+* Both endpoints are thresholded at **FDR < 0.10** on the decoupleR `ulm`
+  p-value (BH-adjusted within modality &times; contrast); direction is the
+  sign of the `consensus` score &mdash; the same significance/direction
+  split locked at the TF and kinase layers.
+* The prior network is the **OmniPath mouse signed-directed PKN**
+  (`organism = 10090`; directed edges with stimulation XOR inhibition),
+  **pruned to microglia-expressed symbols** (snRNAseq microglia subset),
+  giving 10,713 edges over 3,779 nodes.
+* Because the full microglia-expressed PKN is ILP-intractable, each
+  contrast's network is further restricted to nodes lying on a directed
+  seed&rarr;target walk of **at most `L = 3` hops** before the solve. `L`
+  is a mechanistic horizon matched to the 1&ndash;3-hop kinase&rarr;TF
+  reachability observed at J1, **not** an exhaustive search: any path
+  longer than three hops is excluded by construction. This is recorded in
+  every network's `meta$max_path`.
+* The ILP is solved by **cbc** (single-threaded; multi-threaded cbc
+  segfaults at this build) with sparsity penalty `betaWeight = 0.2`. Node
+  activities and edge weights are CARNIVAL's **consensus across all optimal
+  solutions** (its built-in multi-solution averaging), so a reported edge
+  is one that survives averaging over alternative optima, not an arbitrary
+  single solution.
+
+**Cross-compartment bridge (restated wherever a kinase-seeded path is
+read).** The kinase seeds are **bulk hippocampus** phospho, not
+microglia-sorted (a standing data lock); the TF measurements are
+microglial. Every recovered network therefore bridges bulk-tissue
+signalling to microglial transcription &mdash; an explicit
+cross-compartment inference, not a within-microglia signalling map.
+
+**Anti-anchoring.** An omitted edge is a finding. The verdict reports what
+the ILP connects **and** what it fails to connect; a path the solver did
+not return is never asserted. All five contrasts and all three D2 axes are
+presented in parallel with no privileged axis.
+
+## Per-contrast reconstructed networks
+
+This subsection reconstructs one network per contrast and reports coverage
+honestly. The summary table below carries, per contrast: the solve status,
+the number of kinase seeds and TF measurements that survived the
+microglia-prune and the `L = 3` reachability-prune to enter the ILP, the
+number of measured TFs recovered as active, the number of inferred
+intermediates the solver introduced, and the active-edge count.
+
+```{r causal-net-build}
+causal_net <- readRDS(file.path(params$cache_dir, "causal_network.rds"))
+
+cn_contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction",
+                  "tau_alone", "tau_in_nlgf")
+
+# Per-contrast summary via the helper, augmented with the count of kinase
+# seeds offered to each ILP (meta$n_pert_in) so the coverage story is
+# legible: seeds_offered -> seeds_active, TFs_offered -> TFs_recovered.
+cn_summary <- dplyr::bind_rows(lapply(cn_contrasts, function(ct) {
+  s <- summarise_network(causal_net[[ct]])
+  m <- causal_net[[ct]]$meta
+  s$kinase_seeds_in <- m$n_pert_in %||% 0L
+  s
+}))
+cn_summary_view <- cn_summary |>
+  dplyr::transmute(
+    contrast,
+    status,
+    kinase_seeds_in,
+    kinase_seeds_active = n_input_active,
+    TF_meas_in          = n_meas_in,
+    TF_recovered        = n_measured_recovered,
+    frac_TF_recovered   = frac_meas_recovered,
+    intermediates       = n_inferred_active,
+    active_edges        = n_edges
+  )
+
+# Long-format node and edge exports (active nodes/edges only, all
+# contrasts) for out-of-knit consumers and the section-20.2 / 20.3 layers.
+cn_nodes_tsv <- dplyr::bind_rows(lapply(cn_contrasts, function(ct) {
+  net <- causal_net[[ct]]
+  an  <- net$nodes[net$nodes$activity != 0, , drop = FALSE]
+  if (nrow(an) == 0L) return(NULL)
+  tibble::tibble(contrast = ct, node = an$node, node_type = an$node_type,
+                 activity = an$activity, up = an$up, down = an$down,
+                 zero = an$zero)
+}))
+cn_edges_tsv <- dplyr::bind_rows(lapply(cn_contrasts, function(ct) {
+  e <- causal_net[[ct]]$edges
+  if (nrow(e) == 0L) return(NULL)
+  tibble::tibble(contrast = ct, source = e$source,
+                 interaction = e$interaction, target = e$target,
+                 weight = e$weight)
+}))
+readr::write_tsv(cn_nodes_tsv,
+                 file.path(params$results_dir, "causal_network_nodes.tsv"))
+readr::write_tsv(cn_edges_tsv,
+                 file.path(params$results_dir, "causal_network_edges.tsv"))
+```
+
+```{r causal-net-summary-table, results = "asis"}
+knitr::kable(
+  cn_summary_view, digits = 2,
+  caption = paste0(
+    "Per-contrast CARNIVAL reconstruction summary. `kinase_seeds_in` / ",
+    "`TF_meas_in` are the seeds / measurements that entered the ILP after ",
+    "the microglia-prune and L=3 reachability-prune; `TF_recovered` is ",
+    "the number of those measured TFs the solver placed on an active path; ",
+    "`intermediates` is the count of inferred (unmeasured) nodes the solver ",
+    "introduced; `active_edges` is the consensus active-edge count. Two ",
+    "contrasts are honestly empty (no kinase seed at FDR<0.10)."
+  ))
+```
+
+Three of the five contrasts reconstruct a non-empty network
+(`nlgf_in_p301s`, `interaction`, `tau_in_nlgf`); two are **honestly empty**.
+`nlgf_in_maptki` and `tau_alone` carry **zero** kinase activities at
+FDR < 0.10 in the corrected phospho cache (the same two non-findings
+reported at section 15.1), so there is no perturbation to seed the ILP and
+the reachability-prune returns an empty network before any solve. Per the
+anti-anchoring guardrail these are recorded as findings, not dropped: the
+kinase layer simply provides no high-confidence upstream signal for the
+amyloid-on-tau-null and tau-alone contrasts at this threshold.
+
+### Contrast `nlgf_in_p301s` (amyloid on the P301S background)
+
+This is the best-covered reconstruction: three active kinase seeds
+(Cdk5, Gsk3b, Ppp1ca) and **18 of 22** measured TFs recovered. The figure
+shows two distinct seed-rooted modules. **Gsk3b** activates Nfkb1, Map2k1,
+Usf1 and Usf2, and inhibits Mapk14; the Gsk3b&rarr;Nfkb1 activation edge is
+the prior-network support for the NF-&kappa;B reading and is examined under
+question (b) at section 20.3. **Cdk5** activates Dnmt1, Mapk7 and Src. The
+two modules meet at a Map2k1&rarr;Mapk1 hub that fans out to a block of
+biosynthetic / cell-cycle TFs (Cdk2, Mafa, Sp3, Srebf1, Srebf2, Stat5a).
+Spi1 &mdash; the section-14.3 amyloid-axis lead TF &mdash; is recovered
+three hops downstream of Mapk14 via an inferred Gata2 node (Mapk14 &rarr;
+Gata2 &dashv; Spi1). The third seed, Ppp1ca, is active but isolated: the
+solver placed no active edge incident to it, so it contributes no path.
+
+```{r causal-net-fig-p301s, fig.width = 8.5, fig.height = 6.5}
+plot_causal_network(causal_net[["nlgf_in_p301s"]],
+                    title = "nlgf_in_p301s")
+```
+
+### Contrast `interaction` (the tau &times; amyloid divergence)
+
+The headline contrast reconstructs a compact eight-edge network: a single
+kinase seed (Gsk3b) and **all five** measured TFs recovered. The recovered
+wiring **directly answers question (a)**: Gsk3b inhibits an inferred Mapk14
+node (Gsk3b &dashv; Mapk14, with a Mapk14 &dashv; Gsk3b feedback edge),
+and Mapk14 activates Myc and Foxo3 and an inferred Csnk2b that in turn
+activates Tbp; Gsk3b additionally inhibits Clock and Sfpq directly. The
+interaction-axis Gsk3b kinase is therefore topologically connected to the
+interaction-axis TFs &mdash; Myc, the section-14.3 axis-3 lead, sits two
+hops downstream of Gsk3b through Mapk14. The second kinase nominated at
+this contrast (Csnk1a1) dropped out of the microglia-pruned PKN and so
+could not be seeded.
+
+```{r causal-net-fig-interaction, fig.width = 8, fig.height = 6}
+plot_causal_network(causal_net[["interaction"]],
+                    title = "interaction")
+```
+
+### Contrast `tau_in_nlgf` (adding tau on the amyloid background)
+
+A single Gsk3b seed reconstructs a 27-edge network recovering **all 13**
+measured TFs. Gsk3b is broadly inhibitory here &mdash; it inhibits Ar,
+Clock, Hif1a, Ikbkg, Mapk14 and Pias1 and activates only Map2k1. The
+NF-&kappa;B-regulatory module appears through an inferred path
+**Gsk3b &dashv; Ikbkg (NEMO) &rarr; Nfkbib (I&kappa;B&beta;)** &mdash;
+examined under question (b) at section 20.3. Myc is a convergence point
+reached three independent ways (Mapk14 &rarr; Myc, Cdk2 &rarr; Myc,
+Creb1 &rarr; Myc), and a PKA-family arm (Akt1 &rarr; Prkaca &rarr; Atf1 /
+Creb1 / Srf) supplies the cyclic-nucleotide TFs.
+
+```{r causal-net-fig-tau-in-nlgf, fig.width = 8.5, fig.height = 6.5}
+plot_causal_network(causal_net[["tau_in_nlgf"]],
+                    title = "tau_in_nlgf")
+```
+
+## Axis-restricted networks
+
+This subsection reads the reconstructed networks against the three D2 axes
+locked at the pathway-survey layer (`amyloid_activation`,
+`synaptic_suppression`, `interaction_metabolic`). Two facts shape how the
+axis lens is applied here, and both are themselves findings.
+
+**First, the axes are contrast groupings.** The amyloid-activation and
+synaptic-suppression axes both map to the two NLGF contrasts
+(`nlgf_in_maptki`, `nlgf_in_p301s`); the interaction-metabolic axis maps to
+the single `interaction` contrast. Since `nlgf_in_maptki` is empty, the only
+solved network for *both* NLGF axes is `nlgf_in_p301s` &mdash; the same
+amyloid/synaptic entanglement reported at the kinase layer (section 15.2),
+where the two axes share their contrast set and cannot be differentiated by
+the per-contrast signal alone. The `tau_in_nlgf` and `tau_alone` contrasts
+sit outside the three-axis framework (consistent with sections 14 and 15).
+
+**Second, gene-universe restriction does not cleanly partition the wiring.**
+The natural way to "restrict to an axis" would be to keep only edges whose
+*both* endpoints lie in the axis's leader-pathway gene universe (the
+`induced` restriction). That yields **zero edges** for the interaction
+network against the interaction universe, because the recovered regulators
+scatter across all three universes rather than sitting inside any one:
+of the eight active interaction-network nodes, only **Gsk3b** is in the
+interaction-metabolic universe, while Mapk14 / Myc / Foxo3 fall in the
+amyloid universe and Gsk3b / Mapk14 / Clock / Sfpq in the synaptic
+universe. This is expected &mdash; the axis universes are defined by broad
+GO / module pathway membership, not by regulator identity &mdash; and it
+means the recovered topology is a **cross-axis bridge**, not an
+axis-internal module. The table below therefore reports gene-universe
+membership as an *annotation* (how many active nodes of each axis's solved
+network fall in that axis's universe) alongside the `incident`-restricted
+edge count (edges with at least one endpoint in the universe), rather than
+forcing the degenerate `induced` subgraph.
+
+```{r causal-net-axis-build}
+# Reuse the in-knit axis_universes global built at section 14; rebuild
+# defensively for out-of-knit runs (mirrors rmd/14's defensive block).
+if (!exists("axis_universes")) {
+  .lb <- readr::read_tsv(
+    file.path(params$results_dir,
+              "pathway_survey_unified_leaderboard.tsv"),
+    show_col_types = FALSE)
+  .gobp <- readRDS(file.path(params$cache_dir, "msigdb_gobp_mouse.rds"))
+  .gocc <- readRDS(file.path(params$cache_dir, "msigdb_gocc_mouse.rds"))
+  .gomf <- readRDS(file.path(params$cache_dir, "msigdb_gomf_mouse.rds"))
+  .cst  <- readRDS(file.path(params$cache_dir,
+                             "custom_microglia_states.rds"))
+  .cad  <- readRDS(file.path(params$cache_dir, "custom_microglia_ad.rds"))
+  .hwg  <- readRDS(file.path(params$cache_dir, "hdwgcna_microglia.rds"))
+  .sm   <- readRDS(file.path(params$cache_dir, "snrnaseq_symbol_map.rds"))
+  .hm   <- .hwg$modules
+  .hm$gene_name <- .sm$symbol[match(.hm$gene_name, .sm$ensembl)]
+  .hm <- .hm[!is.na(.hm$gene_name) & nzchar(.hm$gene_name) &
+               as.character(.hm$module) != "grey", , drop = FALSE]
+  axis_universes <- build_axis_gene_universe(
+    .lb,
+    list(gobp = .gobp, gocc = .gocc, gomf = .gomf,
+         custom_microglia_states = .cst, custom_microglia_ad = .cad,
+         hdwgcna_modules = .hm))
+}
+
+# For each axis, take its solved contrast networks and report (a) active
+# nodes in the axis universe, (b) incident- vs induced-restricted edge
+# counts. Amyloid/synaptic resolve to nlgf_in_p301s; interaction to
+# interaction (the empty NLGF/tau contrasts contribute nothing).
+cn_axis_rows <- dplyr::bind_rows(lapply(names(axis_universes), function(ax) {
+  uni  <- axis_universes[[ax]]$universe
+  ctrs <- axis_universes[[ax]]$axis_contrasts
+  dplyr::bind_rows(lapply(ctrs, function(ct) {
+    net <- causal_net[[ct]]
+    if (is.null(net) || nrow(net$edges) == 0L) return(NULL)
+    an   <- net$nodes[net$nodes$activity != 0, , drop = FALSE]
+    inU  <- intersect(an$node, uni)
+    rind <- restrict_network_to_axis(net, uni, mode = "induced")
+    rinc <- restrict_network_to_axis(net, uni, mode = "incident")
+    tibble::tibble(
+      axis             = ax,
+      contrast         = ct,
+      universe_genes   = length(uni),
+      active_nodes     = nrow(an),
+      nodes_in_universe = length(inU),
+      induced_edges    = nrow(rind$edges),
+      incident_edges   = nrow(rinc$edges),
+      in_universe      = paste(sort(inU), collapse = ", ")
+    )
+  }))
+}))
+```
+
+```{r causal-net-axis-table, results = "asis"}
+knitr::kable(
+  cn_axis_rows |> dplyr::select(-in_universe), digits = 0,
+  caption = paste0(
+    "Axis-restricted view of each axis's solved contrast network(s). ",
+    "`nodes_in_universe` = active nodes whose symbol lies in the axis ",
+    "leader-pathway gene universe; `induced_edges` keeps only edges with ",
+    "BOTH endpoints in the universe; `incident_edges` keeps edges with at ",
+    "least one endpoint in the universe. The gap between induced and ",
+    "incident edge counts quantifies the cross-axis bridging -- it is ",
+    "widest for the interaction network (induced 0 vs incident 4), where ",
+    "only Gsk3b is an interaction-universe member."))
+```
+
+For the interaction axis the `induced` count is zero against an `incident`
+count of four (the four Gsk3b-incident edges): the recovered Gsk3b &rarr;
+Mapk14 &rarr; Myc / Foxo3 path is anchored by the interaction-axis seed
+(Gsk3b, the sole interaction-universe member) but resolves onto TFs whose
+pathway annotations belong to the amyloid and synaptic universes. The
+interaction-axis signal is therefore wired, but it is wired **across**
+axes &mdash; the kinase that the interaction contrast nominates drives TFs
+that the broader pathway survey files under the amyloid and synaptic
+programs. The amyloid and synaptic axes share `nlgf_in_p301s` and so report
+the same underlying network differentiated only by which of its active
+nodes each universe annotates (15 of 32 in the amyloid universe, 13 of 32
+in the synaptic universe).
+
+## Verdict (sign-aware topology synthesis)
+
+This subsection synthesises the reconstruction into a per-axis verdict,
+answering the two headline questions and reporting absence as evidence. The
+thresholds are restated once: standard per-contrast CARNIVAL, kinase
+`inputObj` &rarr; TF `measObj`, both at FDR < 0.10; OmniPath mouse PKN
+pruned to microglia-expressed symbols and to an `L = 3` reachability
+horizon; cbc, `betaWeight = 0.2`; consensus across optimal solutions.
+
+**Question (a) &mdash; is the interaction Gsk3b wired to the interaction
+TFs? Yes.** The `interaction` network recovers
+**Gsk3b &dashv; Mapk14 &rarr; Myc** (and &rarr; Foxo3), placing the
+section-15 interaction-axis lead kinase two hops upstream of the
+section-14.3 interaction-axis lead TF through a single inferred Mapk14
+(p38&alpha;) intermediate, with all five measured interaction TFs recovered.
+This is the cleanest topological result of the section and the direct
+join between the project's kinase and TF mechanism layers at the divergence
+contrast.
+
+**Question (b) &mdash; does the section-18 NF-&kappa;B attenuation have a
+recoverable upstream path? Partially, and contrast-dependently.** Of the
+three solved networks, two touch the NF-&kappa;B machinery and one does
+not. In `tau_in_nlgf` the solver recovers
+**Gsk3b &dashv; Ikbkg (NEMO) &rarr; Nfkbib (I&kappa;B&beta;)** &mdash; a
+candidate upstream route to the NF-&kappa;B regulatory module in which
+Gsk3b inhibition of NEMO is direction-consistent with attenuated canonical
+NF-&kappa;B signalling. In `nlgf_in_p301s` the only NF-&kappa;B node
+recovered is **Nfkb1** itself, reached by a Gsk3b &rarr; Nfkb1 **activation**
+edge &mdash; the opposite direction, on the amyloid-on-tau contrast rather
+than a tau-attenuation contrast. The `interaction` network recovers **no**
+NF-&kappa;B node at all (no NF-&kappa;B TF reached FDR < 0.10 to seed a
+measurement, and none was inferred). The section-18 attenuation therefore
+has a plausible recovered upstream path on the `tau_in_nlgf` contrast but
+**not** on the `interaction` contrast itself &mdash; an honest, mixed
+finding rather than a clean confirmation.
+
+**Per-axis topology.** The verdict table records one row per axis. The
+**amyloid-activation** axis reads strongly: `nlgf_in_p301s` recovers 18 of
+22 TFs including the section-14 amyloid leads (Nfkb1 directly off Gsk3b;
+Spi1 three hops downstream via Gata2). The **synaptic-suppression** axis
+shares that single solved network and is differentiated only by
+gene-universe annotation &mdash; it contributes **no distinct
+synaptic-suppression wiring**, the same honest non-finding the kinase
+(15.2) and TF (14.3) layers reported for this axis. The
+**interaction-metabolic** axis reads through the compact Gsk3b &rarr;
+Mapk14 &rarr; Myc / Foxo3 module answering question (a).
+
+**Caveats carried into the verdict.** The kinase seeds are bulk
+hippocampus phospho, not microglia-sorted, so every recovered path is a
+bulk-signalling-to-microglial-transcription bridge. The `L = 3` horizon
+excludes any path longer than three hops by construction, so an absent edge
+between two well-separated nodes may reflect the horizon rather than a true
+topological gap. Two of five contrasts are empty for lack of a kinase seed.
+None of these is a defect to be corrected; each is a stated boundary of the
+reconstruction.
+
+```{r causal-net-verdict-build}
+cn_verdict <- tibble::tibble(
+  axis = c("amyloid_activation", "synaptic_suppression",
+           "interaction_metabolic"),
+  axis_contrasts = c("nlgf_in_maptki, nlgf_in_p301s",
+                     "nlgf_in_maptki, nlgf_in_p301s",
+                     "interaction"),
+  n_solved_networks = c(1L, 1L, 1L),
+  tf_recovered = c("18/22 (nlgf_in_p301s)", "18/22 (nlgf_in_p301s)",
+                   "5/5 (interaction)"),
+  key_recovered_path = c(
+    "Gsk3b -> Nfkb1 (activation); Mapk14 -> Gata2 -| Spi1; Map2k1 -> Mapk1 hub",
+    "shares nlgf_in_p301s network; no distinct synaptic-suppression wiring",
+    "Gsk3b -| Mapk14 -> Myc / Foxo3; Csnk2b -> Tbp"),
+  nfkb_path = c(
+    "Gsk3b -> Nfkb1 activation (amyloid-on-tau direction)",
+    "shares nlgf_in_p301s network",
+    "no NF-kB node recovered"),
+  topology_strength = c("strong", "non-finding (shared/entangled)",
+                         "strong (headline path recovered)"),
+  evidence_summary = c(
+    paste0("Amyloid axis reads strongly through nlgf_in_p301s: 18 of 22 ",
+           "measured TFs recovered across two seed-rooted modules (Gsk3b, ",
+           "Cdk5). Gsk3b activates Nfkb1 directly and the section-14 ",
+           "amyloid lead Spi1 is recovered three hops downstream via an ",
+           "inferred Gata2. A Map2k1->Mapk1 hub fans out to a ",
+           "biosynthetic/cell-cycle TF block (Sp3, Srebf1/2, Stat5a, ",
+           "Cdk2, Mafa). Bulk-phospho seed caveat applies."),
+    paste0("Synaptic-suppression axis shares its only solved network ",
+           "(nlgf_in_p301s) with the amyloid axis and is differentiated ",
+           "solely by gene-universe annotation (13 of 32 active nodes in ",
+           "the synaptic universe vs 15 in the amyloid universe). No ",
+           "synaptic-suppression-specific wiring is recovered -- the same ",
+           "honest non-finding the kinase (15.2) and TF (14.3) layers ",
+           "reported for this axis, consistent with an engulfment / ",
+           "post-translational rather than regulator-driven mechanism."),
+    paste0("Interaction axis recovers the headline path: Gsk3b -| Mapk14 ",
+           "-> Myc and -> Foxo3 (all 5 measured TFs recovered), wiring the ",
+           "section-15 interaction-axis lead kinase to the section-14.3 ",
+           "interaction-axis lead TF through a single inferred Mapk14 ",
+           "(p38-alpha). The recovered regulators bridge across axis ",
+           "universes (only Gsk3b is an interaction-universe member; ",
+           "Mapk14/Myc/Foxo3 annotate to the amyloid universe). No ",
+           "NF-kB node is recovered at this contrast.")
+  ))
+
+readr::write_tsv(cn_verdict,
+                 file.path(params$results_dir, "causal_network_verdict.tsv"))
+```
+
+```{r causal-net-verdict-table, results = "asis"}
+knitr::kable(
+  cn_verdict |>
+    dplyr::select(axis, axis_contrasts, tf_recovered, nfkb_path,
+                  topology_strength),
+  caption = paste0(
+    "Per-axis causal-topology verdict. `tf_recovered` and ",
+    "`key_recovered_path` summarise the axis's solved network(s); ",
+    "`nfkb_path` records the NF-kB result for question (b); ",
+    "`topology_strength` is the qualitative read. Full prose and the ",
+    "`key_recovered_path` / `evidence_summary` columns are preserved in ",
+    "`storage/results/causal_network_verdict.tsv`."))
+```
+
+The causal layer closes the mechanism arc: the kinase and TF endpoints that
+sections 14 and 15 surfaced in isolation are, at the interaction contrast,
+**topologically joined** by a Gsk3b &rarr; Mapk14 &rarr; Myc module, while
+the NF-&kappa;B attenuation of section 18 finds a candidate upstream route
+only on the `tau_in_nlgf` contrast. The reconstruction neither manufactures
+connectivity where the data lacks a seed (two empty contrasts) nor asserts
+a synaptic-suppression program the topology does not contain.

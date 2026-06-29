@@ -1,0 +1,207 @@
+## snRNAseq DE: cross-method triangulation of the interaction
+
+NEBULA places the interaction at FDR ~ 0.06, borderline negative. To
+check that this is not an artefact of a single method's machinery, we
+re-fit the same interaction contrast with four further methods under a
+shared 2x2 factorial parameterisation (`tau`, `nlgf`, `tau:nlgf`):
+
+* **edgeR-QLF pseudobulk** (Quasi-likelihood F-test), the engine
+  behind `muscat::pbDS(method = "edgeR")`.
+* **DESeq2 pseudobulk** (NB-Wald with empirical Bayes dispersion
+  shrinkage), the engine behind `muscat::pbDS(method = "DESeq2")`.
+* **variancePartition::dream pseudobulk** with `(1 | batch)` random
+  intercept, the engine behind `dreamlet`; differs from limma-voom by
+  treating batch as a random effect.
+* **glmmTMB single-cell** NB GLMM with `(1 | genotype_batch)` random
+  intercept, same statistical family as NEBULA but implemented via
+  Laplace approximation (TMB) instead of NEBULA's LN method.
+
+Together with the original limma-voom pseudobulk and NEBULA, this gives
+six methods spanning two scales (single-cell, pseudobulk) and three
+shrinkage families (limma-style, NB-Wald, NB GLMM). If all six agree on
+"no FDR-significant interaction", the negative call is robust.
+
+```{r snrnaseq-triangulation-pb}
+sn_tri_pb_path <- file.path(params$cache_dir,
+                            "de_snrnaseq_triangulation_pb.rds")
+sn_tri_pb <- cache_or_run(sn_tri_pb_path,
+                          overwrite = params$recompute_snrnaseq, {
+  pb_obj <- build_pseudobulk(microglia_seurat,
+                             sample_col = "genotype_batch",
+                             covariate_cols = c("genotype", "batch", "sex"))
+  meta <- pb_obj$meta
+  meta$genotype <- factor(as.character(meta$genotype), levels = genotype_levels)
+  meta$batch    <- factor(meta$batch)
+  meta$tau      <- as.integer(meta$genotype %in% c("P301S", "NLGF_P301S"))
+  meta$nlgf     <- as.integer(meta$genotype %in% c("NLGF_MAPTKI", "NLGF_P301S"))
+  meta$tau_nlgf <- meta$tau * meta$nlgf
+  fd <- factorial_design(meta, "genotype", "batch")
+  list(
+    edger  = fit_edger_qlf(pb_obj$counts, fd$design, fd$contrasts,
+                            min_count = 10, symbol_map = symbol_map),
+    deseq2 = fit_deseq2_pb(pb_obj$counts, meta, fd$design, fd$contrasts,
+                            min_count = 10, symbol_map = symbol_map),
+    dream  = fit_dream_pb(pb_obj$counts, meta, fd$contrasts,
+                           min_count = 10, symbol_map = symbol_map)
+  )
+})
+
+tri_pb_summary <- purrr::imap_dfr(sn_tri_pb, function(m, mname) {
+  purrr::imap_dfr(m$top, function(tbl, cn) {
+    data.frame(
+      method   = mname,
+      contrast = cn,
+      n_genes  = nrow(tbl),
+      n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+      min_padj = signif(suppressWarnings(min(tbl$adj.P.Val, na.rm = TRUE)), 3)
+    )
+  })
+})
+knitr::kable(tri_pb_summary,
+             caption = "Pseudobulk triangulation: significant gene counts (FDR<0.05)")
+```
+
+```{r snrnaseq-triangulation-glmmtmb}
+sn_tri_tmb_path <- file.path(params$cache_dir,
+                             "de_snrnaseq_glmmtmb.rds")
+sn_tri_tmb <- cache_or_run(sn_tri_tmb_path,
+                           overwrite = params$recompute_snrnaseq, {
+  fit_glmmtmb_microglia(
+    microglia_seurat,
+    id_col        = "genotype_batch",
+    genotype_col  = "genotype",
+    assay         = "RNA",
+    layer         = "counts",
+    min_cell_frac = 0.01,
+    ncore         = max(1L, parallel::detectCores() - 1L),
+    symbol_map    = symbol_map
+  )
+})
+
+cat(sprintf(
+  "glmmTMB: %d cells x %d genes; %d converged (%.1f%%) for the interaction.\n",
+  sn_tri_tmb$n_cells, sn_tri_tmb$n_genes,
+  sum(sn_tri_tmb$top$interaction$convergence == 1, na.rm = TRUE),
+  100 * mean(sn_tri_tmb$top$interaction$convergence == 1, na.rm = TRUE)))
+
+tmb_summary <- purrr::imap_dfr(sn_tri_tmb$top, function(tbl, cn) {
+  data.frame(
+    contrast = cn,
+    n_genes  = nrow(tbl),
+    n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+    min_padj = signif(suppressWarnings(min(tbl$adj.P.Val, na.rm = TRUE)), 3)
+  )
+})
+knitr::kable(tmb_summary,
+             caption = "glmmTMB single-cell: significant gene counts (FDR<0.05)")
+```
+
+```{r snrnaseq-triangulation-summary}
+# Consolidate all six methods.
+method_tops <- list(
+  limma_voom_pb = de_snrnaseq$fit$top,
+  nebula_sc     = de_snrnaseq_nebula$top,
+  edger_qlf_pb  = sn_tri_pb$edger$top,
+  deseq2_pb     = sn_tri_pb$deseq2$top,
+  dream_pb      = sn_tri_pb$dream$top,
+  glmmtmb_sc    = sn_tri_tmb$top
+)
+
+collect_method <- function(top_list, mname) {
+  purrr::imap_dfr(top_list, function(tbl, cn) {
+    tibble::tibble(
+      method   = mname,
+      contrast = cn,
+      n_sig    = sum(tbl$adj.P.Val < 0.05, na.rm = TRUE),
+      min_padj = signif(suppressWarnings(min(tbl$adj.P.Val, na.rm = TRUE)), 3)
+    )
+  })
+}
+full_summary_long <- purrr::imap_dfr(method_tops, collect_method)
+
+n_sig_wide <- full_summary_long |>
+  dplyr::select(method, contrast, n_sig) |>
+  tidyr::pivot_wider(names_from = method, values_from = n_sig) |>
+  dplyr::arrange(contrast)
+min_padj_wide <- full_summary_long |>
+  dplyr::select(method, contrast, min_padj) |>
+  tidyr::pivot_wider(names_from = method, values_from = min_padj) |>
+  dplyr::arrange(contrast)
+
+knitr::kable(n_sig_wide,
+             caption = "Triangulation: number of genes FDR<0.05 per method")
+knitr::kable(min_padj_wide,
+             caption = "Triangulation: minimum adjusted P per method")
+
+write_tsv_safe(full_summary_long,
+               file.path(params$results_dir, "triangulation_summary.tsv"))
+```
+
+```{r snrnaseq-triangulation-interaction, fig.width = 11, fig.height = 5}
+# Interaction-specific concordance. Inner-join all six on the gene-id set
+# they share, then plot pairwise Spearman correlations of logFC and -log10P.
+int_tbls <- purrr::imap(method_tops, function(top_list, mname) {
+  top_list$interaction |>
+    dplyr::filter(is.finite(logFC), is.finite(P.Value), P.Value > 0) |>
+    dplyr::transmute(gene,
+                     "{mname}_logFC"   := logFC,
+                     "{mname}_negLogP" := -log10(P.Value))
+})
+int_joined <- Reduce(function(a, b) dplyr::inner_join(a, b, by = "gene"),
+                     int_tbls)
+cat(sprintf("Interaction contrast: %d genes common to all six methods.\n",
+            nrow(int_joined)))
+
+lfc_mat <- as.matrix(int_joined[, grep("_logFC$",   names(int_joined))])
+plp_mat <- as.matrix(int_joined[, grep("_negLogP$", names(int_joined))])
+colnames(lfc_mat) <- sub("_logFC$",   "", colnames(lfc_mat))
+colnames(plp_mat) <- sub("_negLogP$", "", colnames(plp_mat))
+rho_l <- cor(lfc_mat, method = "spearman", use = "pairwise.complete.obs")
+rho_p <- cor(plp_mat, method = "spearman", use = "pairwise.complete.obs")
+
+corp <- function(mat, title) {
+  df <- as.data.frame.table(mat, responseName = "rho")
+  ggplot(df, aes(Var1, Var2, fill = rho)) +
+    geom_tile() +
+    geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
+    scale_fill_gradient2(low = "#3a4cc0", mid = "white", high = "#b40426",
+                         midpoint = 0.5, limits = c(0, 1)) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+    labs(x = NULL, y = NULL, title = title, fill = "Spearman rho")
+}
+(corp(rho_l, "Interaction logFC concordance") |
+ corp(rho_p, "Interaction -log10(P) concordance"))
+```
+
+```{r snrnaseq-triangulation-tophits}
+# Union of top-20 by P.Value per method; report -log10(P) for each method
+# so the reader can see which hits replicate.
+top_per_method <- purrr::imap(method_tops, function(top_list, mname) {
+  top_list$interaction |>
+    dplyr::filter(is.finite(P.Value), P.Value > 0) |>
+    dplyr::arrange(P.Value) |>
+    head(20) |>
+    dplyr::pull(gene)
+})
+union_genes <- unique(unlist(top_per_method))
+cat(sprintf("Union of top-20 interaction hits across six methods: %d genes.\n",
+            length(union_genes)))
+
+plogp_top <- purrr::imap_dfc(method_tops, function(top_list, mname) {
+  tbl <- top_list$interaction
+  v   <- -log10(pmax(tbl$P.Value[match(union_genes, tbl$gene)], 1e-300))
+  tibble::tibble("{mname}" := v)
+})
+plogp_top$gene   <- union_genes
+plogp_top$symbol <- symbol_map$symbol[match(union_genes, symbol_map$ensembl)]
+plogp_top <- plogp_top |>
+  dplyr::relocate(gene, symbol) |>
+  dplyr::mutate(mean_negLogP = rowMeans(
+    as.matrix(plogp_top[, names(method_tops)]), na.rm = TRUE)) |>
+  dplyr::arrange(dplyr::desc(mean_negLogP))
+knitr::kable(head(plogp_top, 25), digits = 2,
+             caption = "Top interaction hits: -log10(P) per method (sorted by mean)")
+write_tsv_safe(plogp_top,
+               file.path(params$results_dir, "triangulation_top_interaction.tsv"))
+```
