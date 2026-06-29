@@ -86,6 +86,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 ## Quality gate (provisional - lock concretely in P0)
 - Reproducible: fresh clone + `rv sync` (+ `uv sync`) -> `targets::tar_make()` runs the pipeline.
 - Each module smoke-tested against live data before commit.
+- Committed tests = `tests/test_*.R`: plain `stopifnot` fail-loud scripts (zero new deps, mirror
+  io.R's assertion idiom), run `Rscript tests/test_<x>.R` from project root, print `ok - <x>`,
+  non-zero exit on failure. `tests/helpers.R` = deterministic synthetic fixtures (make_fake_seurat
+  / make_meta16 / expect_error; NO RNG or clock -> reproducible everywhere). S3 added
+  test_design (contrast weights + factorial==cell-means equivalence), test_de_pb (pseudobulk
+  + fitter smokes), test_io (S2-deferred loader contracts). S5's check.sh MUST loop tests/test_*.R.
 - Reports (once they exist) knit clean: 0 error / 0 warning -- enforced concretely, NOT
   by bare `tar_make()` exit (it returns 0 with captured warnings): assert empty
   `tar_meta()` error+warnings + `options(warn=2)` where safe + Quarto-log grep (lock in S5).
@@ -105,6 +111,13 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - New `R/*.R` = pure functions loaded by targets via `tar_source()`; the DAG orders
   execution (no manual dependency loader). Heavy producers = `tar_target`s storing
   `format="qs"`/`"file"`; Python steps = `uv run <script>` as `tar_file` targets.
+- Test/DE gotchas (S3; harness itself described under Quality gate): edgeR 4.x ->
+  `edgeR::normLibSizes` (calcNormFactors deprecated, emits a message); `limma::makeContrasts`
+  needs ALL design columns to be syntactically valid R names (cell-means form: rename genotype
+  columns to bare levels, build batch from a named factor; an inline `factor()` yields invalid
+  names). Sort character keys with `method = "radix"` (locale-independent -> reproducible
+  column/level order across machines). factorial_design fails loud if add_batch=TRUE but the
+  batch column is absent -> a batch-less modality (GeoMx) MUST pass add_batch=FALSE.
 - targets serialization (verified S2): `format="qs"` works via the **qs2** backend (the
   `qs` pkg is NOT installed; qs2 serializes Seurat Assay5 objects fine). `format="file_fast"`
   is deprecated -> use `format="file"` + `tar_option_set(trust_timestamps=TRUE)` (set in

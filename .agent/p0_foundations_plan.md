@@ -86,7 +86,18 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
   smoke-test); microglia subset built; assert `dplyr::n_distinct(genotype_batch)==16`
   (one id per genotype x batch cell, no missing, all cells nonzero) -- not bare `table()` counts.
 
-### S3 - design + contrasts + pseudobulk machinery  [GATE-INDEPENDENT; cheap]
+### S3 - design + contrasts + pseudobulk machinery  [GATE-INDEPENDENT; cheap]  -- DONE 2026-06-29
+<!-- Deviations: both design fns mirror v1 (algebra unchanged); canonical contrast column order
+     (tau_alone, nlgf_in_maptki, nlgf_in_p301s, tau_in_nlgf, interaction). de_pb: dropped the dead
+     `group` arg (fit_limma_voom filters via design; fit_limma_log never used it); edgeR
+     calcNormFactors -> normLibSizes (4.x); pseudobulk_counts via Matrix::rowSums; build_pseudobulk
+     asserts covariate-constancy within sample + 1:1 meta<->count alignment. edgeR-QLF/DESeq2/dream
+     deferred (KISS, P1+). Fail-loud guards (out-of-level genotype, absent level column, batch
+     requested but batch col absent -> batch-less modalities pass add_batch=FALSE); deterministic
+     radix sort for pseudobulk/prevalence group order. Tests = stopifnot harness (no testthat) in tests/ + tests/helpers.R; the io contract tests
+     deferred from S2 review landed here (test_io.R). Acceptance met: test_design (exact weights +
+     factorial==cell-means equivalence across response vectors + hand-computed contrast values);
+     live microglia_seurat_raw (26104 cells) -> build_pseudobulk = 16 genotype_batch columns. -->
 - `R/design.R`: `factorial_design()` (~tau+nlgf+tau_nlgf[+batch]) + `make_contrast_matrix()`
   (cell-means form). BOTH must reproduce the same 5 named contrasts (key by name).
 - `R/de_pb.R`: pseudobulk_counts, build_pseudobulk (replicate=genotype_batch),

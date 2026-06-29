@@ -28,6 +28,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   - tar_source("R")                                     # loads every R/*.R pure fn
   R/ pure fns (S2): constants.R (genotype_levels/colours, contrast_definitions, marker lists,
       rbc_marker_symbols, data_paths) | utils.R (`%||%`, write_tsv_safe) | io.R (loaders) | spine.R
+   + (S3) design.R: factorial_design (treatment ~tau+nlgf+tau_nlgf[+batch]) + make_contrast_matrix
+      (cell-means ~0+genotype) -> the 5 canonical contrasts; two equivalent parameterisations |
+      de_pb.R: pseudobulk_counts/build_pseudobulk (replicate=genotype_batch), fit_limma_voom
+      (counts) / fit_limma_log (log-intensity), median_normalise, prevalence_filter.
+      S3 = machinery only -> NO new targets; P1+ wires the DE targets (consumes design + de_pb).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -43,8 +48,17 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        reads `_quarto.yml` (type book; render `*.qmd` + `!rv/`; output _book/; freeze false)
             -> `index.qmd` (+ future analysis chapters reading the modalities)
 
+### Tests (S3; gate-wired at S5)
+`tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,
+make_meta16, make_fake_seurat = synthetic Seurat fixtures), run stopifnot checks (fail-loud,
+no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/test_<x>.R`.
+  - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
+  - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes
+  - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
+S5 `scripts/check.sh` loops `tests/test_*.R` (non-zero exit on any failure).
+
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version |
-          _targets.R R/*.R _quarto.yml index.qmd | .Rprofile rv/scripts/*.R rv/.gitignore |
+          _targets.R R/*.R tests/*.R _quarto.yml index.qmd | .Rprofile rv/scripts/*.R rv/.gitignore |
           scripts/install-*.sh
 regen   : rv/library _targets/ _book/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read)
