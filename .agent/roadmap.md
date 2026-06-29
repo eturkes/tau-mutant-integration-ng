@@ -27,19 +27,23 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none). P0 Foundations CLOSED 2026-06-29 -> `.agent/completed/p0_foundations_plan_2026-06-29.md`
-(digest -> history.md). Foundation in place: targets + rv + uv + project-local Quarto (P3M-pinned); 6
-modalities as qs2 targets; design + 5-contrast + pseudobulk machinery; ONE offline HTML report; concrete
-quality gate `scripts/check.sh`. Bootstrap + wiring -> map.md; live contract -> memory.md.
-**NEXT:** open P1 (snRNAseq microglia core) -- take direction or PLAN mode (mine `archive_digest.md`).
+## Active plan: P1 snRNAseq microglia core -> `.agent/p1_snrnaseq_plan.md` (opened 2026-06-29)
+5 steps: S1 reprocess+cluster (SCT+Harmony-batch-only+Louvain) | S2 substates (UCell argmax: homeostatic/
+DAM/IFN/proliferative + aux MHC/APC) + contaminant prune | S3 composition (sccomp + propeller) | S4
+pseudobulk DE (whole-MG + per-substate, voomQW + robust eBayes + stageR) | S5 report `_microglia.qmd` + close.
+Gate-locked (2026-06-29, SOTA-researched): single-cell DE DROPPED (pseudobulk sole inference; supersedes
+de_pb.R de_sc forward-ref); composition = sccomp+propeller; normalisation = SCT-v2 (v1 continuity). Science:
+headline = amyloid->DAM (robust, microglia-led); the tau x amyloid interaction is STATIC-NULL -> handed to
+P2 (trajectory rate effect). Carry Thrupp 2020 caveat (snRNA under-detects ~18% DAM genes; score, not threshold).
+**NEXT:** S1 reprocess+cluster (heavy; rv add harmony glmGamPoi).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
   helpers (io / design+contrasts / plot theme), data load + QC sanity, 2x2
   factorial + 5 contrasts, concrete quality gate.
-- P1 snRNAseq microglia core: QC, microglia subset + substates (homeostatic / DAM /
-  IFN / proliferative), DE (pseudobulk + single-cell) across contrasts -> the
-  amyloid->DAM activation programme + the gene/pathway interaction.
+- P1 snRNAseq microglia core [ACTIVE]: reprocess (SCT) + substates (homeostatic / DAM /
+  IFN / proliferative, UCell), composition (sccomp), pseudobulk DE across contrasts -> the
+  amyloid->DAM activation programme. Static interaction is ~null -> handed to P2.
 - P2 Interaction trajectory: activation pseudotime (homeostatic->DAM); test amyloid
   advance + tau x amyloid progression synergy, decomposed composition vs progression.
 - P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase
@@ -79,3 +83,12 @@ quality gate `scripts/check.sh`. Bootstrap + wiring -> map.md; live contract -> 
   discrimination (no false-reds/false-greens), tar_meta scoped to manifest + dynamic branches, `if !`-wrapped
   tar_make. Negative-tested (chunk warning -> red; clean -> green); report still renders 0-warning under the
   stricter checks. Docs corrected (memory/map/history).
+- 2026-06-29 P1 OPENED -> `.agent/p1_snrnaseq_plan.md`. Research: mined archive_digest + v1 archive branch
+  (Explore) + 2026 SOTA web sweep (4-agent) -> reconciled v1 vs SOTA. Decision gate (3 forks): single-cell
+  DE DROPPED (pseudobulk sole inference, Squair/Murphy-Skene; v1 NEBULA interaction was null); composition =
+  sccomp + propeller; normalisation = SCT-v2 (v1 continuity, user choice over SOTA logNorm lean). Locked
+  defaults: UCell scoring, Harmony batch-only (sex aliased), 4 argmax substates + aux MHC/APC, voomQW +
+  robust eBayes + stageR. Key reframing from mining: the tau x amyloid interaction is STATIC-NULL (v1 matched-
+  power null even single-cell) -> the synergy is a progression-RATE effect, deferred to P2 (trajectory); P1
+  nails the robust amyloid->DAM headline + substates + composition. Carry Thrupp 2020 (snRNA under-detects
+  ~18% DAM activation genes). 5 steps S1-S5; next = S1 reprocess+cluster.
