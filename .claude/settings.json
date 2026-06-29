@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.git/**)",
+      "Read(./.venv/**)",
+      "Read(./renv/library/**)",
+      "Read(./storage/data/**)",
+      "Read(./storage/cache/**)",
+      "Read(./storage/logs/**)",
+      "Read(./.agent/completed/**)",
+      "Read(./*.html)",
+      "Read(./*_files/**)",
+      "Read(./*_cache/**)"
+    ]
+  }
+}

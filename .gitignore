@@ -1,0 +1,29 @@
+# storage/ holds data, caches, logs, results (big / regenerable) - untracked.
+# Exclude the children (not storage/ itself) so storage/figures/*.png re-includes.
+/storage/*
+!/storage/figures/
+/storage/figures/*
+!/storage/figures/*.png
+
+# secrets + project-local envs (recipes in memory.md / the P0 env doc)
+.env
+/.venv/
+/renv/library/
+
+# R + rmarkdown artefacts; rendered HTML reports regenerate via render()
+.Rhistory
+.RData
+.Rproj.user/
+*.Rcheck/
+Rplots.pdf
+/omnipathr-log/
+/*_files/
+/*_cache/
+/*.html
+/knit.log
+nohup.out
+
+# Claude state: track settings.json + commands/, ignore the rest
+/.claude/*
+!/.claude/settings.json
+!/.claude/commands/
