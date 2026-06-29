@@ -13,14 +13,27 @@ NLGF_MAPTKI (amyloid alone), NLGF_P301S (amyloid + tau). Design = tau (MAPTKI vs
 P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 
-## Raw data (storage/data = symlink -> ../../../Documents/pro/tau-mutant-integration-ng/data = host Documents tree, shared/external copy; gitignored via /storage/* + deny-Read; Rscript reads resolve through it, bypassing the deny)
-- snrnaseq.rds  8.3G  (snRNAseq Seurat object)
-- geomx.rds     22M   (GeoMx WTA spatial, ~91 ROIs)
-- proteomics_nonfiltered_nonnormalised.tsv      15M  (peptide-level)
-- phosphoproteomics_nonfiltered_nonnormalised.tsv  35.5M (phosphosite-level)
-- proteomics_sample_key.csv  3.3K  (67 rows: `File name` + `Sample/Condtion`[sic];
-  TiO2/PTM phospho-run map; 24M timepoint = rows 1-16 = 4 genotypes x 4 reps;
-  io::proteomics_sample_meta n_keep=16; raw labels MAPT-KI/P301S+3/NLGF-* -> canonical)
+## Raw data (storage/data = symlink -> host Documents tree, shared/external read-only copy;
+gitignored via /storage/* + deny-Read; Rscript reads resolve through it, bypassing the deny.
+Shapes VERIFIED live in S2 via the R/io.R loaders; data is immutable so numbers are stable.)
+- snrnaseq.rds 8.3G: Seurat; full = RNA 33683 genes (Assay5, ENSMUSG rownames) + SCT 28299
+  (active assay). GOTCHA: dim(obj)=SCT(28299) but @misc$geneids (33683 symbols) aligns to RNA,
+  NOT SCT -> build_symbol_map uses RNA rownames. broad_annotations=="Microglia" -> 26104 cells.
+  meta PRECOMPUTED (P1/QC consume, don't recompute): genotype (canonical), batch (batch01-04),
+  genotype_batch (16-lvl factor, 4x4 fully crossed all-nonzero), sex, nCount/nFeature_RNA,
+  percent_mt/ribo/malat1/contam, doublets. load_snrnaseq drops SCT+reductions -> 340MB RNA-counts
+  microglia subset (the qs target microglia_seurat_raw).
+- geomx.rds 22M: Seurat 19963 genes x 91 AOIs; genotype already canonical (n=20/20/28/23). Spatial
+  design cols bio_rep/tech_rep/slide_rep/roi/segment/SampleID; NO batch/genotype_batch (differs from snRNAseq).
+- proteomics_nonfiltered_nonnormalised.tsv 15M: Spectronaut PTM export, 45972 x 30. Cols 1-14 = PTM
+  annotation (PG.*, Gene-pSite, PTM.SiteAA/Location, "Phopshosite probability"[sic typo]); 15-30 = 16
+  intensity `Naoto-Hippo_TiO2_DIA_NN.raw.PTM.Quantity` (24M set only). peptide->protein-group sum = P4.
+- phosphoproteomics_*.tsv 35.5M: Spectronaut PTM, 64328 x 81. 1-14 annotation; 15-81 = 67 intensity
+  `*.PTM.Quantity` (Naoto 01-26 + Set6 01-41). First 16 (Naoto 01-16) = 24M timepoint kept.
+- proteomics_sample_key.csv: 67 rows {`File name`, `Sample/Condtion`[sic]}; proteomics_sample_meta
+  n_keep=16 (24M, 4 geno x 4 reps). match_intensity_columns strips `.PTM.Quantity` then trailing `.raw`
+  -> matches BOTH files' intensity cols (16/16), .raw discrepancy handled. Parse via read_spectronaut_tsv
+  (na=c("","NA","NaN","Filtered") -> 0 parse problems).
 Missing vs v1 (do NOT re-acquire unless a phase explicitly needs them): cisTarget
 mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope.
 
@@ -87,6 +100,11 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - New `R/*.R` = pure functions loaded by targets via `tar_source()`; the DAG orders
   execution (no manual dependency loader). Heavy producers = `tar_target`s storing
   `format="qs"`/`"file"`; Python steps = `uv run <script>` as `tar_file` targets.
+- targets serialization (verified S2): `format="qs"` works via the **qs2** backend (the
+  `qs` pkg is NOT installed; qs2 serializes Seurat Assay5 objects fine). `format="file_fast"`
+  is deprecated -> use `format="file"` + `tar_option_set(trust_timestamps=TRUE)` (set in
+  `_targets.R`) so the 8G snrnaseq input is change-detected by mtime/size, not re-hashed each
+  run. Heavy seurat target: `memory="transient"` + `garbage_collection=TRUE` release the load.
 - Commit `.serena/` (project.yml + .gitignore); Serena language changes are
   startup-only (restart Claude Code to apply).
 

@@ -64,7 +64,12 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
   for source builds captured in an install log.
   **.gitignore** updated for Quarto (`_freeze/`, `.quarto/`, `/_book/`) + `_targets/` + `rv/`.
 
-### S2 - constants + utils + io; data load  [HEAVY: 8G object, peak RAM ~9-10G]
+### S2 - constants + utils + io; data load  [HEAVY: 8G object, peak RAM ~9-10G]  -- DONE 2026-06-29
+<!-- Deviations: load_proteomics+load_phospho merged -> read_spectronaut_tsv (identical bodies, KISS);
+     dead args dropped (col_pattern, allow_raw); genotype_batch already PRECOMPUTED on the object
+     (assert n_distinct==16 baked into load_snrnaseq, not derived). @misc$geneids aligns to RNA(33683)
+     not the active SCT assay(28299). qs2 backend for format="qs"; trust_timestamps for the 8G input. -->
+
 - `R/constants.R`: genotype_levels, genotype_colours (hex), contrast_definitions,
   canonical_microglia_markers, rbc markers, data paths.
 - `R/utils.R`: `%||%`, `write_tsv_safe` (targets' store supersedes v1's `cache_or_run`).
