@@ -27,7 +27,7 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: `p0_foundations_plan.md` - P0 Foundations (open). Stack locked: Quarto book + targets + rv + uv, P3M-pinned.
+## Active plan: `p0_foundations_plan.md` - P0 Foundations (open; **S4 IN PROGRESS**). Stack: targets + rv + uv + project-local Quarto, P3M-pinned. Reports = ONE offline self-contained HTML (standalone Quarto doc + `{{< include _section.qmd >}}` + `theme.scss` + LOCAL IBM Plex), NOT a book - `embed-resources` strips the bootstrap/brand theme inside a `book` project. S1-S3 done; S4's `R/plot.R` (tested) + `qc.qmd` (renders clean) are uncommitted WIP -> resume at the plan's `S4 STATUS` REMAINING checklist.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations: project-local env (rv for R + uv .venv for Python), shared
@@ -49,3 +49,10 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
   `.agent` docs + Claude config; reframed history as `archive_digest.md`; drafted
   this streamlined phase plan.
+- 2026-06-29 S4 mid-step (compaction handoff): user chose report = ONE offline
+  self-contained HTML -> dropped the Quarto book (`embed-resources` strips the theme
+  in a book project). `R/plot.R` (smoke-tested, 0-warn) + `qc.qmd` (renders 0-error,
+  all in-chapter sanity bounds pass) done as uncommitted WIP; remaining = bundle LOCAL
+  IBM Plex woff2 + `theme.scss` + standalone `index.qmd` + `{{< include >}}` rewire +
+  `_quarto.yml` / `_targets.R` rework + `tests/test_plot.R` + commit (see the plan's
+  `S4 STATUS` block).

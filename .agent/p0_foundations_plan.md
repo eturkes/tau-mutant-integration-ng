@@ -112,7 +112,49 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
   `interaction = tau_nlgf`; `nlgf_in_p301s = nlgf+tau_nlgf`; etc.) on a synthetic 16-row
   meta; pseudobulk on S2 live object -> 16 genotype_batch columns.
 
-### S4 - plot + report theme; QC-sanity chapter  [GATE-DEPENDENT engine; light render]
+### S4 - plot + report theme; QC-sanity chapter  [GATE-DEPENDENT engine; light render]  -- IN PROGRESS (resume here)
+<!-- S4 STATUS 2026-06-29 (mid-step; UNCOMMITTED WIP in tree; compaction handoff):
+  DECISION (user-picked): report = ONE self-contained OFFLINE HTML file, NOT a Quarto book.
+    Verified Quarto fact: `embed-resources` STRIPS the brand/bootstrap theme in a `book` project
+    (+ a "Could not fetch resource ./<chapter>.html" nav WARNING); it applies cleanly without a book.
+    -> drop the book; render ONE standalone `format: html` doc (embed-resources works there); modular
+    sources via `{{< include _section.qmd >}}` (leading `_` => not rendered standalone); theme via
+    `theme.scss` (Bootstrap Sass vars) NOT `_brand.yml`; IBM Plex woff2 BUNDLED LOCALLY (offline;
+    embed inlines them) NOT brand `source: google` (= a view-time Google-CDN dep).
+  DONE + working: `R/plot.R` (smoke-tested 0-warn, namespace-qualified => sources w/o ggplot2 attached:
+    theme_tau(base_family="" -> no missing-font warning) + scale_colour/fill_genotype() [+ scale_color_
+    alias] + concordance_plot() [v1 port, ends theme_tau(), geom_smooth formula spelt out to mute its
+    msg]). `qc.qmd` RENDERS 0-error, all 17 chunks run, every in-chapter sanity bound passes (bounds are
+    definitional rails: counts>=1 & <1e6, features<=nCount<=n_genes, %s in 0-100, +structural 4x4-nonzero
+    /canonical-levels/16 ids). Targets store already built => reads microglia_seurat_raw (33683 x 26104)
+    from qs, NO 8G reload.
+  WIP TREE (uncommitted): R/plot.R (keep) | qc.qmd (keep content -> RENAME `_qc.qmd`, becomes the include)
+    | _brand.yml (SUPERSEDED -> delete) | _quarto.yml (edited for book -> REWORK). _book/ artefacts gitignored.
+  REMAINING (fresh session, in order):
+    1. Bundle IBM Plex woff2 -> `assets/fonts/` (latin: Sans 400/500/600/700+400i, Serif 600/700, Mono
+       400/600) from a PINNED fontsource ver via jsDelivr; record the version; git-add (small binaries).
+    2. `theme.scss`: scss:defaults {$primary,$link-color=#B0344D; $code-color=#3F5A6B; $font-family-base/
+       $headings-font-family/$font-family-monospace = IBM Plex Sans/Serif/Mono} + scss:rules {@font-face
+       url(assets/fonts/*.woff2)}. Delete `_brand.yml`.
+    3. RENAME qc.qmd -> `_qc.qmd` (its setup already does library + tar_source + tar_load + theme_set).
+       `index.qmd` = the ONE report: front-matter format.html {theme: theme.scss, embed-resources: true,
+       code-fold: true, code-tools: true} + overview prose + `{{< include _qc.qmd >}}`.
+    4. `_quarto.yml`: drop `type: book` + `book:` block -> `project:{type: default, render: [index.qmd]}`;
+       move format.html opts (or keep in index front-matter). output-dir: rename `_book`->`_report` AND
+       update .gitignore (`/_book/`->`/_report/`) + .claude/settings.json deny (`Read(./_book/**)`->
+       `Read(./_report/**)`) -- deny globs "never trust by eye": Read-test 1 must-block + 1 must-read after.
+       (Cheaper alt: keep the `_book` dir name; decide.)
+    5. `_targets.R`: `tar_quarto(book, path=".")` -> `tar_quarto(report, path=".")`. VERIFY tar_quarto
+       detects the `tar_load` INSIDE included `_qc.qmd` (tar_manifest/tar_network); else add deps explicitly.
+    6. Render (pinned quarto): assert offline (0 external http loads), #B0344D + IBM Plex + @font-face
+       data-URIs INLINED, 0 WARNING in log, bounds stopifnot pass. Inspect output via runtime-indirection
+       python (output dir is deny-Read: path must be ABSENT from the command text).
+    7. `tests/test_plot.R` (device-free: source constants+utils+plot; class-check theme_tau/scale_*_genotype/
+       concordance_plot, NO draw) so S5 check.sh loops it. Run all tests/test_*.R green.
+    8. Update map.md (plot.R + report wiring: index.qmd -include-> _qc.qmd; theme.scss + assets/fonts;
+       report target). Fold the report-architecture DECISION into memory.md (durable, outlives P0).
+       Mark S4 done (plan + roadmap). Commit `report (p0 s4): ...`.
+-->
 - `R/plot.R`: base ggplot theme fn + `concordance_plot()`.
 - Report theme: Quarto `_brand.yml` / theme scss + IBM Plex (carry v1 bslib palette:
   primary/link = #B0344D). British English; human-facing prose uses hyphens not em/en-dashes.
