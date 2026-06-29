@@ -13,7 +13,8 @@
       "Read(./storage/cache/**)",
       "Read(./storage/logs/**)",
       "Read(./.agent/completed/**)",
-      "Read(./*.html)"
+      "Read(./*.html)",
+      "Read(**/*.woff2)"
     ]
   }
 }

@@ -27,7 +27,15 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: `p0_foundations_plan.md` - P0 Foundations (open; **S4 IN PROGRESS**). Stack: targets + rv + uv + project-local Quarto, P3M-pinned. Reports = ONE offline self-contained HTML (standalone Quarto doc + `{{< include _section.qmd >}}` + `theme.scss` + LOCAL IBM Plex), NOT a book (multi-file + sibling nav warnings under embed-resources would trip the S5 zero-warning gate). S1-S3 done. **S4 checkpoint committed** (gate-clean: offline render, 0 error/0 warning, bounds pass, tests green): book -> standalone `index.qmd` + `{{< include _qc.qmd >}}`; `theme.scss` reduced to working COLOURS (#B0344D primary/link, #3F5A6B code - verified inlined); `_qc.qmd` bounds hardened (16x16 genotype-batch bijection); `R/plot.R`; `_quarto.yml`/`_targets.R` reworked; woff2 gitignored. **NEXT SESSION (font wiring -> close S4; now SIMPLE):** codex review CORRECTED the premise -- IBM Plex DOES work via theme.scss (the prior "doesn't" was a URL-encoded-output measurement artifact). Add the 9 `@font-face` (relative `url("assets/fonts/<n>.woff2")`) + `$font-family-*` vars + body/headings/code rules to theme.scss; Quarto base64-inlines the woff2 under embed-resources (no build script needed for inlining). Open decision: commit the 9 woff2 (~200KB, KISS) vs keep gitignored + a sha256-pinned `scripts/build-fonts.sh` fetch; list them in `extra_files=` either way. Then re-render to PROVE inlining via a DECODED check (urllib.unquote the data:text/css; raw greps mislead) while offline + 0-warning hold + `tests/test_plot.R` + scrub residual book/_brand refs + map.md + mark S4 done. Detail: the plan's `S4 STATUS` block.
+## Active plan: `p0_foundations_plan.md` - P0 Foundations (open; **S5 = last step**). Stack: targets + rv
++ uv + project-local Quarto, P3M-pinned. Reports = ONE offline self-contained HTML (standalone `index.qmd`
++ `{{< include _qc.qmd >}}` + `theme.scss` + LOCAL IBM Plex; 9 woff2 COMMITTED, base64-inlined). S1-S4 done.
+**NEXT (S5 = close P0):** runnable quality gate `scripts/check.sh` = `rv sync` + `uv sync` + `tar_make()`,
+then ENFORCE zero-fault rather than trust `tar_make`'s exit -- assert `tar_meta(fields=c("error",
+"warnings"))` all-NA + loop `tests/test_*.R` + grep the Quarto render log for `Warning`/`WARN`; non-zero
+exit on any hit (use tar_make's DEFAULT reporter, not the deprecated `reporter="summary"`). Then lock
+memory.md's provisional quality gate to this concrete gate, finalise map.md wiring, and close P0 (archive
+plan -> `.agent/completed/`, reset Active plan to none). Detail: the plan's S5 step.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations: project-local env (rv for R + uv .venv for Python), shared
@@ -49,17 +57,13 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
   `.agent` docs + Claude config; reframed history as `archive_digest.md`; drafted
   this streamlined phase plan.
-- 2026-06-29 S4 checkpoint committed (architecture pivot; codex-reviewed): report = ONE
-  offline self-contained HTML -> Quarto book dropped for a standalone `index.qmd` +
-  `{{< include _qc.qmd >}}`; `theme.scss` cut to working colours; `_qc.qmd` bounds hardened
-  to a 16x16 design bijection; `R/plot.R`, `_quarto.yml`, `_targets.R` reworked; render
-  offline + 0 error/0 warning, tests green. Remaining (next session, closes S4): IBM Plex
-  via theme.scss @font-face (corrected by the codex-review entry below), then `tests/test_plot.R` +
-  scrub + map.md + mark S4 done.
-- 2026-06-29 codex review (S4 checkpoint): CORRECTED the font conclusion -- IBM Plex DOES work
-  via theme.scss (@font-face relative url -> Quarto base64-inlines the woff2 under embed-resources);
-  the prior "Bootstrap vars + url() both fail" was a measurement artifact (theme CSS embeds URL-
-  ENCODED, so raw `IBM Plex`/`data:font/woff2` greps read ~0). Simplified the remaining S4 font
-  wiring (no build script for inlining; open: commit woff2 vs sha256 fetch). Also hardened the GeoMx
-  QC check (!anyNA + setequal vs nlevels==4), dropped the "balanced" overclaim (index.qmd), scrubbed
-  stale "Quarto book"/`_brand.yml` plan refs.
+- 2026-06-29 S4 DONE (report engine closed): pivoted Quarto book -> ONE standalone offline HTML
+  (`index.qmd` format:html embed-resources + `{{< include _qc.qmd >}}` + `theme.scss`); theme = crimson
+  colours (#B0344D) + IBM Plex via 9 `@font-face` (relative `url("assets/fonts/<n>.woff2")` -> Quarto
+  base64-inlines each woff2 under embed-resources). Render PROVED: 9 faces inlined OFFLINE (d09GMg magic),
+  0 external loads, 0 error/0 warning (`tar_meta` all-NA), QC bounds pass (16x16 genotype-batch bijection).
+  9 woff2 COMMITTED (assets/fonts/, deny-Read `**/*.woff2` + Serena ignored_paths), listed in
+  `tar_quarto(extra_files=)`. Added `R/plot.R` + device-free `tests/test_plot.R`; de-staled map.md
+  (book -> standalone report wiring) + S1 plan refs. Reasoning reversal (codex-reviewed): the earlier
+  "IBM Plex can't work via theme.scss" was a MEASUREMENT artifact -- once `@font-face url()` is present
+  the whole theme CSS URL-encodes, so raw greps for `IBM Plex`/colours read ~0; match encoded tokens.

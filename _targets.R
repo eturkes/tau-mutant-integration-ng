@@ -47,7 +47,11 @@ list(
 
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
-  # deps but NOT the theme -> list theme.scss so a theme change reinvalidates the report. (The IBM
-  # Plex data-URI CSS joins this list when it lands -- deferred; see roadmap / plan S4 STATUS.)
-  tar_quarto(report, path = ".", extra_files = "theme.scss")
+  # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing
+  # either reinvalidates the report (list.files keeps the 9 faces in sync with assets/fonts/).
+  tar_quarto(
+    report, path = ".",
+    extra_files = c("theme.scss",
+                    list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE))
+  )
 )

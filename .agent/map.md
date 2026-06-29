@@ -33,6 +33,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       de_pb.R: pseudobulk_counts/build_pseudobulk (replicate=genotype_batch), fit_limma_voom
       (counts) / fit_limma_log (log-intensity), median_normalise, prevalence_filter.
       S3 = machinery only -> NO new targets; P1+ wires the DE targets (consumes design + de_pb).
+   + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free) +
+      scale_colour/fill_genotype (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) +
+      concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -44,9 +47,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        proteomics           <- read_spectronaut_tsv(proteomics_file)   # tibble 45972 x 30
        phospho              <- read_spectronaut_tsv(phospho_file)      # tibble 64328 x 81
        sample_key           <- proteomics_sample_meta(sample_key_file) # tibble 16 x 4 (24M timepoint)
-  - `book` <- tar_quarto(path=".")                      # renders the Quarto book
-       reads `_quarto.yml` (type book; render `*.qmd` + `!rv/`; output _book/; freeze false)
-            -> `index.qmd` (+ future analysis chapters reading the modalities)
+  - `report` <- tar_quarto(path=".", extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML
+       reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
+            -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
+               (QC-sanity chapter: tar_load 4 modalities + sample_key -> dims, 16x16 design bijection, bounds)
+       `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)
 `tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,
@@ -55,10 +60,11 @@ no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/tes
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
+  - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
 S5 `scripts/check.sh` loops `tests/test_*.R` (non-zero exit on any failure).
 
 ### Config: tracked vs regenerated
-tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version |
-          _targets.R R/*.R tests/*.R _quarto.yml index.qmd | .Rprofile rv/scripts/*.R rv/.gitignore |
-          scripts/install-*.sh
-regen   : rv/library _targets/ _book/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read)
+tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
+          _quarto.yml index.qmd _qc.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          rv/.gitignore | scripts/install-*.sh
+regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read)

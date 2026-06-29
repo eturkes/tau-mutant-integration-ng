@@ -137,23 +137,26 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   ./<sibling>.html` nav warnings under embed-resources -> trips the zero-warning gate). tar_quarto
   still detects `tar_load`s inside an included `_*.qmd` (verified: 5 edges through the include); list
   the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
-- Theme (Quarto 1.9.38, verified live 2026-06-29): theme.scss `scss:defaults` COLOUR vars
-  ($primary/$link-color/$code-color) embed RAW -> raw .count works. FONTS ALSO work via theme.scss --
-  the earlier "they don't" was a MEASUREMENT ARTIFACT, not a Quarto limit. Set $font-family-sans-serif
-  / $headings-font-family / $font-family-monospace (defaults) + an `@font-face` with a relative
-  `url("assets/fonts/<n>.woff2") format("woff2")` (scss:rules); the vars apply AND Quarto base64-INLINES
-  the woff2 into the embedded CSS under embed-resources (woff2 must exist at render -> commit or fetch;
-  list in `tar_quarto(extra_files=)`). NO hand-rolled data-URI CSS / build script needed for inlining.
-- Font DETECTION gotcha: Quarto embeds theme CSS as a URL-ENCODED `data:text/css,...` URI, so RAW greps
-  for `IBM Plex` / `data:font/woff2` read ~0 even when fonts ARE inlined (present as `IBM%20Plex` /
-  `woff2%3Bbase64`; woff2 base64 magic = d09GMg). ALWAYS urllib.unquote the data:text/css blocks before
-  matching FONT assets; raw `.count` is fine ONLY for raw-embedded things like the colour hexes.
+- Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29):
+  scss:defaults COLOUR vars ($primary/$link-color/$code-color #B0344D) + the IBM Plex stack
+  ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)
+  with a relative `url("assets/fonts/<n>.woff2") format("woff2")`. Quarto base64-INLINES each woff2 into
+  the embedded CSS under embed-resources -> ONE offline file (render PROVED: 9 faces inlined, magic d09GMg,
+  0 external). The 9 woff2 are COMMITTED (assets/fonts/, deny-Read `**/*.woff2`, Serena ignored_paths);
+  list them in `tar_quarto(extra_files=)` -- inspection misses them, `list.files("assets/fonts",
+  pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
+  (device font) so figures stay decoupled from this chrome + warning-free.
+- Theme-CSS DETECTION gotcha (CORRECTED -- supersedes "colours embed raw"): once an `@font-face url()`
+  is in the theme, Quarto embeds the WHOLE compiled theme CSS as a URL-ENCODED `data:text/css,...` URI,
+  so BOTH colours AND fonts encode -- `#B0344D`->`%23B0344D`, `IBM Plex`->`IBM%20Plex`, the woff2 data
+  URI -> `woff2%3Bbase64%2Cd09GMg` (d09GMg = wOF2 magic). RAW `.count` then reads ~0 for everything
+  theme-side (raw-embed held ONLY for the pre-fonts colours-only theme). Match the ENCODED tokens (fast)
+  or URLdecode/urllib.unquote the data:text/css blocks first -- URLdecode of the ~1MB blob is VERY SLOW,
+  so prefer encoded matching. Figures are PNG base64 (`data:image/png`), so their `#B0344D` is not raw either.
 - Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
   is deny-Read -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
   script), not a Bash `rm`. Inspect the output HTML the same way (output dir is deny-Read): build the
   path inside a python/R script ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
-- ggplot panels keep `theme_tau(base_family="")` -> device-default font, decoupled from the HTML
-  chrome, no missing-font warning.
 
 ## Subagents & skills
 Scan the available-skills list each session; invoke a matching Skill before

@@ -12,8 +12,6 @@
 /rv/library/
 # pinned project-local binaries (rv, quarto); regenerate via scripts/install-*.sh
 /tools/
-# IBM Plex woff2 = build inputs for the generated report-fonts.css (regenerate via scripts/build-fonts.sh)
-/assets/fonts/
 
 # targets store + Quarto render artefacts (regenerate via tar_make / quarto render)
 /_targets/
