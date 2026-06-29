@@ -94,22 +94,29 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   MHC_APC aux) + microglia_substate_levels (argmax set) + contam_signatures (Oligo/Neuron/Astro).
 - PRUNE rule uses RAW identity-vs-best-contam, NOT z. z-based identity argmax FAILS: ambient oligo/neuron/astro
   is pervasive background (medians 0.10-0.15) so z-centering destroys the absolute "is this a microglia at all".
-  Drop cluster if id_med<0.15 OR mglike_frac<0.30 (frac cells with raw identity > best raw contam). BOTH
-  thresholds sit in natural GAPS (real micro id_med>=0.158 & mglike>=0.38; contaminants <=0.091 & <=0.24) ->
-  conservative, no over-pruning. Dropped {6,7,8,11} = 2944/26104 (11.3%) -> 23160 retained. Cluster 7 id_med=0
-  (zero identity); 8 = neuron doublets (real id 0.187 BUT neuron 0.30). doublets precomputed all-0 (logged no-op).
+  Drop if id_med<0.15 OR mglike_frac<0.30 (frac cells raw identity > best raw contam) -- 2-D OR rule, a cluster
+  dropped on one axis can sit high on the other. Two contaminant kinds: low-IDENTITY {6,7,11} id_med<=0.091
+  (7 id_med=0, clean gap to kept>=0.158); DOUBLET {8} id_med 0.187 (ABOVE floor, even above kept cluster 10) but
+  neuron-per-cell (Neuron med 0.300 vs ~0.15 bg) -> dropped on mglike 0.244. mglike gap clean (drop<=0.244 /
+  keep>=0.381); id gap NOT clean (8 overlaps) + BINDING kept margin THIN (cluster 10 IFN id_med 0.1576, 0.0076
+  over floor) -> id_floor LOAD-BEARING, re-derive per dataset. Exact margins + DAM/lineage medians stored
+  @misc$microglia_prune (separation, qc_rationale). Dropped {6,7,8,11}=2944/26104 (11.3%) -> 23160 retained;
+  doublets precomputed all-0 (logged no-op).
 - SUBSTATE: cluster-PRIMARY is authoritative; per-cell secondary is NOISY (z-argmax over-calls sparse IFN/Prolif)
   -> report cluster-level proportions, not per-cell. z-scale 4 substate sigs on RETAINED cells -> cluster-mean-z
   argmax; unassigned if best z<=0; ambiguous if top-two both>amb_floor(0.10) AND within tol(0.10) -- amb_floor
   guards a noise runner-up (cluster 2: weak-homeo 0.12 vs prolif-noise 0.07 -> Homeostatic, not ambiguous).
   Result Homeo{0,2,5}=11174, DAM{1,3,4}=11189, IFN{9,10}=797, Proliferative 0 clusters (no prolif-dominant
-  cluster -- biologically fine), 0 ambiguous/unassigned.
+  cluster -- biologically fine; per-cell secondary over-calls it 4038, sparse-marker noise that cluster-mean
+  averages out -> "0 Proliferative" = no coherent population, NOT 0 cells), 0 ambiguous/unassigned.
 - HEADLINE confirmed descriptively (amyloid -> homeostatic->DAM): MAPTKI 3521H/415D -> NLGF_MAPTKI 2641H/4484D ->
   NLGF_P301S 1612H/5885D (S3 composition tests it; S4 DE the programme).
 - CAVEAT for S3 (genotype-associated QC dropout): cluster 6 (worst QC, dropped) is 86% NLGF_MAPTKI -> prune
   removes more NLGF_MAPTKI low-quality cells (retained genotype frac 0.176/0.170/0.317/0.337 vs original
-  0.167/0.168/0.337/0.329). Dropped cells are id~0 ARTIFACTS, not DAM -> amyloid->DAM intact; REPORT the
-  asymmetry, never hide it. Full stats in @misc$microglia_prune (qc_rationale, dropped_by_genotype) +
+  0.167/0.168/0.337/0.329). Dropped clusters = low-identity {6,7,11} or neuron-doublets {8}; NONE DAM-high
+  (DAM med 0.099-0.129 vs kept DAM clusters 0.195-0.225, stored) -> amyloid->DAM cannot be a prune artifact;
+  REPORT the asymmetry, never hide it. Full stats in @misc$microglia_prune (qc_rationale, separation,
+  dropped_by_genotype) +
   $substate_provenance (cluster_mean_z, substate_table, n_used, thresholds).
 
 ## Environment (project-local; NO Docker, NO system-wide installs)

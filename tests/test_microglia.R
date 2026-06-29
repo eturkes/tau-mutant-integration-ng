@@ -61,11 +61,20 @@ stopifnot(identical(unname(es$S1), c("E1","E2")), identical(unname(es$S2), c("E3
           identical(attr(es, "n_used"), c(S1 = "2/3", S2 = "2/2")))
 expect_error(marker_sets_to_ensembl(list(S1 = c("Z","Y")), sm2, c("E1")), "no present ensembl")
 expect_error(marker_sets_to_ensembl(list(S1 = "A"), sm2, present_ids = c("E2","E3")), "no present ensembl")
+# min_n floor: a set reduced to a SINGLE present id is rejected (a 1-gene signature fabricates a score)
+expect_error(marker_sets_to_ensembl(list(S1 = c("A","Z","Y")), sm2, present_ids = c("E1","E9")), "near-empty")
+stopifnot(length(marker_sets_to_ensembl(list(S1 = c("A","Z")), sm2,           # min_n=1 permits a singleton
+                                        present_ids = c("E1","E9"), min_n = 1L)$S1) == 1L)
 
 # zscale_signatures: per-column z (mean 0, sd 1); a zero-variance column -> 0
 zz <- zscale_signatures(matrix(c(1,2,3, 5,5,5), nrow = 3, dimnames = list(NULL, c("v","const"))))
 stopifnot(abs(mean(zz[,"v"])) < 1e-9, abs(sd(zz[,"v"]) - 1) < 1e-9, all(zz[,"const"] == 0),
           identical(colnames(zz), c("v","const")))
+# non-finite -> 0: a stray NA cell is zeroed (no-enrichment) while the column's non-NA cells keep
+# valid z (scale() na.rm's the NA from the mean/sd); a clean column is unaffected. No NA ever leaks.
+znf <- zscale_signatures(matrix(c(1,2,NA, 1,2,3), nrow = 3, dimnames = list(NULL, c("a","b"))))
+stopifnot(all(is.finite(znf)), znf[3,"a"] == 0, abs(znf[1,"a"] + 0.7071068) < 1e-6,
+          abs(sd(znf[,"b"]) - 1) < 1e-9)
 
 # assign_substate: clear argmax / unassigned (all<=0) / ambiguous (two real & close) / noise runner-up kept
 zm <- rbind(
@@ -77,6 +86,19 @@ zm <- rbind(
 lab <- assign_substate(zm, tol = 0.10, amb_floor = 0.10)
 stopifnot(identical(unname(lab), c("DAM","unassigned","ambiguous","Homeostatic")),
           identical(names(lab), rownames(zm)))
+# eps: a numerically-zero best (floating-point residual of a degenerate centred mean) -> unassigned,
+# not force-labelled to an arbitrary argmax
+fp <- assign_substate(rbind(noise = c(Homeostatic = 1e-12, DAM = 5e-13, IFN = -1e-12, Proliferative = 0)))
+stopifnot(identical(unname(fp), "unassigned"))
+# ambiguity boundary is STRICT (< tol): an exact tol gap is NOT ambiguous (uses exactly-representable
+# halves to dodge the 0.3-0.2 != 0.1 float trap); a gap just under tol IS ambiguous
+bnd <- assign_substate(rbind(
+  atol = c(Homeostatic = 1.0, DAM = 0.5, IFN = -0.2, Proliferative = -0.3),   # gap == tol(0.5) -> Homeostatic
+  utol = c(Homeostatic = 1.0, DAM = 0.6, IFN = -0.2, Proliferative = -0.3)),  # gap 0.4 < tol     -> ambiguous
+  tol = 0.5, amb_floor = 0.10)
+stopifnot(identical(unname(bnd), c("Homeostatic", "ambiguous")))
+# finite-input contract guard (z-scale coerces non-finite upstream; the helper still fails loud on NA)
+expect_error(assign_substate(rbind(x = c(Homeostatic = NA, DAM = 1, IFN = 0, Proliferative = 0))), "finite")
 
 # cluster_mean_z: exact per-cluster column means; rows in (dropped-empty) level order
 cmz <- cluster_mean_z(matrix(c(0,2, 4,6, 10,10), ncol = 2, byrow = TRUE,
@@ -89,6 +111,9 @@ st <- data.frame(id_med = c(0.30, 0.05, 0.40), mglike_frac = c(0.60, 0.50, 0.20)
 stopifnot(setequal(flag_contaminant_clusters(st, id_floor = 0.15, mglike_floor = 0.30),
                    c("lowid","lowmgl")),
           length(flag_contaminant_clusters(st[1, , drop = FALSE])) == 0L)
+# finite-stat guard: an NA stat fails loud rather than returning an NA-named "ghost" drop
+expect_error(flag_contaminant_clusters(
+  data.frame(id_med = c(0.3, NA), mglike_frac = c(0.6, 0.5), row.names = c("a","b"))), "finite")
 
 # annotate_microglia: input guards short-circuit before any UCell compute
 sm3   <- data.frame(symbol = "A", ensembl = "E1", stringsAsFactors = FALSE)
@@ -99,5 +124,6 @@ expect_error(annotate_microglia(obj_a, sm3, cluster_col = "nope"), "cluster_col"
 expect_error(annotate_microglia(obj_a, "notadf"), "symbol_map")
 expect_error(annotate_microglia(obj_a, sm3,
              marker_sets = list(Homeostatic = "A", DAM = "A", IFN = "A", Proliferative = "A")), "MHC_APC")
+expect_error(annotate_microglia(obj_a, sm3), "percent_contam")   # required QC meta absent -> fail at the gate
 
 cat("ok - test_microglia\n")

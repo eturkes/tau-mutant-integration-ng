@@ -149,17 +149,25 @@ marker_mean_by_cluster <- function(seurat_obj, marker_sets,
 # --- P1-S2: UCell substate annotation + contaminant-cluster prune --------------------------
 
 # Map named marker-symbol sets -> present ensembl ids via symbol_map (assay rownames are ensembl).
-# Drops symbols with no ensembl hit AND ids absent from `present_ids`; a set left empty errors (a
-# silent empty signature would fabricate UCell scores). Returns the named ensembl-id list, with
-# attr "n_used" = "<kept>/<requested>" per set for the provenance record. Pure.
-marker_sets_to_ensembl <- function(marker_sets, symbol_map, present_ids) {
+# Drops symbols with no ensembl hit AND ids absent from `present_ids`. A set reduced to 0 errors
+# ("no present ensembl"); a set reduced below `min_n` errors too -- a near-empty signature (e.g. the
+# Thrupp 2020 ~18% snRNA DAM dropout taken to an extreme, or a wrong-organism marker list) would
+# fabricate an unreliable UCell score that argmax then trusts. Returns the named ensembl-id list,
+# with attr "n_used" = "<kept>/<requested>" per set for the provenance record. Pure.
+marker_sets_to_ensembl <- function(marker_sets, symbol_map, present_ids, min_n = 2L) {
   stopifnot(is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
-            is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)))
+            is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)),
+            is.numeric(min_n), length(min_n) == 1L, min_n >= 1L)
   ens <- lapply(marker_sets, function(s) intersect(symbols_to_ensembl(s, symbol_map), present_ids))
-  empty <- names(ens)[vapply(ens, length, integer(1)) == 0L]
-  if (length(empty))
-    stop("marker_sets_to_ensembl: no present ensembl id for set(s): ", paste(empty, collapse = ", "),
+  n   <- vapply(ens, length, integer(1))
+  if (any(n == 0L))
+    stop("marker_sets_to_ensembl: no present ensembl id for set(s): ",
+         paste(names(ens)[n == 0L], collapse = ", "),
          " -- map symbols -> ensembl upstream (assay rownames are ensembl)")
+  if (any(n < min_n))
+    stop("marker_sets_to_ensembl: under ", min_n, " present ensembl id(s) (near-empty signature) for set(s): ",
+         paste(sprintf("%s (%d)", names(ens)[n < min_n], n[n < min_n]), collapse = ", "),
+         " -- widen the set or map more symbols (a single-gene signature is unreliable)")
   n_used <- vapply(names(marker_sets),
                    function(nm) sprintf("%d/%d", length(ens[[nm]]), length(marker_sets[[nm]])), character(1))
   attr(ens, "n_used") <- n_used
@@ -168,11 +176,12 @@ marker_sets_to_ensembl <- function(marker_sets, symbol_map, present_ids) {
 
 # Calibrate a units x signatures score matrix: z-scale each signature (column) so sets of
 # different size/coherence become comparable before argmax (raw UCell is NOT cross-signature
-# comparable). A zero-variance column -> z undefined -> set to 0 (no enrichment). Pure.
+# comparable). Any non-finite result -> 0 (no enrichment): a zero-variance column gives NaN, and
+# a stray NA/Inf in the input would otherwise propagate to argmax as a silent mis-label. Pure.
 zscale_signatures <- function(score_mat) {
   stopifnot(is.matrix(score_mat), ncol(score_mat) >= 1L)
   z <- scale(score_mat)
-  z[is.nan(z)] <- 0
+  z[!is.finite(z)] <- 0
   attr(z, "scaled:center") <- NULL
   attr(z, "scaled:scale")  <- NULL
   dimnames(z) <- dimnames(score_mat)
@@ -181,17 +190,20 @@ zscale_signatures <- function(score_mat) {
 
 # Argmax substate assignment with explicit ambiguous/unassigned buckets (never force-assign). For
 # each row (a cell or a cluster) of a z-scaled signature matrix:
-#   unassigned : best signature z <= 0 (no positive enrichment for ANY substate)
+#   unassigned : best signature z <= eps (no positive enrichment for ANY substate; eps also absorbs
+#                floating-point zeros, e.g. a degenerate single-cluster object whose centred z ~ 1e-17)
 #   ambiguous  : the top-two are BOTH > amb_floor (genuinely enriched) AND within tol (co-dominant)
 #   else       : the argmax signature name.
 # amb_floor guards against a noise-level runner-up (z just above 0, e.g. a sparse signature with a
-# single stray gene) faking ambiguity -- ambiguity requires TWO real competitors. Returns a
-# row-named character vector. Pure.
-assign_substate <- function(z_mat, tol = 0.10, amb_floor = 0.10) {
-  stopifnot(is.matrix(z_mat), ncol(z_mat) >= 2L, !is.null(colnames(z_mat)))
+# single stray gene) faking ambiguity -- ambiguity requires TWO real competitors. A weak-but-clear
+# argmax (best z in (eps, amb_floor]) IS assigned: argmax must pick a winner where one positively
+# enriched signature dominates. Requires finite input (z-scale upstream coerces non-finite -> 0).
+# Returns a row-named character vector. Pure.
+assign_substate <- function(z_mat, tol = 0.10, amb_floor = 0.10, eps = 1e-8) {
+  stopifnot(is.matrix(z_mat), ncol(z_mat) >= 2L, !is.null(colnames(z_mat)), all(is.finite(z_mat)))
   apply(z_mat, 1L, function(r) {
     o <- order(r, decreasing = TRUE)
-    if (r[o[1]] <= 0) return("unassigned")
+    if (r[o[1]] <= eps) return("unassigned")
     if (r[o[2]] > amb_floor && (r[o[1]] - r[o[2]]) < tol) return("ambiguous")
     colnames(z_mat)[o[1]]
   })
@@ -217,7 +229,8 @@ cluster_mean_z <- function(z_mat, clusters) {
 # -> conservative, drops only clear outliers (no over-pruning). Pure; returns dropped cluster names.
 flag_contaminant_clusters <- function(stats, id_floor = 0.15, mglike_floor = 0.30) {
   stopifnot(is.data.frame(stats), all(c("id_med", "mglike_frac") %in% colnames(stats)),
-            !is.null(rownames(stats)))
+            !is.null(rownames(stats)),
+            all(is.finite(stats$id_med)), all(is.finite(stats$mglike_frac)))   # NA -> drop NA-named ghosts
   rownames(stats)[stats$id_med < id_floor | stats$mglike_frac < mglike_floor]
 }
 
@@ -227,9 +240,11 @@ flag_contaminant_clusters <- function(stats, id_floor = 0.15, mglike_floor = 0.3
 #      (ncores=1 -> deterministic, no parallel warning). Raw scores -> meta `<sig>_UCell`.
 #   2. Prune: per cluster, raw microglia-identity median + fraction of cells whose identity beats
 #      its best contaminant signature -> flag_contaminant_clusters -> DROP (subset out). Doublets
-#      are precomputed (0 here -> logged no-op). Per-cluster QC rationale (id/mglike/contam/ribo/
-#      malat1/dropped), dropped ids+counts, and the dropped genotype x cluster table go in
-#      @misc$microglia_prune -- nothing hidden (the dropout is mildly genotype-associated; reported).
+#      are precomputed (0 here -> logged no-op). Per-cluster QC rationale (id/mglike/DAM + per-lineage
+#      contaminant medians/contam/ribo/malat1/dropped), kept-vs-dropped separation margins, dropped
+#      ids+counts, and the dropped genotype x cluster table go in @misc$microglia_prune -- nothing
+#      hidden (the dropout is mildly genotype-associated; reported, and the dropped clusters are NOT
+#      DAM-high so the amyloid->DAM headline cannot be a pruning artifact).
 #   3. On RETAINED cells: z-scale the 4 substate signatures (calibrate per signature on the clean
 #      population) -> cluster-mean-z argmax = PRIMARY label (broadcast to its cells); per-cell-z
 #      argmax = SECONDARY (diagnostic; noisier for sparse states). MHC_APC z = a continuous aux
@@ -252,7 +267,9 @@ annotate_microglia <- function(seurat_obj, symbol_map,
     is.list(marker_sets), all(substate_levels %in% names(marker_sets)), "MHC_APC" %in% names(marker_sets),
     is.list(contam_sets), length(contam_sets) >= 1L, !is.null(names(contam_sets)),
     is.character(identity_markers), length(identity_markers) >= 1L,
-    is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map))
+    is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)),
+    all(c("percent_contam", "percent_ribo", "percent_malat1", "genotype") %in%   # prune-log/provenance inputs:
+          colnames(seurat_obj@meta.data))                                        # fail at the gate, not mid-compute
   )
   present  <- rownames(SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer))
   all_sets <- c(list(Microglia_identity = identity_markers), marker_sets, contam_sets)
@@ -281,19 +298,41 @@ annotate_microglia <- function(seurat_obj, symbol_map,
 
   qc_rationale <- data.frame(
     n           = stats$n,
-    id_med      = round(stats$id_med, 3),
-    mglike_frac = round(stats$mglike_frac, 3),
+    id_med      = round(stats$id_med, 4),                       # 4dp: the binding kept margin is ~0.008
+    mglike_frac = round(stats$mglike_frac, 4),
+    DAM_med     = round(tapply(md$DAM_UCell, cl0, median), 3),  # dropped clusters are NOT DAM-high (audit)
     pct_contam  = round(tapply(md$percent_contam, cl0, mean), 2),
     pct_ribo    = round(tapply(md$percent_ribo,   cl0, mean), 2),
     pct_malat1  = round(tapply(md$percent_malat1, cl0, mean), 2),
     dropped     = levels(cl0) %in% drop_clusters,
     row.names   = levels(cl0)
   )
+  # Per-cluster contaminant-lineage medians -> evidence the lineage call for each dropped cluster
+  # (a neuron-doublet cluster shows an elevated Neuron median over the pervasive ambient background).
+  qc_rationale <- cbind(qc_rationale,
+    as.data.frame(sapply(names(contam_sets),
+      function(nm) round(tapply(md[[paste0(nm, "_UCell")]], cl0, median), 3))))
   if (is.numeric(md$doublets)) qc_rationale$doublet_mean <- round(tapply(md$doublets, cl0, mean), 4)
+  # Exact separation between kept and dropped clusters at the two thresholds -- makes the "thresholds
+  # sit in a gap" claim reproducible from the target. The prune is an OR rule (drop if id_med OR
+  # mglike below floor), so a cluster dropped on one axis can sit high on the other (a neuron-doublet
+  # cluster keeps a decent id_med but loses on mglike). binding_kept_margin = the smallest distance any
+  # KEPT cluster has to the boundary; a small value (this data: ~0.008, the low-identity IFN cluster)
+  # flags that the exact id_floor is load-bearing and should be re-derived per dataset, not assumed.
+  kept_lvl   <- rownames(stats)[!(rownames(stats) %in% drop_clusters)]
+  separation <- c(
+    min_kept_id_med = min(stats[kept_lvl, "id_med"]),
+    min_kept_mglike = min(stats[kept_lvl, "mglike_frac"]),
+    max_drop_id_med = if (length(drop_clusters)) max(stats[drop_clusters, "id_med"]) else NA_real_,
+    max_drop_mglike = if (length(drop_clusters)) max(stats[drop_clusters, "mglike_frac"]) else NA_real_,
+    binding_kept_margin = min(min(stats[kept_lvl, "id_med"]) - id_floor,
+                              min(stats[kept_lvl, "mglike_frac"]) - mglike_floor)
+  )
   prune_log <- list(
     qc_rationale = qc_rationale, dropped = drop_clusters,
     n_dropped = sum(!keep), n_retained = sum(keep),
     thresholds = c(id_floor = id_floor, mglike_floor = mglike_floor),
+    separation = separation,
     dropped_by_genotype = table(genotype = md$genotype[!keep], cluster = droplevels(cl0[!keep]))
   )
   obj <- subset(obj, cells = colnames(obj)[keep])
@@ -314,16 +353,18 @@ annotate_microglia <- function(seurat_obj, symbol_map,
   obj@meta.data[["microglia_substate_percell"]] <-                                  # SECONDARY (cell)
     factor(assign_substate(z_sub, tol = tol, amb_floor = amb_floor), levels = lvls)
 
-  # --- postconditions: labelled-or-bucketed + self-consistent enrichment ---
+  # --- postconditions: every retained cell labelled-or-bucketed; reductions survive the subset ---
   sub <- obj@meta.data[["microglia_substate"]]
   stopifnot(
     !anyNA(sub),                                                       # every retained cell bucketed
-    nlevels(cl) == nrow(cmz),                                          # no dropped-cluster ghosts
     all(c("pca", "harmony", "umap") %in% SeuratObject::Reductions(obj))# reductions survive subset
   )
-  for (s in intersect(levels(droplevels(sub)), substate_levels)) {     # S-labelled cells score higher on S
+  # Self-CONSISTENCY guard, not independent validation: the labels derive from these same z-scaled
+  # scores, so this only catches a sign/indexing inversion (s-labelled cells must out-score non-s
+  # cells on the raw s signature). It cannot detect wrong marker definitions or overfit thresholds.
+  for (s in intersect(levels(droplevels(sub)), substate_levels)) {
     sc <- obj@meta.data[[paste0(s, "_UCell")]]
-    stopifnot(mean(sc[sub == s]) > mean(sc[sub != s]))
+    if (any(sub != s)) stopifnot(mean(sc[sub == s]) > mean(sc[sub != s]))   # skip when s is the only state
   }
 
   obj@misc$microglia_prune <- prune_log

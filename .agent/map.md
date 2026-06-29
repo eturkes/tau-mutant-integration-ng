@@ -42,11 +42,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       marker_mean_by_cluster (post-Harmony substate-separation check; map symbols->ensembl first) +
       reprocess_thread_env (thread provenance snapshot).
    + (P1-S2) microglia.R: annotate_microglia (UCell-score identity+substate+aux+contam on SCT data ->
-      drop clear contaminant clusters -> calibrated cluster-argmax substate labels; @misc$microglia_prune +
-      $substate_provenance) ORCHESTRATES pure helpers: marker_sets_to_ensembl (symbol sets->present ensembl,
-      error-on-empty, n_used) | zscale_signatures (per-signature z; zero-var->0) | assign_substate (argmax +
-      ambiguous/unassigned buckets) | cluster_mean_z (per-cluster mean z) | flag_contaminant_clusters
-      (id_med<0.15 OR mglike_frac<0.30). constants.R now carries microglia_identity_markers (pan QC) +
+      drop clear contaminant clusters -> calibrated cluster-argmax substate labels; guards required QC meta;
+      @misc$microglia_prune[qc_rationale+DAM/lineage medians, separation margins] + $substate_provenance)
+      ORCHESTRATES pure helpers: marker_sets_to_ensembl (symbol sets->present ensembl, error empty/near-empty
+      min_n, n_used) | zscale_signatures (per-signature z; non-finite->0) | assign_substate (argmax +
+      ambiguous/unassigned buckets, eps-floor) | cluster_mean_z (per-cluster mean z) | flag_contaminant_clusters
+      (id_med<0.15 OR mglike_frac<0.30, finite-guard). constants.R now carries microglia_identity_markers (pan QC) +
       canonical_microglia_markers (Homeostatic/DAM/IFN/Proliferative+MHC_APC) + microglia_substate_levels +
       contam_signatures (Oligo/Neuron/Astro).
   targets:
