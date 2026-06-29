@@ -28,6 +28,13 @@ dependencies = [
     { name = "glmGamPoi", repository = "BioCsoft" },
     # substate scoring: UCell rank-based signature enrichment (robust to dropout/depth; P1-S2)
     { name = "UCell",      repository = "BioCsoft" },
+    # composition (P1-S3): propeller (speckle) = reproducible PRIMARY (logit/asin, limma eBayes).
+    # sccomp = OPTIONAL Bayesian cross-check; the R pkg locks here, but its CmdStan backend is
+    # off-lock (cmdstanr off-snapshot + an unlockable compiled tree) -> scripts/install-cmdstan.sh
+    # provisions it project-locally; the composition target degrades to propeller-only when absent.
+    # instantiate (CmdStan glue, a sccomp Depends) auto-pulls from CRAN/P3M.
+    { name = "speckle",    repository = "BioCsoft" },
+    { name = "sccomp",     repository = "BioCsoft" },
     # differential expression (Bioconductor)
     { name = "limma",        repository = "BioCsoft" },
     { name = "edgeR",        repository = "BioCsoft" },

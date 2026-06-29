@@ -119,6 +119,41 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   dropped_by_genotype) +
   $substate_provenance (cluster_mean_z, substate_table, n_used, thresholds).
 
+## snRNAseq microglia composition (P1-S3, built) -- `R/composition.R::test_composition` -> `composition_results`
+- METHOD-STACK REVERSAL vs plan (reproducibility-driven): plan had sccomp PRIMARY + propeller sensitivity; BUILT
+  the opposite. propeller (speckle) = LOCKED primary (logit) + sensitivity (asin), reproducible from the P3M
+  snapshot. sccomp = OPTIONAL OFF-lock cross-check. WHY: CmdStan is a compiled C++ tree off the P3M snapshot ->
+  rv cannot lock it -> a Bayesian arm cannot be THE reproducible call. The locked guarantee is propeller.
+- propeller NEEDS a CELL-MEANS design (THE S3 build bug, fixed): speckle::propeller.ttest derives PropRatio by
+  raising per-GENOTYPE mean-proportion coefficients to the contrast powers (apply(coef^cont, 2, prod)). A
+  treatment/factorial design (Intercept+effects, factorial_design()) makes PropRatio a meaningless ratio of effect
+  coefs AND HARD-CRASHES ("dim(X) must have a positive length") when a contrast loads ONE coefficient (tau_alone ->
+  apply collapses to a vector). FIX: model.matrix(~ 0 + genotype + batch), genotype cols renamed to bare levels,
+  contrasts via make_contrast_matrix() (cell-means, proven == factorial in test_design.R). t-stat is batch-ADJUSTED
+  (full design); PropRatio is the genotype mean ratio (speckle refits on the 2-4 contrast genotype cols, batch-
+  free). The t-stat alone would survive a factorial design; only PropRatio forces cell-means.
+- DISCORDANCE RULE (pre-declared): propeller-LOGIT stands as THE call; where asin or sccomp differ in effect SIGN
+  or significance for a (contrast, substate), FLAG + report, never average. composition_concordance() keys
+  (contrast,substate); dir=sign(t|c_effect), sig=FDR<alpha across available methods; sccomp absent -> propeller-
+  only comparison (no flag from a missing arm).
+- Batch random-vs-fixed asymmetry (intentional): propeller/limma FIXED batch (de_pb-consistent); sccomp RANDOM
+  batch intercept (~ 0 + genotype + (1|batch)) -> priors regularise the 4-level batch. Unit = genotype_batch (16).
+  sccomp cell-means -> colon-free contrasts (no backtick hazard).
+- sccomp call: pass ONLY `cores` to sccomp_estimate (it derives chains itself). Passing chains/parallel_chains
+  lands them in `...` -> collides with sccomp's internal mod$sample() ("formal argument parallel_chains matched by
+  multiple actual arguments"). withCallingHandlers muffles + records sampler warnings into attr "warnings" so the
+  OFF-lock arm can't fail the warn=2 gate on a Stan note; LOCKED propeller keeps full strictness.
+- OFF-lock backend (scripts/install-cmdstan.sh, idempotent): cmdstanr from the Stan r-universe -> tools/rlib-stan
+  (SEPARATE lib so `rv sync` never prunes it) + CmdStan compiled -> tools/cmdstan. _targets.R prepends the lib +
+  sets CMDSTAN iff BOTH exist -> sccomp_backend_ready() gates the run; absent -> propeller-only, fresh clone stays
+  green. sccomp dumps per-chain CSV draws to ./sccomp_draws_files/ at the build CWD -> gitignored (regenerable).
+- STATUS: propeller primary + all pure helpers UNIT-VALIDATED (tests/test_composition.R green at warn=2: count
+  shapes/empty-drop/canonical-order/correctness, covariate-constancy fail-loud, propeller direction DAM-up +
+  Homeostatic-down + prop_ratio>1 for logit AND asin, concordance flagging, sccomp gate predicate logical).
+  DEFERRED to next session: live sccomp run via the orchestrator on real microglia_annotated + full
+  scripts/check.sh. Backend smoke-confirmed end-to-end PRE-fix (CmdStan 2.39.0); run_sccomp cores-only fix is
+  UNVERIFIED live.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

@@ -15,6 +15,19 @@ local({
   Sys.setenv(QUARTO_PATH = quarto_bin)
 })
 
+# Optional Stan backend for the sccomp composition cross-check (P1-S3). Prepend the off-lock,
+# project-local cmdstanr library + point CMDSTAN at the compiled tree, but ONLY when both exist
+# (provisioned by scripts/install-cmdstan.sh). Absent -> not added -> R/composition.R degrades to
+# propeller-only (the reproducible primary), so a fresh clone still builds + the gate stays green.
+local({
+  stan_lib <- "tools/rlib-stan"
+  cmdstan  <- Sys.glob(file.path("tools", "cmdstan", "cmdstan-*"))
+  if (dir.exists(stan_lib) && length(cmdstan) >= 1L) {
+    .libPaths(c(normalizePath(stan_lib), .libPaths()))
+    Sys.setenv(CMDSTAN = normalizePath(cmdstan[1]))
+  }
+})
+
 # memory="transient" + gc: release the ~8G snRNAseq load + its 340MB subset between targets.
 # trust_timestamps: detect raw-input change by mtime/size, not by re-hashing the 8G file.
 tar_option_set(
@@ -51,6 +64,11 @@ list(
   # S2: UCell substate scoring (identity + Homeostatic/DAM/IFN/Proliferative + MHC_APC aux + contam)
   # -> drop clear contaminant clusters -> calibrated argmax substate labels on the clean population.
   tar_target(microglia_annotated,  annotate_microglia(microglia_processed, symbol_map), format = "qs"),
+
+  # S3: substate composition across the 5 canonical contrasts. propeller (logit + asin) = locked
+  # primary; sccomp (Bayesian, random batch) = optional cross-check, run iff the Stan backend above
+  # is present, else recorded as skipped. Small result (count tables + per-contrast stats + concordance).
+  tar_target(composition_results,  test_composition(microglia_annotated), format = "qs"),
 
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),

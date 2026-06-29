@@ -41,8 +41,11 @@ UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif dist
 (observed ARI=1.0, recorded threads); gate green.
 S2 DONE 2026-06-30: `microglia_annotated` (UCell substate scoring -> prune contaminant clusters {6,7,8,11}=2944
 cells -> calibrated cluster-argmax labels; Homeo 11174/DAM 11189/IFN 797, 23160 retained); amyloid->DAM
-confirmed descriptively; gate green. **NEXT:** S3 composition (sccomp + propeller across 5 contrasts; rv add
-sccomp speckle, cmdstanr/CmdStan heavy install).
+confirmed descriptively; gate green.
+S3 IN PROGRESS 2026-06-30: `R/composition.R` + `composition_results` target + `tests/test_composition.R` BUILT.
+propeller (logit primary + asin) = LOCKED reproducible call; sccomp = OPTIONAL off-lock cross-check (CmdStan
+unlockable -> reproducibility REVERSAL from the sccomp-primary plan). propeller path + pure helpers unit-green at
+warn=2. **NEXT:** live sccomp run + full gate (DEFERRED), then commit-close. See plan S3 + memory.md S3 section.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

@@ -19,6 +19,8 @@
 /_freeze/
 /.quarto/
 **/*.quarto_ipynb
+# sccomp/cmdstanr dumps per-chain CSV draws into ./sccomp_draws_files/ at the build CWD - regenerable
+sccomp_draws_files/
 
 # generic R artefacts
 .Rhistory

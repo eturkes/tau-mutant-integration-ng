@@ -92,11 +92,13 @@ screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate 
   calibrated); ambiguous (top-two within tol / all sub-null) -> unassigned bucket; cross-tab vs de-novo
   clusters + v1 labels (reconcile); aux MHC/APC + *_contam + rbc + doublet/ribo scores -> flag/prune
   contaminant clusters (logged rationale, not silent).
-- Composition: sccomp(~tau*amyloid + (1|batch)) PRIMARY (Bayesian -> priors regularise the 4-level batch RE)
-  + propeller-logit as a SENSITIVITY check (not a co-equal vote); 16 sample units (genotype_batch); report 5
-  contrasts incl. interaction. Discordance rule (pre-declared): sccomp call stands, propeller disagreement is
-  flagged+reported, never silently averaged. Batch is RANDOM here vs FIXED in DE -> justified asymmetry
-  (sccomp regularises few levels, limma can't); state it.
+- Composition: propeller (speckle) PRIMARY (logit) + asin SENSITIVITY -- LOCKED/reproducible from the P3M
+  snapshot; cell-means ~0+genotype+batch (speckle PropRatio needs per-genotype mean coefs), batch FIXED (de_pb-
+  consistent). sccomp(~0+genotype+(1|batch), RANDOM batch) = OPTIONAL OFF-lock cross-check gated on the CmdStan
+  backend (unlockable compiled C++ -> can't be the reproducible primary; REVERSED from the original sccomp-primary
+  plan). 16 sample units (genotype_batch); 5 contrasts incl. interaction. Discordance rule (pre-declared):
+  propeller-logit call STANDS; asin/sccomp sign-or-significance differences flagged+reported, never averaged. Batch
+  random(sccomp)-vs-fixed(propeller) asymmetry intentional (priors regularise few-level batch); state it.
 - Pseudobulk DE: build_pseudobulk(replicate=genotype_batch) on RNA counts -> extend fit_limma_voom
   (voomWithQualityWeights + eBayes(robust=TRUE)) across 5 contrasts; whole-MG always; per-substate ONLY where
   every genotype_batch unit clears a PRE-DECLARED min-cell floor (e.g. >=10/unit) for that substate, else skip
@@ -131,14 +133,16 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   Gotcha: z-based prune FAILS (ambient contam pervasive -> use RAW identity-vs-contam); per-cell substate noisy
   (cluster-level primary authoritative).
 
-- **S3 composition** [DEP: sccomp(+cmdstanr/CmdStan, HEAVY install) + speckle].
-  R/composition.R::test_composition (sccomp + propeller) across 5 contrasts; target `composition_results`.
-  rv add sccomp speckle. cmdstanr downloads+compiles CmdStan (heavy; needs C++ toolchain - have
-  build-essential; may need to `cmdstanr::install_cmdstan()` to a project-local path). Unit-test the
-  contrast wiring on a synthetic count table.
-  ACCEPT: per-contrast proportion estimates incl. interaction; amyloid->DAM shift quantified+tested;
-  sccomp primary + propeller sensitivity, discordance handled per the pre-declared rule; batch random-vs-fixed
-  asymmetry justified; replicate=genotype_batch; gate green.
+- **S3 composition** [DEP: speckle + sccomp(off-lock cmdstanr/CmdStan)]. **[IN PROGRESS 2026-06-30]**
+  R/composition.R::test_composition (propeller primary + gated sccomp) across 5 contrasts; target
+  `composition_results`; tests/test_composition.R (synthetic count table, KNOWN amyloid->DAM direction). speckle +
+  sccomp via rv; cmdstanr/CmdStan OFF-lock via scripts/install-cmdstan.sh (project-local tools/, gitignored).
+  BUILT + propeller path UNIT-GREEN at warn=2 (counts/guard/direction logit+asin/concordance). DEFERRED next
+  session: live sccomp run (orchestrator on real microglia_annotated) + full scripts/check.sh.
+  ACCEPT (revised): propeller(logit) PRIMARY + asin sensitivity, sccomp OPTIONAL gated cross-check (reproducibility
+  reversal: CmdStan unlockable); per-contrast proportion estimates incl. interaction; amyloid->DAM quantified+
+  tested; discordance per the pre-declared rule (propeller-logit stands); batch random-vs-fixed asymmetry justified;
+  replicate=genotype_batch; gate green [pending].
 
 - **S4 pseudobulk DE** [DEP: stageR(Bioc)].
   Extend R/de_pb.R (voomWithQualityWeights + eBayes(robust=TRUE); stageR helper; FIX the stale "de_sc.R"

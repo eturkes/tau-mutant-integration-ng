@@ -25,6 +25,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
 ### Pipeline (targets DAG)
 `_targets.R`
   - QUARTO_PATH = tools/quarto/bin/quarto + file.exists() preflight stop()  # pinned CLI; no PATH fallback
+  - Stan preflight (OPTIONAL): prepend tools/rlib-stan + set CMDSTAN iff tools/cmdstan exists (scripts/install-cmdstan.sh)
+       -> sccomp cross-check arm; absent -> propeller-only (fresh clone still green)
   - tar_option_set(packages="quarto", memory="transient", garbage_collection=TRUE, trust_timestamps=TRUE)
   - tar_source("R")                                     # loads every R/*.R pure fn
   R/ pure fns (S2): constants.R (genotype_levels/colours, contrast_definitions, marker lists,
@@ -50,6 +52,13 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (id_med<0.15 OR mglike_frac<0.30, finite-guard). constants.R now carries microglia_identity_markers (pan QC) +
       canonical_microglia_markers (Homeostatic/DAM/IFN/Proliferative+MHC_APC) + microglia_substate_levels +
       contam_signatures (Oligo/Neuron/Astro).
+   + (P1-S3) composition.R: test_composition (orchestrator) -> composition_results. composition_counts (per-sample
+      [genotype_batch] x substate count table; drops globally-empty levels; covariate-constancy fail-loud) |
+      run_propeller (CELL-MEANS ~0+genotype+batch via make_contrast_matrix -- speckle PropRatio needs per-genotype
+      mean coefs; getTransformedProps -> propeller.ttest per contrast; logit PRIMARY + asin sensitivity) |
+      run_sccomp (OFF-lock sccomp ~0+genotype+(1|batch), cores-only, warnings->attr) | sccomp_backend_ready
+      (CmdStan gate) | composition_concordance (sign/sig cross-method flag). propeller LOCKED primary; sccomp
+      OPTIONAL off-lock cross-check (scripts/install-cmdstan.sh -> tools/rlib-stan + tools/cmdstan).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -64,6 +73,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   - P1 microglia core (format="qs"; consumes the snRNAseq modality):
        microglia_processed  <- reprocess_microglia(microglia_seurat_raw)  # SCT+pca+harmony+12 clusters@0.4+umap (687MB)
        microglia_annotated  <- annotate_microglia(microglia_processed, symbol_map)  # UCell substates + prune {6,7,8,11}; 23160 cells, 612MB
+       composition_results  <- test_composition(microglia_annotated)  # propeller(logit+asin) [+gated sccomp] x 5 contrasts; counts+stats+concordance (small qs)
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -76,6 +86,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
 make_meta16, make_fake_seurat = synthetic Seurat fixtures), run stopifnot checks (fail-loud,
 no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/test_<x>.R`.
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
+  - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + concordance + sccomp-gate logical
+  - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
@@ -95,4 +107,5 @@ negative tests) -> memory.md Quality gate.
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
           _quarto.yml index.qmd _qc.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh
-regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read)
+regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
+          sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)
