@@ -83,18 +83,28 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Heavy installs/compute: expect long runs; smoke-test helpers via `Rscript -e '...'`
   against the live data BEFORE any full run.
 
-## Quality gate (provisional - lock concretely in P0)
-- Reproducible: fresh clone + `rv sync` (+ `uv sync`) -> `targets::tar_make()` runs the pipeline.
-- Each module smoke-tested against live data before commit.
-- Committed tests = `tests/test_*.R`: plain `stopifnot` fail-loud scripts (zero new deps, mirror
-  io.R's assertion idiom), run `Rscript tests/test_<x>.R` from project root, print `ok - <x>`,
-  non-zero exit on failure. `tests/helpers.R` = deterministic synthetic fixtures (make_fake_seurat
-  / make_meta16 / expect_error; NO RNG or clock -> reproducible everywhere). S3 added
-  test_design (contrast weights + factorial==cell-means equivalence), test_de_pb (pseudobulk
-  + fitter smokes), test_io (S2-deferred loader contracts). S5's check.sh MUST loop tests/test_*.R.
-- Reports (once they exist) knit clean: 0 error / 0 warning -- enforced concretely, NOT
-  by bare `tar_make()` exit (it returns 0 with captured warnings): assert empty
-  `tar_meta()` error+warnings + `options(warn=2)` where safe + Quarto-log grep (lock in S5).
+## Quality gate (concrete; P0-S5) -- `scripts/check.sh`, fail-loud, zero-fault
+Runnable gate = `scripts/check.sh` (run from anywhere; cd's to root). 4 phases, any fault -> non-zero exit:
+1. env: `rv sync` + `uv sync` (idempotent, both fast when satisfied; skip via `CHECK_SKIP_SYNC=1` for fast iteration).
+2. tests: loop `tests/test_*.R`, each `Rscript -e 'options(warn=2); source(<f>)'` -> warn=2 promotes
+   stray R warnings to errors; per-file isolation; first failure aborts (set -e).
+3. pipeline: `tar_make()`, combined output tee'd to a log (a HARD target error -> Rscript non-zero -> pipefail aborts).
+4. zero-fault enforcement (tar_make returns 0 even with CAPTURED warnings, so its exit code is NOT enough):
+   (a) `tar_meta(error,warnings)` all-NA, SCOPED to `tar_manifest()$name` (drops the tar_source'd
+       functions/globals -- ~45 meta rows vs 13 targets -- AND stale dead-target rows that would false-fail);
+   (b) render-log scan `command grep -Eni 'warning|\bwarn\b'` (real GNU grep, not the rg-fff shadow) ->
+       catches Quarto/pandoc/knitr warnings, which knitr raises in a SEPARATE R process so they NEVER
+       reach tar_meta. The log holds only tar_make output (env-sync stdout is not tee'd -> cannot false-trip).
+   Negative-tested: the grep matches `[WARNING]`/`Warning message:`/bare `WARN` and ignores benign tar_make
+   lines; a `stopifnot(FALSE)` test drives exit 1. A current store -> tar_make is a no-op but 4(a)/(b) still run.
+- Committed tests = `tests/test_*.R`: plain `stopifnot` fail-loud scripts (zero new deps, mirror io.R's
+  assertion idiom), source the R/ files they exercise + `tests/helpers.R`, print `ok - <x>`, non-zero exit
+  on failure. helpers.R = deterministic synthetic fixtures (make_fake_seurat / make_meta16 /
+  expect_error[+pattern]; NO RNG or clock). Current set: test_design (5-contrast weights +
+  factorial==cell-means property), test_de_pb (pseudobulk 16-col + fit_limma_voom/log smokes), test_io
+  (loader contracts on tempfiles), test_plot (device-free theme/scale/concordance). They are data-free
+  synthetic; live-data smoke-testing per module still happens once before commit.
+- Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 
 ## Operational
 - Prose register: British English; human-facing report/figure text uses hyphens over

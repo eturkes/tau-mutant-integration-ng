@@ -138,7 +138,16 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
   self-contained HTML; QC metrics within **predeclared numeric bounds asserted in-chapter**
   (declare bounds in code, no pre-privileged threshold, no eyeballed "sane").
 
-### S5 - concrete quality gate + lock + close  [GATE-INDEPENDENT; light]
+### S5 - concrete quality gate + lock + close  [GATE-INDEPENDENT; light]  -- DONE 2026-06-29
+<!-- Deviations: check.sh = 4-phase fail-loud gate (env sync / tests loop / tar_make tee'd to log / zero-fault
+     enforce). warn=2 applied to the TESTS only (per-file Rscript isolation) -- NOT to tar_make, which keeps
+     targets' native per-target warning capture. Zero-fault 4a SCOPED to tar_manifest()$name (drops the
+     tar_source'd functions/globals + any stale dead-target meta rows -> 13 current vs 45 raw rows, avoids a
+     phantom false-fail). 4b render-log grep via `command grep` (real GNU, dodges the rg-fff shell shadow);
+     catches knitr/pandoc/Quarto warnings that never reach tar_meta (knitr runs the .qmd in a separate R
+     process). CHECK_SKIP_SYNC=1 escape hatch for fast iteration. NEGATIVE-TESTED: grep matches
+     [WARNING]/Warning message:/bare WARN + ignores benign tar_make lines; a stopifnot(FALSE) test -> exit 1.
+     Acceptance met: full gate (sync incl.) green end-to-end on the clean store; report re-render proved clean. -->
 - Runnable gate (concrete): `scripts/check.sh` wraps `rv sync` + `uv sync` + `tar_make()`,
   then **enforces** zero-fault rather than trusting `tar_make()`'s exit (it returns 0 even
   with captured warnings): assert `tar_meta(fields=c("error","warnings"))` all NA across

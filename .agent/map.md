@@ -12,7 +12,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   -> `scripts/install-quarto.sh`   # pinned quarto -> tools/quarto/<ver>/ + bin/ wrapper
   -> `rv sync`                     # rproject.toml -> rv.lock -> rv/library (R pkgs)
   -> `uv sync`                     # pyproject.toml -> uv.lock -> .venv (Python)
-  -> `Rscript -e 'targets::tar_make()'`   # build the DAG
+  -> `scripts/check.sh`            # canonical green-check: wraps sync + tests + tar_make + zero-fault enforce
+       (or `Rscript -e 'targets::tar_make()'` to just build the DAG)
 
 ### R session activation (every R/Rscript launched in project root)
 `.Rprofile`
@@ -61,7 +62,14 @@ no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/tes
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
-S5 `scripts/check.sh` loops `tests/test_*.R` (non-zero exit on any failure).
+
+### Quality gate (S5)
+`scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
+  1. `rv sync` + `uv sync`  2. loop `tests/test_*.R` (each `options(warn=2)` -> stray warnings = errors)
+  3. `tar_make()` (output tee'd to a log)  4. enforce zero-fault: (a) `tar_meta(error,warnings)` all-NA
+     scoped to `tar_manifest()$name`; (b) render-log scan for Quarto/pandoc/knitr `warning`/`warn`.
+Any error/warning/log-hit -> non-zero exit. Detail (warn=2, manifest scoping, separate-process knitr
+warnings, negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
