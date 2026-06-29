@@ -51,6 +51,7 @@ list(
   # either reinvalidates the report (list.files keeps the 9 faces in sync with assets/fonts/).
   tar_quarto(
     report, path = ".",
+    quiet = FALSE,   # surface Quarto/Pandoc warnings to the render log so the gate can scan them; default TRUE hides them
     extra_files = c("theme.scss",
                     list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE))
   )

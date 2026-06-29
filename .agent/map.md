@@ -12,7 +12,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   -> `scripts/install-quarto.sh`   # pinned quarto -> tools/quarto/<ver>/ + bin/ wrapper
   -> `rv sync`                     # rproject.toml -> rv.lock -> rv/library (R pkgs)
   -> `uv sync`                     # pyproject.toml -> uv.lock -> .venv (Python)
-  -> `scripts/check.sh`            # canonical green-check: wraps sync + tests + tar_make + zero-fault enforce
+  -> `scripts/check.sh`            # canonical green-check: sync + tests + FORCE-render report + zero-fault enforce
        (or `Rscript -e 'targets::tar_make()'` to just build the DAG)
 
 ### R session activation (every R/Rscript launched in project root)
@@ -48,10 +48,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        proteomics           <- read_spectronaut_tsv(proteomics_file)   # tibble 45972 x 30
        phospho              <- read_spectronaut_tsv(phospho_file)      # tibble 64328 x 81
        sample_key           <- proteomics_sample_meta(sample_key_file) # tibble 16 x 4 (24M timepoint)
-  - `report` <- tar_quarto(path=".", extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML
+  - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
-               (QC-sanity chapter: tar_load 4 modalities + sample_key -> dims, 16x16 design bijection, bounds)
+               (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
+                modalities + sample_key -> dims, 16x16 design bijection, bounds)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)
@@ -63,13 +64,16 @@ no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/tes
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
 
-### Quality gate (S5)
+### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
   1. `rv sync` + `uv sync`  2. loop `tests/test_*.R` (each `options(warn=2)` -> stray warnings = errors)
-  3. `tar_make()` (output tee'd to a log)  4. enforce zero-fault: (a) `tar_meta(error,warnings)` all-NA
-     scoped to `tar_manifest()$name`; (b) render-log scan for Quarto/pandoc/knitr `warning`/`warn`.
-Any error/warning/log-hit -> non-zero exit. Detail (warn=2, manifest scoping, separate-process knitr
-warnings, negative tests) -> memory.md Quality gate.
+  3. FORCE-render report (`tar_invalidate(any_of("report")); tar_make()`, tee'd to a log, `if !`-wrapped) ->
+     two render-time catches in the SOURCES: `_qc.qmd` `options(warn=2)` (R chunk warning -> render error) +
+     `_targets.R` `tar_quarto(quiet=FALSE)` (Quarto/Pandoc `[WARNING]` -> log)
+  4. enforce zero-fault: (a) `tar_meta(error,warnings)` all-NA scoped to manifest names + dynamic branches;
+     (b) anchored render-log grep (`^[WARNING]`/`^Warning:`/...), exit 0=fault / 1=clean / >=2=infra.
+Any error/warning/log-hit -> non-zero exit. Detail (force-render rationale, warn=2, scoping, anchored grep,
+negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |

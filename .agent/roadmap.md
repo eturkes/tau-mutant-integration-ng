@@ -70,3 +70,12 @@ quality gate `scripts/check.sh`. Bootstrap + wiring -> map.md; live contract -> 
   tar_meta). Negative-tested (grep pattern + `stopifnot(FALSE)` -> exit 1); full gate green end-to-end.
   Locked memory.md gate (provisional -> concrete); finalised map.md wiring; folded P0 digest -> history.md;
   archived plan -> `.agent/completed/`. P0 foundation complete; next = P1.
+- 2026-06-29 P0-S5 gate review-hardened (codex-review, post-close): the pre-review render-log grep was BLIND to
+  render warnings -- `tar_quarto` defaults quiet=TRUE (suppresses Quarto/Pandoc warnings from the log) and
+  knitr renders R chunk warnings INTO the HTML (never to log or tar_meta). Fixes: `_qc.qmd` setup
+  `options(warn=2)` (chunk warning -> render error -> tar_make fails); `_targets.R` `tar_quarto(quiet=FALSE)`
+  (warnings reach the log); check.sh FORCE-renders the report each run (closes the cached-clean blind spot;
+  cheap -- reads cached ~0.3G, not the 8G load_snrnaseq build), anchored render-log grep with exit-code
+  discrimination (no false-reds/false-greens), tar_meta scoped to manifest + dynamic branches, `if !`-wrapped
+  tar_make. Negative-tested (chunk warning -> red; clean -> green); report still renders 0-warning under the
+  stricter checks. Docs corrected (memory/map/history).

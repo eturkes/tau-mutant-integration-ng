@@ -83,20 +83,32 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Heavy installs/compute: expect long runs; smoke-test helpers via `Rscript -e '...'`
   against the live data BEFORE any full run.
 
-## Quality gate (concrete; P0-S5) -- `scripts/check.sh`, fail-loud, zero-fault
-Runnable gate = `scripts/check.sh` (run from anywhere; cd's to root). 4 phases, any fault -> non-zero exit:
-1. env: `rv sync` + `uv sync` (idempotent, both fast when satisfied; skip via `CHECK_SKIP_SYNC=1` for fast iteration).
-2. tests: loop `tests/test_*.R`, each `Rscript -e 'options(warn=2); source(<f>)'` -> warn=2 promotes
-   stray R warnings to errors; per-file isolation; first failure aborts (set -e).
-3. pipeline: `tar_make()`, combined output tee'd to a log (a HARD target error -> Rscript non-zero -> pipefail aborts).
-4. zero-fault enforcement (tar_make returns 0 even with CAPTURED warnings, so its exit code is NOT enough):
-   (a) `tar_meta(error,warnings)` all-NA, SCOPED to `tar_manifest()$name` (drops the tar_source'd
-       functions/globals -- ~45 meta rows vs 13 targets -- AND stale dead-target rows that would false-fail);
-   (b) render-log scan `command grep -Eni 'warning|\bwarn\b'` (real GNU grep, not the rg-fff shadow) ->
-       catches Quarto/pandoc/knitr warnings, which knitr raises in a SEPARATE R process so they NEVER
-       reach tar_meta. The log holds only tar_make output (env-sync stdout is not tee'd -> cannot false-trip).
-       BOUNDARY: only scans renders that occur DURING the run -- a report cached-clean by an out-of-band
-       render is NOT re-scanned (targets won't re-render) -> render through check.sh, or invalidate report.
+## Quality gate (concrete + review-hardened; P0-S5) -- `scripts/check.sh`, fail-loud, zero-fault
+Run from anywhere (cd's to root); any fault -> non-zero. tar_make's exit is NOT enough: returns 0 on CAPTURED
+target warnings, and is blind to warnings raised in the report's SEPARATE knitr/Quarto render process.
+Enforcement is layered across qmd + target + script:
+1. env: `rv sync` + `uv sync` (idempotent; skip via `CHECK_SKIP_SYNC=1`).
+2. tests: loop `tests/test_*.R` each `Rscript -e 'options(warn=2); source(<f>)'` (warn=2 -> stray R warning = error); set -e aborts on first fail.
+3. pipeline: FORCE-render the report each run -- `tar_invalidate(any_of("report")); tar_make()`, tee'd to a log,
+   wrapped in `if !` (so the failure message blames tar_make, not `tee`). Forcing = soundness + idempotency: a
+   cached report skips its render -> empty log + warn=2 un-exercised. CHEAP (~8 s): the render READS cached
+   targets (~0.3 GB), it does NOT re-run the heavy load_snrnaseq build (the "8G" is that BUILD's peak, not the
+   stored target). Two render-time catches live in the SOURCES (so they fire on every render, not just check.sh):
+     - `_qc.qmd` setup `options(warn = 2)` -> any R chunk warning -> error -> Quarto halts (error:false default)
+       -> tar_make non-zero. The REAL catch for knitr/R chunk warnings (else they render silently INTO the HTML,
+       never reaching the log or tar_meta).
+     - `_targets.R` `tar_quarto(report, quiet = FALSE)` -> Quarto/Pandoc `[WARNING]` lines reach the log;
+       default quiet=TRUE SUPPRESSED them, so the pre-review grep was blind to all Quarto/Pandoc warnings.
+4. script-side zero-fault enforcement:
+   (a) `tar_meta(error,warnings)` all-NA; kept rows = `name %in% tar_manifest()$name | parent %in%` it (current
+       targets + their dynamic branches) -> drops tar_source'd fns/globals (~45 meta rows vs 13) + stale dead rows. warn=2 here too.
+   (b) render-log `command grep -nE` (GNU grep, not the rg-fff shadow), ANCHORED forms only: `^[WARNING]`
+       `^Warning:` `^Warning in ` `^Warning messages?:` `^WARN` -> benign "warn" substrings (paths/labels)
+       can't false-red. Exit discriminated 0=fault / 1=clean / >=2=grep infra. grep sits in an `if`-cond
+       (exempt from set -e AND the ERR trap; else the clean exit-1 prints a spurious GATE-FAILED line).
+Negative-tested: a chunk `warning()` -> render error -> gate exit 1 (no PASS); the anchored pattern matches the
+5 real warning forms, ignores benign false-positive lines. Residual: out-of-band edits to `_report/` output
+files aren't scanned -- moot, the report is RE-rendered from source each run, not trusted from disk.
    Negative-tested: the grep matches `[WARNING]`/`Warning message:`/bare `WARN` and ignores benign tar_make
    lines; a `stopifnot(FALSE)` test drives exit 1. A current store -> tar_make is a no-op but 4(a)/(b) still run.
 - Committed tests = `tests/test_*.R`: plain `stopifnot` fail-loud scripts (zero new deps, mirror io.R's
@@ -146,7 +158,7 @@ Runnable gate = `scripts/check.sh` (run from anywhere; cd's to root). 4 phases, 
 - Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
   `embed-resources: true` inlines CSS/JS/fonts) + modular `{{< include _section.qmd >}}` (leading
   `_` -> not rendered standalone). NOT a Quarto book (multi-file + `Could not fetch resource
-  ./<sibling>.html` nav warnings under embed-resources -> trips the zero-warning gate). tar_quarto
+  ./<sibling>.html` nav warnings under embed-resources -> caught by the gate's render-log scan once quiet=FALSE). tar_quarto
   still detects `tar_load`s inside an included `_*.qmd` (verified: 5 edges through the include); list
   the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
 - Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29):

@@ -17,6 +17,7 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(patchwork)
 })
+options(warn = 2)                                                  # promote any chunk warning to an error -> fails the render (gate-critical)
 targets::tar_source()                                              # constants + plot helpers
 targets::tar_load(c(microglia_seurat_raw, geomx, proteomics, phospho, sample_key))
 knitr::opts_chunk$set(message = FALSE)                             # hush package/knitr chatter
