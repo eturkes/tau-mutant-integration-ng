@@ -95,6 +95,8 @@ Runnable gate = `scripts/check.sh` (run from anywhere; cd's to root). 4 phases, 
    (b) render-log scan `command grep -Eni 'warning|\bwarn\b'` (real GNU grep, not the rg-fff shadow) ->
        catches Quarto/pandoc/knitr warnings, which knitr raises in a SEPARATE R process so they NEVER
        reach tar_meta. The log holds only tar_make output (env-sync stdout is not tee'd -> cannot false-trip).
+       BOUNDARY: only scans renders that occur DURING the run -- a report cached-clean by an out-of-band
+       render is NOT re-scanned (targets won't re-render) -> render through check.sh, or invalidate report.
    Negative-tested: the grep matches `[WARNING]`/`Warning message:`/bare `WARN` and ignores benign tar_make
    lines; a `stopifnot(FALSE)` test drives exit 1. A current store -> tar_make is a no-op but 4(a)/(b) still run.
 - Committed tests = `tests/test_*.R`: plain `stopifnot` fail-loud scripts (zero new deps, mirror io.R's

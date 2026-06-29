@@ -27,18 +27,14 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: `p0_foundations_plan.md` - P0 Foundations (open; **S5 = last step**). Stack: targets + rv
-+ uv + project-local Quarto, P3M-pinned. Reports = ONE offline self-contained HTML (standalone `index.qmd`
-+ `{{< include _qc.qmd >}}` + `theme.scss` + LOCAL IBM Plex; 9 woff2 COMMITTED, base64-inlined). S1-S4 done.
-**NEXT (S5 = close P0):** runnable quality gate `scripts/check.sh` = `rv sync` + `uv sync` + `tar_make()`,
-then ENFORCE zero-fault rather than trust `tar_make`'s exit -- assert `tar_meta(fields=c("error",
-"warnings"))` all-NA + loop `tests/test_*.R` + grep the Quarto render log for `Warning`/`WARN`; non-zero
-exit on any hit (use tar_make's DEFAULT reporter, not the deprecated `reporter="summary"`). Then lock
-memory.md's provisional quality gate to this concrete gate, finalise map.md wiring, and close P0 (archive
-plan -> `.agent/completed/`, reset Active plan to none). Detail: the plan's S5 step.
+## Active plan: (none). P0 Foundations CLOSED 2026-06-29 -> `.agent/completed/p0_foundations_plan_2026-06-29.md`
+(digest -> history.md). Foundation in place: targets + rv + uv + project-local Quarto (P3M-pinned); 6
+modalities as qs2 targets; design + 5-contrast + pseudobulk machinery; ONE offline HTML report; concrete
+quality gate `scripts/check.sh`. Bootstrap + wiring -> map.md; live contract -> memory.md.
+**NEXT:** open P1 (snRNAseq microglia core) -- take direction or PLAN mode (mine `archive_digest.md`).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
-- P0 Foundations: project-local env (rv for R + uv .venv for Python), shared
+- P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
   helpers (io / design+contrasts / plot theme), data load + QC sanity, 2x2
   factorial + 5 contrasts, concrete quality gate.
 - P1 snRNAseq microglia core: QC, microglia subset + substates (homeostatic / DAM /
@@ -67,3 +63,10 @@ plan -> `.agent/completed/`, reset Active plan to none). Detail: the plan's S5 s
   (book -> standalone report wiring) + S1 plan refs. Reasoning reversal (codex-reviewed): the earlier
   "IBM Plex can't work via theme.scss" was a MEASUREMENT artifact -- once `@font-face url()` is present
   the whole theme CSS URL-encodes, so raw greps for `IBM Plex`/colours read ~0; match encoded tokens.
+- 2026-06-29 S5 DONE -> P0 CLOSED: concrete quality gate `scripts/check.sh` (fail-loud, zero-fault) =
+  `rv sync` + `uv sync` | loop `tests/test_*.R` at warn=2 | `tar_make()` tee'd to a log | enforce
+  `tar_meta(error,warnings)` all-NA SCOPED to `tar_manifest()$name` (drops functions/globals + stale dead
+  rows) + render-log grep for Quarto/pandoc/knitr `warning`/`warn` (knitr's separate process bypasses
+  tar_meta). Negative-tested (grep pattern + `stopifnot(FALSE)` -> exit 1); full gate green end-to-end.
+  Locked memory.md gate (provisional -> concrete); finalised map.md wiring; folded P0 digest -> history.md;
+  archived plan -> `.agent/completed/`. P0 foundation complete; next = P1.
