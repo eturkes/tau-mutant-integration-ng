@@ -76,6 +76,8 @@ stopifnot(get1(pl, "nlgf_in_maptki", "DAM", "t") > 0,                  # amyloid
 pa <- run_propeller(cc$per_cell, cc$sample_meta, "asin")              # asin transform also runs
 stopifnot(nrow(pa) == 15L, all(pa$method == "propeller_asin"),
           get1(pa, "nlgf_in_maptki", "DAM", "t") > 0)                 # same direction under asin
+# imbalanced design (a genotype_batch with no microglia) -> PropRatio's marginal reading unsafe -> loud
+expect_error(run_propeller(cc$per_cell, cc$sample_meta[-1, , drop = FALSE], "logit"), "table(geno, batch)")
 
 # --- composition_concordance: agreement vs discordance flagging ----------------------------------
 mk <- function(method, dir, sig) data.frame(                          # one synthetic row, controllable sign/sig
@@ -93,6 +95,11 @@ con_sig <- composition_concordance(mk("propeller_logit", 1, TRUE), mk("propeller
 stopifnot(isTRUE(con_sig$flag), isFALSE(con_sig$sig_concordant))
 con_noSC <- composition_concordance(mk("propeller_logit", 1, TRUE), mk("propeller_asin", 1, TRUE))  # sccomp absent
 stopifnot(isFALSE(con_noSC$flag), is.null(con_noSC$dir_sccomp))       # only propeller transforms compared
+# a method missing a (contrast,substate) row -> fail loud, never silently "concordant" (no false-green)
+expect_error(                                                        # asin emptied of the row the base demands
+  composition_concordance(mk("propeller_logit", 1, TRUE), mk("propeller_asin", 1, TRUE)[0, , drop = FALSE],
+                          mk("sccomp", 1, TRUE)),
+  "propeller_asin")
 
 # --- sccomp gate predicate is a logical (never runs the backend in tests) ------------------------
 stopifnot(is.logical(sccomp_backend_ready()), length(sccomp_backend_ready()) == 1L)

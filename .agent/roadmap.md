@@ -45,7 +45,8 @@ confirmed descriptively; gate green.
 S3 IN PROGRESS 2026-06-30: `R/composition.R` + `composition_results` target + `tests/test_composition.R` BUILT.
 propeller (logit primary + asin) = LOCKED reproducible call; sccomp = OPTIONAL off-lock cross-check (CmdStan
 unlockable -> reproducibility REVERSAL from the sccomp-primary plan). propeller path + pure helpers unit-green at
-warn=2. **NEXT:** live sccomp run + full gate (DEFERRED), then commit-close. See plan S3 + memory.md S3 section.
+warn=2; CODEX-REVIEWED + hardened (8 findings, all accepted/fixed). **NEXT:** live sccomp run + full gate
+(DEFERRED), then commit-close. See plan S3 + memory.md S3 section.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

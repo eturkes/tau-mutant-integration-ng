@@ -55,10 +55,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
    + (P1-S3) composition.R: test_composition (orchestrator) -> composition_results. composition_counts (per-sample
       [genotype_batch] x substate count table; drops globally-empty levels; covariate-constancy fail-loud) |
       run_propeller (CELL-MEANS ~0+genotype+batch via make_contrast_matrix -- speckle PropRatio needs per-genotype
-      mean coefs; getTransformedProps -> propeller.ttest per contrast; logit PRIMARY + asin sensitivity) |
-      run_sccomp (OFF-lock sccomp ~0+genotype+(1|batch), cores-only, warnings->attr) | sccomp_backend_ready
-      (CmdStan gate) | composition_concordance (sign/sig cross-method flag). propeller LOCKED primary; sccomp
-      OPTIONAL off-lock cross-check (scripts/install-cmdstan.sh -> tools/rlib-stan + tools/cmdstan).
+      mean coefs; asserts balanced crossed design; getTransformedProps -> propeller.ttest per contrast; logit PRIMARY + asin) |
+      run_sccomp (OFF-lock sccomp ~0+genotype+(1|batch), cores-only [source-verified], warnings->attr + c_R_k_hat) |
+      sccomp_backend_ready (PROJECT-LOCAL CmdStan gate -> no global leak) | composition_concordance (sign/sig cross-
+      method flag; every present method must cover all keys -> fail-loud). orchestrator: backend present + sccomp error
+      -> LOUD (allow_sccomp_failure to skip). propeller LOCKED primary; sccomp OPTIONAL off-lock cross-check
+      (scripts/install-cmdstan.sh -> tools/rlib-stan + tools/cmdstan).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -86,7 +88,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
 make_meta16, make_fake_seurat = synthetic Seurat fixtures), run stopifnot checks (fail-loud,
 no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/test_<x>.R`.
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
-  - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + concordance + sccomp-gate logical
+  - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)

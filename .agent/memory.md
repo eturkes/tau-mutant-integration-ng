@@ -130,29 +130,40 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   coefs AND HARD-CRASHES ("dim(X) must have a positive length") when a contrast loads ONE coefficient (tau_alone ->
   apply collapses to a vector). FIX: model.matrix(~ 0 + genotype + batch), genotype cols renamed to bare levels,
   contrasts via make_contrast_matrix() (cell-means, proven == factorial in test_design.R). t-stat is batch-ADJUSTED
-  (full design); PropRatio is the genotype mean ratio (speckle refits on the 2-4 contrast genotype cols, batch-
-  free). The t-stat alone would survive a factorial design; only PropRatio forces cell-means.
+  (full design); PropRatio is the MARGINAL genotype mean ratio (speckle refits raw props on ONLY the contrast
+  genotype cols, batch dropped) -> for `interaction` a raw-scale ratio-of-ratios whose SIGN may differ from the
+  logit t -> read direction from t. The t-stat alone would survive a factorial design; only PropRatio forces cell-means.
+  run_propeller asserts the balanced fully-crossed design (table(geno,batch)==1) since PropRatio's marginal reading needs it.
 - DISCORDANCE RULE (pre-declared): propeller-LOGIT stands as THE call; where asin or sccomp differ in effect SIGN
   or significance for a (contrast, substate), FLAG + report, never average. composition_concordance() keys
   (contrast,substate); dir=sign(t|c_effect), sig=FDR<alpha across available methods; sccomp absent -> propeller-
-  only comparison (no flag from a missing arm).
+  only comparison (no flag from a missing arm). Each PRESENT method MUST cover every base (contrast,substate) key ->
+  a missing/partial/empty arm fails LOUD (no false-green); run_sccomp asserts nonempty output.
 - Batch random-vs-fixed asymmetry (intentional): propeller/limma FIXED batch (de_pb-consistent); sccomp RANDOM
   batch intercept (~ 0 + genotype + (1|batch)) -> priors regularise the 4-level batch. Unit = genotype_batch (16).
   sccomp cell-means -> colon-free contrasts (no backtick hazard).
-- sccomp call: pass ONLY `cores` to sccomp_estimate (it derives chains itself). Passing chains/parallel_chains
-  lands them in `...` -> collides with sccomp's internal mod$sample() ("formal argument parallel_chains matched by
-  multiple actual arguments"). withCallingHandlers muffles + records sampler warnings into attr "warnings" so the
-  OFF-lock arm can't fail the warn=2 gate on a Stan note; LOCKED propeller keeps full strictness.
+- sccomp call (sccomp source-verified): pass ONLY `cores` -- it is fit_model's real parallelism knob (caps chains via
+  find_optimal_number_of_chains %>% min(cores); sets parallel_chains/threads_per_chain). `parallel_chains` is no formal
+  -> `...` -> collides with the internal mod$sample(parallel_chains=); `chains` IS a fit_model formal (binds+overrides,
+  NOT a collision -- the earlier "chains collides" note was WRONG). withCallingHandlers muffles + records sampler
+  warnings into attr "warnings"; run_sccomp surfaces c_R_k_hat (split-Rhat); orchestrator reports warning-count + max
+  Rhat in sccomp_status. Diagnostics RECORDED not gated -> OFF-lock arm never fails the warn=2 gate on a Stan note;
+  LOCKED propeller keeps full strictness.
 - OFF-lock backend (scripts/install-cmdstan.sh, idempotent): cmdstanr from the Stan r-universe -> tools/rlib-stan
   (SEPARATE lib so `rv sync` never prunes it) + CmdStan compiled -> tools/cmdstan. _targets.R prepends the lib +
-  sets CMDSTAN iff BOTH exist -> sccomp_backend_ready() gates the run; absent -> propeller-only, fresh clone stays
-  green. sccomp dumps per-chain CSV draws to ./sccomp_draws_files/ at the build CWD -> gitignored (regenerable).
-- STATUS: propeller primary + all pure helpers UNIT-VALIDATED (tests/test_composition.R green at warn=2: count
-  shapes/empty-drop/canonical-order/correctness, covariate-constancy fail-loud, propeller direction DAM-up +
-  Homeostatic-down + prop_ratio>1 for logit AND asin, concordance flagging, sccomp gate predicate logical).
-  DEFERRED to next session: live sccomp run via the orchestrator on real microglia_annotated + full
-  scripts/check.sh. Backend smoke-confirmed end-to-end PRE-fix (CmdStan 2.39.0); run_sccomp cores-only fix is
-  UNVERIFIED live.
+  sets CMDSTAN iff BOTH exist. sccomp_backend_ready() requires the PROJECT-LOCAL tools/rlib-stan + tools/cmdstan/
+  cmdstan-* dirs (not just any CmdStan on .libPaths/CMDSTAN) -> a GLOBAL CmdStan can't activate the arm on a fresh
+  clone -> propeller-only, fresh clone stays green. Orchestrator: backend present + sccomp STRUCTURAL error -> LOUD
+  (allow_sccomp_failure=TRUE downgrades to skip); cmdstanr/CmdStan version + path RECORDED in provenance$sccomp_backend.
+  sccomp dumps per-chain CSV draws to ./sccomp_draws_files/ at the build CWD -> gitignored (regenerable).
+- STATUS: propeller primary + pure helpers UNIT-VALIDATED (tests/test_composition.R green at warn=2: count
+  shapes/empty-drop/order/correctness, covariate-constancy + balanced-crossed + concordance-completeness fail-loud,
+  propeller direction DAM-up + Homeostatic-down + prop_ratio>1 for logit AND asin, concordance flagging, sccomp gate
+  logical). CODEX-REVIEWED + hardened (8 findings: concordance false-green, sccomp-error-now-loud, PropRatio
+  interaction-scale doc, project-local backend gate, c_R_k_hat surfaced, balance guard, cores-comment fix, backend
+  provenance). sccomp cores/chains API SOURCE-VERIFIED (cores-only call correct). DEFERRED to next session: live
+  sccomp run (orchestrator on real microglia_annotated -> exercises the cores fix + fail-loud path live) + full
+  scripts/check.sh. Backend smoke-confirmed PRE-fix (CmdStan 2.39.0); live HMC behavior still UNVERIFIED.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

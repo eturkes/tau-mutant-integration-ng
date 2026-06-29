@@ -80,15 +80,20 @@ composition_counts <- function(meta, sample_col = "genotype_batch",
 # contrast powers, so it REQUIRES cell-means (one coefficient = one genotype's mean proportion); a
 # treatment/factorial design makes PropRatio a meaningless ratio of effect coefficients AND collapses
 # speckle's apply() whenever a contrast loads a single coefficient (e.g. tau_alone). Batch enters as
-# fixed adjustment columns (zero contrast weight) -> the t-test is batch-adjusted while PropRatio
-# stays the genotype mean ratio. make_contrast_matrix() supplies the SAME 5 contrasts proven == the
-# factorial form in test_design.R. propeller.ttest tests ONE contrast vector per call -> loop the 5
-# columns. Returns a tidy long df (one row per contrast x substate) for the given transform. -------
+# fixed adjustment columns (zero contrast weight): the t-statistic/p-value (fit on the TRANSFORMED
+# props with the FULL design) is batch-adjusted, while PropRatio is speckle's SEPARATE refit of the
+# untransformed proportions over ONLY the contrasted genotype columns (batch dropped) -> a ratio of
+# MARGINAL genotype mean proportions, exact under the balanced crossed design. NB for `interaction`
+# PropRatio is a raw-scale ratio-of-ratios whose SIGN need not match the primary logit t -> read
+# direction from t, never from prop_ratio, for that contrast. make_contrast_matrix() supplies the SAME
+# 5 contrasts proven == the factorial form in test_design.R. propeller.ttest tests ONE contrast vector
+# per call -> loop the 5 columns. Returns a tidy long df (one row per contrast x substate). ---------
 run_propeller <- function(per_cell, sample_meta, transform = c("logit", "asin")) {
   transform <- match.arg(transform)
   geno  <- factor(as.character(sample_meta$genotype), levels = genotype_levels)
   batch <- factor(as.character(sample_meta$batch))
   stopifnot(!anyNA(geno), nlevels(batch) >= 2L)                    # >=2 batches -> estimable fixed adjustment
+  stopifnot(all(table(geno, batch) == 1L))                        # balanced fully-crossed design (1 sample / genotype x batch): PropRatio's MARGINAL-mean reading assumes it -> fail loud on imbalance (e.g. a genotype_batch with no microglia)
   design <- stats::model.matrix(~ 0 + geno + batch)
   colnames(design) <- sub("^geno", "", colnames(design))          # genotype cols -> bare levels (makeContrasts needs level-named cols)
   rownames(design) <- rownames(sample_meta)
@@ -111,12 +116,17 @@ run_propeller <- function(per_cell, sample_meta, transform = c("logit", "asin"))
   res
 }
 
-# ---- sccomp backend gate: TRUE only when the (off-lock) CmdStan + cmdstanr stack is provisioned and
-# instantiate confirms a usable CmdStan. _targets.R prepends tools/rlib-stan to .libPaths + sets
-# CMDSTAN when present, so this resolves correctly inside the target build. -------------------------
+# ---- sccomp backend gate: TRUE only when the PROJECT-LOCAL (off-lock) CmdStan + cmdstanr stack is
+# provisioned (the same tools/ dirs _targets.R keys its .libPaths/CMDSTAN preflight on) AND instantiate
+# confirms a usable CmdStan. Requiring the project-local dirs blocks a GLOBAL cmdstanr/CmdStan (common
+# on a Stan user's machine, or a stray CMDSTAN env) from silently activating the arm on a fresh clone
+# -> the "fresh clone builds propeller-only" guarantee holds. Paths are relative to the project root
+# (targets + the test harness both run there). ---------------------------------------------------
 sccomp_backend_ready <- function() {
   isTRUE(tryCatch(
-    requireNamespace("sccomp", quietly = TRUE) &&
+    dir.exists("tools/rlib-stan") &&                              # project-local cmdstanr lib (scripts/install-cmdstan.sh)
+      length(Sys.glob(file.path("tools", "cmdstan", "cmdstan-*"))) >= 1L &&  # project-local compiled CmdStan tree
+      requireNamespace("sccomp", quietly = TRUE) &&
       requireNamespace("instantiate", quietly = TRUE) &&
       instantiate::stan_cmdstan_exists(),
     error = function(e) FALSE))
@@ -145,8 +155,11 @@ run_sccomp <- function(long, seed = 42L, cores = 4L) {
   warns <- character(0)
   test <- withCallingHandlers(
     {
-      # `cores` alone drives sccomp's internal chains/parallel_chains; passing those arg names
-      # here lands in `...` and collides with sccomp's own mod$sample() call (dup actual arg).
+      # `cores` is sccomp's single real parallelism knob (a fit_model formal): it caps the chain
+      # count (find_optimal_number_of_chains %>% min(cores)) and sets parallel_chains/threads_per_chain
+      # in the internal mod$sample() call. Pass cores ALONE: `parallel_chains` is not a formal -> it
+      # falls into `...` -> duplicates that hardcoded mod$sample(parallel_chains=) arg (error); `chains`
+      # IS a fit_model formal (would bind + override, not collide) but is redundant once cores governs it.
       fit <- sccomp::sccomp_estimate(
         long, formula_composition = ~ 0 + genotype + (1 | batch), formula_variability = ~ 1,
         sample = "sample", cell_group = "cell_group", abundance = "count",
@@ -164,8 +177,9 @@ run_sccomp <- function(long, seed = 42L, cores = 4L) {
   out <- data.frame(method = "sccomp", contrast = contrast, substate = test$cell_group,
                     c_effect = test$c_effect, c_lower = test$c_lower, c_upper = test$c_upper,
                     c_pH0 = test$c_pH0, c_fdr = test$c_FDR, stringsAsFactors = FALSE)
+  out$c_rhat <- if ("c_R_k_hat" %in% names(test)) test$c_R_k_hat else NA_real_  # split-Rhat: convergence diagnostic surfaced (RECORDED, not gated -- the off-lock arm must not fail the locked gate on a sampler note)
   rownames(out) <- NULL
-  stopifnot(!anyNA(out$contrast))                                  # every row mapped to a canonical contrast
+  stopifnot(nrow(out) >= 1L, !anyNA(out$contrast))                 # nonempty + every row mapped to a canonical contrast
   attr(out, "warnings") <- warns
   out
 }
@@ -177,15 +191,24 @@ run_sccomp <- function(long, seed = 42L, cores = 4L) {
 composition_concordance <- function(propeller_logit, propeller_asin, sccomp_df = NULL, alpha = 0.05) {
   key <- function(d) paste(d$contrast, d$substate, sep = "||")
   base <- propeller_logit[, c("contrast", "substate")]
-  m_logit <- propeller_logit[match(key(base), key(propeller_logit)), ]
-  m_asin  <- propeller_asin [match(key(base), key(propeller_asin)),  ]
+  bkey <- key(base)
+  stopifnot(!anyDuplicated(bkey))                                 # base keys unique -> 1:1 matching
+  matched <- function(d, what) {                                  # every base (contrast,substate) MUST be present in `d`
+    i <- match(bkey, key(d))                                      # else a missing/partial/empty method row would drop to NA
+    if (anyNA(i))                                                 # and false-green as "no disagreement" downstream
+      stop(sprintf("composition_concordance: method '%s' is missing %d (contrast, substate) row(s)",
+                   what, sum(is.na(i))), call. = FALSE)
+    d[i, ]
+  }
+  m_logit <- matched(propeller_logit, "propeller_logit")
+  m_asin  <- matched(propeller_asin,  "propeller_asin")
   out <- data.frame(
     contrast = base$contrast, substate = base$substate,
     dir_logit = sign(m_logit$t), sig_logit = m_logit$fdr_contrast < alpha,
     dir_asin  = sign(m_asin$t),  sig_asin  = m_asin$fdr_contrast  < alpha,
     stringsAsFactors = FALSE)
   if (!is.null(sccomp_df)) {
-    m_sc <- sccomp_df[match(key(base), key(sccomp_df)), ]
+    m_sc <- matched(sccomp_df, "sccomp")
     out$dir_sccomp <- sign(m_sc$c_effect)
     out$sig_sccomp <- m_sc$c_fdr < alpha
   }
@@ -199,8 +222,12 @@ composition_concordance <- function(propeller_logit, propeller_asin, sccomp_df =
 }
 
 # ---- orchestrator -> the composition_results target. propeller always runs (locked primary +
-# sensitivity); sccomp runs iff its backend is provisioned, else recorded as skipped. -------------
-test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alpha = 0.05) {
+# sensitivity). sccomp runs iff its PROJECT-LOCAL backend is provisioned: backend ABSENT -> recorded
+# skip (a fresh clone stays green); backend PRESENT but sccomp errors STRUCTURALLY -> LOUD (so a broken
+# optional arm cannot hide behind a green gate) unless allow_sccomp_failure downgrades it to a skip.
+# Sampler-note WARNINGS never fail the build (recorded in provenance) -- only a hard error does. -----
+test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alpha = 0.05,
+                             allow_sccomp_failure = FALSE) {
   meta <- microglia_annotated@meta.data
   cc <- composition_counts(meta)
 
@@ -210,15 +237,21 @@ test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alph
 
   if (is.null(cores)) cores <- max(1L, parallel::detectCores() - 1L)
   sccomp_df <- NULL
-  sccomp_status <- "skipped: CmdStan backend absent (run scripts/install-cmdstan.sh for the Bayesian arm)"
+  sccomp_status <- "skipped: project-local CmdStan backend absent (run scripts/install-cmdstan.sh for the Bayesian arm)"
   sccomp_warnings <- character(0)
   if (sccomp_backend_ready()) {
-    sccomp_df <- tryCatch(run_sccomp(cc$long, seed = seed, cores = cores),
-                          error = function(e) { sccomp_status <<- paste0("error: ", conditionMessage(e)); NULL })
+    sccomp_df <-
+      if (allow_sccomp_failure)
+        tryCatch(run_sccomp(cc$long, seed = seed, cores = cores),
+                 error = function(e) { sccomp_status <<- paste0("error: ", conditionMessage(e)); NULL })
+      else run_sccomp(cc$long, seed = seed, cores = cores)        # backend provisioned -> a structural failure is loud
     if (!is.null(sccomp_df)) {
       sccomp_warnings <- attr(sccomp_df, "warnings") %||% character(0)
       attr(sccomp_df, "warnings") <- NULL
-      sccomp_status <- "ran (hmc, outlier-removed)"
+      rhat_max <- suppressWarnings(max(sccomp_df$c_rhat, na.rm = TRUE))   # -Inf if c_rhat all-NA
+      sccomp_status <- sprintf("ran (hmc, outlier-removed; %d warning(s) recorded%s)",
+                               length(sccomp_warnings),
+                               if (is.finite(rhat_max)) sprintf(", max split-Rhat %.3f", rhat_max) else "")
     }
   }
 
@@ -230,6 +263,14 @@ test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alph
                          c("contrast", "substate", "prop_ratio", "t", "p_value", "fdr_global")]
   rownames(headline) <- NULL
 
+  # off-lock backend identity, RECORDED (the reproducibility blocker is non-pinned, so traceability =
+  # capturing the resolved versions/path) -- only meaningful when sccomp actually ran.
+  sccomp_backend <- if (!is.null(sccomp_df)) tryCatch(c(
+    cmdstanr     = as.character(utils::packageVersion("cmdstanr")),
+    cmdstan      = as.character(cmdstanr::cmdstan_version()),
+    cmdstan_path = normalizePath(cmdstanr::cmdstan_path())),
+    error = function(e) c(cmdstanr = NA_character_, cmdstan = NA_character_, cmdstan_path = NA_character_)) else NULL
+
   provenance <- list(
     seed = seed, alpha = alpha, sample_unit = "genotype_batch", n_samples = nrow(cc$counts),
     present_groups = cc$present_groups, dropped_groups = cc$dropped_groups,
@@ -237,7 +278,8 @@ test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alph
                      sensitivity2 = "sccomp (optional, off-lock)"),
     batch_handling = "fixed design covariate in propeller/limma; random (1|batch) intercept in sccomp",
     discordance_rule = "propeller-logit stands; asin/sccomp sign/significance disagreements are flagged, never averaged",
-    sccomp_status = sccomp_status, sccomp_warnings = sccomp_warnings,
+    prop_ratio_semantics = "raw MARGINAL genotype mean-proportion ratio (speckle refits on the contrasted genotype columns, batch dropped); for `interaction` a raw-scale ratio-of-ratios whose sign may differ from the primary logit t -> direction comes from t/p_value",
+    sccomp_status = sccomp_status, sccomp_warnings = sccomp_warnings, sccomp_backend = sccomp_backend,
     versions = c(speckle = as.character(utils::packageVersion("speckle")),
                  sccomp = tryCatch(as.character(utils::packageVersion("sccomp")), error = function(e) NA_character_)))
 
