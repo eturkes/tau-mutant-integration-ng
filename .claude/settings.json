@@ -6,7 +6,7 @@
       "Read(./rv/library/**)",
       "Read(./tools/**)",
       "Read(./_targets/**)",
-      "Read(./_book/**)",
+      "Read(./_report/**)",
       "Read(./_freeze/**)",
       "Read(./.quarto/**)",
       "Read(./storage/data/**)",

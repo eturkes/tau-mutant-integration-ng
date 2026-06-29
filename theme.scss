@@ -1,0 +1,13 @@
+/*-- scss:defaults --*/
+// Report visual identity (Quarto Bootstrap theme; supersedes the dropped _brand.yml). Carries the
+// v1 bslib palette: crimson (== genotype NLGF_P301S, R/constants.R) drives primary + links; steel
+// tints inline code (a darkened MAPTKI blue, deliberately != the link colour). These three
+// Bootstrap COLOUR vars take effect (verified inlined in the render). Fonts are intentionally NOT
+// set here: Quarto overrides Bootstrap's $font-family-* defaults AND does not resolve @font-face
+// url()s under embed-resources, so IBM Plex ships as a generated data-URI CSS loaded via `css:`
+// (deferred -> roadmap / plan S4 STATUS). The ggplot panels keep the device-default font (R/plot.R
+// theme_tau base_family "") so figures stay decoupled from this chrome and warning-free.
+
+$primary:    #B0344D;   // crimson; Bootstrap primary
+$link-color: #B0344D;   // links match the brand accent
+$code-color: #3F5A6B;   // steel; inline `code` text

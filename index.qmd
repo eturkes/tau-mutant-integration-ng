@@ -1,10 +1,26 @@
-# Overview {.unnumbered}
+---
+title: "Tau Mutant Integration"
+author: "Emir Turkes"
+format:
+  html:
+    theme: theme.scss        # crimson primary + links (colours only; IBM Plex fonts deferred -> roadmap)
+    embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
+    toc: true
+    code-fold: true          # analysis code present but collapsed (v1's code_folding: hide)
+    code-tools: true
+---
 
-This book reports an integrative analysis of single-nucleus RNA-seq, GeoMx spatial
+# Overview
+
+This report presents an integrative analysis of single-nucleus RNA-seq, GeoMx spatial
 transcriptomics, and bulk proteomics and phosphoproteomics across four mouse models of
 Alzheimer's disease. It asks how amyloid reshapes microglia under different tau
 backgrounds, reading the tau-amyloid interaction across all four modalities.
 
-Analysis chapters arrive in later phases. This page marks the reproducible foundation: a
-pinned R environment (rv), a pinned Python environment (uv), a targets pipeline, and this
-Quarto book.
+Analysis sections arrive in later phases. This foundation page marks the reproducible
+spine: a pinned R environment (rv), a pinned Python environment (uv), a targets pipeline,
+and this single self-contained Quarto report. The quality-control pass below confirms that
+every modality loads at its expected shape and that the single-nucleus microglia carry a
+complete, balanced genotype-by-batch design.
+
+{{< include _qc.qmd >}}

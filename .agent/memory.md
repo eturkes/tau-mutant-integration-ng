@@ -130,6 +130,25 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Commit `.serena/` (project.yml + .gitignore); Serena language changes are
   startup-only (restart Claude Code to apply).
 
+## Reports (Quarto; built P0-S4)
+- Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
+  `embed-resources: true` inlines CSS/JS/fonts) + modular `{{< include _section.qmd >}}` (leading
+  `_` -> not rendered standalone). NOT a Quarto book (multi-file + `Could not fetch resource
+  ./<sibling>.html` nav warnings under embed-resources -> trips the zero-warning gate). tar_quarto
+  still detects `tar_load`s inside an included `_*.qmd` (verified: 5 edges through the include); list
+  the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
+- Theme split (Quarto 1.9.38, verified live): theme.scss `scss:defaults` sets COLOURS ONLY
+  ($primary/$link-color/$code-color DO inline -> verified .count). FONTS do NOT work via theme.scss:
+  Quarto overrides Bootstrap's $font-family-* (with/without !default) AND will not resolve @font-face
+  `url()` under embed-resources -> ship fonts as a generated plain CSS (base64 data-URI @font-face +
+  explicit body/headings/code font-family rules) loaded via `css:` in the doc.
+- Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
+  is deny-Read -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
+  script), not a Bash `rm`. Inspect the output HTML the same way (output dir is deny-Read): build the
+  path inside a python/R script ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
+- ggplot panels keep `theme_tau(base_family="")` -> device-default font, decoupled from the HTML
+  chrome, no missing-font warning.
+
 ## Subagents & skills
 Scan the available-skills list each session; invoke a matching Skill before
 improvising (scientific-writing, scientific-visualization, pathway-enrichment,

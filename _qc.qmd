@@ -1,0 +1,180 @@
+# Quality control {#sec-qc}
+
+This chapter is a sanity pass over the four loaded modalities. It confirms that each
+target materialises at the expected shape, that the single-nucleus microglia carry a
+fully-crossed genotype-by-batch design, and that their per-nucleus quality metrics sit
+inside predeclared physical bounds. No reprocessing happens here: clustering, substate
+assignment and differential expression arrive in later phases. The bounds below are
+definitional rails (a count is at least one, a percentage lies in nought to a hundred),
+not analysis thresholds, so a breach signals a load or computation fault and stops the
+render.
+
+```{r}
+#| label: setup
+#| include: false
+suppressPackageStartupMessages({
+  library(SeuratObject)   # @meta.data accessor + dim() method for the Seurat targets
+  library(ggplot2)
+  library(patchwork)
+})
+targets::tar_source()                                              # constants + plot helpers
+targets::tar_load(c(microglia_seurat_raw, geomx, proteomics, phospho, sample_key))
+knitr::opts_chunk$set(message = FALSE)                             # hush package/knitr chatter
+theme_set(theme_tau())                                            # project base theme for every panel
+md <- microglia_seurat_raw@meta.data
+```
+
+## Modalities loaded
+
+Each row is a separately stored `targets` object; the dimensions are read straight from
+the materialised target, so this table doubles as a load check across all four assays.
+
+```{r}
+#| label: modality-dims
+modal <- data.frame(
+  modality = c("snRNAseq microglia (genes x nuclei)", "GeoMx (genes x AOIs)",
+               "Proteomics PTM (sites x columns)", "Phosphoproteomics PTM (sites x columns)",
+               "Proteomics sample key (24M timepoint, rows)"),
+  shape = c(paste(dim(microglia_seurat_raw), collapse = " x "),
+            paste(dim(geomx),                collapse = " x "),
+            paste(dim(proteomics),           collapse = " x "),
+            paste(dim(phospho),              collapse = " x "),
+            as.character(nrow(sample_key))),
+  stringsAsFactors = FALSE
+)
+knitr::kable(modal, col.names = c("Modality", "Shape"))
+```
+
+GeoMx genotype tally (no batch axis in the spatial design) and the proteomics key size:
+
+```{r}
+#| label: modality-sanity
+knitr::kable(t(as.matrix(table(geomx$genotype))))
+stopifnot(
+  nlevels(factor(geomx$genotype)) == 4L,   # four genotypes present in the spatial assay
+  nrow(sample_key) == 16L                  # 4 genotypes x 4 replicates at the 24M timepoint
+)
+```
+
+## snRNAseq microglia: design balance
+
+The microglia subset should form a complete four-by-four genotype-by-batch grid with no
+empty cell; each of the 16 cells is a pseudobulk replicate downstream.
+
+```{r}
+#| label: crosstab
+xtab <- table(genotype = md$genotype, batch = md$batch)
+knitr::kable(addmargins(xtab))
+```
+
+```{r}
+#| label: crosstab-fig
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: "Nuclei per genotype and batch. Every genotype-by-batch cell is populated, so all 16 pseudobulk replicates are estimable."
+cell_counts <- as.data.frame(xtab, stringsAsFactors = FALSE)
+cell_counts$genotype <- factor(cell_counts$genotype, levels = genotype_levels)
+ggplot(cell_counts, aes(genotype, Freq, fill = genotype)) +
+  geom_col() +
+  facet_wrap(~ batch, nrow = 1) +
+  scale_fill_genotype(guide = "none") +
+  labs(x = NULL, y = "nuclei", title = "Microglia per genotype and batch") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+## snRNAseq microglia: quality metrics
+
+Library size and complexity per nucleus, by genotype (log scale; precomputed on the raw
+object, carried through the subset):
+
+```{r}
+#| label: depth-fig
+#| fig-width: 9
+#| fig-height: 4
+#| fig-cap: "Per-nucleus total counts and detected genes by genotype."
+depth_panel <- function(metric, ylab) {
+  ggplot(md, aes(genotype, .data[[metric]], fill = genotype)) +
+    geom_violin(scale = "width") +
+    scale_y_log10() +
+    scale_fill_genotype(guide = "none") +
+    labs(x = NULL, y = ylab) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))
+}
+(depth_panel("nCount_RNA", "total counts") | depth_panel("nFeature_RNA", "detected genes")) +
+  plot_annotation(title = "Library size and complexity")
+```
+
+Mitochondrial, ribosomal, MALAT1 and non-microglial contamination fractions per nucleus,
+by genotype (linear scale; these motivate the QC thresholds applied later, not here):
+
+```{r}
+#| label: fraction-fig
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Per-nucleus quality fractions by genotype. Shown for sanity only; no nuclei are filtered in this phase."
+frac_metrics <- c(percent_mt = "mitochondrial %", percent_ribo = "ribosomal %",
+                  percent_malat1 = "MALAT1 %", percent_contam = "contamination %")
+frac_long <- do.call(rbind, lapply(names(frac_metrics), function(m)
+  data.frame(genotype = md$genotype, metric = frac_metrics[[m]], value = md[[m]],
+             stringsAsFactors = FALSE)))
+frac_long$metric <- factor(frac_long$metric, levels = unname(frac_metrics))
+ggplot(frac_long, aes(genotype, value, fill = genotype)) +
+  geom_violin(scale = "width") +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_fill_genotype(guide = "none") +
+  labs(x = NULL, y = "% of nucleus counts", title = "Quality fractions") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+## Sanity bounds (enforced)
+
+The metric rails are definitional or physical, declared before inspecting the data: a
+count is at least one (no arbitrary upper ceiling); a detected-gene count is at least one
+and cannot exceed the genes assayed, nor the total counts; a percentage lies in nought to
+a hundred. The structural checks confirm the design grid, the canonical genotype factor
+and a one-to-one match between the 16 replicate ids and the genotype-by-batch cells. Any
+failure aborts the render.
+
+```{r}
+#| label: bounds
+qc_metrics <- c("nCount_RNA", "nFeature_RNA", "percent_mt", "percent_ribo",
+                "percent_malat1", "percent_contam")
+n_genes <- nrow(microglia_seurat_raw)
+# Rails are definitional or physical only -- no arbitrary engineering ceiling. Total UMIs have a
+# definitional lower bound (>= 1) but no upper rail (Inf); detected genes cannot exceed the genes
+# assayed; the contamination/composition fractions sit in 0-100.
+bounds <- data.frame(
+  metric = qc_metrics,
+  lower  = c(1, 1, 0, 0, 0, 0),
+  upper  = c(Inf, n_genes, 100, 100, 100, 100),
+  rail   = c("UMIs >= 1 (no definitional upper)", "genes >= 1, <= genes assayed",
+             "percentage 0-100", "percentage 0-100", "percentage 0-100",
+             "percentage 0-100"),
+  stringsAsFactors = FALSE
+)
+bounds$obs_min <- vapply(qc_metrics, function(c) min(md[[c]]), numeric(1))
+bounds$obs_max <- vapply(qc_metrics, function(c) max(md[[c]]), numeric(1))
+bounds$n_na    <- vapply(qc_metrics, function(c) sum(is.na(md[[c]])), integer(1))
+bounds$within  <- bounds$n_na == 0 & bounds$obs_min >= bounds$lower & bounds$obs_max <= bounds$upper
+knitr::kable(bounds, digits = 3, row.names = FALSE,
+             col.names = c("Metric", "Lower", "Upper", "Rail", "Observed min",
+                           "Observed max", "NAs", "Within"))
+
+# Replicate id <-> (genotype x batch) must be a bijection: each id maps to exactly one
+# genotype-by-batch cell and each cell to exactly one id (a permutation matrix). The weaker
+# n_distinct == 16 could pass with a missing id masked by an NA, so check the mapping itself.
+gb_cell <- table(factor(md$genotype_batch), interaction(md$genotype, md$batch, drop = TRUE))
+stopifnot(
+  all(bounds$within),                              # every metric inside its definitional rail, no NA
+  all(md$nFeature_RNA <= md$nCount_RNA),           # cannot detect more genes than total UMIs (definitional)
+  nrow(xtab) == 4L && ncol(xtab) == 4L,            # four genotypes x four batches (the design)
+  all(xtab > 0),                                   # no empty genotype-by-batch cell
+  sum(xtab) == nrow(md),                           # every nucleus classified (no NA genotype/batch)
+  identical(levels(md$genotype), genotype_levels), # canonical genotype factor order
+  !anyNA(md$genotype_batch),                       # no nucleus with a missing replicate id
+  nrow(gb_cell) == 16L && ncol(gb_cell) == 16L,    # 16 replicate ids over 16 genotype-by-batch cells
+  all(rowSums(gb_cell > 0) == 1L),                 # each id maps to exactly one cell ...
+  all(colSums(gb_cell > 0) == 1L)                  # ... and each cell to exactly one id
+)
+cat("ok - all QC sanity bounds satisfied\n")
+```

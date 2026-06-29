@@ -45,6 +45,9 @@ list(
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),
 
-  # Quarto book render (path = project root holding _quarto.yml); chapters grow over P1-P5
-  tar_quarto(book, path = ".")
+  # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
+  # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
+  # deps but NOT the theme -> list theme.scss so a theme change reinvalidates the report. (The IBM
+  # Plex data-URI CSS joins this list when it lands -- deferred; see roadmap / plan S4 STATUS.)
+  tar_quarto(report, path = ".", extra_files = "theme.scss")
 )

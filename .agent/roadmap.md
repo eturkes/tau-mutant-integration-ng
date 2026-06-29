@@ -27,7 +27,7 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: `p0_foundations_plan.md` - P0 Foundations (open; **S4 IN PROGRESS**). Stack: targets + rv + uv + project-local Quarto, P3M-pinned. Reports = ONE offline self-contained HTML (standalone Quarto doc + `{{< include _section.qmd >}}` + `theme.scss` + LOCAL IBM Plex), NOT a book - a book is multi-file + emits sibling nav warnings under embed-resources (would trip the S5 zero-warning gate). S1-S3 done; S4's `R/plot.R` (tested) + `qc.qmd` (0-error, bounds pass; still carries the book nav warning) are uncommitted WIP -> resume at the plan's `S4 STATUS` REMAINING checklist (codex-reviewed).
+## Active plan: `p0_foundations_plan.md` - P0 Foundations (open; **S4 IN PROGRESS**). Stack: targets + rv + uv + project-local Quarto, P3M-pinned. Reports = ONE offline self-contained HTML (standalone Quarto doc + `{{< include _section.qmd >}}` + `theme.scss` + LOCAL IBM Plex), NOT a book (multi-file + sibling nav warnings under embed-resources would trip the S5 zero-warning gate). S1-S3 done. **S4 checkpoint committed** (gate-clean: offline render, 0 error/0 warning, bounds pass, tests green): book -> standalone `index.qmd` + `{{< include _qc.qmd >}}`; `theme.scss` reduced to working COLOURS (#B0344D primary/link, #3F5A6B code - verified inlined); `_qc.qmd` bounds hardened (16x16 genotype-batch bijection); `R/plot.R`; `_quarto.yml`/`_targets.R` reworked; woff2 gitignored. **NEXT SESSION (font wiring -> close S4):** IBM Plex never applied - Quarto overrides Bootstrap `$font-family-*` vars AND will not resolve `@font-face url()` under embed-resources -> generate a plain CSS with data-URI `@font-face` + explicit body/headings/code `font-family` rules, loaded via `css:` in index.qmd; theme.scss keeps only the colours (which work). Then `scripts/build-fonts.sh` (regenerate that CSS from the pinned, gitignored, sha256-verified woff2) + wire css:/extra_files/deny-Read/.serena + re-render to PROVE fonts inlined while offline + 0-warning hold + `tests/test_plot.R` + scrub stale book/_brand refs + map.md + mark S4 done. Detail: the plan's `S4 STATUS` block.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations: project-local env (rv for R + uv .venv for Python), shared
@@ -49,10 +49,11 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
   `.agent` docs + Claude config; reframed history as `archive_digest.md`; drafted
   this streamlined phase plan.
-- 2026-06-29 S4 mid-step (compaction handoff; codex-reviewed): user chose report =
-  ONE offline self-contained HTML -> dropped the Quarto book (multi-file + sibling nav
-  warnings under embed-resources). `R/plot.R` (smoke-tested, 0-warn) + `qc.qmd` (0-error,
-  bounds pass; carries the book nav warning) done as uncommitted WIP; remaining = bundle
-  LOCAL IBM Plex woff2 + `theme.scss` + standalone `index.qmd` + `{{< include >}}` rewire
-  + `_quarto.yml`/`_targets.R` rework + `tests/test_plot.R` + code-hardening from review
-  + commit (see the plan's `S4 STATUS` block).
+- 2026-06-29 S4 checkpoint committed (architecture pivot; codex-reviewed): report = ONE
+  offline self-contained HTML -> Quarto book dropped for a standalone `index.qmd` +
+  `{{< include _qc.qmd >}}`; `theme.scss` cut to working colours; `_qc.qmd` bounds hardened
+  to a 16x16 design bijection; `R/plot.R`, `_quarto.yml`, `_targets.R` reworked; render
+  offline + 0 error/0 warning, tests green. Remaining (next session, closes S4): IBM Plex
+  via a generated data-URI `@font-face` CSS loaded by `css:` (Bootstrap font vars +
+  @font-face url() both fail under Quarto/embed-resources), then `tests/test_plot.R` +
+  scrub + map.md + mark S4 done.
