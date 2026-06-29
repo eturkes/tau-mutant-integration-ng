@@ -18,7 +18,8 @@ gitignored via /storage/* + deny-Read; Rscript reads resolve through it, bypassi
 Shapes VERIFIED live in S2 via the R/io.R loaders; data is immutable so numbers are stable.)
 - snrnaseq.rds 8.3G: Seurat; full = RNA 33683 genes (Assay5, ENSMUSG rownames) + SCT 28299
   (active assay). GOTCHA: dim(obj)=SCT(28299) but @misc$geneids (33683 symbols) aligns to RNA,
-  NOT SCT -> build_symbol_map uses RNA rownames. broad_annotations=="Microglia" -> 26104 cells.
+  NOT SCT -> build_symbol_map uses RNA rownames (asserts unique non-NA symbols; positional alignment
+  rests on the v1 @misc$geneids contract, length-checked only). broad_annotations=="Microglia" -> 26104 cells.
   meta PRECOMPUTED (P1/QC consume, don't recompute): genotype (canonical), batch (batch01-04),
   genotype_batch (16-lvl factor, 4x4 fully crossed all-nonzero), sex, nCount/nFeature_RNA,
   percent_mt/ribo/malat1/contam, doublets. load_snrnaseq drops SCT+reductions -> 340MB RNA-counts
@@ -29,11 +30,15 @@ Shapes VERIFIED live in S2 via the R/io.R loaders; data is immutable so numbers 
   annotation (PG.*, Gene-pSite, PTM.SiteAA/Location, "Phopshosite probability"[sic typo]); 15-30 = 16
   intensity `Naoto-Hippo_TiO2_DIA_NN.raw.PTM.Quantity` (24M set only). peptide->protein-group sum = P4.
 - phosphoproteomics_*.tsv 35.5M: Spectronaut PTM, 64328 x 81. 1-14 annotation; 15-81 = 67 intensity
-  `*.PTM.Quantity` (Naoto 01-26 + Set6 01-41). First 16 (Naoto 01-16) = 24M timepoint kept.
+  `*.PTM.Quantity` (Naoto 01-26 + Set6 01-41). The phospho target stores ALL 67 (nothing dropped at
+  load); only the first 16 (Naoto 01-16) are the 24M timepoint -> the 24M column-subset is a P4 step.
 - proteomics_sample_key.csv: 67 rows {`File name`, `Sample/Condtion`[sic]}; proteomics_sample_meta
-  n_keep=16 (24M, 4 geno x 4 reps). match_intensity_columns strips `.PTM.Quantity` then trailing `.raw`
-  -> matches BOTH files' intensity cols (16/16), .raw discrepancy handled. Parse via read_spectronaut_tsv
-  (na=c("","NA","NaN","Filtered") -> 0 parse problems).
+  n_keep=16 (24M, 4 geno x 4 reps; asserts balanced reps + exact labels + unique join keys).
+  normalise_ptm_stub (shared by the key producer + match_intensity_columns) strips `.PTM.Quantity`
+  then trailing `.raw` -> both files' intensity cols collapse to one run stub, .raw discrepancy handled.
+  match_intensity_columns is helper-only in P0 (NA = non-sample col); P4 wires it + asserts 16/16.
+  read_spectronaut_tsv stop()s on any parse problem + strips readr spec/problems attrs (stale ->
+  bad_weak_ptr after qs restore) -> stores a plain tibble.
 Missing vs v1 (do NOT re-acquire unless a phase explicitly needs them): cisTarget
 mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope.
 

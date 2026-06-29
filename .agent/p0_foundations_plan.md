@@ -68,13 +68,17 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
 <!-- Deviations: load_proteomics+load_phospho merged -> read_spectronaut_tsv (identical bodies, KISS);
      dead args dropped (col_pattern, allow_raw); genotype_batch already PRECOMPUTED on the object
      (assert n_distinct==16 baked into load_snrnaseq, not derived). @misc$geneids aligns to RNA(33683)
-     not the active SCT assay(28299). qs2 backend for format="qs"; trust_timestamps for the 8G input. -->
+     not the active SCT assay(28299). qs2 backend for format="qs"; trust_timestamps for the 8G input.
+     Review (codex) hardening: refactor-then-assert + 4x4 bijection check (load_snrnaseq); fail-loud
+     geomx genotype; read_spectronaut_tsv stop()s on parse problems + strips readr attrs (qs bad_weak_ptr);
+     shared normalise_ptm_stub; balanced/unique-key asserts (proteomics_sample_meta); unique-symbol assert
+     (build_symbol_map). Deferred: col-map DAG validation target -> P4; committed io contract tests -> S3. -->
 
 - `R/constants.R`: genotype_levels, genotype_colours (hex), contrast_definitions,
   canonical_microglia_markers, rbc markers, data paths.
 - `R/utils.R`: `%||%`, `write_tsv_safe` (targets' store supersedes v1's `cache_or_run`).
 - `R/io.R`: load_snrnaseq (readRDS -> subset Microglia -> drop SCT/reductions -> gc),
-  build symbol_map (from `@misc$geneids`), load_geomx, load_proteomics, load_phospho,
+  build symbol_map (from `@misc$geneids`), load_geomx, read_spectronaut_tsv (merged load_proteomics+load_phospho),
   `proteomics_sample_meta(n_keep=16)`, match_intensity_columns, symbols_to_ensembl.
 - Data-load target/module: materialise microglia_seurat_raw, symbol_map, geomx,
   proteomics, phospho, sample_key (store as `format="qs"`/`"file"` targets).
