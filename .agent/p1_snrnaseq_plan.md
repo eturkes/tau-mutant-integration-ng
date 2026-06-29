@@ -29,26 +29,39 @@ hdWGCNA, the ledger/contest machinery.
 2. Composition = sccomp PRIMARY + propeller-logit cross-check (concordance = robustness at n~=4).
    Accept the cmdstanr/CmdStan install weight.
 3. Normalisation = SCTransform v2 (v1 continuity). Restores v1's reprocess recipe (SCT +
-   glmGamPoi, regress percent_mt+percent_contam); substate scoring on the SCT assay.
-Folded into default (SOTA-clear, no gate): UCell over AddModuleScore; Harmony over BATCH ONLY
-(sex perfectly aliased w/ batch -> batch absorbs it; never integrate over genotype/amyloid ->
-DAM is biology); 4 argmax substates + aux MHC/APC score; voomWithQualityWeights + eBayes(robust=TRUE)
-+ stageR for the interaction.
+   glmGamPoi, regress percent_mt+percent_contam); substate scoring on the SCT assay. v1 Harmonised
+   over c("batch","sex") (archive rmd/02a:21); REVISED to batch-only (sex perfectly aliased w/ batch -
+   batch01/03 male, 02/04 female, archive_digest - so batch-only is equivalent-or-finer, sex is absorbed).
+Folded into default (SOTA-clear, no gate): UCell over AddModuleScore (per-signature calibrated before
+argmax - raw UCell scores aren't cross-signature comparable); Harmony over BATCH ONLY (never integrate
+over genotype/amyloid -> DAM is biology); 4 substates by CALIBRATED argmax + ambiguous/unassigned bucket
++ aux MHC/APC score; voomWithQualityWeights + eBayes(robust=TRUE); per-contrast BH base FDR + stageR
+screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate on one contrast alone).
 
 ## SOTA research carried (2026; mandated by AGENTS.md) -> memory.md at close
 - Pseudobulk = sole condition/population DE inference; cell-level DE FDR-inflated (decision 1).
 - UCell (rank-based, robust to dropout/depth/batch) > AddModuleScore (control-bin, unstable on sparse nuclei).
+  Scores NOT cross-signature calibrated (depend on signature size/coherence) -> z-scale per signature before
+  argmax; assign at CLUSTER level (primary) + per-cell argmax (secondary); ambiguous (top-two within tol /
+  all sub-null) -> unassigned bucket, never force-assign.
 - Harmony over batch only; never over genotype/amyloid; verify DAM/IFN/prolif still separate post-Harmony
   (else lower theta / go uncorrected). scVI = overkill at 26k/4-batch.
 - Composition: sccomp (Beta-binom, sum-constrained, factorial+interaction+RE, outlier-robust; Mangiola 2023)
   + propeller-logit (Phipson 2022, best n=3-5) cross-check; aggregate to 16 sample units, never nuclei.
-- Interaction in pseudobulk: diff-of-diffs ~2x SE, ~9 resid df -> eBayes cross-gene shrinkage is the rescue,
-  robust=TRUE, NOT treat(); voomWithQualityWeights down-weights low-cell units; batch FIXED (4 crossed
-  levels too few for duplicateCorrelation); stageR screen-confirm FDR (+ per-contrast BH).
+- Interaction in pseudobulk: diff-of-diffs ~2x SE, ~9 resid df -> eBayes cross-gene shrinkage STABILISES the
+  variance (does NOT recover replication/power -> the interaction stays under-powered; report effect-size/CI,
+  not just p), robust=TRUE, NOT treat(); voomWithQualityWeights down-weights EMPIRICALLY-noisy units
+  (correlates with, not equal to, low cell count); batch FIXED (4 crossed levels too few for
+  duplicateCorrelation); per-contrast BH = base FDR, stageR adds a family-level screen-confirm across the 5
+  contrasts (degenerate on one contrast).
 - CARRY caveat (Thrupp 2020, CellRep): snRNA depletes ~18% of DAM activation genes (Apoe/Spp1/Cd74/B2m/Cst3)
   -> attenuated DAM expected; SCORE don't threshold; DE on RAW counts regardless. CellBender NOT applicable
   (needs raw CellRanger matrix w/ empty droplets; we have the 26k filtered subset) -> regress
   percent_mt+percent_contam in SCT + flag contaminant clusters instead.
+- QC confounds (precomputed in meta, memory: doublets, percent_ribo, percent_malat1): audit by
+  cluster/genotype/substate (v1 trajectory flagged ribo/ambient confounding); prune/down-weight w/ logged
+  rationale. Locked SCT recipe regresses percent_mt+percent_contam; adding ribo/malat1 to vars.to.regress is
+  a FALLBACK iff a cluster is confounded (don't silently mutate the locked recipe).
 - Canonical mouse markers (expand constants.R per these): homeostatic P2ry12/P2ry13/Cx3cr1/Tmem119/Hexb/
   Sall1/Selplg/Siglech/Olfml3/Gpr34; DAM-s1(Trem2-indep) Tyrobp/Apoe/B2m/Ctsb/Ctsd/Fth1/Lyz2; DAM-s2(Trem2-
   dep) Trem2/Cst7/Lpl/Cd9/Itgax/Clec7a/Spp1/Gpnmb/Igf1/Axl/Cd63; IFN Ifit1/2/3/Irf7/Oasl2/Isg15/Mx1/Ifitm3/
@@ -61,23 +74,34 @@ DAM is biology); 4 argmax substates + aux MHC/APC score; voomWithQualityWeights 
   pseudobulk nlgf_in_maptki / nlgf_in_p301s DE (DAM_up genes top-ranked, direction matches v1) +
   composition (DAM proportion up with amyloid) + UCell DAM score shift. Antigen-presentation thread =
   aux MHC/APC score (part of the activation axis).
-- INTERACTION (static-null, honest): run the `interaction` contrast; EXPECT ~0 genes (v1 matched-power
-  null). State it plainly + forward-point: the tau x amyloid synergy is a progression-RATE effect ->
-  tested in P2 (trajectory). Present axes with no pre-privileged winner; thresholds stated before applying.
+- INTERACTION (honest, outcome-OPEN): run the `interaction` contrast. v1 PRIOR = ~0 genes (matched-power
+  null) but acceptance is PROCESS not outcome -> report the result WITH a power/effect-size statement (CI or
+  MDE on the diff-of-diffs); a "static-null" call must be BACKED by that, never asserted from "0 genes passed
+  FDR" (absence of evidence != evidence of absence). If genes DO surface, report them, don't dismiss as noise.
+  Forward-point: the tau x amyloid synergy is a progression-RATE effect -> tested in P2 (trajectory). No
+  pre-privileged axis; thresholds stated before applying.
 
 ## Method stack (locked)
-- Reprocess (SCT, v1 recipe): SCTransform(method="glmGamPoi", vst.flavor="v2",
+- Reprocess (SCT-v2; v1 recipe, Harmony REVISED batch-only): SCTransform(method="glmGamPoi", vst.flavor="v2",
   vars.to.regress=c("percent_mt","percent_contam")) -> RunPCA(npcs=30) -> RunHarmony(group.by="batch")
   -> FindNeighbors+RunUMAP(reduction="harmony", dims=1:20) -> FindClusters(Louvain, multi-res, pick).
-  assay="SCT". Seed-fixed (deterministic). NO genotype/amyloid in integration.
-- Substates: UCell::AddModuleScore_UCell(assay="SCT") on {Homeostatic, DAM, IFN, Proliferative} ->
-  per-cell argmax = substate; cross-tab vs de-novo clusters (reconcile); aux MHC/APC + *_contam + rbc
-  scores -> flag/prune contaminant clusters (logged rationale, not silent).
-- Composition: sccomp(~tau*amyloid + (1|batch)) PRIMARY + propeller-logit cross-check; 16 sample units
-  (genotype_batch); report 5 contrasts incl. interaction; concordance = the call.
+  assay="SCT". Seed+RNGkind+thread-count fixed & recorded -> reproducible UP TO TOLERANCE, NOT bitwise (memory
+  contract; multithreaded Harmony/UMAP/RcppParallel). NO genotype/amyloid in integration.
+- Substates: UCell::AddModuleScore_UCell(assay="SCT") on {Homeostatic, DAM, IFN, Proliferative} -> z-scale
+  per signature -> CLUSTER-level assignment primary, per-cell argmax secondary (raw UCell not cross-signature
+  calibrated); ambiguous (top-two within tol / all sub-null) -> unassigned bucket; cross-tab vs de-novo
+  clusters + v1 labels (reconcile); aux MHC/APC + *_contam + rbc + doublet/ribo scores -> flag/prune
+  contaminant clusters (logged rationale, not silent).
+- Composition: sccomp(~tau*amyloid + (1|batch)) PRIMARY (Bayesian -> priors regularise the 4-level batch RE)
+  + propeller-logit as a SENSITIVITY check (not a co-equal vote); 16 sample units (genotype_batch); report 5
+  contrasts incl. interaction. Discordance rule (pre-declared): sccomp call stands, propeller disagreement is
+  flagged+reported, never silently averaged. Batch is RANDOM here vs FIXED in DE -> justified asymmetry
+  (sccomp regularises few levels, limma can't); state it.
 - Pseudobulk DE: build_pseudobulk(replicate=genotype_batch) on RNA counts -> extend fit_limma_voom
-  (voomWithQualityWeights + eBayes(robust=TRUE)) across 5 contrasts; whole-MG + per-substate (where cells
-  allow); stageR screen-confirm FDR (+ per-contrast BH). filterByExpr per level.
+  (voomWithQualityWeights + eBayes(robust=TRUE)) across 5 contrasts; whole-MG always; per-substate ONLY where
+  every genotype_batch unit clears a PRE-DECLARED min-cell floor (e.g. >=10/unit) for that substate, else skip
+  -> descriptive-only + log the cell-count table. per-contrast BH = base FDR + stageR family-screen across the
+  5 contrasts. filterByExpr(group=genotype) per level.
 
 ## Steps (each closeable in one window; acceptance per step; [HEAVY]=compute, [DEP]=new pkgs+gate)
 Each step: write pure fn + synthetic unit test (gate-independent) -> smoke-test on live data ->
@@ -88,15 +112,17 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   SCT+pca+harmony+clusters+umap). rv add harmony glmGamPoi. Smoke-test reprocess on the live 26k object
   before the full target run.
   ACCEPT: reductions {pca,harmony,umap} + cluster factor present; DAM/IFN/homeostatic marker separation
-  confirmed post-Harmony (else lower correction); deterministic re-run (fixed seed); gate green.
+  confirmed post-Harmony (else lower correction); re-run STABLE up to tolerance (dims fixed, high cluster ARI
+  vs prior run, marker separation preserved) w/ seeds+threads recorded - NOT bitwise (memory contract); gate green.
 
 - **S2 substate annotation + QC prune** [DEP: UCell].
   Expand `canonical_microglia_markers` (constants.R) per SOTA marker lists above (+ MHC_APC aux);
   microglia.R::score_substates (UCell, SCT assay) + label argmax + prune_contaminant_clusters; target
   `microglia_annotated`. rv add UCell. Unit-test argmax + prune logic on synthetic fixture.
-  ACCEPT: every retained cell labelled; per-substate UCell enrichment asserted (DAM cells high DAM score
-  etc.); contaminant clusters dropped w/ logged counts+rationale; substate x genotype proportion table;
-  Thrupp attenuation noted; gate green.
+  ACCEPT: every retained cell labelled OR bucketed ambiguous/unassigned (not force-assigned); per-signature
+  calibration applied; per-substate UCell enrichment asserted (DAM cells high DAM score etc.); contaminant +
+  doublet/ribo-confounded clusters dropped/flagged w/ logged counts+rationale; substate x genotype proportion
+  table; Thrupp attenuation noted; gate green.
 
 - **S3 composition** [DEP: sccomp(+cmdstanr/CmdStan, HEAVY install) + speckle].
   R/composition.R::test_composition (sccomp + propeller) across 5 contrasts; target `composition_results`.
@@ -104,15 +130,18 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   build-essential; may need to `cmdstanr::install_cmdstan()` to a project-local path). Unit-test the
   contrast wiring on a synthetic count table.
   ACCEPT: per-contrast proportion estimates incl. interaction; amyloid->DAM shift quantified+tested;
-  sccomp<->propeller concordance reported; replicate=genotype_batch; gate green.
+  sccomp primary + propeller sensitivity, discordance handled per the pre-declared rule; batch random-vs-fixed
+  asymmetry justified; replicate=genotype_batch; gate green.
 
 - **S4 pseudobulk DE** [DEP: stageR(Bioc)].
   Extend R/de_pb.R (voomWithQualityWeights + eBayes(robust=TRUE); stageR helper; FIX the stale "de_sc.R"
   forward-ref comment -> single-cell DE dropped); targets `pb_de_microglia` (whole-MG) + `pb_de_substate`
   (per-substate) x 5 contrasts. rv add stageR. Extend tests/test_de_pb.R.
-  ACCEPT: amyloid->DAM programme surfaces (DAM_up genes top in nlgf contrasts, direction matches v1
-  qualitatively); interaction reported static-null honestly; topTables stored per contrast x level;
-  thresholds stated (FDR<0.05 base, |logFC|>0.5 for "sig" calls); gate green.
+  ACCEPT: contrasts computed + topTables stored per contrast x level; pre-stated thresholds applied
+  (FDR<0.05 base, |logFC|>0.5 for "sig"); amyloid->DAM direction-concordance with v1 REPORTED (whatever it
+  shows, not required to "surface"); interaction reported WITH a power/effect-size statement (CI/MDE on the
+  diff-of-diffs) - null claimed only if backed by that; per-substate fit-or-skip by the min-cell rule +
+  cell-count table stored; gate green.
 
 - **S5 report section + CLOSE-OUT** [render].
   `_microglia.qmd` (UCell substate UMAP, proportions, composition results, amyloid->DAM DE programme,
@@ -132,8 +161,7 @@ stageR (S4). Re-derive any new sysdep via ldd-scan of new .so (memory).
   propeller-only + record the blocker (decision was sccomp+propeller; degrade only if truly stuck).
 - SCT DE-conservative on nuclei (SOTA caveat the user accepted for v1 continuity) -> DE is on RAW counts
   (pseudobulk) so this hits clustering/scoring not DE; watch that SCT clustering still resolves substates.
-- Per-substate pseudobulk thin for rare states (IFN/proliferative) -> filterByExpr + report n; substate DE
-  is secondary to whole-MG.
+- Per-substate pseudobulk thin for rare states (IFN/proliferative) -> PRE-DECLARED min-cell floor per unit
+  gates fit-or-skip (not just filterByExpr); report n; substate DE is secondary to whole-MG.
 - 8G load peak is the load_snrnaseq BUILD (cached); reprocess works on the 340MB subset -> moderate.
 - Keep gate green each step; near 80% context -> drive to clean state + close out.
-</content>

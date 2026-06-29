@@ -28,13 +28,14 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P1 snRNAseq microglia core -> `.agent/p1_snrnaseq_plan.md` (opened 2026-06-29)
-5 steps: S1 reprocess+cluster (SCT+Harmony-batch-only+Louvain) | S2 substates (UCell argmax: homeostatic/
+5 steps: S1 reprocess+cluster (SCT+Harmony-batch-only+Louvain) | S2 substates (UCell calibrated-argmax: homeostatic/
 DAM/IFN/proliferative + aux MHC/APC) + contaminant prune | S3 composition (sccomp + propeller) | S4
 pseudobulk DE (whole-MG + per-substate, voomQW + robust eBayes + stageR) | S5 report `_microglia.qmd` + close.
 Gate-locked (2026-06-29, SOTA-researched): single-cell DE DROPPED (pseudobulk sole inference; supersedes
 de_pb.R de_sc forward-ref); composition = sccomp+propeller; normalisation = SCT-v2 (v1 continuity). Science:
-headline = amyloid->DAM (robust, microglia-led); the tau x amyloid interaction is STATIC-NULL -> handed to
-P2 (trajectory rate effect). Carry Thrupp 2020 caveat (snRNA under-detects ~18% DAM genes; score, not threshold).
+headline = amyloid->DAM (robust, microglia-led); the tau x amyloid interaction = v1-prior null -> P1 reports it
+WITH a power/effect-size stmt (outcome-open), synergy = a rate effect handed to P2. Carry Thrupp 2020 caveat
+(snRNA under-detects ~18% DAM genes; score, not threshold).
 **NEXT:** S1 reprocess+cluster (heavy; rv add harmony glmGamPoi).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -43,7 +44,7 @@ P2 (trajectory rate effect). Carry Thrupp 2020 caveat (snRNA under-detects ~18% 
   factorial + 5 contrasts, concrete quality gate.
 - P1 snRNAseq microglia core [ACTIVE]: reprocess (SCT) + substates (homeostatic / DAM /
   IFN / proliferative, UCell), composition (sccomp), pseudobulk DE across contrasts -> the
-  amyloid->DAM activation programme. Static interaction is ~null -> handed to P2.
+  amyloid->DAM activation programme. Static interaction = v1-prior null (reported w/ power stmt) -> rate effect to P2.
 - P2 Interaction trajectory: activation pseudotime (homeostatic->DAM); test amyloid
   advance + tau x amyloid progression synergy, decomposed composition vs progression.
 - P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase
