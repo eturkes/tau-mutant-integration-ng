@@ -18,4 +18,7 @@ format:
 lang: en-GB
 
 execute:
-  freeze: auto
+  # targets owns caching/invalidation -> disable Quarto's separate freeze layer so a render
+  # always recomputes from current inputs (a fresh clone lacks gitignored _freeze/; freeze:auto
+  # could reuse stale local results AND let a targets-triggered re-render skip re-execution).
+  freeze: false

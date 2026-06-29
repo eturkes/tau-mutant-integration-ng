@@ -4,8 +4,16 @@ library(targets)
 library(tarchetypes)
 
 # Point the `quarto` R package (used by tar_quarto / quarto_inspect) at the pinned,
-# project-local Quarto CLI; resolved from the project root on every tar_manifest/tar_make.
-Sys.setenv(QUARTO_PATH = normalizePath("tools/quarto/bin/quarto", mustWork = FALSE))
+# project-local Quarto CLI. Resolve the bin DIR (real) but leave the `quarto` symlink
+# unresolved -> stable handle across version bumps. Fail loud if absent: a missing path
+# lets the quarto pkg silently fall back to a PATH binary (unpinned) -> repro hole.
+local({
+  quarto_bin <- file.path(normalizePath("tools/quarto/bin", mustWork = FALSE), "quarto")
+  if (!file.exists(quarto_bin)) {
+    stop("pinned Quarto missing at ", quarto_bin, " -- run scripts/install-quarto.sh", call. = FALSE)
+  }
+  Sys.setenv(QUARTO_PATH = quarto_bin)
+})
 
 tar_option_set(packages = "quarto")
 

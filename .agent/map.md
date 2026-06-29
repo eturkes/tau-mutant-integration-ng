@@ -18,16 +18,17 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
 `.Rprofile`
   -> `rv/scripts/rvr.R`       # rv helper fns
   -> `rv/scripts/activate.R`  # Sys.which("rv") -> shells `rv info` -> options(repos) + .libPaths(rv/library)
-(rv off PATH -> activate.R warns + returns -> library() resolves nothing -> fail)
+  -> guard (in .Rprofile): non-interactive stop() unless rv/library in .libPaths()
+     (rv off PATH / `rv info` fail / R-version mismatch -> fail loud, no silent global-lib fallback)
 
 ### Pipeline (targets DAG)
 `_targets.R`
-  - Sys.setenv(QUARTO_PATH = tools/quarto/bin/quarto)   # quarto R pkg finds the pinned CLI
+  - QUARTO_PATH = tools/quarto/bin/quarto + file.exists() preflight stop()  # pinned CLI; no PATH fallback
   - tar_option_set(packages = "quarto")
   - tar_source("R")                                     # loads every R/*.R pure fn
   - target `spine` <- spine_versions()   [`R/spine.R`]  # R + core-pkg version provenance df
   - target `book`  <- tar_quarto(path=".")              # renders the Quarto book
-       reads `_quarto.yml` (type book; render `*.qmd` + `!rv/`; output _book/; freeze auto)
+       reads `_quarto.yml` (type book; render `*.qmd` + `!rv/`; output _book/; freeze false)
             -> `index.qmd` (+ future analysis chapters)
 
 ### Config: tracked vs regenerated

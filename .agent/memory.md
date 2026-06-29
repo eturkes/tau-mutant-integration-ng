@@ -46,13 +46,18 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `scripts/install-sysdeps.sh` -> `install-rv.sh` + `install-quarto.sh` -> `rv sync` -> `uv sync` -> `tar_make()`.
 - **rv MUST be on PATH** (~/.local/bin, like uv): `.Rprofile`->`rv/scripts/activate.R` finds rv via
   `Sys.which("rv")` + shells `rv info` to set `.libPaths(rv/library)`; a tools/-only rv breaks
-  activation. Pinned (version+sha256) in `install-rv.sh`. `.Rprofile` left rv-generated (NO repos
-  override -> base-R `install.packages` would write off-lock into rv/library; use `rv add` instead).
+  activation. Pinned (version+sha256) in `install-rv.sh`. `.Rprofile` runs activate.R then a
+  fail-loud guard: non-interactive `stop()` unless `rv/library` is in `.libPaths()` (catches
+  rv-off-PATH / `rv info` fail / R-version-mismatch safe-mode -> NO silent global-lib fallback;
+  re-add the guard if rv regenerates `.Rprofile`). NO repos override (base-R `install.packages`
+  would write off-lock; use `rv add`).
 - Repos (`rproject.toml` -> `rv sync` -> `rv.lock`): CRAN = plain `p3m.dev/cran/<date>` (rv inserts
   `__linux__/trixie` -> binary; do NOT hardcode the binary path); Bioc 3.23 =
   `p3m.dev/bioconductor/<date>/packages/3.23/{bioc,data/annotation,data/experiment,workflows}` +
   `force_source` (source-only on Debian). `tar_source` lives in `targets`; the `quarto` R pkg finds the
-  pinned CLI via `QUARTO_PATH` (set in `_targets.R`); `_quarto.yml` render whitelist `*.qmd`+`!rv/` (rv#332).
+  pinned CLI via `QUARTO_PATH` (`_targets.R`; a `file.exists` preflight `stop()`s if missing -> no
+  silent PATH-quarto fallback); `_quarto.yml`: render `*.qmd`+`!rv/` (rv#332), `freeze:false`
+  (targets owns caching -> no stale `_freeze` divergence).
 - Sysdeps (`scripts/install-sysdeps.sh`; `rv sysdeps` returns [] on trixie -> useless): build-essential
   + gfortran (Bioc source compiles) + libglpk40 (libglpk.so.40 for the igraph binary). Re-derive any new
   missing lib: `ldd`-scan `rv/library/**/*.so` for "not found".

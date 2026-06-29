@@ -20,6 +20,7 @@ else
   mkdir -p "${DEST}" "${BIN}"
   if ! { [ -f "${CACHE}" ] && echo "${QUARTO_SHA256}  ${CACHE}" | sha256sum -c - >/dev/null 2>&1; }; then
     echo "downloading quarto ${QUARTO_VERSION} (~136MB) ..."
+    rm -f "${CACHE}"   # drop any pre-placed file/symlink at the predictable cache path
     curl -fL -o "${CACHE}" "${QUARTO_URL}"
   fi
   echo "${QUARTO_SHA256}  ${CACHE}" | sha256sum -c -

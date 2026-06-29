@@ -23,11 +23,16 @@ fi
 mkdir -p "${BIN_DIR}"
 if ! { [ -f "${CACHE}" ] && echo "${RV_SHA256}  ${CACHE}" | sha256sum -c - >/dev/null 2>&1; }; then
   echo "downloading rv ${RV_VERSION} ..."
+  rm -f "${CACHE}"   # drop any pre-placed file/symlink at the predictable cache path
   curl -fL -o "${CACHE}" "${RV_URL}"
 fi
 echo "${RV_SHA256}  ${CACHE}" | sha256sum -c -
 tar xzf "${CACHE}" -C "${BIN_DIR}" rv
 chmod +x "${DEST}"
 
-command -v rv >/dev/null 2>&1 || echo "WARNING: ${BIN_DIR} not on PATH -- add it so rv's R activation works"
+resolved="$(command -v rv 2>/dev/null || true)"
+if [ "${resolved}" != "${DEST}" ]; then
+  echo "WARNING: 'rv' on PATH = '${resolved:-<none>}', not the pinned ${DEST}." >&2
+  echo "         Put ${BIN_DIR} at the front of PATH so rv's R activation uses the pinned binary." >&2
+fi
 "${DEST}" --version
