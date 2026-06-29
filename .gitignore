@@ -5,23 +5,28 @@
 /storage/figures/*
 !/storage/figures/*.png
 
-# secrets + project-local envs (recipes in memory.md / the P0 env doc)
+# secrets + project-local environments
 .env
 /.venv/
-/renv/library/
+# rv-installed R packages (rv/.gitignore also ignores it); rproject.toml + rv.lock + rv/scripts/ stay tracked
+/rv/library/
+# pinned project-local binaries (rv, quarto); regenerate via scripts/install-*.sh
+/tools/
 
-# R + rmarkdown artefacts; rendered HTML reports regenerate via render()
+# targets store + Quarto render artefacts (regenerate via tar_make / quarto render)
+/_targets/
+/_book/
+/_freeze/
+/.quarto/
+**/*.quarto_ipynb
+
+# generic R artefacts
 .Rhistory
 .RData
 .Rproj.user/
 *.Rcheck/
 Rplots.pdf
-/omnipathr-log/
-/*_files/
-/*_cache/
 /*.html
-/knit.log
-nohup.out
 
 # Claude state: track settings.json + commands/, ignore the rest
 /.claude/*

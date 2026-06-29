@@ -1,0 +1,42 @@
+[project]
+name = "tau-mutant-integration-ng"
+r_version = "4.6"
+
+# Resolution order: CRAN first (trixie binaries via P3M -- rv auto-inserts
+# __linux__/<distro>), then Bioconductor 3.23 (pairs with R 4.6; hand-wired, no native
+# Bioc support in rv). Bioc is source-only on Debian -> force_source skips the no-op
+# binary probe. All repos pinned to ONE P3M dated snapshot (2026-06-22) for reproducibility.
+repositories = [
+    { alias = "CRAN",          url = "https://p3m.dev/cran/2026-06-22" },
+    { alias = "BioCsoft",      url = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc",            force_source = true },
+    { alias = "BioCann",       url = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/data/annotation", force_source = true },
+    { alias = "BioCexp",       url = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/data/experiment", force_source = true },
+    { alias = "BioCworkflows", url = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/workflows",       force_source = true },
+]
+
+# P0 core stack. CRAN packages unqualified; Bioc packages pinned to their repository.
+dependencies = [
+    # reproducibility spine (targets DAG + Quarto reports + qs2 serialization)
+    "targets",
+    "tarchetypes",
+    "quarto",
+    "qs2",
+    # snRNAseq
+    "Seurat",
+    "SeuratObject",
+    # differential expression (Bioconductor)
+    { name = "limma",        repository = "BioCsoft" },
+    { name = "edgeR",        repository = "BioCsoft" },
+    { name = "BiocParallel", repository = "BioCsoft" },
+    # plotting
+    "ggplot2",
+    "ggrepel",
+    "patchwork",
+    # data wrangling
+    "readr",
+    "dplyr",
+    "tibble",
+    "tidyr",
+    "stringr",
+    "purrr",
+]

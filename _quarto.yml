@@ -1,0 +1,21 @@
+project:
+  type: book
+  output-dir: _book
+  render:
+    - "*.qmd"        # whitelist top-level chapters only ...
+    - "!rv/"         # ... and keep render/freeze out of the rv package library (rv#332)
+
+book:
+  title: "Tau Mutant Integration"
+  author: "Emir Turkes"
+  chapters:
+    - index.qmd
+
+format:
+  html:
+    theme: cosmo
+
+lang: en-GB
+
+execute:
+  freeze: auto

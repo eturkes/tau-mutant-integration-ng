@@ -45,7 +45,7 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
 
 ## Steps (each closeable in one ~200K window; acceptance gates the close)
 
-### S1 - Reproducibility spine + env scaffold  [GATE-DEPENDENT; long installs]
+### S1 - Reproducibility spine + env scaffold  [GATE-DEPENDENT; long installs]  -- DONE 2026-06-29
 - `rv init` -> `rproject.toml` + `rv/library` + `rv/.gitignore` (NOT the lock; `rv sync`
   produces `rv.lock`). Repos in order: CRAN P3M dated snapshot (binary, trixie) + Bioc
   **3.23** (R 4.6) component repos (BioCsoft/ann/exp/workflows; likely **source-only** via

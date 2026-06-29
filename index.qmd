@@ -1,0 +1,10 @@
+# Overview {.unnumbered}
+
+This book reports an integrative analysis of single-nucleus RNA-seq, GeoMx spatial
+transcriptomics, and bulk proteomics and phosphoproteomics across four mouse models of
+Alzheimer's disease. It asks how amyloid reshapes microglia under different tau
+backgrounds, reading the tau-amyloid interaction across all four modalities.
+
+Analysis chapters arrive in later phases. This page marks the reproducible foundation: a
+pinned R environment (rv), a pinned Python environment (uv), a targets pipeline, and this
+Quarto book.

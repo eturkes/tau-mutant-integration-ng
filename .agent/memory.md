@@ -40,19 +40,23 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
 - R is 4.6.0 here (v1 pinned 4.5.2 / Bioc 3.22) -> numbers WILL differ; we
   re-baseline, never reproduce v1's locked margins (18/12/55).
-- Stack (P0-locked; SOTA-researched, see p0_foundations_plan): **Quarto book** (reports; project-local pinned binary)
-  + **targets** DAG (orchestration; `tarchetypes::tar_quarto`; R/ fns via `tar_source()`,
-  no manual loader) + **rv** (R pkgs; declarative `rproject.toml`+`rv.lock`) + **uv**
-  (Python). Versions pinned via **P3M dated snapshot**: CRAN = binary (trixie); Bioc 3.23
-  = likely source-only via P3M for rv (prove at S1). Source fallback pins R-package
-  versions only (system toolchain/libs separate -> may need Debian sysdeps).
-  NO Docker -> no bitwise guarantee: targets = pipeline correctness; rv.lock+uv.lock =
-  versions; P3M = pinning. (renv was the safe alt: auto-Bioc but imperative.)
-- R packages: project-local via rv (NOT installed yet). Bioc **3.23** (R 4.6) repos
-  hand-wired (no auto R<->Bioc coupling); `rv remove` exists (hand-edit TOML only for
-  what rv can't express); exclude
-  `rv/library` in `_quarto.yml` (bug #332). rv pre-1.0 -> fall back to renv if it bites.
-- Python: project-local uv `.venv` (gitignored); pick the SOTA per phase.
+- Stack (P0 built): **rv** (R pkgs) + **uv** (Python) + project-local **Quarto** + **targets** DAG,
+  P3M-pinned (snapshot 2026-06-22, CRAN+Bioc same date). No bitwise guarantee (no Docker):
+  targets=pipeline, rv.lock/uv.lock=versions, P3M=pinning. Fresh-clone bootstrap ORDER:
+  `scripts/install-sysdeps.sh` -> `install-rv.sh` + `install-quarto.sh` -> `rv sync` -> `uv sync` -> `tar_make()`.
+- **rv MUST be on PATH** (~/.local/bin, like uv): `.Rprofile`->`rv/scripts/activate.R` finds rv via
+  `Sys.which("rv")` + shells `rv info` to set `.libPaths(rv/library)`; a tools/-only rv breaks
+  activation. Pinned (version+sha256) in `install-rv.sh`. `.Rprofile` left rv-generated (NO repos
+  override -> base-R `install.packages` would write off-lock into rv/library; use `rv add` instead).
+- Repos (`rproject.toml` -> `rv sync` -> `rv.lock`): CRAN = plain `p3m.dev/cran/<date>` (rv inserts
+  `__linux__/trixie` -> binary; do NOT hardcode the binary path); Bioc 3.23 =
+  `p3m.dev/bioconductor/<date>/packages/3.23/{bioc,data/annotation,data/experiment,workflows}` +
+  `force_source` (source-only on Debian). `tar_source` lives in `targets`; the `quarto` R pkg finds the
+  pinned CLI via `QUARTO_PATH` (set in `_targets.R`); `_quarto.yml` render whitelist `*.qmd`+`!rv/` (rv#332).
+- Sysdeps (`scripts/install-sysdeps.sh`; `rv sysdeps` returns [] on trixie -> useless): build-essential
+  + gfortran (Bioc source compiles) + libglpk40 (libglpk.so.40 for the igraph binary). Re-derive any new
+  missing lib: `ldd`-scan `rv/library/**/*.so` for "not found".
+- Python: uv `.venv` (gitignored), `pyproject.toml`+`uv.lock`+`.python-version` 3.13 (empty deps in P0); SOTA per phase.
 - Heavy installs/compute: expect long runs; smoke-test helpers via `Rscript -e '...'`
   against the live data BEFORE any full run.
 
