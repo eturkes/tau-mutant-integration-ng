@@ -124,7 +124,7 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
      genes<=assayed; %0-100) + 16x16 genotype-batch bijection + GeoMx !anyNA/setequal(genotype_levels).
      tests/test_plot.R device-free (theme/scale/concordance class + wiring). GOTCHA (durable -> memory.md
      Reports): once @font-face url() is present the WHOLE theme CSS embeds URL-ENCODED (data:text/css) ->
-     colours AND fonts encode (#B0344D->%23B0344D); match encoded tokens, raw .count reads 0; URLdecode of
+     colours AND fonts encode (#B0344D->%23B0344D); match encoded tokens, theme-side raw .count reads ~0; URLdecode of
      the ~1MB blob is slow. Render PROVED: 9 faces inlined offline (d09GMg magic), 0 external, 0 error/0
      warning (tar_meta all-NA across targets), QC bounds pass. Acceptance met (chapter renders clean,
      self-contained, bounds asserted in-chapter). -->

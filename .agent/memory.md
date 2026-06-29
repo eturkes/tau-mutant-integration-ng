@@ -138,7 +138,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   still detects `tar_load`s inside an included `_*.qmd` (verified: 5 edges through the include); list
   the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
 - Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29):
-  scss:defaults COLOUR vars ($primary/$link-color/$code-color #B0344D) + the IBM Plex stack
+  scss:defaults COLOUR vars ($primary/$link-color #B0344D, $code-color #3F5A6B) + the IBM Plex stack
   ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)
   with a relative `url("assets/fonts/<n>.woff2") format("woff2")`. Quarto base64-INLINES each woff2 into
   the embedded CSS under embed-resources -> ONE offline file (render PROVED: 9 faces inlined, magic d09GMg,
