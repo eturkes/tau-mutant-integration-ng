@@ -37,6 +37,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free) +
       scale_colour/fill_genotype (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
+   + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
+      UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
+      marker_mean_by_cluster (post-Harmony substate-separation check; map symbols->ensembl first) +
+      reprocess_thread_env (thread provenance snapshot).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -48,6 +52,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        proteomics           <- read_spectronaut_tsv(proteomics_file)   # tibble 45972 x 30
        phospho              <- read_spectronaut_tsv(phospho_file)      # tibble 64328 x 81
        sample_key           <- proteomics_sample_meta(sample_key_file) # tibble 16 x 4 (24M timepoint)
+  - P1 microglia core (format="qs"; consumes the snRNAseq modality):
+       microglia_processed  <- reprocess_microglia(microglia_seurat_raw)  # SCT+pca+harmony+12 clusters@0.4+umap (687MB)
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`

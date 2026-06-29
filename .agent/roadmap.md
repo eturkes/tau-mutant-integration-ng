@@ -36,7 +36,9 @@ de_pb.R de_sc forward-ref); composition = sccomp+propeller; normalisation = SCT-
 headline = amyloid->DAM (robust, microglia-led); the tau x amyloid interaction = v1-prior null -> P1 reports it
 WITH a power/effect-size stmt (outcome-open), synergy = a rate effect handed to P2. Carry Thrupp 2020 caveat
 (snRNA under-detects ~18% DAM genes; score, not threshold).
-**NEXT:** S1 reprocess+cluster (heavy; rv add harmony glmGamPoi).
+S1 DONE 2026-06-29: `microglia_processed` (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain 12 clusters @res0.4 ->
+UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif distinct argmax); re-run ARI=1.0;
+gate green. **NEXT:** S2 substate annotation + QC prune (rv add UCell).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -93,3 +95,12 @@ WITH a power/effect-size stmt (outcome-open), synergy = a rate effect handed to 
   power null even single-cell) -> the synergy is a progression-RATE effect, deferred to P2 (trajectory); P1
   nails the robust amyloid->DAM headline + substates + composition. Carry Thrupp 2020 (snRNA under-detects
   ~18% DAM activation genes). 5 steps S1-S5; next = S1 reprocess+cluster.
+- 2026-06-29 P1-S1 DONE -> `microglia_processed` target + `R/microglia.R` (reprocess_microglia +
+  marker_mean_by_cluster) + `tests/test_microglia.R`. SCT-v2/glmGamPoi -> Harmony(batch-only) -> Louvain
+  multi-res {0.2,0.4,0.6}, primary=0.4 (12 clusters) -> UMAP, on the live 26k subset (138s, 687MB qs). Three
+  pkg-drift fixes vs v1 recipe: harmony 2.0 dropped `assay.use` (assay implicit in reduction.use); SCTransform
+  trips future's 500MiB globals cap (raise it); RunUMAP's "default changed" NOTICE is a WARNING that would fail
+  the gate via tar_meta -> silenced by Seurat's own `Seurat.warn.umap.uwot=FALSE` (other warnings still
+  surface). Also strips stale upstream meta shadows (pca1/umap1 coords-as-cols, SCT_snn_res.0.01). Acceptance:
+  reductions {pca,harmony,umap}+cluster factor present; post-Harmony marker separation confirmed (distinct
+  argmax per substate); re-run ARI=1.0 (assignment-deterministic despite non-bitwise float); gate green.

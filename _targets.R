@@ -41,6 +41,13 @@ list(
   tar_target(microglia_seurat_raw, load_snrnaseq(snrnaseq_file),          format = "qs"),
   tar_target(symbol_map,           build_symbol_map(microglia_seurat_raw), format = "qs"),
   tar_target(geomx,                load_geomx(geomx_file),                 format = "qs"),
+
+  # --- P1 snRNAseq microglia core ---
+  # S1: reprocess (SCT-v2 + glmGamPoi) -> Harmony(batch) -> cluster (Louvain, multi-res) -> UMAP.
+  # Heavy build; works on the 340MB RNA-counts subset (not the 8G load). qs2 serializes the Assay5
+  # SCT object fine. memory="transient"+gc (global default) release it between targets.
+  tar_target(microglia_processed,  reprocess_microglia(microglia_seurat_raw), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

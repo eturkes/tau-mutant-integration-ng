@@ -107,13 +107,14 @@ screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate 
 Each step: write pure fn + synthetic unit test (gate-independent) -> smoke-test on live data ->
 wire target + full run -> verify quality gate (scripts/check.sh) before AND after.
 
-- **S1 reprocess + cluster** [HEAVY][DEP: harmony, glmGamPoi].
-  R/microglia.R::reprocess_microglia() (SCT recipe above); target `microglia_processed` (qs:
-  SCT+pca+harmony+clusters+umap). rv add harmony glmGamPoi. Smoke-test reprocess on the live 26k object
-  before the full target run.
-  ACCEPT: reductions {pca,harmony,umap} + cluster factor present; DAM/IFN/homeostatic marker separation
-  confirmed post-Harmony (else lower correction); re-run STABLE up to tolerance (dims fixed, high cluster ARI
-  vs prior run, marker separation preserved) w/ seeds+threads recorded - NOT bitwise (memory contract); gate green.
+- **S1 reprocess + cluster** [HEAVY][DEP: harmony, glmGamPoi]. **[DONE 2026-06-29]**
+  R/microglia.R::reprocess_microglia() (SCT recipe above) + marker_mean_by_cluster (separation check); target
+  `microglia_processed` (qs: SCT+pca+harmony+clusters+umap; 12 clusters @res0.4, 687MB). harmony+glmGamPoi
+  added. ACCEPT met: reductions {pca,harmony,umap}+cluster factor present; post-Harmony marker separation
+  confirmed (distinct argmax homeostatic/DAM/IFN/prolif); re-run ARI=1.0 (assignment-deterministic, seed 42 +
+  RNGkind + thread snapshot in @misc$reprocess_provenance); gate green. Pkg-drift fixes vs v1: harmony 2.0 drops
+  assay.use; future.globals.maxSize raised for SCT; Seurat.warn.umap.uwot=FALSE (else UMAP notice -> tar_meta
+  warning -> gate fail). Stale upstream meta shadows (pca1/umap1, SCT_snn_res.0.01) stripped.
 
 - **S2 substate annotation + QC prune** [DEP: UCell].
   Expand `canonical_microglia_markers` (constants.R) per SOTA marker lists above (+ MHC_APC aux);

@@ -21,9 +21,11 @@ dependencies = [
     "tarchetypes",
     "quarto",
     "qs2",
-    # snRNAseq
+    # snRNAseq: reprocess = SCT-v2 (glmGamPoi backend) + Harmony batch integration (P1-S1)
     "Seurat",
     "SeuratObject",
+    "harmony",
+    { name = "glmGamPoi", repository = "BioCsoft" },
     # differential expression (Bioconductor)
     { name = "limma",        repository = "BioCsoft" },
     { name = "edgeR",        repository = "BioCsoft" },

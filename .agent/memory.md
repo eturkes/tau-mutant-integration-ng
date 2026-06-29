@@ -49,6 +49,27 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (restate "not microglia-sorted" in any kinase prose).
 - Microglia: re-cluster on the subset, drop only clear outliers (no over-pruning).
 - Substates (v1 02a): homeostatic / DAM / IFN / proliferative.
+
+## snRNAseq microglia reprocess (P1-S1, built) -- `R/microglia.R` -> target `microglia_processed`
+- `reprocess_microglia`: SCT-v2(glmGamPoi, regress percent_mt+percent_contam) -> RunPCA(npcs=30) ->
+  RunHarmony(batch ONLY) -> FindNeighbors+RunUMAP(harmony dims 1:20) -> FindClusters(Louvain algo 1, res
+  {0.2,0.4,0.6}). Output (687MB qs, DefaultAssay SCT): reductions pca/harmony/umap, fresh SCT_snn_res.* +
+  `microglia_clusters` (=res 0.4 primary, 12 clusters, Idents). Reproducible: ARI=1.0 between runs
+  (assignment-deterministic despite non-bitwise float); seed 42 + RNGkind + thread snapshot in
+  @misc$reprocess_provenance (read provenance$primary_cluster_col / $resolutions, NOT a grep -- robust to
+  stale cols). Post-Harmony marker separation CONFIRMED (homeostatic/DAM/IFN/prolif distinct argmax clusters
+  -> batch-only Harmony did NOT wash out substate biology). marker_mean_by_cluster(symbols mapped ->ensembl
+  first; SCT/RNA rownames are ensembl) = the reusable separation helper (S2 reuses).
+- `microglia_seurat_raw` carries STALE upstream meta from snrnaseq.rds processing: reduction COORDS as columns
+  (pca1/2, umap1/2) + old clusters (SCT_snn_res.0.01, seurat_clusters) -> reprocess STRIPS the reduction-coord
+  + non-computed-resolution shadows. PRESERVED for S2: `allen_labels` (v1 fine annotation -> reconcile), cell-
+  cycle (S.Score/G2M.Score/Phase/cc_diff -> QC confound check), nCount/nFeature_SCT (recomputed by SCT anyway).
+- Seurat-ecosystem GATE gotcha (forward to S2/S3): some fns emit a once-per-session WARNING (RunUMAP "default
+  method changed") that lands in tar_meta(warnings) -> FAILS the zero-fault gate. Silence via the fn's OWN
+  option (here Seurat.warn.umap.uwot=FALSE), never blanket suppressWarnings -- keeps every real warning's gate
+  signal. SCTransform also trips future's 500MiB globals cap on 26k cells -> set options(future.globals.maxSize).
+  Check each new pkg (UCell/sccomp) for the same patterns. harmony 2.0 dropped the v1 `assay.use` arg (assay
+  implicit in reduction.use) -> v1 recipe args can be stale under the P3M-2026 pkg versions; verify signatures.
 - 5 canonical contrasts everywhere: tau_alone, nlgf_in_maptki, nlgf_in_p301s,
   tau_in_nlgf, interaction (factorial 2x2 + batch).
 - State thresholds before applying them; present the axes with no pre-privileged winner.
@@ -68,7 +89,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   fail-loud guard: non-interactive `stop()` unless `rv/library` is in `.libPaths()` (catches
   rv-off-PATH / `rv info` fail / R-version-mismatch safe-mode -> NO silent global-lib fallback;
   re-add the guard if rv regenerates `.Rprofile`). NO repos override (base-R `install.packages`
-  would write off-lock; use `rv add`).
+  would write off-lock; use `rv add` OR edit rproject.toml + `rv sync`; Bioc pkgs need the
+  repository qualifier e.g. `{ name = "glmGamPoi", repository = "BioCsoft" }`). rv installs to
+  `rv/library/<R-ver>/<arch>/<distro>` (NOT `rv/library/<pkg>`) -> check a pkg via Rscript
+  `requireNamespace`, not `test -d rv/library/<pkg>`.
 - Repos (`rproject.toml` -> `rv sync` -> `rv.lock`): CRAN = plain `p3m.dev/cran/<date>` (rv inserts
   `__linux__/trixie` -> binary; do NOT hardcode the binary path); Bioc 3.23 =
   `p3m.dev/bioconductor/<date>/packages/3.23/{bioc,data/annotation,data/experiment,workflows}` +
