@@ -17,10 +17,11 @@ obj <- make_fake_seurat(cells_per = 4L, n_genes = 30L)      # 64 cells, 16 genot
 pc  <- pseudobulk_counts(obj, "genotype_batch")
 stopifnot(ncol(pc) == 16L, nrow(pc) == 30L,
           identical(sort(colnames(pc), method = "radix"), colnames(pc)))   # deterministic (radix) column order
-gb     <- colnames(pc)[1]
-cells  <- rownames(obj@meta.data)[obj@meta.data$genotype_batch == gb]
-manual <- Matrix::rowSums(SeuratObject::GetAssayData(obj, assay = "RNA", layer = "counts")[, cells, drop = FALSE])
-stopifnot(isTRUE(all.equal(unname(pc[, gb]), unname(manual))))
+counts_m <- SeuratObject::GetAssayData(obj, assay = "RNA", layer = "counts")
+for (gb in colnames(pc)) {                                   # verify the sum for EVERY group, not only the first
+  cells <- rownames(obj@meta.data)[obj@meta.data$genotype_batch == gb]
+  stopifnot(isTRUE(all.equal(unname(pc[, gb]), unname(Matrix::rowSums(counts_m[, cells, drop = FALSE])))))
+}
 
 # --- build_pseudobulk: alignment + covariate-constancy fail-loud ------------------------
 pb <- build_pseudobulk(obj, "genotype_batch", c("genotype", "batch"))
@@ -28,9 +29,9 @@ stopifnot(ncol(pb$counts) == 16L, nrow(pb$meta) == 16L,
           identical(colnames(pb$counts), rownames(pb$meta)),
           all(c("genotype", "batch") %in% colnames(pb$meta)))
 obj_bad <- obj
-i_bad   <- which(obj_bad@meta.data$genotype_batch == gb)[1]
+i_bad   <- which(obj_bad@meta.data$genotype_batch == colnames(pc)[1])[1]
 obj_bad@meta.data$genotype[i_bad] <- "P301S"                 # genotype now varies within one pseudobulk sample
-expect_error(build_pseudobulk(obj_bad, "genotype_batch", c("genotype", "batch")))
+expect_error(build_pseudobulk(obj_bad, "genotype_batch", c("genotype", "batch")), "n_unique")
 
 # --- median_normalise: exact shift ------------------------------------------------------
 m  <- matrix(c(1, 2, 3, 11, 12, 13), nrow = 3)               # column medians 2 and 12, global 7
@@ -46,6 +47,7 @@ stopifnot(identical(rownames(f), "g1"), ncol(f) == 8L)
 mat2 <- rbind(keep = c(1, 2, 3, 4, 5, 6, 7, 8), c(1, 2, 3, 4, 5, 6, 7, 8))
 rownames(mat2) <- c("keep", "")                              # empty-name row dropped despite full prevalence
 stopifnot(identical(rownames(prevalence_filter(mat2, grp)), "keep"))
+expect_error(prevalence_filter(mat, c(NA, "A", "A", "A", "B", "B", "B", "B")), "anyNA")   # NA group -> fail loud
 
 # --- fit_limma_voom smoke: 5 named topTables --------------------------------------------
 fd     <- factorial_design(meta16)
@@ -57,6 +59,8 @@ for (tt in vfit$top) {
   stopifnot(is.data.frame(tt), nrow(tt) == vfit$kept,
             all(c("gene", "logFC", "P.Value", "adj.P.Val") %in% names(tt)))
 }
+# fail loud when counts columns are not aligned to the design rows (limma fits by position, not name)
+expect_error(fit_limma_voom(counts[, 16:1], fd$design, fd$contrasts, min_count = 5), "colnames(counts)")
 
 # --- fit_limma_log smoke (proteomics-style, no batch): 5 named topTables ----------------
 meta_p <- data.frame(genotype = rep(genotype_levels, each = 4L), row.names = paste0("p", 1:16))

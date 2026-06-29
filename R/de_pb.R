@@ -13,7 +13,10 @@
 pseudobulk_counts <- function(seurat_obj, group_col, assay = "RNA", layer = "counts") {
   counts <- SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer)
   groups <- as.character(seurat_obj@meta.data[[group_col]])
-  stopifnot(length(groups) == ncol(counts), !anyNA(groups))
+  # groups is positional; Seurat keeps meta.data rows cell-aligned to assay columns. Assert it so a
+  # violated invariant fails loud instead of silently summing the wrong cells into each group.
+  stopifnot(identical(rownames(seurat_obj@meta.data), colnames(counts)),
+            length(groups) == ncol(counts), !anyNA(groups))
   uniq <- sort(unique(groups), method = "radix")   # locale-independent -> deterministic column order
   idx  <- split(seq_along(groups), groups)
   out  <- vapply(uniq, function(g) Matrix::rowSums(counts[, idx[[g]], drop = FALSE]),
@@ -30,6 +33,7 @@ pseudobulk_counts <- function(seurat_obj, group_col, assay = "RNA", layer = "cou
 build_pseudobulk <- function(seurat_obj, sample_col, covariate_cols, assay = "RNA") {
   cnt  <- pseudobulk_counts(seurat_obj, sample_col, assay = assay, layer = "counts")
   md   <- seurat_obj@meta.data[, c(sample_col, covariate_cols), drop = FALSE]
+  stopifnot(!anyNA(md))   # an all-NA covariate reads as "constant" (length(unique(NA))==1); reject it
   samp <- as.character(md[[sample_col]])
   for (cc in covariate_cols) {
     n_unique <- tapply(as.character(md[[cc]]), samp, function(v) length(unique(v)))
@@ -47,6 +51,9 @@ build_pseudobulk <- function(seurat_obj, sample_col, covariate_cols, assay = "RN
 # (robust eBayes). Returns the DGEList, voom object, fit, per-contrast topTables (sort.by =
 # "none" -> stable feature order), and the kept-feature count.
 fit_limma_voom <- function(counts, design, contrasts, min_count = 5) {
+  stopifnot(identical(colnames(counts), rownames(design)),      # limma fits by position, not by name
+            identical(rownames(contrasts), colnames(design)),   # contrasts.fit only warns on a mismatch
+            qr(design)$rank == ncol(design))                    # full rank -> contrasts estimable
   dge  <- edgeR::DGEList(counts = counts)
   keep <- edgeR::filterByExpr(dge, design = design, min.count = min_count)
   dge  <- dge[keep, , keep.lib.sizes = FALSE]
@@ -64,6 +71,9 @@ fit_limma_voom <- function(counts, design, contrasts, min_count = 5) {
 # limma-trend fit for an already-log-transformed intensity matrix (proteomics, phospho): no
 # voom (continuous, not counts); trend = TRUE models the mean-variance trend on the log scale.
 fit_limma_log <- function(mat, design, contrasts) {
+  stopifnot(identical(colnames(mat), rownames(design)),         # limma fits by position, not by name
+            identical(rownames(contrasts), colnames(design)),   # contrasts.fit only warns on a mismatch
+            qr(design)$rank == ncol(design))                    # full rank -> contrasts estimable
   fit <- limma::contrasts.fit(limma::lmFit(mat, design = design), contrasts)
   fit <- limma::eBayes(fit, robust = TRUE, trend = TRUE)
   top <- lapply(colnames(contrasts), function(cn)
@@ -88,6 +98,7 @@ prevalence_filter <- function(mat, group, min_present = 3L, min_groups = 2L) {
   stopifnot(!is.null(rownames(mat)), length(group) == ncol(mat))
   mat   <- mat[!is.na(rownames(mat)) & rownames(mat) != "", , drop = FALSE]
   group <- as.character(group)
+  stopifnot(!anyNA(group))   # NA group -> NA column index -> fabricated all-NA rows; fail loud
   present   <- !is.na(mat)
   per_group <- vapply(sort(unique(group), method = "radix"),
                       function(g) rowSums(present[, group == g, drop = FALSE]),

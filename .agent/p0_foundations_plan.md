@@ -96,8 +96,12 @@ Flagged for later: **BPCells** (Seurat-v5 on-disk, relieves 8G RAM ceiling) at S
      requested but batch col absent -> batch-less modalities pass add_batch=FALSE); deterministic
      radix sort for pseudobulk/prevalence group order. Tests = stopifnot harness (no testthat) in tests/ + tests/helpers.R; the io contract tests
      deferred from S2 review landed here (test_io.R). Acceptance met: test_design (exact weights +
-     factorial==cell-means equivalence across response vectors + hand-computed contrast values);
-     live microglia_seurat_raw (26104 cells) -> build_pseudobulk = 16 genotype_batch columns. -->
+     factorial==cell-means equivalence (estimator-map equality -> proven for ANY response) +
+     hand-computed contrast values); live microglia_seurat_raw (26104 cells) -> build_pseudobulk =
+     16 genotype_batch columns. Review (codex) hardening: fail-loud input contracts on the de_pb
+     fitters (name alignment + full rank) + pseudobulk_counts/build_pseudobulk (cell alignment,
+     no-NA covariates) + prevalence_filter (no-NA group) + factorial_design (full rank, no-NA
+     batch); expect_error gains a message-pattern check; pseudobulk sum verified for all 16 groups. -->
 - `R/design.R`: `factorial_design()` (~tau+nlgf+tau_nlgf[+batch]) + `make_contrast_matrix()`
   (cell-means form). BOTH must reproduce the same 5 named contrasts (key by name).
 - `R/de_pb.R`: pseudobulk_counts, build_pseudobulk (replicate=genotype_batch),

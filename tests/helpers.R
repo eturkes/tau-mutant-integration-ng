@@ -3,9 +3,15 @@
 # Convention: each tests/test_*.R sources the R/ files it exercises + this helper, runs
 # stopifnot-based checks (fail loud, non-zero exit on first failure), prints "ok - <name>".
 
-# Assert that evaluating `expr` raises an error (for fail-loud contract checks).
-expect_error <- function(expr) {
-  stopifnot(inherits(try(expr, silent = TRUE), "try-error"))
+# Assert that evaluating `expr` raises an error (for fail-loud contract checks). With `pattern`
+# (a literal substring), also require the error message to contain it -> the error fired for the
+# INTENDED reason, not an incidental earlier failure.
+expect_error <- function(expr, pattern = NULL) {
+  e <- try(expr, silent = TRUE)
+  stopifnot(inherits(e, "try-error"))
+  if (!is.null(pattern)) {
+    stopifnot(grepl(pattern, conditionMessage(attr(e, "condition")), fixed = TRUE))
+  }
 }
 
 # Canonical 16-row pseudobulk-style metadata: 4 genotypes x 4 batches, fully crossed.

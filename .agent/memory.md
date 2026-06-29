@@ -117,7 +117,11 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   columns to bare levels, build batch from a named factor; an inline `factor()` yields invalid
   names). Sort character keys with `method = "radix"` (locale-independent -> reproducible
   column/level order across machines). factorial_design fails loud if add_batch=TRUE but the
-  batch column is absent -> a batch-less modality (GeoMx) MUST pass add_batch=FALSE.
+  batch column is absent -> a batch-less modality (GeoMx) MUST pass add_batch=FALSE. de_pb fitters
+  fail loud on misaligned inputs (limma fits/contrasts by POSITION, only warns on name mismatch):
+  both assert identical(colnames(data), rownames(design)) + identical(rownames(contrasts),
+  colnames(design)) + full-rank design (qr rank == ncol); factorial_design guarantees full-rank
+  output; pseudobulk_counts asserts the meta.data<->counts cell alignment Seurat maintains.
 - targets serialization (verified S2): `format="qs"` works via the **qs2** backend (the
   `qs` pkg is NOT installed; qs2 serializes Seurat Assay5 objects fine). `format="file_fast"`
   is deprecated -> use `format="file"` + `tar_option_set(trust_timestamps=TRUE)` (set in

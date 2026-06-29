@@ -46,12 +46,14 @@ factorial_design <- function(meta, genotype_col = "genotype",
   if (add_batch) {
     stopifnot(!is.null(batch_col), batch_col %in% names(meta))   # asked for batch -> column MUST exist (no silent omit)
     df$batch <- factor(meta[[batch_col]])
-    stopifnot(nlevels(df$batch) >= 2L)   # a single-level batch would be silently dropped by model.matrix
+    stopifnot(!anyNA(df$batch),          # missing batch -> model.matrix drops rows -> rowname shape error
+              nlevels(df$batch) >= 2L)   # a single-level batch would be silently dropped by model.matrix
     design <- stats::model.matrix(~ tau + nlgf + tau_nlgf + batch, data = df)
   } else {
     design <- stats::model.matrix(~ tau + nlgf + tau_nlgf, data = df)
   }
   rownames(design) <- rownames(meta)
+  stopifnot(qr(design)$rank == ncol(design))   # full rank -> all 5 contrasts estimable (else limma only warns)
 
   cn <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
   cm <- matrix(0, nrow = ncol(design), ncol = length(cn),

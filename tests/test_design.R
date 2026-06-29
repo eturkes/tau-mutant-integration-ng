@@ -44,23 +44,14 @@ colnames(dc)[1:4] <- genotype_levels
 cmc <- make_contrast_matrix(dc)
 stopifnot(identical(colnames(cmc), canonical))
 
-# deterministic, linearly varied response vectors (no RNG)
-responses <- list(
-  as.double(seq_len(16)),
-  as.double(seq_len(16) %% 5L),
-  as.double(seq_len(16) * 2L - 7L),
-  cos(seq_len(16)),
-  as.double(rev(seq_len(16))^2)
-)
-for (y in responses) {
-  bf <- stats::coef(stats::lm.fit(fd$design, y))[rownames(fd$contrasts)]
-  bc <- stats::coef(stats::lm.fit(dc, y))[rownames(cmc)]
-  stopifnot(!anyNA(bf), !anyNA(bc))                         # both designs full rank -> no aliased coefs
-  est_f <- drop(t(fd$contrasts) %*% bf)
-  est_c <- drop(t(cmc) %*% bc)
-  stopifnot(isTRUE(all.equal(est_f[canonical], est_c[canonical],
-                             tolerance = 1e-9, check.attributes = FALSE)))
-}
+# Prove equality for EVERY response (not a handful of samples): each contrast estimate is linear in
+# y, est = L %*% y with L = t(C) %*% (X'X)^-1 X' (X full column rank). Identical estimator maps L ->
+# identical contrast values for ALL y in R^16. (check.attributes = FALSE: the two designs carry
+# different sample rownames -- 1..16 vs s1..s16 -- but identical row order, so values align.)
+pinv <- function(X) solve(crossprod(X), t(X))               # (X'X)^-1 X', X full column rank
+Lf   <- t(fd$contrasts)[canonical, ] %*% pinv(fd$design)
+Lc   <- t(cmc)[canonical, ]          %*% pinv(dc)
+stopifnot(isTRUE(all.equal(Lf, Lc, tolerance = 1e-9, check.attributes = FALSE)))
 
 # spot-check the contrast VALUES against hand computation on group means (y = group index)
 y <- c(rep(10, 4), rep(13, 4), rep(20, 4), rep(31, 4))      # MAPTKI, P301S, NLGF_MAPTKI, NLGF_P301S
@@ -73,11 +64,11 @@ stopifnot(isTRUE(all.equal(unname(est["tau_alone"]),      13 - 10)),
           isTRUE(all.equal(unname(est["interaction"]),    (31 - 13) - (20 - 10))))
 
 # make_contrast_matrix fails loud if a genotype level column is absent
-expect_error(make_contrast_matrix(dc[, -1, drop = FALSE]))
+expect_error(make_contrast_matrix(dc[, -1, drop = FALSE]), "levels")
 # factorial_design fails loud on an out-of-level genotype
 bad <- meta16; bad$genotype[1] <- "WT"
-expect_error(factorial_design(bad))
+expect_error(factorial_design(bad), "geno")
 # ... and when batch adjustment is requested (add_batch=TRUE default) but no batch column exists
-expect_error(factorial_design(meta16[, "genotype", drop = FALSE]))
+expect_error(factorial_design(meta16[, "genotype", drop = FALSE]), "batch_col")
 
 cat("ok - test_design\n")
