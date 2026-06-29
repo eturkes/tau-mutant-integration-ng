@@ -40,15 +40,17 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
 - R is 4.6.0 here (v1 pinned 4.5.2 / Bioc 3.22) -> numbers WILL differ; we
   re-baseline, never reproduce v1's locked margins (18/12/55).
-- Stack (P0-locked; SOTA-researched, see p0_foundations_plan): **Quarto book** (reports)
+- Stack (P0-locked; SOTA-researched, see p0_foundations_plan): **Quarto book** (reports; project-local pinned binary)
   + **targets** DAG (orchestration; `tarchetypes::tar_quarto`; R/ fns via `tar_source()`,
   no manual loader) + **rv** (R pkgs; declarative `rproject.toml`+`rv.lock`) + **uv**
-  (Python). Versions pinned via **P3M dated snapshot** (binary CRAN+Bioc; Debian-13
-  trixie binaries may be absent -> source-compile fallback keeps pinning, loses speed).
+  (Python). Versions pinned via **P3M dated snapshot**: CRAN = binary (trixie); Bioc 3.23
+  = likely source-only via P3M for rv (prove at S1). Source fallback pins R-package
+  versions only (system toolchain/libs separate -> may need Debian sysdeps).
   NO Docker -> no bitwise guarantee: targets = pipeline correctness; rv.lock+uv.lock =
   versions; P3M = pinning. (renv was the safe alt: auto-Bioc but imperative.)
 - R packages: project-local via rv (NOT installed yet). Bioc **3.23** (R 4.6) repos
-  hand-wired (no auto R<->Bioc coupling); no `rv remove` (hand-edit TOML); exclude
+  hand-wired (no auto R<->Bioc coupling); `rv remove` exists (hand-edit TOML only for
+  what rv can't express); exclude
   `rv/library` in `_quarto.yml` (bug #332). rv pre-1.0 -> fall back to renv if it bites.
 - Python: project-local uv `.venv` (gitignored); pick the SOTA per phase.
 - Heavy installs/compute: expect long runs; smoke-test helpers via `Rscript -e '...'`
@@ -57,7 +59,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 ## Quality gate (provisional - lock concretely in P0)
 - Reproducible: fresh clone + `rv sync` (+ `uv sync`) -> `targets::tar_make()` runs the pipeline.
 - Each module smoke-tested against live data before commit.
-- Reports (once they exist) knit clean: 0 error / 0 warning.
+- Reports (once they exist) knit clean: 0 error / 0 warning -- enforced concretely, NOT
+  by bare `tar_make()` exit (it returns 0 with captured warnings): assert empty
+  `tar_meta()` error+warnings + `options(warn=2)` where safe + Quarto-log grep (lock in S5).
 
 ## Operational
 - Prose register: British English; human-facing report/figure text uses hyphens over
