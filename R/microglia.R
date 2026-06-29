@@ -145,3 +145,194 @@ marker_mean_by_cluster <- function(seurat_obj, marker_sets,
   attr(out, "markers_used") <- present
   out
 }
+
+# --- P1-S2: UCell substate annotation + contaminant-cluster prune --------------------------
+
+# Map named marker-symbol sets -> present ensembl ids via symbol_map (assay rownames are ensembl).
+# Drops symbols with no ensembl hit AND ids absent from `present_ids`; a set left empty errors (a
+# silent empty signature would fabricate UCell scores). Returns the named ensembl-id list, with
+# attr "n_used" = "<kept>/<requested>" per set for the provenance record. Pure.
+marker_sets_to_ensembl <- function(marker_sets, symbol_map, present_ids) {
+  stopifnot(is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
+            is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)))
+  ens <- lapply(marker_sets, function(s) intersect(symbols_to_ensembl(s, symbol_map), present_ids))
+  empty <- names(ens)[vapply(ens, length, integer(1)) == 0L]
+  if (length(empty))
+    stop("marker_sets_to_ensembl: no present ensembl id for set(s): ", paste(empty, collapse = ", "),
+         " -- map symbols -> ensembl upstream (assay rownames are ensembl)")
+  n_used <- vapply(names(marker_sets),
+                   function(nm) sprintf("%d/%d", length(ens[[nm]]), length(marker_sets[[nm]])), character(1))
+  attr(ens, "n_used") <- n_used
+  ens
+}
+
+# Calibrate a units x signatures score matrix: z-scale each signature (column) so sets of
+# different size/coherence become comparable before argmax (raw UCell is NOT cross-signature
+# comparable). A zero-variance column -> z undefined -> set to 0 (no enrichment). Pure.
+zscale_signatures <- function(score_mat) {
+  stopifnot(is.matrix(score_mat), ncol(score_mat) >= 1L)
+  z <- scale(score_mat)
+  z[is.nan(z)] <- 0
+  attr(z, "scaled:center") <- NULL
+  attr(z, "scaled:scale")  <- NULL
+  dimnames(z) <- dimnames(score_mat)
+  z
+}
+
+# Argmax substate assignment with explicit ambiguous/unassigned buckets (never force-assign). For
+# each row (a cell or a cluster) of a z-scaled signature matrix:
+#   unassigned : best signature z <= 0 (no positive enrichment for ANY substate)
+#   ambiguous  : the top-two are BOTH > amb_floor (genuinely enriched) AND within tol (co-dominant)
+#   else       : the argmax signature name.
+# amb_floor guards against a noise-level runner-up (z just above 0, e.g. a sparse signature with a
+# single stray gene) faking ambiguity -- ambiguity requires TWO real competitors. Returns a
+# row-named character vector. Pure.
+assign_substate <- function(z_mat, tol = 0.10, amb_floor = 0.10) {
+  stopifnot(is.matrix(z_mat), ncol(z_mat) >= 2L, !is.null(colnames(z_mat)))
+  apply(z_mat, 1L, function(r) {
+    o <- order(r, decreasing = TRUE)
+    if (r[o[1]] <= 0) return("unassigned")
+    if (r[o[2]] > amb_floor && (r[o[1]] - r[o[2]]) < tol) return("ambiguous")
+    colnames(z_mat)[o[1]]
+  })
+}
+
+# Aggregate a per-cell z matrix to per-cluster MEAN z -- cluster-level (primary) assignment
+# averages cell z within each cluster. Returns clusters x signatures, rows in the cluster factor's
+# (dropped-empty) level order. Pure.
+cluster_mean_z <- function(z_mat, clusters) {
+  stopifnot(is.matrix(z_mat), length(clusters) == nrow(z_mat))
+  cl  <- droplevels(factor(clusters))
+  out <- apply(z_mat, 2L, function(x) tapply(x, cl, mean))
+  if (!is.matrix(out))
+    out <- matrix(out, nrow = nlevels(cl), dimnames = list(levels(cl), colnames(z_mat)))
+  out
+}
+
+# Decide which clusters are non-microglial contamination from per-cluster RAW UCell stats. A
+# cluster is dropped when microglia identity is essentially ABSENT (id_med < id_floor) OR a
+# contaminant signature beats identity in most of its cells (mglike_frac < mglike_floor;
+# doublet/ambient dominated). Both defaults sit in observed natural gaps for this data (real
+# microglia clusters had id_med >= 0.158 & mglike_frac >= 0.38; contaminants <= 0.091 & <= 0.24)
+# -> conservative, drops only clear outliers (no over-pruning). Pure; returns dropped cluster names.
+flag_contaminant_clusters <- function(stats, id_floor = 0.15, mglike_floor = 0.30) {
+  stopifnot(is.data.frame(stats), all(c("id_med", "mglike_frac") %in% colnames(stats)),
+            !is.null(rownames(stats)))
+  rownames(stats)[stats$id_med < id_floor | stats$mglike_frac < mglike_floor]
+}
+
+# Annotate the reprocessed microglia: UCell-score identity + substate + aux + contaminant
+# signatures, drop clear contaminant clusters, assign substates on the clean population.
+#   1. UCell (rank-based; robust to dropout/depth/batch) scores every signature on the SCT `layer`
+#      (ncores=1 -> deterministic, no parallel warning). Raw scores -> meta `<sig>_UCell`.
+#   2. Prune: per cluster, raw microglia-identity median + fraction of cells whose identity beats
+#      its best contaminant signature -> flag_contaminant_clusters -> DROP (subset out). Doublets
+#      are precomputed (0 here -> logged no-op). Per-cluster QC rationale (id/mglike/contam/ribo/
+#      malat1/dropped), dropped ids+counts, and the dropped genotype x cluster table go in
+#      @misc$microglia_prune -- nothing hidden (the dropout is mildly genotype-associated; reported).
+#   3. On RETAINED cells: z-scale the 4 substate signatures (calibrate per signature on the clean
+#      population) -> cluster-mean-z argmax = PRIMARY label (broadcast to its cells); per-cell-z
+#      argmax = SECONDARY (diagnostic; noisier for sparse states). MHC_APC z = a continuous aux
+#      axis (ARM = DAM + MHC). Ambiguous/unassigned buckets, never force-assigned.
+# Thrupp 2020 caveat carried: snRNA depletes ~18% of DAM genes -> DAM is SCORED not thresholded,
+# and the broad DAM signature absorbs the dropout. Returns the pruned, annotated obj (DefaultAssay
+# SCT). Heavy body (UCell on the full subset) is smoke-tested live; pure helpers are unit-tested.
+annotate_microglia <- function(seurat_obj, symbol_map,
+                               marker_sets      = canonical_microglia_markers,
+                               identity_markers = microglia_identity_markers,
+                               contam_sets      = contam_signatures,
+                               substate_levels  = microglia_substate_levels,
+                               cluster_col = "microglia_clusters",
+                               assay = "SCT", layer = "data",
+                               id_floor = 0.15, mglike_floor = 0.30,
+                               tol = 0.10, amb_floor = 0.10) {
+  stopifnot(
+    inherits(seurat_obj, "Seurat"), assay %in% SeuratObject::Assays(seurat_obj),
+    cluster_col %in% colnames(seurat_obj@meta.data),
+    is.list(marker_sets), all(substate_levels %in% names(marker_sets)), "MHC_APC" %in% names(marker_sets),
+    is.list(contam_sets), length(contam_sets) >= 1L, !is.null(names(contam_sets)),
+    is.character(identity_markers), length(identity_markers) >= 1L,
+    is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map))
+  )
+  present  <- rownames(SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer))
+  all_sets <- c(list(Microglia_identity = identity_markers), marker_sets, contam_sets)
+  ens_sets <- marker_sets_to_ensembl(all_sets, symbol_map, present)
+
+  # UCell raw scores (ties.method default "average"; missing_genes="skip" -- sets are pre-filtered
+  # to present ids so nothing is missing). slot=`layer` is gate-safe on Assay5 (no deprecation warn).
+  obj <- UCell::AddModuleScore_UCell(seurat_obj, features = ens_sets, assay = assay, slot = layer,
+                                     ncores = 1L, name = "_UCell", missing_genes = "skip")
+  stopifnot(all(paste0(names(all_sets), "_UCell") %in% colnames(obj@meta.data)))
+
+  # --- prune: per-cluster raw identity vs best contaminant ---
+  md  <- obj@meta.data
+  cl0 <- droplevels(factor(md[[cluster_col]]))
+  id_raw     <- md[["Microglia_identity_UCell"]]
+  contam_raw <- do.call(pmax, md[paste0(names(contam_sets), "_UCell")])
+  stats <- data.frame(
+    n           = as.integer(table(cl0)),
+    id_med      = tapply(id_raw, cl0, median),
+    mglike_frac = tapply(id_raw > contam_raw, cl0, mean),
+    row.names   = levels(cl0)
+  )
+  drop_clusters <- flag_contaminant_clusters(stats, id_floor, mglike_floor)
+  keep <- !(as.character(md[[cluster_col]]) %in% drop_clusters)
+  stopifnot(any(keep), length(drop_clusters) < nlevels(cl0))   # never prune everything
+
+  qc_rationale <- data.frame(
+    n           = stats$n,
+    id_med      = round(stats$id_med, 3),
+    mglike_frac = round(stats$mglike_frac, 3),
+    pct_contam  = round(tapply(md$percent_contam, cl0, mean), 2),
+    pct_ribo    = round(tapply(md$percent_ribo,   cl0, mean), 2),
+    pct_malat1  = round(tapply(md$percent_malat1, cl0, mean), 2),
+    dropped     = levels(cl0) %in% drop_clusters,
+    row.names   = levels(cl0)
+  )
+  if (is.numeric(md$doublets)) qc_rationale$doublet_mean <- round(tapply(md$doublets, cl0, mean), 4)
+  prune_log <- list(
+    qc_rationale = qc_rationale, dropped = drop_clusters,
+    n_dropped = sum(!keep), n_retained = sum(keep),
+    thresholds = c(id_floor = id_floor, mglike_floor = mglike_floor),
+    dropped_by_genotype = table(genotype = md$genotype[!keep], cluster = droplevels(cl0[!keep]))
+  )
+  obj <- subset(obj, cells = colnames(obj)[keep])
+  obj@meta.data[[cluster_col]] <- droplevels(factor(obj@meta.data[[cluster_col]]))
+
+  # --- substate assignment on the clean population (z-scale calibrated on retained cells) ---
+  z_sub <- zscale_signatures(as.matrix(obj@meta.data[paste0(substate_levels, "_UCell")]))
+  colnames(z_sub) <- substate_levels
+  for (s in substate_levels) obj@meta.data[[paste0(s, "_UCell_z")]] <- z_sub[, s]
+  obj@meta.data[["MHC_APC_UCell_z"]] <-
+    as.numeric(zscale_signatures(as.matrix(obj@meta.data["MHC_APC_UCell"])))
+
+  cl  <- droplevels(factor(obj@meta.data[[cluster_col]]))
+  cmz <- cluster_mean_z(z_sub, cl)
+  cluster_label <- assign_substate(cmz, tol = tol, amb_floor = amb_floor)          # PRIMARY (cluster)
+  lvls <- c(substate_levels, "ambiguous", "unassigned")
+  obj@meta.data[["microglia_substate"]] <- factor(cluster_label[as.character(cl)], levels = lvls)
+  obj@meta.data[["microglia_substate_percell"]] <-                                  # SECONDARY (cell)
+    factor(assign_substate(z_sub, tol = tol, amb_floor = amb_floor), levels = lvls)
+
+  # --- postconditions: labelled-or-bucketed + self-consistent enrichment ---
+  sub <- obj@meta.data[["microglia_substate"]]
+  stopifnot(
+    !anyNA(sub),                                                       # every retained cell bucketed
+    nlevels(cl) == nrow(cmz),                                          # no dropped-cluster ghosts
+    all(c("pca", "harmony", "umap") %in% SeuratObject::Reductions(obj))# reductions survive subset
+  )
+  for (s in intersect(levels(droplevels(sub)), substate_levels)) {     # S-labelled cells score higher on S
+    sc <- obj@meta.data[[paste0(s, "_UCell")]]
+    stopifnot(mean(sc[sub == s]) > mean(sc[sub != s]))
+  }
+
+  obj@misc$microglia_prune <- prune_log
+  obj@misc$substate_provenance <- list(
+    cluster_mean_z = cmz, cluster_label = cluster_label,
+    substate_table = table(genotype = obj$genotype, substate = sub),
+    n_used = attr(ens_sets, "n_used"),
+    thresholds = c(id_floor = id_floor, mglike_floor = mglike_floor, tol = tol, amb_floor = amb_floor),
+    assay = assay, layer = layer
+  )
+  obj
+}

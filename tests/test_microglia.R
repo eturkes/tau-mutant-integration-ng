@@ -5,6 +5,7 @@
 # any compute, plus the fully-deterministic separation helper.
 
 source("R/constants.R")
+source("R/io.R")          # symbols_to_ensembl (marker_sets_to_ensembl depends on it)
 source("R/microglia.R")
 source("tests/helpers.R")
 
@@ -49,5 +50,54 @@ stopifnot(identical(attr(mm2, "markers_used")$A, rn[1]))
 expect_error(marker_mean_by_cluster(obj_m, list(A = c("X", "Y"), B = rn[4:6]),
                                     cluster_col = "microglia_clusters",
                                     assay = "RNA", layer = "counts"), "no present marker")
+
+# --- P1-S2 pure helpers: substate argmax + contaminant prune (gate-independent) -------------
+
+# marker_sets_to_ensembl: map present, drop misses (unmapped OR absent from assay), record n_used
+sm2 <- data.frame(symbol = c("A","B","C","D"), ensembl = c("E1","E2","E3","E4"), stringsAsFactors = FALSE)
+es  <- marker_sets_to_ensembl(list(S1 = c("A","B","Z"), S2 = c("C","D")), sm2,
+                              present_ids = c("E1","E2","E3","E4","E9"))
+stopifnot(identical(unname(es$S1), c("E1","E2")), identical(unname(es$S2), c("E3","E4")),
+          identical(attr(es, "n_used"), c(S1 = "2/3", S2 = "2/2")))
+expect_error(marker_sets_to_ensembl(list(S1 = c("Z","Y")), sm2, c("E1")), "no present ensembl")
+expect_error(marker_sets_to_ensembl(list(S1 = "A"), sm2, present_ids = c("E2","E3")), "no present ensembl")
+
+# zscale_signatures: per-column z (mean 0, sd 1); a zero-variance column -> 0
+zz <- zscale_signatures(matrix(c(1,2,3, 5,5,5), nrow = 3, dimnames = list(NULL, c("v","const"))))
+stopifnot(abs(mean(zz[,"v"])) < 1e-9, abs(sd(zz[,"v"]) - 1) < 1e-9, all(zz[,"const"] == 0),
+          identical(colnames(zz), c("v","const")))
+
+# assign_substate: clear argmax / unassigned (all<=0) / ambiguous (two real & close) / noise runner-up kept
+zm <- rbind(
+  clearDAM = c(Homeostatic = -0.5, DAM =  1.2, IFN = -0.2, Proliferative = -0.3),  # -> DAM
+  allneg   = c(Homeostatic = -0.5, DAM = -0.2, IFN = -0.9, Proliferative = -0.4),  # -> unassigned
+  tie      = c(Homeostatic =  0.55, DAM = 0.50, IFN = -0.2, Proliferative = -0.3), # gap .05<tol, both>floor -> ambiguous
+  noise2nd = c(Homeostatic =  0.40, DAM = 0.05, IFN = -0.2, Proliferative = -0.3)  # runner-up <floor -> Homeostatic
+)
+lab <- assign_substate(zm, tol = 0.10, amb_floor = 0.10)
+stopifnot(identical(unname(lab), c("DAM","unassigned","ambiguous","Homeostatic")),
+          identical(names(lab), rownames(zm)))
+
+# cluster_mean_z: exact per-cluster column means; rows in (dropped-empty) level order
+cmz <- cluster_mean_z(matrix(c(0,2, 4,6, 10,10), ncol = 2, byrow = TRUE,
+                             dimnames = list(NULL, c("p","q"))), c("a","a","b"))
+stopifnot(identical(rownames(cmz), c("a","b")), cmz["a","p"] == 2, cmz["b","q"] == 10)
+
+# flag_contaminant_clusters: drop low-identity OR low-mglike; keep clean
+st <- data.frame(id_med = c(0.30, 0.05, 0.40), mglike_frac = c(0.60, 0.50, 0.20),
+                 row.names = c("keep","lowid","lowmgl"))
+stopifnot(setequal(flag_contaminant_clusters(st, id_floor = 0.15, mglike_floor = 0.30),
+                   c("lowid","lowmgl")),
+          length(flag_contaminant_clusters(st[1, , drop = FALSE])) == 0L)
+
+# annotate_microglia: input guards short-circuit before any UCell compute
+sm3   <- data.frame(symbol = "A", ensembl = "E1", stringsAsFactors = FALSE)
+obj_a <- make_fake_seurat(cells_per = 4L, n_genes = 30L, with_sct = TRUE)
+obj_a$microglia_clusters <- factor(rep(c("c1","c2"), length.out = ncol(obj_a)))
+expect_error(annotate_microglia(list(), sm3), "Seurat")
+expect_error(annotate_microglia(obj_a, sm3, cluster_col = "nope"), "cluster_col")
+expect_error(annotate_microglia(obj_a, "notadf"), "symbol_map")
+expect_error(annotate_microglia(obj_a, sm3,
+             marker_sets = list(Homeostatic = "A", DAM = "A", IFN = "A", Proliferative = "A")), "MHC_APC")
 
 cat("ok - test_microglia\n")

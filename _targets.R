@@ -48,6 +48,10 @@ list(
   # SCT object fine. memory="transient"+gc (global default) release it between targets.
   tar_target(microglia_processed,  reprocess_microglia(microglia_seurat_raw), format = "qs"),
 
+  # S2: UCell substate scoring (identity + Homeostatic/DAM/IFN/Proliferative + MHC_APC aux + contam)
+  # -> drop clear contaminant clusters -> calibrated argmax substate labels on the clean population.
+  tar_target(microglia_annotated,  annotate_microglia(microglia_processed, symbol_map), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

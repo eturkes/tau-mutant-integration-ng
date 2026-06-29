@@ -83,6 +83,35 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   tau_in_nlgf, interaction (factorial 2x2 + batch).
 - State thresholds before applying them; present the axes with no pre-privileged winner.
 
+## snRNAseq microglia annotate (P1-S2, built) -- `R/microglia.R::annotate_microglia` -> `microglia_annotated`
+- UCell scoring: AddModuleScore_UCell(assay="SCT", slot="data", ncores=1) = DETERMINISTIC (rank-based, no RNG);
+  `slot=`layer is GATE-SAFE on Assay5 (no deprecation warn -- verified 0 warnings). All markers map 100% to SCT
+  ensembl rownames. SCT assay = 21333 genes (SCTransform sparsity-filtered from 33683 RNA); subset(cells=)
+  preserves genes (only cells drop). Build 55s/612MB. Pure helpers unit-tested; heavy body smoke-tested live.
+- Marker constants (constants.R) restructured: microglia_identity_markers (pan, state-INDEP QC: Csf1r/C1q/Ctss/
+  Fcrls/Hexb/Tyrobp) -- NEVER use homeostatic markers for "is a microglia" (DAM downregulates P2ry12/Tmem119) +
+  canonical_microglia_markers (Homeostatic / DAM[s1+s2 MERGED, one Apoe-Trem2 programme] / IFN / Proliferative +
+  MHC_APC aux) + microglia_substate_levels (argmax set) + contam_signatures (Oligo/Neuron/Astro).
+- PRUNE rule uses RAW identity-vs-best-contam, NOT z. z-based identity argmax FAILS: ambient oligo/neuron/astro
+  is pervasive background (medians 0.10-0.15) so z-centering destroys the absolute "is this a microglia at all".
+  Drop cluster if id_med<0.15 OR mglike_frac<0.30 (frac cells with raw identity > best raw contam). BOTH
+  thresholds sit in natural GAPS (real micro id_med>=0.158 & mglike>=0.38; contaminants <=0.091 & <=0.24) ->
+  conservative, no over-pruning. Dropped {6,7,8,11} = 2944/26104 (11.3%) -> 23160 retained. Cluster 7 id_med=0
+  (zero identity); 8 = neuron doublets (real id 0.187 BUT neuron 0.30). doublets precomputed all-0 (logged no-op).
+- SUBSTATE: cluster-PRIMARY is authoritative; per-cell secondary is NOISY (z-argmax over-calls sparse IFN/Prolif)
+  -> report cluster-level proportions, not per-cell. z-scale 4 substate sigs on RETAINED cells -> cluster-mean-z
+  argmax; unassigned if best z<=0; ambiguous if top-two both>amb_floor(0.10) AND within tol(0.10) -- amb_floor
+  guards a noise runner-up (cluster 2: weak-homeo 0.12 vs prolif-noise 0.07 -> Homeostatic, not ambiguous).
+  Result Homeo{0,2,5}=11174, DAM{1,3,4}=11189, IFN{9,10}=797, Proliferative 0 clusters (no prolif-dominant
+  cluster -- biologically fine), 0 ambiguous/unassigned.
+- HEADLINE confirmed descriptively (amyloid -> homeostatic->DAM): MAPTKI 3521H/415D -> NLGF_MAPTKI 2641H/4484D ->
+  NLGF_P301S 1612H/5885D (S3 composition tests it; S4 DE the programme).
+- CAVEAT for S3 (genotype-associated QC dropout): cluster 6 (worst QC, dropped) is 86% NLGF_MAPTKI -> prune
+  removes more NLGF_MAPTKI low-quality cells (retained genotype frac 0.176/0.170/0.317/0.337 vs original
+  0.167/0.168/0.337/0.329). Dropped cells are id~0 ARTIFACTS, not DAM -> amyloid->DAM intact; REPORT the
+  asymmetry, never hide it. Full stats in @misc$microglia_prune (qc_rationale, dropped_by_genotype) +
+  $substate_provenance (cluster_mean_z, substate_table, n_used, thresholds).
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

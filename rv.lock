@@ -29,6 +29,17 @@ dependencies = [
 ]
 
 [[packages]]
+name = "BiocNeighbors"
+version = "2.6.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    "Rcpp",
+    "assorthead",
+    "beachmat",
+]
+
+[[packages]]
 name = "BiocParallel"
 version = "1.46.0"
 source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
@@ -441,6 +452,20 @@ dependencies = [
     "Seqinfo",
     { name = "S4Arrays", requirement = "(>= 1.1.1)" },
     { name = "DelayedArray", requirement = "(>= 0.31.12)" },
+]
+
+[[packages]]
+name = "UCell"
+version = "2.16.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    { name = "data.table", requirement = "(>= 1.13.6)" },
+    "Matrix",
+    "BiocParallel",
+    "BiocNeighbors",
+    "SingleCellExperiment",
+    "SummarizedExperiment",
 ]
 
 [[packages]]

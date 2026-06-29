@@ -117,14 +117,19 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   assay.use; future.globals.maxSize raised for SCT; Seurat.warn.umap.uwot=FALSE (else UMAP notice -> tar_meta
   warning -> gate fail). Stale upstream meta shadows (pca1/umap1, SCT_snn_res.0.01) stripped.
 
-- **S2 substate annotation + QC prune** [DEP: UCell].
-  Expand `canonical_microglia_markers` (constants.R) per SOTA marker lists above (+ MHC_APC aux);
-  microglia.R::score_substates (UCell, SCT assay) + label argmax + prune_contaminant_clusters; target
-  `microglia_annotated`. rv add UCell. Unit-test argmax + prune logic on synthetic fixture.
-  ACCEPT: every retained cell labelled OR bucketed ambiguous/unassigned (not force-assigned); per-signature
-  calibration applied; per-substate UCell enrichment asserted (DAM cells high DAM score etc.); contaminant +
-  doublet/ribo-confounded clusters dropped/flagged w/ logged counts+rationale; substate x genotype proportion
-  table; Thrupp attenuation noted; gate green.
+- **S2 substate annotation + QC prune** [DEP: UCell]. **[DONE 2026-06-30]**
+  constants.R restructured (microglia_identity_markers pan-QC + canonical_microglia_markers
+  Homeostatic/DAM/IFN/Proliferative+MHC_APC + microglia_substate_levels + contam_signatures);
+  microglia.R::annotate_microglia (UCell score -> prune -> calibrated argmax) + pure helpers
+  marker_sets_to_ensembl/zscale_signatures/assign_substate/cluster_mean_z/flag_contaminant_clusters; target
+  `microglia_annotated` (612MB). UCell added (BioCsoft). ACCEPT met: every retained cell labelled-or-bucketed
+  (postcondition !anyNA); per-signature z-calibration; per-substate self-enrichment asserted (build-time);
+  contaminant clusters {6,7,8,11}=2944 cells dropped w/ @misc$microglia_prune rationale (id_med<0.15 OR
+  mglike_frac<0.30, thresholds in natural gaps; doublets all-0 no-op); substate x genotype table in
+  $substate_provenance; Thrupp noted (constants+code); gate green. Key finding: amyloid->homeostatic->DAM
+  confirmed descriptively; genotype-associated QC dropout (cluster 6 = 86% NLGF_MAPTKI) carried to S3 caveat.
+  Gotcha: z-based prune FAILS (ambient contam pervasive -> use RAW identity-vs-contam); per-cell substate noisy
+  (cluster-level primary authoritative).
 
 - **S3 composition** [DEP: sccomp(+cmdstanr/CmdStan, HEAVY install) + speckle].
   R/composition.R::test_composition (sccomp + propeller) across 5 contrasts; target `composition_results`.

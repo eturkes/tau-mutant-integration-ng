@@ -24,17 +24,44 @@ contrast_definitions <- list(
   tau_in_nlgf    = c("NLGF_P301S",  "NLGF_MAPTKI")
 )
 
-# Canonical mouse-microglia marker symbols. First 4 lists (Microglia/DAM/IFN/
-# Proliferative) score transcriptional substates via Seurat::AddModuleScore (P1); the 3
-# *_contam lists flag non-microglial contamination for QC purity checks.
+# Pan-microglia identity markers -- state-INDEPENDENT core, expressed across homeostatic AND
+# activated/DAM microglia (Csf1r/C1q complement/Ctss/Fcrls/Hexb/Tyrobp). The QC purity signature
+# (P1-S2): a cluster scoring LOW here is non-microglial contamination. Deliberately DISTINCT from
+# the Homeostatic SUBSTATE below (DAM legitimately downregulates P2ry12/Tmem119) -> homeostatic
+# markers must NEVER be used to test "is this a microglia at all".
+microglia_identity_markers <- c("Csf1r", "C1qa", "C1qb", "C1qc", "Ctss", "Fcrls", "Hexb", "Tyrobp")
+
+# Canonical mouse-microglia substate signatures (P1-S2). UCell rank-based enrichment -> z-scale
+# per signature -> argmax. The 4 substate sets {Homeostatic, DAM, IFN, Proliferative} drive the
+# substate argmax; MHC_APC is an AUXILIARY antigen-presentation axis (scored + reported, NOT
+# argmax'd -- it co-varies with DAM: ARM = DAM + MHC, Sala Frigerio 2019). DAM merges the
+# Trem2-independent (s1) and Trem2-dependent (s2) arms: DAM~MGnD~ARM~WAM is ONE Apoe-Trem2
+# convergent programme, scored broadly so the ~18% snRNA DAM-gene dropout (Thrupp 2020) cannot
+# null it. Symbols -> ensembl via symbol_map at scoring time (assay rownames are ensembl).
 canonical_microglia_markers <- list(
-  Microglia     = c("Cx3cr1", "P2ry12", "Tmem119", "Trem2", "Csf1r", "Hexb"),
-  DAM           = c("Cst7", "Apoe", "Lpl", "Itgax", "Spp1", "Tyrobp"),
-  IFN           = c("Ifit3", "Isg15", "Stat1", "Oasl2"),
-  Proliferative = c("Mki67", "Top2a", "Cenpf"),
-  Oligo_contam  = c("Mbp", "Plp1", "Mog"),
-  Neuron_contam = c("Snap25", "Stmn2", "Rbfox3"),
-  Astro_contam  = c("Aqp4", "Gfap", "Slc1a2")
+  Homeostatic   = c("P2ry12", "P2ry13", "Cx3cr1", "Tmem119", "Hexb", "Sall1",
+                    "Selplg", "Siglech", "Olfml3", "Gpr34"),
+  DAM           = c("Tyrobp", "Apoe", "B2m", "Ctsb", "Ctsd", "Fth1", "Lyz2",          # DAM-s1 (Trem2-indep)
+                    "Trem2", "Cst7", "Lpl", "Cd9", "Itgax", "Clec7a", "Spp1",         # DAM-s2 (Trem2-dep)
+                    "Gpnmb", "Igf1", "Axl", "Cd63"),
+  IFN           = c("Ifit1", "Ifit2", "Ifit3", "Irf7", "Oasl2", "Isg15", "Mx1",
+                    "Ifitm3", "Usp18", "Bst2", "Rsad2", "Stat1"),
+  Proliferative = c("Mki67", "Top2a", "Birc5", "Mcm5", "Stmn1", "Cenpa"),
+  MHC_APC       = c("Cd74", "H2-Aa", "H2-Ab1", "H2-Eb1", "H2-K1", "Tap1", "B2m")
+)
+
+# Substate signatures that drive the cluster/cell ARGMAX (subset of canonical_microglia_markers;
+# MHC_APC stays auxiliary -- scored, never argmax'd).
+microglia_substate_levels <- c("Homeostatic", "DAM", "IFN", "Proliferative")
+
+# Non-microglial contamination signatures (UCell QC; P1-S2 prune_contaminant_clusters). A cluster
+# scoring high here AND low on microglia_identity_markers is dropped. snRNA carries pervasive
+# low-level ambient signal from these lineages -> the prune compares identity-vs-contaminant at
+# the CLUSTER level on absolute (raw) scores; it never thresholds the pervasive per-cell background.
+contam_signatures <- list(
+  Oligo  = c("Mbp", "Plp1", "Mog", "Mobp", "Mag"),
+  Neuron = c("Snap25", "Stmn2", "Rbfox3", "Syt1", "Meg3"),
+  Astro  = c("Aqp4", "Gfap", "Slc1a2", "Slc1a3", "Aldoc")
 )
 
 # Red-blood-cell / haemoglobin markers (mouse). Microglia lack adult haemoglobin, so

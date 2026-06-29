@@ -38,7 +38,11 @@ WITH a power/effect-size stmt (outcome-open), synergy = a rate effect handed to 
 (snRNA under-detects ~18% DAM genes; score, not threshold).
 S1 DONE 2026-06-29: `microglia_processed` (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain 12 clusters @res0.4 ->
 UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif distinct argmax); re-run STABLE
-(observed ARI=1.0, recorded threads); gate green. **NEXT:** S2 substate annotation + QC prune (rv add UCell).
+(observed ARI=1.0, recorded threads); gate green.
+S2 DONE 2026-06-30: `microglia_annotated` (UCell substate scoring -> prune contaminant clusters {6,7,8,11}=2944
+cells -> calibrated cluster-argmax labels; Homeo 11174/DAM 11189/IFN 797, 23160 retained); amyloid->DAM
+confirmed descriptively; gate green. **NEXT:** S3 composition (sccomp + propeller across 5 contrasts; rv add
+sccomp speckle, cmdstanr/CmdStan heavy install).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

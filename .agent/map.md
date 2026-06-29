@@ -41,6 +41,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
       marker_mean_by_cluster (post-Harmony substate-separation check; map symbols->ensembl first) +
       reprocess_thread_env (thread provenance snapshot).
+   + (P1-S2) microglia.R: annotate_microglia (UCell-score identity+substate+aux+contam on SCT data ->
+      drop clear contaminant clusters -> calibrated cluster-argmax substate labels; @misc$microglia_prune +
+      $substate_provenance) ORCHESTRATES pure helpers: marker_sets_to_ensembl (symbol sets->present ensembl,
+      error-on-empty, n_used) | zscale_signatures (per-signature z; zero-var->0) | assign_substate (argmax +
+      ambiguous/unassigned buckets) | cluster_mean_z (per-cluster mean z) | flag_contaminant_clusters
+      (id_med<0.15 OR mglike_frac<0.30). constants.R now carries microglia_identity_markers (pan QC) +
+      canonical_microglia_markers (Homeostatic/DAM/IFN/Proliferative+MHC_APC) + microglia_substate_levels +
+      contam_signatures (Oligo/Neuron/Astro).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -54,6 +62,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        sample_key           <- proteomics_sample_meta(sample_key_file) # tibble 16 x 4 (24M timepoint)
   - P1 microglia core (format="qs"; consumes the snRNAseq modality):
        microglia_processed  <- reprocess_microglia(microglia_seurat_raw)  # SCT+pca+harmony+12 clusters@0.4+umap (687MB)
+       microglia_annotated  <- annotate_microglia(microglia_processed, symbol_map)  # UCell substates + prune {6,7,8,11}; 23160 cells, 612MB
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
