@@ -13,7 +13,7 @@ NLGF_MAPTKI (amyloid alone), NLGF_P301S (amyloid + tau). Design = tau (MAPTKI vs
 P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 
-## Raw data (storage/data/, gitignored + deny-Read; Rscript reads bypass the deny)
+## Raw data (storage/data = symlink -> ../../../Documents/pro/tau-mutant-integration-ng/data = host Documents tree, shared/external copy; gitignored via /storage/* + deny-Read; Rscript reads resolve through it, bypassing the deny)
 - snrnaseq.rds  8.3G  (snRNAseq Seurat object)
 - geomx.rds     22M   (GeoMx WTA spatial, ~91 ROIs)
 - proteomics_nonfiltered_nonnormalised.tsv      15M  (peptide-level)
@@ -53,7 +53,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   comments + code stay exempt (LLM-facing).
 - storage/** + future caches/HTML are gitignored AND deny-Read -> Read/grep/ls on
   them is blocked (the `cat`-deny also bites). Rscript file reads BYPASS the deny
-  matcher: inspect via `Rscript -e 'readRDS(...)' / 'readLines(...)'`.
+  matcher: inspect via `Rscript -e 'readRDS(...)' / 'readLines(...)'`. storage/data is
+  a symlink now -> `git check-ignore` on a path UNDER it fatals (`beyond a symbolic
+  link`); probe `storage/data` itself.
 - Bash deny-gate is static on command text -> a cmd naming a deny-Read path as an
   arg (rm/stat/grep/find-piped) is blocked; use a glob/`find -delete` or runtime
   indirection. `ls`/`wc`/`echo` slip through.
