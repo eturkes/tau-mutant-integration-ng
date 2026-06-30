@@ -316,7 +316,7 @@ appended after glmmtmb_pt_sensitivity, BUILT-VALIDATED — the target built 674K
 (+`trajectory_report` target after trajectory_glmm_sensitivity), _trajectory.qmd (FULL chapter draft, UNRENDERED).
 Each sub-step RESTORES its parked files (`git checkout wip-p2s4-report -- <file>`) → near-mechanical, NO re-derive,
 NO re-read of R/ model files. DELETE the branch after S4b lands. Headline numbers live in memory.md P2-S2b/S3 and are
-INLINE-COMPUTED in the qmd (never hardcoded). Caveat: main HEAD 863cb75 has no trajectory_report code/object (pruned)
+INLINE-COMPUTED in the qmd (never hardcoded). Caveat: main CODE reverted to 863cb75 (restructure docs committed on top -> HEAD 1f8f3f2); no trajectory_report code/object (pruned)
 — restore from the branch.
 
 S4a — Compact extractor + target + test (data layer; pure-R, NO render).
@@ -327,16 +327,29 @@ S4a — Compact extractor + target + test (data layer; pure-R, NO render).
   `trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)` = compact
   extractor reading the 3 COMPACT trajectory targets (NEVER the 612MB Seurat — cheap-render invariant). Returns
   list{cell_frame(genotype/substate/on_lineage/pt_raw/score_axis_pt), interaction(rbind primary+exploratory families,
-  +family col), weighted_top(5-contrast mean_pt rows), decomposition(loadings/L_int/interaction), per_unit,
+  +family col), weighted_top(named 5-contrast weighted top tables; qmd filters mean_pt rows), decomposition(loadings/L_int/interaction), per_unit,
   lineage_per_unit, sensitivity, glmm(the S3 row subset), provenance(dims/root/concordance/loadings/v1/n_perm/seed/
-  versions)}. Fail-loud stopifnot on every input's structure + finite/consistency guards (MIRROR microglia_report_data).
+  versions)}. Fail-loud stopifnot = MIRROR microglia_report_data's bar: guard EVERY nested field the body reads, NOT just the
+  top-level container names (codex: the parked extractor's guards are PARTIAL -> a malformed input false-greens, then
+  fails mid-render). EXTEND the up-front stopifnot to require: the FULL 13-name glmm set {method,term,estimate,se,z,
+  p_value,ci_l,ci_r,re_sd,singular,n_cells,n_units,fail_reason} (the `[c(...)]` subset NA-fills any missing name ->
+  the clearest false-green); `tp$contrasts$weighted$top`; `tp$decomposition$L_int` + `$interaction`; the
+  `microglia_trajectory$per_unit` + `$sensitivity` columns the conditioning/robustness panels read; the provenance
+  names the inline prose pulls (the `mp$...` + `tp$provenance$...` fields assembled into the provenance list). EXTEND
+  the postcondition finite-checks {coef,fdr} -> +{ci_l,ci_r,p_value}; assert the 5 canonical contrasts are present in
+  weighted_top + the irow()-indexed measures are present in interaction$measure. The gate's FRESH trajectory_report
+  build validates no guard false-reds (every required field is one the extractor ALREADY reads -> present on real data).
   Target `trajectory_report` (format="qs") after trajectory_glmm_sensitivity in _targets.R.
   TEST (add to tests/test_trajectory.R): REUSE the microglia_trajectory stub the S2b structural-orchestrator test
-  builds (make_trajectory_cell_frame(jitter>0)); extend it with the per_unit / sensitivity / provenance fields the
+  builds (make_trajectory_cell_frame(jitter>0)); ADD a deterministic `cf$score_axis_pt` (e.g. = pt01) to the fixture cell_frame FIRST (the fixture omits this S1
+  column the extractor reads -> its `score_axis_pt` guard would else fail -- codex), then extend the stub with the
+  per_unit / sensitivity / provenance fields the
   extractor reads → run run_trajectory_progression + glmmtmb_pt_sensitivity on it → trajectory_report_data(...) →
   assert the returned list carries every documented field (+ "progression_cf" in interaction$measure, finite
-  coef/fdr, comp_cf/prog_cf/cross in decomposition$loadings) AND a fail-loud guard fires on a malformed input
-  (drop a required name → expect_error). The extractor is BUILT-VALIDATED → the only NEW work is this test.
+  coef/ci/p/fdr, comp_cf/prog_cf/cross in decomposition$loadings) AND a fail-loud guard fires on a malformed input
+  (drop a now-required name -- e.g. n_cells from the glmm input, or weighted from contrasts -> expect_error). The
+  extractor BUILDS + returns correctly (codex ran it read-only on the real compact targets) -> NEW work = the
+  hardened guards (above) + this test.
   ACCEPTANCE (S4a): extractor + target restored; test passes at warn=2; the gate builds `trajectory_report` FRESH on
   real data (the force-render still renders index.qmd WITHOUT the trajectory chapter — not wired till S4b → the
   unrendered qmd cannot red the gate); map.md += trajectory_report target + trajectory_report_data fn; gate green;
@@ -366,7 +379,9 @@ S4b — Chapter + wiring (report layer; the render-debug half).
   the 5 caveats present; gate green. memory.md += a P2-S4 section (cheap-render invariant for _trajectory.qmd + any
   render gotcha); map.md += _trajectory.qmd include. Commit `trajectory (p2 s4b): trajectory chapter + index wiring +
   microglia pointer`. DELETE branch `wip-p2s4-report`. → CLOSE-OUT (next session = session-prompt CLOSE-OUT mode:
-  adversarial plan review, fold P2 digest → history.md, archive the plan, reset Active plan).
+  adversarial plan review, fold P2 digest → history.md, archive the plan, reset Active plan; + REVISE the roadmap
+  'Cohesive story' finding #2 -- v1 'synergistic acceleration along the trajectory' -> R4.6 re-baseline resolves the
+  synergy as DAM-cell COMPOSITION, not progression -- codex).
 
 ## Reproducibility / risks
 - rproject.toml: `slingshot` (BioCsoft; auto-pulls SingleCellExperiment / princurve / TrajectoryUtils — pure-R

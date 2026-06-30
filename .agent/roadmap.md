@@ -20,7 +20,8 @@ Durable findings mined from v1 (the headline to rebuild around):
    antigen-presentation); microglia-led, corroborated across modalities.
 2. Mutant tau MODULATES the amyloid response (the interaction) - clearest as a
    SYNERGISTIC acceleration along the activation trajectory (v1's one positive,
-   significant orthogonal interaction).
+   significant orthogonal interaction). [P2 R4.6 UPDATE: re-baseline resolves this
+   synergy as DAM-cell COMPOSITION, not progression/acceleration; finalise the spine wording at P2 close.]
 3. Mechanism converges on Gsk3b / Myc signalling; tau attenuates amyloid-driven NF-kB.
 4. Secondary axis: amyloid-linked synaptic suppression + TREM2 / APP clearance.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -210,7 +211,7 @@ S2b + S3 DONE; next open = S4a (S4 split into S4a/S4b + the done work PARKED on 
   per-cell mean_pt analogue -> corroborates the position shift, NOT progression; S2b Kitagawa stays load-bearing).
   Full gate green (39 tests, 22 targets, render clean). Next open = S4 (report + integration) -> then CLOSE-OUT.
 - 2026-07-01 P2-S4 SPLIT -> S4a + S4b (no code shipped on main; the done work PARKED on branch wip-p2s4-report,
-  main reverted to 863cb75, orphan trajectory_report object pruned, gate green on clean main). The combined S4
+  main CODE reverted to 863cb75 [restructure docs committed on top -> HEAD 1f8f3f2], orphan trajectory_report object pruned, gate green on clean main). The combined S4
   (trajectory_report_data extractor + trajectory_report target + _trajectory.qmd chapter + index wiring +
   _microglia.qmd pointer + test + render-debug + gate + docs + commit + close-out) overflowed one window. PARKED
   (built-validated pre-revert): the extractor + target (R/trajectory.R + _targets.R; the target built 674KB, all
