@@ -97,7 +97,7 @@ fit one window — see ledger.)
   sccomp + propeller; normalisation = SCT-v2 (v1 continuity, user choice over SOTA logNorm lean). Locked
   defaults: UCell scoring, Harmony batch-only (sex aliased), 4 argmax substates + aux MHC/APC, voomQW +
   robust eBayes + stageR. Key reframing from mining: the tau x amyloid interaction is STATIC-NULL (v1 matched-
-  power null even single-cell) -> the synergy is a progression-RATE effect, deferred to P2 (trajectory); P1
+  power null even single-cell) -> the synergy is a position/extent effect (rate only under the age-matched snapshot assumption), deferred to P2 (trajectory); P1
   nails the robust amyloid->DAM headline + substates + composition. Carry Thrupp 2020 (snRNA under-detects
   ~18% DAM activation genes). 5 steps S1-S5; next = S1 reprocess+cluster.
 - 2026-06-29 P1-S1 DONE -> `microglia_processed` target + `R/microglia.R` (reprocess_microglia +
@@ -139,8 +139,8 @@ fit one window — see ledger.)
   fragile-internals); general-purpose swept 2026 SOTA (condiments/tradeSeq pseudoreplicate + no factorial
   interaction interface -> descriptive only; per-replicate-summary + factorial = the replication-correct
   inferential route; glmmTMB beta-GLMM = on-lock per-cell sensitivity, TMB not Stan). CONVERGED. Decision gate ->
-  LEAN ON-LOCK (rejected +destiny DPT, +off-lock Lamian). Entire stack pure-R from the pinned snapshot. Plan = 3
-  steps; next = EXECUTE S1.
+  LEAN ON-LOCK (rejected +destiny DPT, +off-lock Lamian). Full stack on-lock from the pinned snapshot (S2 pure-R
+  primary; S3 source-compiled glmmTMB/TMB). Plan = 3 steps (later split to 4; see below). next = EXECUTE S1.
 - 2026-06-30 P2-S1 DONE -> `R/trajectory.R` (build_activation_trajectory + pure helpers) + target
   `microglia_trajectory` + `tests/test_trajectory.R` + rproject.toml slingshot. slingshot on harmony[1:15], FORCED
   single Homeostatic->DAM lineage (2 substate super-clusters -> clean by construction), IFN/Prolif omitted

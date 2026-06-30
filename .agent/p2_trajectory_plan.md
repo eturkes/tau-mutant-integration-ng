@@ -112,9 +112,12 @@ edits. The weighted-limma summary + Kitagawa decomposition is the standalone pri
 S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new dependency).
   Append to `R/trajectory.R` (after build_activation_trajectory). All non-base calls namespace-qualified
   (stats::, limma::). df.residual = 16 - 7 = 9. Contracts:
-  - `derive_batch(genotype_batch, genotype)`: batch = sub(paste0("^", genotype, "_"), "", genotype_batch); assert
-    nzchar(batch) AND identical(paste(genotype, batch, sep = "_"), genotype_batch) (round-trip, FAIL-LOUD --
-    genotypes contain "_" so a naive strsplit is wrong). S1's cell_frame omits batch; deriving it here avoids
+  - `derive_batch(genotype_batch, genotype)` (VECTORISED; base sub() does NOT vectorise over a length>1 pattern ->
+    warns + uses pattern[1] only -> mis-extracts under warn=2, so use literal-prefix string ops, NOT regex):
+    prefix = paste0(as.character(genotype), "_"); assert all(startsWith(genotype_batch, prefix)); batch =
+    substring(genotype_batch, nchar(prefix) + 1L); assert all(nzchar(batch)) AND identical(paste(genotype, batch,
+    sep = "_"), genotype_batch) (round-trip, FAIL-LOUD -- genotypes contain "_" so a naive strsplit is wrong; a
+    literal prefix also dodges regex-metachar pitfalls). S1's cell_frame omits batch; deriving it here avoids
     re-touching the built microglia_trajectory target. Reused by pseudotime_per_replicate + glmmtmb_pt_sensitivity.
   - `pseudotime_per_replicate(cell_frame, lineage_states, dam_state = "DAM", min_within = 10L)`: filter to
     is.finite(pt_raw) (on-lineage); assert substate %in% lineage_states + validate_trajectory_units(unit,geno);
@@ -135,7 +138,8 @@ S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new d
     coef -/+ stats::qt(1-(1-conf)/2, df)*se. Returns df {measure, contrast, coef, se, t, df, p_value, ci_l, ci_r}.
   - `fit_trajectory_contrasts(measure_mat, design, contrasts, weights = NULL, conf_level = 0.95)`: assert
     colnames(measure_mat)==rownames(design), rownames(contrasts)==colnames(design), full-rank, all finite;
-    weights (if given) a matrix matching dim(measure_mat), finite & > 0. limma::lmFit(measure_mat, design,
+    weights (if given) a matrix, identical(dimnames(weights), dimnames(measure_mat)) (limma consumes weights BY
+    POSITION -> assert dimnames match, NOT just dims, to catch row/unit drift), finite & > 0. limma::lmFit(measure_mat, design,
     weights) -> limma::contrasts.fit -> per-contrast ordinary_t_table. Returns list(fit, top). The `interaction`
     contrast == the `tau_nlgf` coefficient (assert in test vs manual OLS). Do NOT route through `fit_limma_log`
     (that = limma-TREND + eBayes for MANY log-intensity features, incoherent for a handful of heterogeneous
@@ -157,18 +161,22 @@ S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new d
     sensitivity. Returns list(channels, fit, L_int, loadings, interaction = fit$top$interaction, recon_resid_max,
     balanced).
   - `freedman_lane_interaction(y, design, int_col = "tau_nlgf", weights = NULL, n_perm = 2000L, seed = 42L)`:
-    WLS = OLS on weight-scaled data: r = sqrt(weights, or 1 if NULL); yw = r*y, Xw = r*design; t_obs =
-    interaction-coef/SE from lm.fit(Xw, yw) (resid df = n - ncol(design)). REDUCED Xw0 = Xw minus int_col ->
-    weighted fitted fw0 + residuals ew0 (homoscedastic on the WEIGHTED scale -> exchangeable; permuting RAW
-    residuals would NOT be). Each perm: yw* = fw0 + ew0[sample(n)] -> t* = interaction-t from lm.fit(Xw, yw*).
-    RNG-PURE (save + restore .Random.seed & RNGkind via on.exit; set.seed(seed) inside). perm_p =
+    WLS = OLS on weight-scaled data: r = sqrt(weights, or 1 if NULL); yw = r*y, Xw = r*design. interaction-t helper
+    int_t(yv) (FULL model; Xw fixed across perms -> precompute XtXinv = chol2inv(qr.R(qr(Xw))) ONCE; Xw full-rank
+    -> no pivot -> column order preserved): f = lm.fit(Xw, yv); p = ncol(Xw); df = nrow(Xw) - p; sigma2 =
+    sum(f$residuals^2)/df; j = match(int_col, colnames(design)); t = f$coefficients[j] / sqrt(sigma2 * XtXinv[j, j]).
+    t_obs = int_t(yw). REDUCED Xw0 = Xw minus int_col -> weighted fitted fw0 + residuals ew0 (homoscedastic on the
+    WEIGHTED scale -> exchangeable; permuting RAW residuals would NOT be). Each perm: yw* = fw0 + ew0[sample(n)] ->
+    t* = int_t(yw*). RNG-PURE: on.exit save+restore .Random.seed & RNGkind; set.seed(seed, kind = "Mersenne-Twister",
+    normal.kind = "Inversion", sample.kind = "Rejection") inside (pin all 3 kinds, matching S1). perm_p =
     (1 + sum(|t*| >= |t_obs|)) / (n_perm + 1). Returns list(t_obs, n_perm, perm_p).
   - `run_trajectory_progression(microglia_trajectory, min_within = 10L, n_perm = 2000L, seed = 42L)`: per_rep =
     pseudotime_per_replicate(cell_frame, lineage_states from provenance$lineage_substates) -> meta =
     per_unit[, c("genotype","batch")] (rownames = genotype_batch; assert 4x4 balanced) -> factorial_design(meta)
     (batch now present -> 9 resid df). w_overall = n_cells/sd_pt^2. DIRECT measures {mean_pt, median_pt, q90,
-    within_<used>} (used = states NOT in within_skip) -> M = t(per_unit[, direct_rows]); per-endpoint weight
-    matrix W (rows = measures, cols = units): mean_pt = n_cells/sd_pt^2; within_<state> =
+    within_<used>} (used = states NOT in within_skip) -> M = t(per_unit[, direct_rows]) (dimnames = direct_rows x
+    units); per-endpoint weight matrix W built with IDENTICAL dimnames(W) == dimnames(M) (measures x units, same
+    order -- limma weights apply BY POSITION; assert before fitting): mean_pt = n_cells/sd_pt^2; within_<state> =
     cnt[state,]/per_rep$sd[state,]^2 (state-specific inverse-variance); median_pt & q90 = n_cells/sd_pt^2
     (overall-precision proxy -- quantile sampling variance unmodelled, EXPLORATORY) -> weighted fit + an OLS
     (weights = NULL) sensitivity. BOUNDED frac_past -> rbind(frac_past_logit = log((x+0.5)/(n_cells-x+0.5)),
@@ -187,17 +195,20 @@ S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new d
   batch grid; genotype_batch = paste(genotype, sprintf("batch%02d", 1:4), sep = "_") (so derive_batch round-trips);
   each unit = per_state Homeostatic + (per_state + dam_extra*(genotype=="NLGF_P301S")) DAM cells -- the extra DAM
   mass lands ONLY in the double-mutant interaction cell, a genuine tau:amyloid COMPOSITION interaction (NOT an
-  amyloid main effect). pt_raw = 1+adv[g]+ramp (Homeostatic) / 4+adv[g]+ramp (DAM), ramp = (seq_len(n)/n)*0.3;
+  amyloid main effect). pt_raw = 1+adv[g]+ramp (Homeostatic) / 4+adv[g]+ramp (DAM), ramp = ((seq_len(n)-0.5)/n)*0.3
+  (MIDPOINT rule -> block mean EXACTLY 0.15 for ANY block size n, so an unequal DAM count does NOT shift the
+  within-state mean -> the pure-composition fixture is EXACTLY pure, prog/cross interaction 0 not merely approximate);
   pt01 = squeeze_unit_interval(pt_raw); on_lineage = TRUE. DEFAULT adv encodes a PURE within-state interaction =
-  (1.6-0.2)-(1.0-0) = 0.4 with dam_extra=0 -> CONSTANT composition -> ~100% progression loading; FLAT adv (all 0)
-  + dam_extra>0 -> PURE composition interaction (prog loading ~0, comp ~1). Cols {cell, genotype_batch, genotype,
+  (1.6-0.2)-(1.0-0) = 0.4 with dam_extra=0 -> CONSTANT composition -> 100% progression loading; FLAT adv (all 0)
+  + dam_extra>0 -> PURE composition interaction (prog loading 0, comp 1, EXACT under the midpoint ramp). Cols {cell, genotype_batch, genotype,
   substate, on_lineage, pt_raw, pt01} (NO batch col -> exercises derive_batch, matching the real cell_frame).
   Tests on it: per-rep shapes + floor skip (min_within=20, per_state=8 -> all within_skip
   TRUE); ordinary_t/fit_trajectory_contrasts vs manual OLS (t matches; interaction == tau_nlgf coef); kitagawa
   identity + pure-composition / pure-progression; decomposition reconstruction (recon_resid_max < 1e-8) +
   loadings on the pure-progression fixture (DEFAULT adv, per_state=8: prog loading ~ 1, comp ~ 0, interaction
-  coef ~ 0.4) AND the pure-composition fixture (FLAT adv, dam_extra>0: comp loading ~ 1, prog ~ 0); derive_batch
-  round-trip + fail-loud on a corrupted genotype_batch;
+  coef ~ 0.4) AND the pure-composition fixture (FLAT adv, dam_extra>0: comp loading 1, prog 0, tol 1e-8 -- exact
+  via the midpoint ramp); derive_batch round-trip + fail-loud on a corrupted genotype_batch + a VECTOR call
+  (>1 genotype, exercises the vectorised path);
   Freedman-Lane signal (perm_p < 0.05), null (design-orthogonal residual -> perm_p > 0.9), determinism, RNG-
   purity (runif sequence unchanged across a call).
   PRE-REGISTER (BEFORE fitting): PRIMARY = progression_cf (Kitagawa) + within_homeostatic (composition-robust);
@@ -222,7 +233,10 @@ S3 — glmmTMB per-cell sensitivity arm (supportive; isolates the new-dependency
   the rank-normal LMM if the fit is NULL (try-error) OR !fit$sdr$pdHess OR fit$fit$convergence != 0 OR any
   non-finite est/se OR singular. RANK-NORMAL LMM (on-lock, SAME package): rn = stats::qnorm((rank(pt01)-0.5)/
   length(pt01)); glmmTMB::glmmTMB(rn ~ tau*amyloid + batch + (1|unit), family = stats::gaussian()); extract the
-  same interaction row; method = "lmm_ranknorm" (else "glmmTMB_beta"). The limma-summary primary stands alone --
+  same interaction row; method = "lmm_ranknorm" (else "glmmTMB_beta"). HEALTH-CHECK the fallback LMM with the SAME
+  battery (NULL / !pdHess / convergence != 0 / non-finite est|se / singular); if BOTH the beta GLMM AND the
+  rank-normal LMM fail, method = "failed" with estimate/se/z/p_value/ci_l/ci_r = NA_real_ + the captured
+  warnings/messages (RECORD a failed-supportive result, NEVER error). The limma-summary primary stands alone --
   the arm degrades gracefully, never blocks. Returns list(method, term, estimate, se,
   z, p_value, ci_l, ci_r, re_sd, singular, n_cells, warnings, messages). Target `trajectory_glmm_sensitivity` =
   glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame) -- reads the COMPACT per-cell frame, INDEPENDENT of
@@ -230,9 +244,9 @@ S3 — glmmTMB per-cell sensitivity arm (supportive; isolates the new-dependency
   trajectory_glmm_sensitivity on the real microglia_trajectory (the gate force-invalidates ONLY `report`, so
   build this target explicitly) to confirm the glmmTMB arm is gate-clean (warnings captured; no tar_meta/render-
   log red). Test: returns a recorded tau:amyloid effect on the synthetic frame; the degrade path is exercised.
-  ACCEPTANCE (outcome-INDEPENDENT): glmmTMB (or the degraded LMM) COMPLETES with `tau:amyloid` effect/CI/p
-  RECORDED + FLAGGED supportive (concordance AND discordance both fine, neither required); no gate red from the
-  captured warnings; gate green.
+  ACCEPTANCE (outcome-INDEPENDENT): glmmTMB (or the degraded LMM, or a RECORDED method="failed" if both degrade)
+  COMPLETES with `tau:amyloid` effect/CI/p RECORDED + FLAGGED supportive (concordance AND discordance both fine,
+  neither required); no gate red from the captured warnings; gate green.
 
 S4 — Report + integration.
   `_trajectory.qmd` (trajectory UMAP x pseudotime; pseudotime density/ridge by genotype; interaction FOREST

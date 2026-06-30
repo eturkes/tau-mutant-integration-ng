@@ -73,8 +73,8 @@ Below = decisions + rejected alternatives.
   genes BUT 123 stageR-confirmed (real |logFC|>0.5, median ~1.1; sub-threshold standalone per-contrast FDR, min
   adj.P 0.17) + MDE@80%=0.92 log2FC -> under-powered NOT absent (BACKED by the power
   statement, never asserted from "0 genes"; absence of evidence != evidence of absence). Static compositional
-  synergy on DAM (propeller sig, sccomp borderline) -> the tau x amyloid synergy is a progression-RATE effect
-  handed to P2 (trajectory). Thrupp 2020 caveat carried throughout (snRNA under-detects ~18% DAM genes -> SCORE
+  synergy on DAM (propeller sig, sccomp borderline) -> the tau x amyloid synergy handed to P2 (trajectory) as a
+  position/extent effect (progression-rate reading only under the age-matched-snapshot assumption). Thrupp 2020 caveat carried throughout (snRNA under-detects ~18% DAM genes -> SCORE
   not threshold; DE on RAW counts).
 - REPORT: `_microglia.qmd` reads a COMPACT `microglia_report` target (not the 612MB Seurat) -> the gate's force-
   render stays cheap. Prose INLINE-COMPUTED from targets (never hardcoded). Two codex reviews hardened S3
@@ -84,8 +84,9 @@ Below = decisions + rejected alternatives.
 Verification (honest): every step smoke-tested vs LIVE data then full `scripts/check.sh` green end-to-end (S3 +
 S4 incl. a FORCED fresh rebuild of the heavy target); S5 report renders 0-warning with the microglia chapter.
 Re-baselined on R 4.6 (NOT v1's locked 18/12/55 margins). The interaction's "under-powered not absent" is the
-defensible call -- the static null is reported WITH effect-size/MDE, the synergy deferred to P2 as a rate effect.
+defensible call -- the static null is reported WITH effect-size/MDE, the synergy deferred to P2 as a position/extent
+effect (rate only under the age-matched-snapshot assumption).
 
-Deferred -> P2+: activation pseudotime + interaction-as-progression-rate (P2); TF/kinase mechanism, Gsk3b/Myc,
+Deferred -> P2+: activation pseudotime + interaction-as-position/extent (P2); TF/kinase mechanism, Gsk3b/Myc,
 NF-kB attenuation (P3); GeoMx spatial + proteome + phospho DE, CCC, integrated divergence (P4); lean synthesis
 report (P5).
