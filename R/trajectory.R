@@ -24,7 +24,7 @@ score_axis_pseudotime <- function(dam_score, homeo_score) {
 }
 
 # Smithson-Verkuilen squeeze of a pseudotime vector into the OPEN interval (0,1) for a beta
-# GLMM (P2-S2). Two steps: (1) min-max scale finite values to [0,1]; (2) y' = (y*(n-1)+0.5)/n
+# GLMM (P2-S3). Two steps: (1) min-max scale finite values to [0,1]; (2) y' = (y*(n-1)+0.5)/n
 # with n = number of finite obs -> nudges the 0/1 endpoints inward (~0.5/n) so beta's
 # unbounded logit stays finite. NA preserved as NA (off-lineage cells). Degenerate constant
 # input -> all 0.5. Pure.

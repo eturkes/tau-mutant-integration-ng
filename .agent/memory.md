@@ -274,7 +274,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (low single-digit %, exact in per_unit table) -> conditioning on H->D barely skews interaction; report, never hide. (16 units)
   stores n_cells / n_on_lineage / omitted_frac.
 - score_axis_pt = RAW DAM_UCell - Homeostatic_UCell (assumption-light: both UCell [0,1] rank scores, no population
-  z-centring). pt01 = Smithson-Verkuilen squeeze (min-max scale -> (y*(n-1)+0.5)/n) into the OPEN (0,1) for the S2
+  z-centring). pt01 = Smithson-Verkuilen squeeze (min-max scale -> (y*(n-1)+0.5)/n) into the OPEN (0,1) for the S3
   beta GLMM; off-lineage NA preserved. Target = COMPACT list {cell_frame 23160x10, per_unit, lineage,
   sensitivity df, provenance(versions/seed/RNG/threads + dims/rho/dam_pt_rho/omitted)}; serialized ~0.8MB / in-memory
   ~3.3MB -- NOT the 612MB Seurat (build
@@ -285,7 +285,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   harmony clusters are full-rank, no issue). run_slingshot_lineage extracts the DAM-TERMINAL lineage (>2 clusters may
   branch -> pick the terminal-in-DAM lineage, longest if tied; off-lineage cells keep slingshot's NA).
 - rproject.toml: slingshot (BioCsoft; pulled CRAN princurve [needs Rcpp] + Bioc TrajectoryUtils, SingleCellExperiment already
-  present). glmmTMB (per-cell GLMM sensitivity) deferred to P2-S2 where it is actually loaded (ABI-warning handling
+  present). glmmTMB (per-cell GLMM sensitivity) deferred to P2-S3 where it is actually loaded (ABI-warning handling
   belongs with the live load test). Pure helpers UNIT-tested (tests/test_trajectory.R, warn=2 clean) on
   make_trajectory_embedding (helpers.R: 2-cluster + with_ifn branch) + validate_trajectory_units metadata guards;
   orchestrator covered by the gate tar_make (full-Seurat unit test DEFERRED). run_slingshot_lineage is RNG-PURE

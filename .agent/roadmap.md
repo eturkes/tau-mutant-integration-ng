@@ -33,8 +33,9 @@ homeostatic->DAM activation trajectory. P1 ESTABLISHED a static COMPOSITIONAL sy
 interaction sig; DE under-powered) -> P2 isolates the PROGRESSION channel BEYOND that composition shift. Stack
 DECIDED = LEAN ON-LOCK (user gate): slingshot (harmony 15-dim) + UCell score-axis concordance anchor; weighted
 per-replicate (16-unit) pseudotime-summary interaction through EXISTING factorial_design (no eBayes; 9 resid
-df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per-cell sensitivity (supportive). ALL pure-R from the pinned snapshot
-(no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
+df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per-cell sensitivity (supportive).
+S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (S3 = source-compiled glmmTMB/TMB;
+no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 4 steps (S1 trajectory+pseudotime -> S2 interaction+Kitagawa-decomposition [pure-R primary] -> S3 glmmTMB
 per-cell sensitivity [new-dep arm] -> S4 report). S1 DONE; next open = S2. (S2 split out S3 on 2026-06-30 to
@@ -48,7 +49,8 @@ fit one window — see ledger.)
   IFN / proliferative, UCell), composition (propeller primary + sccomp cross-check), pseudobulk DE across
   contrasts -> the robust amyloid->DAM activation programme (3-way confirmed: composition + DE + UCell score).
   Interaction = no large-effect DE, under-powered NOT absent (reported w/ MDE/CI + 123 stageR-confirmed, real |logFC| but sub-threshold per-contrast FDR) ->
-  synergy = rate effect to P2. Digest -> history.md.
+  synergy = trajectory position/extent effect to P2 (rate interpretation only under the age-matched snapshot
+  assumption). Digest -> history.md.
 - P2 Interaction trajectory [OPENED 2026-06-30 -> p2_trajectory_plan.md]: activation pseudotime
   (homeostatic->DAM); test amyloid advance + tau x amyloid progression synergy, decomposed composition vs
   progression.
