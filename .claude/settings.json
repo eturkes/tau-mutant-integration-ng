@@ -9,6 +9,8 @@
       "Read(./_report/**)",
       "Read(./_freeze/**)",
       "Read(./.quarto/**)",
+      "Read(./.serena/cache/**)",
+      "Read(./.tokensave/**)",
       "Read(./storage/data/**)",
       "Read(./storage/cache/**)",
       "Read(./storage/logs/**)",
