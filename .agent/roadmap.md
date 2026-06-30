@@ -38,7 +38,7 @@ S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (
 no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 5 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
-glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 DONE; next open = S2a. (S2 split out S3, then S2
+glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 + S2a DONE; next open = S2b. (S2 split out S3, then S2
 itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -172,3 +172,11 @@ itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
   top = named-list-by-contrast; pivot-free FL chol2inv(chol(crossprod)); per-endpoint FL weights specified; structural
   orchestrator test on a non-additive fixture jitter added). Core math re-verified CORRECT (Kitagawa identity,
   const-annihilation under weighted treatment coding, ordinary-t, FL null/signal, midpoint ramp). Next open = S2a.
+- 2026-06-30 P2-S2a DONE -> `R/trajectory.R` +6 estimation fns (`derive_batch`, `pseudotime_per_replicate`,
+  `ordinary_t_table`, `fit_trajectory_contrasts`, `kitagawa_channels`, `decompose_progression_vs_composition`) +
+  `within_state_col` col-name sanitizer; `tests/helpers.R` `make_trajectory_cell_frame` (midpoint-ramp exact-pure
+  fixture, default=pure-progression / flat-adv+dam_extra=pure-composition); `tests/test_trajectory.R` +5 groups.
+  Kitagawa identity + intercept-free interaction-contrast reconstruction EXACT (<1e-8, ONE shared per-unit weight
+  vector across the 4 channel-rows). 2 gate gotchas fixed -> memory.md (limma drops the 1-row coef/stdev.unscaled
+  rowname; tapply over a single factor returns a non-conformable 1-D array). NO target/wiring (pure fns). Gate green.
+  Next open = S2b.

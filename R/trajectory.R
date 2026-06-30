@@ -281,3 +281,212 @@ build_activation_trajectory <- function(seurat_obj,
   list(cell_frame = cell_frame, per_unit = per_unit,
        lineage = lineage, sensitivity = sensitivity, provenance = prov)
 }
+
+# ============================================================================================
+# P2-S2a: per-replicate summary + contrast fit + Kitagawa decomposition (estimation core).
+# Collapse per-cell pseudotime to the 16 genotype_batch replicate summaries, then run the 2x2
+# factorial interaction as the TRAJECTORY ANALOGUE of the pseudobulk DE -- reuse factorial_design
+# + its 5 canonical contrasts (ordinary t at 16 - 7 = 9 residual df, NO eBayes: a handful of
+# heterogeneous pseudotime endpoints, not many shrinkable features). The 3-channel Kitagawa /
+# Oaxaca shift-share (composition / progression / cross) splits the interaction EXACTLY on the
+# additive pt_raw scale. Pure + deterministic-fixture-testable; NO target here (S2b wires it).
+# All non-base calls namespace-qualified.
+
+# ONE within-state column sanitizer: S2a builds the within_<state> columns, S2b reads them back
+# by the SAME rule -> never hand-case the state label (a verbatim-cased lookup silently misses).
+within_state_col <- function(state) paste0("within_", tolower(state))
+
+# Extract the batch label from a genotype_batch id, VECTORISED over its length. Genotypes
+# themselves contain "_" (e.g. NLGF_P301S) -> a naive strsplit/regex on "_" mis-splits, and base
+# sub() does NOT vectorise over a length>1 pattern (warns + uses pattern[1] -> wrong under
+# warn=2). Strip the per-element literal "<genotype>_" prefix instead, then round-trip ASSERT.
+derive_batch <- function(genotype_batch, genotype) {
+  stopifnot(is.character(genotype_batch),
+            length(genotype_batch) == length(genotype))
+  geno   <- as.character(genotype)
+  prefix <- paste0(geno, "_")                              # per-element literal prefix
+  stopifnot(all(startsWith(genotype_batch, prefix)))
+  batch <- substring(genotype_batch, nchar(prefix) + 1L)   # vectorised over text + start
+  stopifnot(all(nzchar(batch)),
+            identical(paste(geno, batch, sep = "_"), genotype_batch))  # round-trip, fail loud
+  batch
+}
+
+# Collapse on-lineage per-cell pseudotime to per-replicate (genotype_batch) summaries + the
+# state x unit composition (pi) and within-state mean (mu) matrices the Kitagawa decomposition
+# consumes. Filters to on-lineage cells (finite pt_raw); asserts every cell is in a lineage state
+# + the per-unit metadata is clean. dam_onset (pooled DAM median) is PRE-DECLARED -> frac_past =
+# the only genuinely [0,1] measure. within_<state> per-unit means stay on the raw pt scale
+# (UNtransformed) so they share additive units with the Kitagawa progression channel. within_skip
+# flags a state whose smallest unit count is below the floor (S2b drops its within-state measure).
+# Pure.
+pseudotime_per_replicate <- function(cell_frame, lineage_states, dam_state = "DAM",
+                                     min_within = 10L) {
+  stopifnot(is.data.frame(cell_frame),
+            all(c("genotype_batch", "genotype", "substate", "pt_raw") %in% names(cell_frame)),
+            is.character(lineage_states), dam_state %in% lineage_states)
+  cf   <- cell_frame[is.finite(cell_frame$pt_raw), , drop = FALSE]   # on-lineage cells
+  sub  <- as.character(cf$substate)
+  unit <- as.character(cf$genotype_batch)
+  geno <- as.character(cf$genotype)
+  stopifnot(all(sub %in% lineage_states))                  # on-lineage cells are all lineage states
+  validate_trajectory_units(unit, geno)                    # one geno/unit, geno in levels, no blank unit
+
+  states <- lineage_states
+  units  <- sort(unique(unit), method = "radix")           # locale-independent reproducible order
+  f_state <- factor(sub,  levels = states)
+  f_unit  <- factor(unit, levels = units)
+
+  cnt <- table(f_state, f_unit)                            # state x unit counts
+  cnt <- matrix(as.integer(cnt), nrow = length(states), ncol = length(units),
+                dimnames = list(states, units))
+  stopifnot(all(cnt >= 1L))                                # state present in every unit (Kitagawa needs mu_su)
+
+  pi_mat <- sweep(cnt, 2, colSums(cnt), "/")               # column-normalised composition
+  mu_mat <- tapply(cf$pt_raw, list(f_state, f_unit), mean)
+  sd_mat <- tapply(cf$pt_raw, list(f_state, f_unit), stats::sd)
+  dimnames(mu_mat) <- list(states, units)                  # pin identical dimnames (Kitagawa asserts it)
+  dimnames(sd_mat) <- list(states, units)
+  pi_bar <- rowSums(cnt) / sum(cnt)                        # CELL-weighted pooled composition
+  # per-state pooled mean (states order). as.numeric STRIPS tapply's 1-D `dim` attribute: a 1-D
+  # array * matrix is "non-conformable" (both carry dims), whereas a plain vector recycles.
+  mu_bar <- stats::setNames(as.numeric(tapply(cf$pt_raw, f_state, mean)[states]), states)
+  within_skip <- apply(cnt, 1, function(r) any(r < min_within))
+
+  dam_onset <- stats::median(cf$pt_raw[sub == dam_state])  # PRE-DECLARED progression landmark
+
+  geno_by_unit  <- vapply(units, function(u) geno[unit == u][1L], character(1))
+  per_unit <- data.frame(
+    genotype_batch = units,
+    genotype  = geno_by_unit,
+    batch     = derive_batch(units, geno_by_unit),
+    n_cells   = as.integer(colSums(cnt)),
+    sd_pt     = as.numeric(tapply(cf$pt_raw, f_unit, stats::sd)),
+    mean_pt   = as.numeric(tapply(cf$pt_raw, f_unit, mean)),
+    median_pt = as.numeric(tapply(cf$pt_raw, f_unit, stats::median)),
+    q90       = as.numeric(tapply(cf$pt_raw, f_unit,
+                                  function(v) stats::quantile(v, 0.9, names = FALSE))),
+    frac_past = as.numeric(tapply(cf$pt_raw, f_unit, function(v) mean(v > dam_onset))),
+    row.names = NULL, stringsAsFactors = FALSE, check.names = FALSE)
+  for (s in states) per_unit[[within_state_col(s)]] <- as.numeric(mu_mat[s, units])
+
+  list(per_unit = per_unit, states = states, units = units, counts = cnt,
+       pi = pi_mat, mu = mu_mat, sd = sd_mat, pi_bar = pi_bar, mu_bar = mu_bar,
+       dam_onset = dam_onset, within_skip = within_skip, min_within = min_within)
+}
+
+# Ordinary (UN-moderated) t table for one contrast of a contrasts.fit'd limma fit. topTable
+# REQUIRES eBayes -> compute the ordinary t by hand (se = sigma * stdev.unscaled, df = residual
+# df). For a handful of heterogeneous pseudotime endpoints the moderated/shrunk variance is
+# incoherent -> plain OLS t at 9 df. Returns one row per measure (fit feature). Pure.
+ordinary_t_table <- function(fit, contrast_name, conf_level = 0.95) {
+  stopifnot(contrast_name %in% colnames(fit$coefficients),
+            length(conf_level) == 1L, conf_level > 0, conf_level < 1)
+  coef <- fit$coefficients[, contrast_name]
+  se   <- fit$sigma * fit$stdev.unscaled[, contrast_name]
+  df   <- fit$df.residual
+  t    <- coef / se
+  q    <- stats::qt(1 - (1 - conf_level) / 2, df)
+  data.frame(
+    measure = rownames(fit$coefficients), contrast = contrast_name,
+    coef = coef, se = se, t = t, df = df,
+    p_value = 2 * stats::pt(-abs(t), df), ci_l = coef - q * se, ci_r = coef + q * se,
+    row.names = NULL, stringsAsFactors = FALSE)
+}
+
+# Fit a measures x units matrix against the factorial design + 5 contrasts (ordinary t, NO
+# eBayes). limma consumes weights BY POSITION -> assert dimnames match (not just dims) to catch
+# row/unit drift. Returns list(fit = contrasts.fit object, top = NAMED-by-contrast list of
+# ordinary_t_tables) so top$interaction AND fit$coefficients[, "interaction"] both resolve
+# downstream. Do NOT route through fit_limma_log (limma-TREND + eBayes, incoherent here). Pure.
+fit_trajectory_contrasts <- function(measure_mat, design, contrasts, weights = NULL,
+                                     conf_level = 0.95) {
+  stopifnot(is.matrix(measure_mat), !is.null(rownames(measure_mat)),
+            identical(colnames(measure_mat), rownames(design)),
+            identical(rownames(contrasts), colnames(design)),
+            qr(design)$rank == ncol(design),
+            all(is.finite(measure_mat)))
+  if (!is.null(weights)) {
+    stopifnot(is.matrix(weights),
+              identical(dimnames(weights), dimnames(measure_mat)),  # weights apply BY POSITION
+              all(is.finite(weights)), all(weights > 0))
+  }
+  cfit <- limma::contrasts.fit(
+    limma::lmFit(measure_mat, design = design, weights = weights), contrasts)
+  # limma drops the feature rowname on a single-row fit -> restore the measure labels (1:1 with
+  # the input rows; lmFit preserves feature count + order) so ordinary_t_table keys them.
+  rownames(cfit$coefficients)    <- rownames(measure_mat)
+  rownames(cfit$stdev.unscaled)  <- rownames(measure_mat)
+  top <- stats::setNames(
+    lapply(colnames(contrasts), function(cn) ordinary_t_table(cfit, cn, conf_level)),
+    colnames(contrasts))
+  list(fit = cfit, top = top)
+}
+
+# EXACT 3-channel Kitagawa / Oaxaca shift-share of the per-unit mean pseudotime:
+#   mean_pt_r = comp_cf_r + prog_cf_r + cross_r - const, where (state s, unit r)
+#   comp_cf = sum_s pi_sr * mu_bar_s  (vary composition, hold within-state means pooled)
+#   prog_cf = sum_s pi_bar_s * mu_sr  (vary within-state means, hold composition pooled)
+#   cross   = sum_s (pi_sr - pi_bar_s)(mu_sr - mu_bar_s),   const = sum_s pi_bar_s * mu_bar_s.
+# Every broadcast (pi_bar/mu_bar down columns) is POSITION-based -> assert the state order is
+# identical across pi/mu/pi_bar/mu_bar FIRST (a silent order drift would mis-split). Holds on the
+# RAW additive pt scale only (logit/asin break additivity). Returns a per-unit data.frame. Pure.
+kitagawa_channels <- function(pi_mat, mu_mat, pi_bar, mu_bar, tol = 1e-8) {
+  stopifnot(is.matrix(pi_mat), is.matrix(mu_mat),
+            identical(dimnames(pi_mat), dimnames(mu_mat)),
+            identical(rownames(pi_mat), names(pi_bar)),
+            identical(names(pi_bar), names(mu_bar)),
+            all(is.finite(pi_mat)), all(is.finite(mu_mat)),
+            all(is.finite(pi_bar)), all(is.finite(mu_bar)))
+  const   <- sum(pi_bar * mu_bar)
+  mean_pt <- colSums(pi_mat * mu_mat)
+  comp_cf <- colSums(pi_mat * mu_bar)
+  prog_cf <- colSums(pi_bar * mu_mat)
+  cross   <- colSums((pi_mat - pi_bar) * (mu_mat - mu_bar))
+  stopifnot(max(abs(mean_pt - (comp_cf + prog_cf + cross - const))) < tol)  # reconstruction
+  data.frame(
+    genotype_batch = colnames(pi_mat),
+    mean_pt = mean_pt, comp_cf = comp_cf, prog_cf = prog_cf, cross = cross, const = const,
+    row.names = NULL, stringsAsFactors = FALSE)
+}
+
+# Decompose the 2x2 interaction on mean pseudotime into its composition / progression / cross
+# channels. The interaction contrast L() is LINEAR + intercept-free -> L(mean_pt) = L(comp_cf) +
+# L(prog_cf) + L(cross) EXACTLY (const is unit-constant, annihilated). The exactness needs ONE
+# shared per-unit weight vector replicated across the 4 channel-rows (the SAME WLS operator hits
+# each row); differing per-row weights would break reconstruction. loadings = the 3 channel
+# interaction coefs / L(mean_pt) (NA if |L(mean_pt)| < tol). Cell-weighted pooled anchors =
+# PRIMARY; replicate-balanced (rowMeans) anchors = a SENSITIVITY. Pure.
+decompose_progression_vs_composition <- function(per_rep, design, contrasts,
+                                                 weights = NULL, conf_level = 0.95) {
+  tol <- 1e-8
+  channel_rows <- c("mean_pt", "comp_cf", "prog_cf", "cross")
+  fit_channels <- function(pi_bar, mu_bar) {
+    ch <- kitagawa_channels(per_rep$pi, per_rep$mu, pi_bar, mu_bar)
+    M4 <- t(as.matrix(ch[, channel_rows]))
+    dimnames(M4) <- list(channel_rows, ch$genotype_batch)
+    stopifnot(identical(colnames(M4), rownames(design)))
+    W4 <- NULL
+    if (!is.null(weights)) {
+      stopifnot(is.numeric(weights), !is.null(names(weights)),
+                all(colnames(M4) %in% names(weights)))
+      wv <- weights[colnames(M4)]                          # index by unit -> M4 column order
+      stopifnot(all(is.finite(wv)), all(wv > 0))
+      W4 <- matrix(wv, nrow(M4), ncol(M4), byrow = TRUE, dimnames = dimnames(M4))
+    }
+    fit   <- fit_trajectory_contrasts(M4, design, contrasts, weights = W4, conf_level = conf_level)
+    L_int <- fit$fit$coefficients[, "interaction"]         # named over channel-rows
+    recon <- unname(abs(L_int["mean_pt"] -
+                        (L_int["comp_cf"] + L_int["prog_cf"] + L_int["cross"])))
+    loadings <- if (abs(L_int["mean_pt"]) < tol)
+      stats::setNames(rep(NA_real_, 3L), c("comp_cf", "prog_cf", "cross"))
+    else L_int[c("comp_cf", "prog_cf", "cross")] / unname(L_int["mean_pt"])
+    list(channels = ch, fit = fit, L_int = L_int, loadings = loadings, recon_resid_max = recon)
+  }
+  primary  <- fit_channels(per_rep$pi_bar, per_rep$mu_bar)              # cell-weighted anchors
+  balanced <- fit_channels(rowMeans(per_rep$pi), rowMeans(per_rep$mu)) # replicate-balanced anchors
+  stopifnot(primary$recon_resid_max < tol, balanced$recon_resid_max < tol)
+  list(channels = primary$channels, fit = primary$fit, L_int = primary$L_int,
+       loadings = primary$loadings, interaction = primary$fit$top$interaction,
+       recon_resid_max = primary$recon_resid_max, balanced = balanced)
+}

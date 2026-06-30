@@ -278,6 +278,28 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (pins seed + all 3 kinds, restores caller .Random.seed on exit); rooting now GATED both ways (dam_pt_rho>0,
   homeo_pt_rho<0). validate_trajectory_units = fail-loud per-unit audit (no-NA/blank unit, geno in levels, one geno/unit).
 
+## snRNAseq microglia trajectory estimation core (P2-S2a, built) -- `R/trajectory.R` (6 pure fns, NO target)
+- Collapse on-lineage per-cell pt -> 16 genotype_batch summaries -> factorial_design + 5 contrasts, ordinary t at
+  9 resid df (NO eBayes). Fns: derive_batch, pseudotime_per_replicate, ordinary_t_table, fit_trajectory_contrasts,
+  kitagawa_channels, decompose_progression_vs_composition + within_state_col(state)=paste0("within_",tolower(state))
+  = the ONE col sanitizer S2a writes + S2b reads back (never hand-case). EXACT 3-channel Kitagawa shift-share
+  (comp/prog/cross) holds on RAW pt_raw ONLY (logit/asin break additivity); the interaction contrast is
+  intercept-free so it annihilates the unit-constant -> L(mean_pt)=L(comp)+L(prog)+L(cross), reconstruction <1e-8
+  VERIFIED. Exactness needs ONE shared per-unit weight vector replicated across the 4 channel-rows (same WLS
+  operator each row); differing per-row weights would break it.
+- GATE gotcha (limma 1-row fit): limma::lmFit DROPS the single feature rowname (coefficients rowname NULL) ->
+  fit_trajectory_contrasts RESTORES rownames(coefficients/stdev.unscaled) <- rownames(measure_mat) so
+  ordinary_t_table keys the measure labels (forward to ANY 1-feature limma fit).
+- GATE gotcha (tapply 1-D array): tapply over a SINGLE factor returns a 1-D ARRAY (carries `dim`) -> array*matrix
+  is "non-conformable arrays" (both have dims) whereas a plain vector recycles -> coerce single-factor tapply
+  results to a plain named vector (as.numeric+setNames) before broadcasting against a matrix (the mu_bar pooled-mean
+  bug). rowSums/colSums already return plain vectors (no issue).
+- FIXTURE make_trajectory_cell_frame (helpers.R; S2b/S3 reuse): 4x4 geno x batch, midpoint ramp ((i-0.5)/n*0.3)
+  -> each block mean EXACTLY 0.15 for ANY n -> the pure-composition fixture is EXACTLY pure (unequal DAM count does
+  not shift a within-state mean). DEFAULT adv -> pure within-state interaction 0.4 (prog loading 1); FLAT adv +
+  dam_extra>0 -> pure composition (comp loading 1); jitter>0 = NON-additive ((gi*bi)%%5)*jitter -> sigma>0 for S2b's
+  structural orchestrator test. NO batch col -> exercises derive_batch.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

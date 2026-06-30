@@ -93,3 +93,44 @@ make_trajectory_embedding <- function(n_per = 80L, n_dims = 4L, with_ifn = FALSE
   rownames(m) <- paste0("c", seq_len(nrow(m))); colnames(m) <- paste0("D", seq_len(n_dims))
   list(embedding = m, labels = lab)
 }
+
+# Deterministic per-cell trajectory frame (NO RNG) for the S2a estimation-core tests -- mirrors
+# the real microglia_trajectory$cell_frame columns (no batch col -> exercises derive_batch). 4x4
+# genotype x batch grid; each unit = per_state Homeostatic + (per_state + dam_extra iff the
+# double-mutant) DAM cells. pt_raw = 1 + adv[g] + ramp (Homeostatic) / 4 + adv[g] + ramp (DAM),
+# ramp = ((seq_len(n) - 0.5)/n)*0.3 -> the MIDPOINT rule makes EACH block mean EXACTLY 0.15 for
+# ANY block size, so an unequal DAM count does NOT shift a within-state mean (the pure-composition
+# fixture is EXACTLY pure). DEFAULT adv encodes a pure WITHIN-STATE interaction
+# (1.6-0.2)-(1.0-0) = 0.4 at constant composition -> 100% progression loading; FLAT adv + dam_extra>0
+# -> a pure COMPOSITION interaction (extra DAM mass only in NLGF_P301S) -> 100% composition loading,
+# exact. jitter>0 adds a deterministic NON-additive ((gi*bi) %% 5)*jitter per unit (gi/bi = genotype
+# /batch indices) -> breaks the saturated design's zero residual (sigma>0) for S2b's structural test.
+make_trajectory_cell_frame <- function(per_state = 6L,
+                                       adv = c(MAPTKI = 0, P301S = 0.2,
+                                               NLGF_MAPTKI = 1.0, NLGF_P301S = 1.6),
+                                       dam_extra = 0L, jitter = 0) {
+  stopifnot(setequal(names(adv), genotype_levels))
+  batches <- sprintf("batch%02d", 1:4)
+  ramp <- function(n) ((seq_len(n) - 0.5) / n) * 0.3       # block mean EXACTLY 0.15 for any n
+  rows <- list(); k <- 0L
+  for (gi in seq_along(genotype_levels)) {
+    g <- genotype_levels[gi]
+    for (bi in seq_along(batches)) {
+      n_dam <- per_state + dam_extra * (g == "NLGF_P301S")
+      jit   <- ((gi * bi) %% 5L) * jitter                  # NON-additive in (gi,bi) -> sigma>0 when jitter>0
+      sub   <- c(rep("Homeostatic", per_state), rep("DAM", n_dam))
+      pt    <- c(1 + adv[[g]] + ramp(per_state), 4 + adv[[g]] + ramp(n_dam)) + jit
+      rows[[length(rows) + 1L]] <- data.frame(
+        cell = paste0("c", k + seq_along(sub)),
+        genotype_batch = paste(g, batches[bi], sep = "_"),
+        genotype = g, substate = sub, on_lineage = TRUE, pt_raw = pt,
+        row.names = NULL, stringsAsFactors = FALSE)
+      k <- k + length(sub)
+    }
+  }
+  cf <- do.call(rbind, rows)
+  cf$genotype <- factor(cf$genotype, levels = genotype_levels)
+  cf$substate <- factor(cf$substate, levels = sort(unique(cf$substate)))
+  cf$pt01 <- squeeze_unit_interval(cf$pt_raw)
+  cf[c("cell", "genotype_batch", "genotype", "substate", "on_lineage", "pt_raw", "pt01")]
+}
