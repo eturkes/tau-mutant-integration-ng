@@ -82,6 +82,14 @@ list(
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.
   tar_target(microglia_report, microglia_report_data(microglia_annotated), format = "qs"),
 
+  # --- P2 interaction trajectory ---
+  # S1: activation pseudotime. slingshot on the harmony embedding (dims 1:15), forced single
+  # Homeostatic->DAM lineage (2 substate super-clusters), IFN/Proliferative omitted (off-lineage
+  # flag, not deleted). Compact per-cell frame (pt_raw/pt01/score-axis + on-lineage flag) +
+  # per-unit omitted fraction + a fixed dims {10,15,20}+all-retained sensitivity + score-axis
+  # concordance. Reads the 612MB annotated object once; stores a ~3.4MB target (cheap-render).
+  tar_target(microglia_trajectory, build_activation_trajectory(microglia_annotated), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

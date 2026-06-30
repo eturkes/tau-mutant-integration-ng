@@ -36,7 +36,7 @@ per-replicate (16-unit) pseudotime-summary interaction through EXISTING factoria
 df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per-cell sensitivity (supportive). ALL pure-R from the pinned snapshot
 (no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
-3 steps (S1 trajectory+pseudotime -> S2 interaction+decomposition -> S3 report). Next open = S1.
+3 steps (S1 trajectory+pseudotime -> S2 interaction+decomposition -> S3 report). S1 DONE; next open = S2.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -137,3 +137,12 @@ df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per
   inferential route; glmmTMB beta-GLMM = on-lock per-cell sensitivity, TMB not Stan). CONVERGED. Decision gate ->
   LEAN ON-LOCK (rejected +destiny DPT, +off-lock Lamian). Entire stack pure-R from the pinned snapshot. Plan = 3
   steps; next = EXECUTE S1.
+- 2026-06-30 P2-S1 DONE -> `R/trajectory.R` (build_activation_trajectory + pure helpers) + target
+  `microglia_trajectory` + `tests/test_trajectory.R` + rproject.toml slingshot. slingshot on harmony[1:15], FORCED
+  single Homeostatic->DAM lineage (2 substate super-clusters -> clean by construction), IFN/Prolif omitted
+  (on_lineage flag + NA pt). LIVE: direction correct (mean pt Homeo 22.3 < DAM 36.2; Spearman pt-vs-DAM +0.56);
+  score-axis concordance rho=0.62 (moderate-large, clears 0.5 gross-failure floor; slingshot=transcriptome vs
+  score-axis=marker contrast -> related-not-identical); sensitivity robust (dims-10/20 + all-retained rho 0.99 vs
+  primary); IFN omitted-fraction balanced across genotypes (0.029-0.036 -> conditioning barely skews interaction).
+  Compact target ~3.4MB, 0 build warnings, gate green. Outcomes -> memory.md. Next open = S2 (interaction +
+  3-channel Kitagawa decomposition + glmmTMB sensitivity).

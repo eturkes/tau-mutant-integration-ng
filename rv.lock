@@ -455,6 +455,19 @@ dependencies = [
 ]
 
 [[packages]]
+name = "TrajectoryUtils"
+version = "1.20.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    "SingleCellExperiment",
+    "Matrix",
+    "igraph",
+    "S4Vectors",
+    "SummarizedExperiment",
+]
+
+[[packages]]
 name = "UCell"
 version = "2.16.0"
 source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
@@ -1515,6 +1528,15 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "princurve"
+version = "2.1.6"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "Rcpp",
+]
+
+[[packages]]
 name = "processx"
 version = "3.9.0"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -1859,6 +1881,21 @@ source = { repository = "https://p3m.dev/cran/2026-06-22" }
 force_source = false
 dependencies = [
     { name = "Rcpp", requirement = "(>= 0.12.13)" },
+]
+
+[[packages]]
+name = "slingshot"
+version = "2.20.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    { name = "princurve", requirement = "(>= 2.0.4)" },
+    "TrajectoryUtils",
+    "igraph",
+    "matrixStats",
+    "S4Vectors",
+    "SingleCellExperiment",
+    "SummarizedExperiment",
 ]
 
 [[packages]]

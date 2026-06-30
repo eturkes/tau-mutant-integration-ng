@@ -72,6 +72,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       microglia_annotated -- per-cell {umap_1/2, genotype, substate, *_UCell_z} cell_frame + n_cells +
       prune/provenance summaries; asserts finite z + non-NA factors) -> the `microglia_report` target keeps
       _microglia.qmd (+ every gate force-render) reading ~0.5MB, NOT the 612MB Seurat.
+   + (P2-S1) trajectory.R: build_activation_trajectory (orchestrator -> microglia_trajectory) -- slingshot on
+      harmony[1:15] of microglia_annotated, FORCED single Homeostatic->DAM lineage (2 substate super-clusters), IFN/
+      Proliferative omitted (on_lineage flag + NA pt); compact per-cell frame + per-unit omitted fraction + dims
+      {10,15,20}+all-retained sensitivity + score-axis concordance + provenance. ORCHESTRATES pure helpers:
+      run_slingshot_lineage (slingshot fit -> DAM-terminal lineage pt; branch-safe) | score_axis_pseudotime (raw
+      DAM_UCell-Homeostatic_UCell) | squeeze_unit_interval (Smithson-Verkuilen -> open (0,1) for the S2 beta GLMM) |
+      trajectory_concordance (Spearman pt vs score-axis) | trajectory_provenance (pkg versions/seed/RNG/threads).
+      rproject.toml += slingshot (BioCsoft; pulls princurve/TrajectoryUtils). helpers.R += make_trajectory_embedding.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -90,6 +98,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        pb_de_microglia      <- run_pb_de_microglia(microglia_annotated, symbol_map)  # whole-MG pseudobulk DE x 5 contrasts (voomWQW+stageR) + DAM concordance (4.7MB)
        pb_de_substate       <- run_pb_de_substate(microglia_annotated)  # per-substate DE: Homeo+DAM fit, IFN/Prolif skip (min-cell floor); cell_counts (7MB)
        microglia_report     <- microglia_report_data(microglia_annotated)  # compact report frame (umap+substate+z) + prune/provenance; ~0.5MB (keeps gate render cheap)
+  - P2 interaction trajectory (format="qs"; consumes microglia_annotated):
+       microglia_trajectory <- build_activation_trajectory(microglia_annotated)  # slingshot H->D pseudotime; per-cell frame + per-unit omitted-frac + sensitivity + concordance; ~3.4MB
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -103,8 +113,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
 
 ### Tests (S3; gate-wired at S5)
 `tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,
-make_meta16, make_fake_seurat = synthetic Seurat fixtures), run stopifnot checks (fail-loud,
-no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/test_<x>.R`.
+make_meta16, make_fake_seurat = synthetic Seurat fixtures, make_trajectory_embedding = synthetic
+slingshot embedding), run stopifnot checks (fail-loud, no testthat dep), print `ok - <name>`. Run
+from project root: `Rscript tests/test_<x>.R`.
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
@@ -112,6 +123,7 @@ no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/tes
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
+  - test_trajectory.R : score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance (P2-S1)
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):

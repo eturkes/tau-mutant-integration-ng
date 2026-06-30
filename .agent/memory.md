@@ -264,6 +264,42 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
       drop_dam_max<kept_dam_min is FALSE; report the dropout GENOTYPE (drop_geno=NLGF_MAPTKI via which.max rowSums)
       vs CLUSTER (drop_clu=6 via colSums) each correctly labelled (old prose mislabelled the genotype "cluster").
 
+## snRNAseq microglia activation trajectory (P2-S1, built) -- `R/trajectory.R` -> target `microglia_trajectory`
+- build_activation_trajectory: slingshot 2.20.0 (returns a PseudotimeOrdering; version-stable accessors
+  slingPseudotime / slingLineages / slingCurves) on harmony[1:15] of microglia_annotated (NO recompute -- reads the
+  cached harmony embedding + per-cell UCell scores + substate labels). PRIMARY = a FORCED single Homeostatic->DAM
+  lineage: clusterLabels = the 2 substate super-clusters (MST on 2 nodes = one edge = one lineage, clean BY
+  CONSTRUCTION; the principal curve still fits the full 15-D cell cloud) -> NO arbitrary root-cluster pick.
+  start.clus="Homeostatic" orients pt (homeostatic low). IFN (797 cells, 3.4%) + Proliferative (0) OMITTED from the
+  lineage (on_lineage flag + NA pt), never deleted -> per-unit omitted fraction reported.
+- pseudotime = an ACTIVATION ORDERING (position/extent of advance), NOT developmental time/potency -- direction rests
+  on slingshot rooting + DAM-marker monotonicity (validated post-hoc), never a potency claim. FORK CHOICES (dims=15,
+  H->D-only, 2-cluster labels) PRE-DECLARED, not retuned after contrast inspection.
+- LIVE (2026-06-30, R4.6): single clean lineage; mean pt Homeo 22.3 < DAM 36.2 (direction correct);
+  Spearman(pt,DAM_UCell)=+0.56, (pt,Homeo_UCell)=-0.40 (rooting validated, recorded). Score-axis concordance rho=0.62
+  (n=22363) -- MODERATE-LARGE positive, clears the 0.5 gross-failure floor; EXPECTED below 1 (slingshot = transcriptome
+  geometry vs score-axis = DAM-minus-Homeo marker contrast: related, NOT identical -> the score-axis is a CONCORDANCE
+  anchor sharing the marker system, NOT statistically-independent robustness). `concordant` flag RECORDED not gated.
+  SENSITIVITY highly robust: dims-10 rho 0.990 / dims-20 0.997 / all-retained 0.990 vs primary. all-retained (IFN
+  included, dims 15) = a single PATH Homeostatic->IFN->DAM (IFN intermediate, not a branch).
+- SELECTION-EFFECT audit (the lineage-conditioning risk): omitted (IFN) fraction BALANCED across genotypes
+  (0.029-0.036) -> conditioning on H->D barely skews the interaction; report, never hide. per_unit table (16 units)
+  stores n_cells / n_on_lineage / omitted_frac.
+- score_axis_pt = RAW DAM_UCell - Homeostatic_UCell (assumption-light: both UCell [0,1] rank scores, no population
+  z-centring). pt01 = Smithson-Verkuilen squeeze (min-max scale -> (y*(n-1)+0.5)/n) into the OPEN (0,1) for the S2
+  beta GLMM; off-lineage NA preserved. Target = COMPACT list {cell_frame 23160x10 ~3.4MB, per_unit, lineage,
+  sensitivity df, provenance(versions/seed/RNG/threads + dims/rho/dam_pt_rho/omitted)} -- NOT the 612MB Seurat (build
+  reads it once, ~218s for 4 slingshot fits; one-time, the gate force-renders cached targets). 0 build warnings.
+- slingshot GOTCHA: its covariance-scaled MST distance (.dist_clusters_scaled -> solve(s1+s2)) ERRORS "system is
+  computationally singular" on a near-degenerate per-cluster covariance -> synthetic TEST fixtures need FULL-RANK
+  well-conditioned blobs (distinct-frequency sinusoids, comparable amplitude), NOT tiny collinear ripples (real
+  harmony clusters are full-rank, no issue). run_slingshot_lineage extracts the DAM-TERMINAL lineage (>2 clusters may
+  branch -> pick the terminal-in-DAM lineage, longest if tied; off-lineage cells keep slingshot's NA).
+- rproject.toml: slingshot (BioCsoft; pulled princurve 2.1.6 + TrajectoryUtils 1.20.0, SingleCellExperiment already
+  present). glmmTMB (per-cell GLMM sensitivity) deferred to P2-S2 where it is actually loaded (ABI-warning handling
+  belongs with the live load test). Pure helpers UNIT-tested (tests/test_trajectory.R, warn=2 clean) on
+  make_trajectory_embedding (helpers.R: 2-cluster + with_ifn branch); heavy orchestrator smoke-tested live.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

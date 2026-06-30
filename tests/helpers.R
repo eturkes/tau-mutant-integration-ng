@@ -64,3 +64,32 @@ make_fake_seurat <- function(genotypes = genotype_levels,
   if (with_sct) obj[["SCT"]] <- SeuratObject::CreateAssay5Object(counts = counts)
   obj
 }
+
+# Deterministic reduced-dim embedding + cluster labels for slingshot trajectory tests (no
+# RNG). Each cluster is a well-conditioned, full-rank blob: D1 = an along-axis gradient, the
+# other dims = distinct-frequency sinusoids (mutually independent, comparable amplitude -> no
+# singular per-cluster covariance, which slingshot's scaled MST distance would choke on).
+# Homeostatic (D1 ~ 0) and DAM (D1 ~ 2) are well separated along D1 -> a clean Homeostatic->
+# DAM lineage with monotone pseudotime. with_ifn appends an "IFN" blob displaced HIGH on D2
+# near the homeostatic end -> the MST branches, so the DAM-terminal lineage must be selected
+# and IFN cells get NA pt.
+make_trajectory_embedding <- function(n_per = 80L, n_dims = 4L, with_ifn = FALSE) {
+  stopifnot(n_dims >= 2L)
+  blob <- function(n, d1_base, d2_base = 0) {
+    i <- seq_len(n)
+    do.call(cbind, lapply(seq_len(n_dims), function(j) {
+      if (j == 1L) d1_base + (i / n) * 0.6            # gradient along the activation axis
+      else if (j == 2L) d2_base + 0.4 * sin(i * 1.1)  # branch dimension
+      else 0.4 * sin(i * (0.7 * j + 0.3))             # distinct freqs -> full-rank covariance
+    }))
+  }
+  m <- rbind(blob(n_per, 0), blob(n_per, 2.0))
+  lab <- c(rep("Homeostatic", n_per), rep("DAM", n_per))
+  if (with_ifn) {
+    ki <- n_per %/% 2L
+    m <- rbind(m, blob(ki, 0.3, d2_base = 2.0))       # high on D2 near the homeostatic end
+    lab <- c(lab, rep("IFN", ki))
+  }
+  rownames(m) <- paste0("c", seq_len(nrow(m))); colnames(m) <- paste0("D", seq_len(n_dims))
+  list(embedding = m, labels = lab)
+}
