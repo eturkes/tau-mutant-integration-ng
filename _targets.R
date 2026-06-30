@@ -70,6 +70,13 @@ list(
   # is present, else recorded as skipped. Small result (count tables + per-contrast stats + concordance).
   tar_target(composition_results,  test_composition(microglia_annotated), format = "qs"),
 
+  # S4: pseudobulk limma-voom DE across the 5 canonical contrasts. voomWithQualityWeights +
+  # robust eBayes; stageR family-screen (omnibus F -> per-contrast Holm confirm). Whole-microglia
+  # = the headline amyloid->DAM activation programme (+ DAM-direction concordance vs v1);
+  # per-substate = fit-or-skip by a min-cell floor (Homeostatic/DAM fit, IFN/Proliferative thin).
+  tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated, symbol_map), format = "qs"),
+  tar_target(pb_de_substate,  run_pb_de_substate(microglia_annotated),              format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

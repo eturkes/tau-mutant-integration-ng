@@ -2003,6 +2003,15 @@ dependencies = [
 ]
 
 [[packages]]
+name = "stageR"
+version = "1.34.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    "SummarizedExperiment",
+]
+
+[[packages]]
 name = "statmod"
 version = "1.5.2"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }

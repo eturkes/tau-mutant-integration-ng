@@ -39,6 +39,8 @@ dependencies = [
     { name = "limma",        repository = "BioCsoft" },
     { name = "edgeR",        repository = "BioCsoft" },
     { name = "BiocParallel", repository = "BioCsoft" },
+    # stageR: stage-wise family screen (omnibus F) -> per-contrast confirm across the 5 contrasts (P1-S4)
+    { name = "stageR",       repository = "BioCsoft" },
     # plotting
     "ggplot2",
     "ggrepel",

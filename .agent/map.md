@@ -33,9 +33,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       rbc_marker_symbols, data_paths) | utils.R (`%||%`, write_tsv_safe) | io.R (loaders) | spine.R
    + (S3) design.R: factorial_design (treatment ~tau+nlgf+tau_nlgf[+batch]) + make_contrast_matrix
       (cell-means ~0+genotype) -> the 5 canonical contrasts; two equivalent parameterisations |
-      de_pb.R: pseudobulk_counts/build_pseudobulk (replicate=genotype_batch), fit_limma_voom
-      (counts) / fit_limma_log (log-intensity), median_normalise, prevalence_filter.
-      S3 = machinery only -> NO new targets; P1+ wires the DE targets (consumes design + de_pb).
+      de_pb.R: pseudobulk_counts/build_pseudobulk (replicate=genotype_batch; `cells=` -> per-substate
+      subset pre-aggregation), fit_limma_voom (voomWQW default + confint) / fit_limma_log (log-intensity),
+      median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free) +
       scale_colour/fill_genotype (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
@@ -64,6 +64,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       method flag; every present method must cover all keys -> fail-loud). orchestrator: backend present + sccomp error
       -> LOUD (allow_sccomp_failure to skip). propeller LOCKED primary; sccomp OPTIONAL off-lock cross-check
       (scripts/install-cmdstan.sh -> tools/rlib-stan + tools/cmdstan).
+   + (P1-S4) de_pb.R: run_pb_de_microglia (whole-MG) / run_pb_de_substate (per-substate, min-cell floor fit-or-skip)
+      -> de_pseudobulk (build_pseudobulk -> factorial_design -> fit_limma_voom[voomWQW+robust eBayes] -> stage_wise_test
+      -> interaction_power). stage_wise_test = stageR screen (omnibus F) + Holm per-contrast confirm. dam_direction =
+      amyloid->DAM concordance vs v1. stageR added (rproject.toml, BioCsoft).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -79,6 +83,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        microglia_processed  <- reprocess_microglia(microglia_seurat_raw)  # SCT+pca+harmony+12 clusters@0.4+umap (687MB)
        microglia_annotated  <- annotate_microglia(microglia_processed, symbol_map)  # UCell substates + prune {6,7,8,11}; 23160 cells, 612MB
        composition_results  <- test_composition(microglia_annotated)  # propeller(logit+asin) [+gated sccomp] x 5 contrasts; counts+stats+concordance (small qs)
+       pb_de_microglia      <- run_pb_de_microglia(microglia_annotated, symbol_map)  # whole-MG pseudobulk DE x 5 contrasts (voomWQW+stageR) + DAM concordance (4.7MB)
+       pb_de_substate       <- run_pb_de_substate(microglia_annotated)  # per-substate DE: Homeo+DAM fit, IFN/Prolif skip (min-cell floor); cell_counts (7MB)
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -93,7 +99,8 @@ no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/tes
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2)
-  - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes
+  - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
+                    de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
 

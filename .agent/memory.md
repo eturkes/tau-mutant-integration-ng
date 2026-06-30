@@ -190,6 +190,44 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   interaction Homeostatic down sig in both. Concordance flagged 4/15 (3 sparse-IFN n=797 sign/sig noise + the
   interaction-DAM sig-borderline).
 
+## snRNAseq microglia pseudobulk DE (P1-S4, built) -- `R/de_pb.R` -> `pb_de_microglia` + `pb_de_substate`
+- DE on RAW RNA counts (33683 ENSMUSG genes), NOT SCT -- microglia_annotated keeps BOTH assays; aggregate by
+  genotype_batch (16 replicate units). SCT clusters/scores; pseudobulk does inference (counts). Whole-MG +
+  per-substate, 5 canonical contrasts each. orchestrators: run_pb_de_microglia / run_pb_de_substate -> de_pseudobulk
+  (generic: build_pseudobulk -> factorial_design -> fit_limma_voom -> stage_wise_test -> interaction_power).
+- fit_limma_voom UPGRADED: voomWithQualityWeights (quality_weights=TRUE default) -- sample weights down-weight
+  empirically-noisy units (correlates with, != low cell count); topTable confint=TRUE -> CI.L/CI.R (effect-size
+  reporting); robust eBayes kept. quality_weights=FALSE -> plain voom (proteome/phospho may opt out later).
+- pseudobulk_counts/build_pseudobulk gained `cells=` -> restrict to a cell subset (one substate) BEFORE aggregation,
+  AVOIDS Seurat::subset (its benign messages would dirty heavy build logs). Caller pre-guards estimability.
+- stageR (1.34.0, BioCsoft, on-snapshot -> LOCKED reproducible layer; pulled no heavy deps -- SummarizedExperiment
+  already present). stage_wise_test: pScreen = fit$F.p.value (moderated omnibus F = "any genotype effect"; the 5
+  contrasts span the rank-3 genotype subspace, limma's F uses the right rank), pConfirmation = per-contrast p,
+  method="holm" (FWER-valid under ARBITRARY dependence -> correct despite the rank-deficient contrast family),
+  alpha=OFDR. getAdjustedPValues -> matrix [genes x {padjScreen, 5 contrasts}]; confirmation NA where the gene fails
+  the screen -> a contrast is sig at OFDR iff its column < alpha. GATE NOTE: getAdjustedPValues (NOT
+  stageWiseAdjustment) emits ONE message() restating the fixed-OFDR caveat -- informational/deterministic, text has
+  NO ^Warning/^WARN anchor (so it would not red the gate even on a fresh build reaching the log) -> suppressMessages
+  it for clean logs. These targets stay cached under check.sh (only `report` is force-invalidated) so they don't
+  re-run during the gate anyway.
+- interaction_power: median per-gene posterior SE (sqrt(s2.post)*stdev.unscaled[,"interaction"]) -> MDE at 80% power
+  via qt(median df.total). The HONEST under-powered-interaction statement (report MDE/CI, never a bare "0 genes").
+- MIN-CELL FLOOR (per-substate fit-or-skip): fit iff EVERY genotype_batch unit has >= min_cells (default 10) of the
+  substate (0-cell units fail too) -> full estimable factorial design; else SKIP -> descriptive-only. cell_counts
+  (substate x 16-unit) table ALWAYS stored (report dropout asymmetry). Real argmax substates only. LIVE: Homeostatic
+  (min 52) + DAM (min 31) FIT; IFN (min 5, 15/16 units pass) + Proliferative (0) SKIP.
+- LIVE RESULTS (2026-06-30; re-baselined R 4.6, NOT v1's locked margins): whole-MG kept 14512, stageR screened 3545.
+  sig (|logFC|>0.5 & FDR<0.05) up/dn: tau_alone 0/0 (tau-alone barely perturbs microglia), nlgf_in_maptki 555/457,
+  nlgf_in_p301s 940/1148, tau_in_nlgf 202/764, interaction 0/0. DAM markers amyloid-UP: frac_up 1.00/0.94, meanLFC
+  +1.37/+1.85, n_sig_up 11/16 -> HEADLINE amyloid->DAM concordant v1 at the DE level. INTERACTION static-null at the
+  effect-size threshold BUT stageR confirms 123 SMALL-effect genes + MDE@80%=0.92 log2FC (median_se 0.315, df 24) ->
+  under-powered below ~0.9, NOT "absent"; report the 123 + MDE/CI (S5), hand synergy to P2. Per-substate FIT:
+  Homeostatic kept 13599/screened 1241 (interaction MDE 1.12), DAM kept 9148/screened 415 (MDE 1.49; amyloid still
+  shifts WITHIN DAM, nlgf_in_p301s 86/74) -- fewer cells -> larger per-substate MDE (honest).
+- tests/test_de_pb.R extended (warn=2 clean): cells= subset (+ no-match fail-loud), de_pseudobulk structure +
+  CI cols + stageR matrix colnames + finite interaction MDE, run_pb_de_substate fit/skip statuses + 4x16 cell_counts
+  + skip-reason + tighter-floor skips DAM, dam_direction shape. Synthetic Seurat (RNG-free), voomWQW warning-free.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

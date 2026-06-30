@@ -148,15 +148,17 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   tested; discordance per the pre-declared rule (propeller-logit stands); batch random-vs-fixed asymmetry justified;
   replicate=genotype_batch; gate green. ALL MET (live-verified 2026-06-30).
 
-- **S4 pseudobulk DE** [DEP: stageR(Bioc)].
-  Extend R/de_pb.R (voomWithQualityWeights + eBayes(robust=TRUE); stageR helper; FIX the stale "de_sc.R"
-  forward-ref comment -> single-cell DE dropped); targets `pb_de_microglia` (whole-MG) + `pb_de_substate`
-  (per-substate) x 5 contrasts. rv add stageR. Extend tests/test_de_pb.R.
-  ACCEPT: contrasts computed + topTables stored per contrast x level; pre-stated thresholds applied
-  (FDR<0.05 base, |logFC|>0.5 for "sig"); amyloid->DAM direction-concordance with v1 REPORTED (whatever it
-  shows, not required to "surface"); interaction reported WITH a power/effect-size statement (CI/MDE on the
-  diff-of-diffs) - null claimed only if backed by that; per-substate fit-or-skip by the min-cell rule +
-  cell-count table stored; gate green.
+- **S4 pseudobulk DE** [DEP: stageR(Bioc)]. **[DONE 2026-06-30]** R/de_pb.R: fit_limma_voom -> voomWithQualityWeights
+  (quality_weights default) + confint topTables; stage_wise_test (stageR omnibus-F screen + Holm confirm),
+  interaction_power (MDE@80%), de_pseudobulk (generic) + run_pb_de_microglia/run_pb_de_substate orchestrators +
+  dam_direction; pseudobulk_counts/build_pseudobulk gained `cells=` (per-substate subset, avoids Seurat::subset);
+  de_sc.R forward-ref comment FIXED (single-cell DE dropped). targets pb_de_microglia + pb_de_substate built live
+  (clean tar_meta). stageR added (rproject.toml BioCsoft, 1.34.0, no heavy deps). tests extended (warn=2 clean).
+  ALL ACCEPT MET (live 2026-06-30, full gate green): whole-MG kept 14512, stageR screened 3545; sig |logFC|>0.5
+  FDR<0.05 = tau_alone 0/0, nlgf_in_maptki 555/457, nlgf_in_p301s 940/1148, tau_in_nlgf 202/764, interaction 0/0
+  (123 stageR-confirmed small-effect). DAM markers amyloid-UP frac 1.00/0.94 meanLFC +1.37/+1.85 -> headline
+  concordant v1. interaction MDE@80%=0.92 log2FC (under-powered <~0.9, NOT absent) -> synergy handed P2. Per-substate
+  Homeostatic+DAM FIT, IFN(min5)+Proliferative(0) SKIP; cell_counts stored. Detail -> memory.md (P1-S4).
 
 - **S5 report section + CLOSE-OUT** [render].
   `_microglia.qmd` (UCell substate UMAP, proportions, composition results, amyloid->DAM DE programme,

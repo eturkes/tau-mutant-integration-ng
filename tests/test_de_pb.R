@@ -53,11 +53,11 @@ expect_error(prevalence_filter(mat, c(NA, "A", "A", "A", "B", "B", "B", "B")), "
 fd     <- factorial_design(meta16)
 counts <- 30 + outer(seq_len(200), seq_len(16), function(i, j) (i * 5L + j * 13L) %% 19L)
 rownames(counts) <- paste0("ENS", seq_len(200)); colnames(counts) <- rownames(meta16)
-vfit <- fit_limma_voom(counts, fd$design, fd$contrasts, min_count = 5)
+vfit <- fit_limma_voom(counts, fd$design, fd$contrasts, min_count = 5)   # quality_weights = TRUE (default)
 stopifnot(identical(names(vfit$top), canonical), vfit$kept >= 1L)
 for (tt in vfit$top) {
-  stopifnot(is.data.frame(tt), nrow(tt) == vfit$kept,
-            all(c("gene", "logFC", "P.Value", "adj.P.Val") %in% names(tt)))
+  stopifnot(is.data.frame(tt), nrow(tt) == vfit$kept,                    # confint=TRUE -> CI.L/CI.R for effect-size reporting
+            all(c("gene", "logFC", "CI.L", "CI.R", "P.Value", "adj.P.Val") %in% names(tt)))
 }
 # fail loud when counts columns are not aligned to the design rows (limma fits by position, not name)
 expect_error(fit_limma_voom(counts[, 16:1], fd$design, fd$contrasts, min_count = 5), "colnames(counts)")
@@ -73,5 +73,51 @@ for (tt in lfit$top) {
   stopifnot(is.data.frame(tt), nrow(tt) == 100L,
             all(c("feature", "logFC", "P.Value", "adj.P.Val") %in% names(tt)))
 }
+
+# ============================== P1-S4: DE orchestration ==================================
+# Synthetic microglia object: 16 fully-crossed units x 12 cells; a deterministic substate split
+# (6 Homeostatic / 5 DAM / 1 IFN per unit) -> exercises the per-substate min-cell fit-or-skip.
+s4obj <- make_fake_seurat(cells_per = 12L, n_genes = 200L)
+.uidx <- ave(seq_len(ncol(s4obj)), s4obj$genotype_batch, FUN = seq_along)
+s4obj$microglia_substate <- factor(
+  ifelse(.uidx <= 6L, "Homeostatic", ifelse(.uidx <= 11L, "DAM", "IFN")),
+  levels = microglia_substate_levels)
+
+# --- cells= subsetting: pseudobulk only the DAM cells, still 16 units --------------------
+dam_cells <- colnames(s4obj)[s4obj$microglia_substate == "DAM"]
+pcsub <- pseudobulk_counts(s4obj, "genotype_batch", cells = dam_cells)
+stopifnot(ncol(pcsub) == 16L, nrow(pcsub) == 200L)
+expect_error(pseudobulk_counts(s4obj, "genotype_batch", cells = "no_such_cell"), "any(sel)")
+
+# --- de_pseudobulk: 16-sample fit, 5 CI topTables, stageR matrix, finite interaction MDE -
+dpb <- de_pseudobulk(s4obj)
+stopifnot(dpb$n_samples == 16L, length(dpb$lib_size) == 16L, dpb$kept >= 1L,
+          identical(names(dpb$top), canonical),
+          all(c("gene", "CI.L", "CI.R") %in% names(dpb$top$interaction)))
+sp <- dpb$stageR$stage_padj                                   # genes x {padjScreen, 5 contrasts}
+stopifnot(is.matrix(sp), identical(colnames(sp), c("padjScreen", canonical)),
+          nrow(sp) == dpb$kept, dpb$stageR$n_screened >= 0L,
+          dpb$thresholds$fdr == 0.05, dpb$thresholds$lfc == 0.5)
+stopifnot(is.finite(dpb$interaction$mde), dpb$interaction$mde > 0,
+          dpb$interaction$contrast == "interaction", is.finite(dpb$interaction$df))
+
+# --- run_pb_de_substate: floor=3 -> Homeostatic+DAM FIT, IFN(1/unit)+Proliferative(0) SKIP
+rsub <- run_pb_de_substate(s4obj, min_cells = 3L)
+status <- vapply(rsub$per_substate, function(x) x$status, character(1))
+stopifnot(identical(unname(status[c("Homeostatic", "DAM")]), c("fit", "fit")),
+          identical(unname(status[c("IFN", "Proliferative")]), c("skipped", "skipped")),
+          identical(dim(rsub$cell_counts), c(4L, 16L)), rsub$min_cells == 3L,
+          identical(names(rsub$per_substate$DAM$top), canonical),          # fit branch carries DE result
+          grepl("floor", rsub$per_substate$IFN$reason, fixed = TRUE))      # skip branch carries a reason
+# tighter floor skips DAM too (some unit has 5 < 6)
+stopifnot(run_pb_de_substate(s4obj, min_cells = 6L)$per_substate$DAM$status == "skipped")
+
+# --- dam_direction: per-amyloid-contrast direction summary over the marker genes -----------
+s4map <- data.frame(ensembl = rownames(s4obj),
+                    symbol = paste0("Sym", seq_len(nrow(s4obj))), stringsAsFactors = FALSE)
+dconc <- dam_direction(dpb$top, s4map, markers = c("Sym10", "Sym20", "Sym30"))
+stopifnot(identical(names(dconc), c("nlgf_in_maptki", "nlgf_in_p301s")),
+          dconc$nlgf_in_maptki$n_markers_in_fit >= 1L,
+          is.finite(dconc$nlgf_in_maptki$frac_up), is.finite(dconc$nlgf_in_maptki$mean_logFC))
 
 cat("ok - test_de_pb\n")
