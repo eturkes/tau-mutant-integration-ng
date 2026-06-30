@@ -43,12 +43,16 @@ S2 DONE 2026-06-30: `microglia_annotated` (UCell substate scoring -> prune conta
 cells -> calibrated cluster-argmax labels; Homeo 11174/DAM 11189/IFN 797, 23160 retained); amyloid->DAM
 confirmed descriptively; gate green.
 S3 DONE 2026-06-30: `composition_results` (propeller logit-PRIMARY + asin sensitivity, LOCKED reproducible; sccomp
-OPTIONAL off-lock Bayesian cross-check, CmdStan-unlockable). LIVE-VERIFIED + full gate green end-to-end: amyloid->DAM
-ROBUST across both methods (propeller FDR~1e-10/1e-13, sccomp FDR~0), Homeostatic mirror-down; interaction DAM positive
-(synergy) sig in propeller (FDR 0.027), borderline in sccomp (0.051) -> flagged (4/15 concordance flags, propeller-logit
-stands). Fixed a latent diagnostics bug surfacing the live run: codex's `c_R_k_hat` column is absent in sccomp 2.4.0 and
-per-contrast c_rhat is structurally NA -> now capture the final fit's $diagnostic_summary (96/3996 ~2.4% divergent,
-E-BFMI 0.72, recorded NOT gated). CODEX-REVIEWED earlier (8 findings). See plan S3 + memory.md S3 section.
+OPTIONAL off-lock Bayesian cross-check, CmdStan-unlockable). LIVE-VERIFIED + full gate green end-to-end (incl. a FORCED
+fresh composition_results rebuild): amyloid->DAM STRONG + directionally concordant across both methods (propeller
+FDR~1e-10/1e-13, sccomp FDR~0), Homeostatic mirror-down; interaction DAM positive sig in propeller (FDR 0.027),
+borderline+diagnostic-limited in sccomp (0.051) -> flagged (4/15 concordance flags, propeller-primary stands; static
+synergy handed to P2). Two codex reviews: (1) 8 findings hardened concordance/gate/sccomp; (2) close-review found a
+latent diagnostics bug (`c_R_k_hat` absent in sccomp 2.4.0; per-contrast c_rhat structurally NA) AND a gate hole
+(cmdstanr emits divergence notes via message() with a literal "Warning:" prefix -> a FRESH build's tee'd log tripped the
+gate's ^Warning: scan; green held only because check.sh leaves composition_results cached) -> now capture the final
+fit's $diagnostic_summary(quiet=TRUE) (~2-3% divergent, E-BFMI ~0.71, recorded NOT gated), structurally harden the
+capture, and muffle+record sampler messages -> provenance$sccomp_messages. See plan S3 + memory.md S3 section.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

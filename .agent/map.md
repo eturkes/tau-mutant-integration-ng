@@ -56,8 +56,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       [genotype_batch] x substate count table; drops globally-empty levels; covariate-constancy fail-loud) |
       run_propeller (CELL-MEANS ~0+genotype+batch via make_contrast_matrix -- speckle PropRatio needs per-genotype
       mean coefs; asserts balanced crossed design; getTransformedProps -> propeller.ttest per contrast; logit PRIMARY + asin) |
-      run_sccomp (OFF-lock sccomp ~0+genotype+(1|batch), cores-only [source-verified]; warnings->attr + final-fit
-      diagnostic_summary [divergent/treedepth/E-BFMI] ->diagnostics attr; per-contrast c_rhat is structurally NA) |
+      run_sccomp (OFF-lock sccomp ~0+genotype+(1|batch), cores-only [source-verified]; withCallingHandlers muffles+
+      records BOTH R warnings->attr AND cmdstanr message() sampler notes ->messages attr [incl. "Warning:"-prefixed
+      divergence lines -- else they red the gate's ^Warning: scan on a FRESH build]; final-fit diagnostic_summary
+      (quiet=TRUE) [divergent/treedepth/E-BFMI] ->diagnostics attr, hardened to NULL on API drift; c_rhat structurally NA) |
       sccomp_backend_ready (PROJECT-LOCAL CmdStan gate -> no global leak) | composition_concordance (sign/sig cross-
       method flag; every present method must cover all keys -> fail-loud). orchestrator: backend present + sccomp error
       -> LOUD (allow_sccomp_failure to skip). propeller LOCKED primary; sccomp OPTIONAL off-lock cross-check

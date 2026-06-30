@@ -137,9 +137,12 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   R/composition.R::test_composition (propeller primary + gated sccomp) across 5 contrasts; target
   `composition_results`; tests/test_composition.R (synthetic count table, KNOWN amyloid->DAM direction). speckle +
   sccomp via rv; cmdstanr/CmdStan OFF-lock via scripts/install-cmdstan.sh (project-local tools/, gitignored).
-  LIVE-VERIFIED: tar_make built composition_results (29.5s) on real microglia_annotated + full scripts/check.sh
-  green; sccomp ran (final fit ~2.4% divergent, E-BFMI 0.72, recorded). Fixed latent diagnostics bug (codex
-  c_R_k_hat column absent in sccomp 2.4.0 + per-contrast c_rhat structurally NA) -> capture fit$diagnostic_summary.
+  LIVE-VERIFIED: tar_make built composition_results (~32s) on real microglia_annotated + full scripts/check.sh green
+  (incl. a forced FRESH rebuild); sccomp ran (final fit ~2-3% divergent, E-BFMI ~0.71, recorded). Close-review fixed a
+  latent diagnostics bug (codex c_R_k_hat absent in sccomp 2.4.0 + per-contrast c_rhat structurally NA) -> capture
+  final-fit $diagnostic_summary(quiet=TRUE); AND a gate hole (cmdstanr divergence notes via message() w/ a "Warning:"
+  prefix tripped the gate's ^Warning: scan on a FRESH build -- masked because check.sh leaves composition_results
+  cached) -> muffle+record sampler messages into provenance$sccomp_messages.
   ACCEPT (revised): propeller(logit) PRIMARY + asin sensitivity, sccomp OPTIONAL gated cross-check (reproducibility
   reversal: CmdStan unlockable); per-contrast proportion estimates incl. interaction; amyloid->DAM quantified+
   tested; discordance per the pre-declared rule (propeller-logit stands); batch random-vs-fixed asymmetry justified;

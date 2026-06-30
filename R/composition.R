@@ -156,6 +156,7 @@ run_sccomp <- function(long, seed = 42L, cores = 4L) {
   stopifnot(!anyNA(long$genotype), nlevels(long$batch) >= 2L, all(long$count >= 0))
 
   warns <- character(0)
+  msgs  <- character(0)
   test <- withCallingHandlers(
     {
       # `cores` is sccomp's single real parallelism knob (a fit_model formal): it caps the chain
@@ -170,23 +171,38 @@ run_sccomp <- function(long, seed = 42L, cores = 4L) {
       fit <- sccomp::sccomp_remove_outliers(fit, cores = cores, mcmc_seed = seed, verbose = FALSE)
       sccomp::sccomp_test(fit, contrasts = contrasts)
     },
-    warning = function(w) { warns <<- c(warns, conditionMessage(w)); invokeRestart("muffleWarning") }
+    warning = function(w) { warns <<- c(warns, conditionMessage(w)); invokeRestart("muffleWarning") },
+    # cmdstanr reports sampler health (e.g. "Warning: N of M transitions ended with a divergence") via
+    # message() with a literal "Warning:" prefix -- NOT R's warning() -> the warning handler never saw
+    # these, so they reached stderr -> the tee'd build log -> the gate's anchored ^Warning: scan would
+    # RED a FRESH composition_results rebuild (the off-lock arm must be RECORDED, never gating; the gate
+    # only stays green today because it leaves composition_results cached). Capture into `msgs` and muffle
+    # so they stay out of the log; the structured diagnostic_summary() below is the authoritative record.
+    message = function(m) { msgs <<- c(msgs, conditionMessage(m)); invokeRestart("muffleMessage") }
   )
 
   # HMC convergence of the FINAL (outlier-removed) fit. withCallingHandlers evaluates its block in
-  # THIS env, so `fit` leaks out here. pass_fit=TRUE stores the cmdstanr fit on attr(fit, "fit");
-  # diagnostic_summary() gives per-chain divergent transitions / max-treedepth hits / E-BFMI. tryCatch
-  # keeps it total: any structural surprise (fit absent, API drift) degrades to NULL, never crashes the arm.
-  diagnostics <- local({
-    f  <- tryCatch(attr(fit, "fit"), error = function(e) NULL)
-    ds <- if (!is.null(f)) tryCatch(f$diagnostic_summary(), error = function(e) NULL) else NULL
-    if (is.null(ds)) return(NULL)
-    nchain <- length(ds$num_divergent)
+  # THIS env, so `fit` leaks out here. pass_fit=TRUE stores the cmdstanr fit on attr(fit, "fit").
+  # diagnostic_summary(quiet=TRUE) RETURNS the per-chain divergent / max-treedepth / E-BFMI numbers
+  # WITHOUT printing cmdstanr's note (we keep only the structured values; the printed note would
+  # otherwise reach the build log and trip the gate's warning scan). Total by construction: the outer
+  # tryCatch plus the structural `ok` check make any surprise (fit absent, API drift, a malformed or
+  # short/non-finite-count summary) degrade to NULL -- never a misleading all-zero record, never a crash.
+  diagnostics <- tryCatch(local({
+    f <- attr(fit, "fit")
+    if (is.null(f)) return(NULL)
+    ds <- f$diagnostic_summary(quiet = TRUE)
+    div <- ds$num_divergent; td <- ds$num_max_treedepth; eb <- ds$ebfmi       # per-chain vectors
+    nchain <- length(div)
+    ok <- is.numeric(div) && is.numeric(td) && is.numeric(eb) && nchain >= 1L &&
+      length(td) == nchain && length(eb) == nchain &&
+      all(is.finite(div)) && all(is.finite(td))         # counts must be finite; E-BFMI may be NaN on a pathological chain -> surfaced via min, not dropped
+    if (!ok) return(NULL)
     ndraws <- tryCatch(as.integer(f$metadata()$iter_sampling) * nchain, error = function(e) NA_integer_)
     list(n_chains = nchain, n_post_warmup_draws = ndraws,
-         num_divergent = sum(ds$num_divergent), divergent_by_chain = ds$num_divergent,
-         num_max_treedepth = sum(ds$num_max_treedepth), ebfmi_min = min(ds$ebfmi))
-  })
+         num_divergent = sum(div), divergent_by_chain = div,
+         num_max_treedepth = sum(td), ebfmi_min = min(eb))
+  }), error = function(e) NULL)
 
   test <- as.data.frame(test)
   # sccomp labels `parameter` with the contrast NAME when contrasts is named, else the expression.
@@ -199,6 +215,7 @@ run_sccomp <- function(long, seed = 42L, cores = 4L) {
   stopifnot(nrow(out) >= 1L, !anyNA(out$contrast))                 # nonempty + every row mapped to a canonical contrast
   attr(out, "warnings") <- warns
   attr(out, "diagnostics") <- diagnostics                         # final-fit HMC health (divergences / treedepth / E-BFMI), recorded
+  attr(out, "messages") <- msgs                                   # muffled sccomp/cmdstanr sampler notes -- kept out of the gate log, recorded for traceability
   out
 }
 
@@ -258,6 +275,7 @@ test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alph
   sccomp_status <- "skipped: project-local CmdStan backend absent (run scripts/install-cmdstan.sh for the Bayesian arm)"
   sccomp_warnings <- character(0)
   sccomp_diagnostics <- NULL
+  sccomp_messages <- character(0)
   if (sccomp_backend_ready()) {
     sccomp_df <-
       if (allow_sccomp_failure)
@@ -267,8 +285,10 @@ test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alph
     if (!is.null(sccomp_df)) {
       sccomp_warnings <- attr(sccomp_df, "warnings") %||% character(0)
       sccomp_diagnostics <- attr(sccomp_df, "diagnostics")
+      sccomp_messages <- attr(sccomp_df, "messages") %||% character(0)
       attr(sccomp_df, "warnings") <- NULL
       attr(sccomp_df, "diagnostics") <- NULL
+      attr(sccomp_df, "messages") <- NULL
       div_note <- if (!is.null(sccomp_diagnostics))                # HMC health caveat surfaced in status (recorded, never gated)
         sprintf("; HMC %d/%s divergent, %d max-treedepth, min E-BFMI %.2f across %d chains",
                 sccomp_diagnostics$num_divergent,
@@ -305,7 +325,7 @@ test_composition <- function(microglia_annotated, seed = 42L, cores = NULL, alph
     discordance_rule = "propeller-logit stands; asin/sccomp sign/significance disagreements are flagged, never averaged",
     prop_ratio_semantics = "raw MARGINAL genotype mean-proportion ratio (speckle refits on the contrasted genotype columns, batch dropped); for `interaction` a raw-scale ratio-of-ratios whose sign may differ from the primary logit t -> direction comes from t/p_value",
     sccomp_status = sccomp_status, sccomp_warnings = sccomp_warnings,
-    sccomp_diagnostics = sccomp_diagnostics, sccomp_backend = sccomp_backend,
+    sccomp_messages = sccomp_messages, sccomp_diagnostics = sccomp_diagnostics, sccomp_backend = sccomp_backend,
     versions = c(speckle = as.character(utils::packageVersion("speckle")),
                  sccomp = tryCatch(as.character(utils::packageVersion("sccomp")), error = function(e) NA_character_)))
 
