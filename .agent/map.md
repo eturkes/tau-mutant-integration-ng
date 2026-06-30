@@ -68,6 +68,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       -> de_pseudobulk (build_pseudobulk -> factorial_design -> fit_limma_voom[voomWQW+robust eBayes] -> stage_wise_test
       -> interaction_power). stage_wise_test = stageR screen (omnibus F, df1=rank=3) + modified-Holm per-contrast confirm. dam_direction =
       amyloid->DAM concordance vs v1. stageR added (rproject.toml, BioCsoft).
+   + (P1-S5) microglia.R: microglia_report_data (extracts a COMPACT report frame from the 612MB
+      microglia_annotated -- per-cell {umap_1/2, genotype, substate, *_UCell_z} cell_frame + n_cells +
+      prune/provenance summaries; asserts finite z + non-NA factors) -> the `microglia_report` target keeps
+      _microglia.qmd (+ every gate force-render) reading ~0.5MB, NOT the 612MB Seurat.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -85,11 +89,16 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        composition_results  <- test_composition(microglia_annotated)  # propeller(logit+asin) [+gated sccomp] x 5 contrasts; counts+stats+concordance (small qs)
        pb_de_microglia      <- run_pb_de_microglia(microglia_annotated, symbol_map)  # whole-MG pseudobulk DE x 5 contrasts (voomWQW+stageR) + DAM concordance (4.7MB)
        pb_de_substate       <- run_pb_de_substate(microglia_annotated)  # per-substate DE: Homeo+DAM fit, IFN/Prolif skip (min-cell floor); cell_counts (7MB)
+       microglia_report     <- microglia_report_data(microglia_annotated)  # compact report frame (umap+substate+z) + prune/provenance; ~0.5MB (keeps gate render cheap)
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
                (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
                 modalities + sample_key -> dims, 16x16 design bijection, bounds)
+                                                          --{{< include >}}--> `_microglia.qmd`
+               (P1 microglia chapter: setup `options(warn=2)`; tar_load microglia_report + composition_results +
+                pb_de_microglia + pb_de_substate + symbol_map -> substate UMAP, composition forest/table,
+                amyloid->DAM volcano + DE counts, under-powered interaction + P2 pointer, Thrupp + dropout caveats)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)
@@ -98,7 +107,7 @@ make_meta16, make_fake_seurat = synthetic Seurat fixtures), run stopifnot checks
 no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/test_<x>.R`.
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
-  - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2)
+  - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
@@ -108,8 +117,8 @@ no testthat dep), print `ok - <name>`. Run from project root: `Rscript tests/tes
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
   1. `rv sync` + `uv sync`  2. loop `tests/test_*.R` (each `options(warn=2)` -> stray warnings = errors)
   3. FORCE-render report (`tar_invalidate(any_of("report")); tar_make()`, tee'd to a log, `if !`-wrapped) ->
-     two render-time catches in the SOURCES: `_qc.qmd` `options(warn=2)` (R chunk warning -> render error) +
-     `_targets.R` `tar_quarto(quiet=FALSE)` (Quarto/Pandoc `[WARNING]` -> log)
+     two render-time catches in the SOURCES: every section qmd (`_qc.qmd`, `_microglia.qmd`) setup `options(warn=2)`
+     (R chunk warning -> render error) + `_targets.R` `tar_quarto(quiet=FALSE)` (Quarto/Pandoc `[WARNING]` -> log)
   4. enforce zero-fault: (a) `tar_meta(error,warnings)` all-NA scoped to manifest names + dynamic branches;
      (b) anchored render-log grep (`^[WARNING]`/`^Warning:`/...), exit 0=fault / 1=clean / >=2=infra.
 Any error/warning/log-hit -> non-zero exit. Detail (force-render rationale, warn=2, scoping, anchored grep,
@@ -117,7 +126,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _microglia.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

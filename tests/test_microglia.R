@@ -126,4 +126,38 @@ expect_error(annotate_microglia(obj_a, sm3,
              marker_sets = list(Homeostatic = "A", DAM = "A", IFN = "A", Proliferative = "A")), "MHC_APC")
 expect_error(annotate_microglia(obj_a, sm3), "percent_contam")   # required QC meta absent -> fail at the gate
 
+# --- microglia_report_data: compact extraction from the annotated object -------------------
+# Build a minimal "annotated" fixture (umap reduction + primary substate + z-scores + the two
+# @misc summaries) and confirm the extractor returns a cell-aligned plotting frame + passes the
+# small summaries through, with the heavy-object guards firing loud.
+obj_r <- make_fake_seurat(cells_per = 4L, n_genes = 30L)         # 16 cells, genotype/batch meta
+nc    <- ncol(obj_r)
+emb   <- matrix(as.double(seq_len(nc * 2L)), nrow = nc,
+                dimnames = list(colnames(obj_r), c("UMAP_1", "UMAP_2")))
+obj_r[["umap"]] <- SeuratObject::CreateDimReducObject(embeddings = emb, key = "UMAP_", assay = "RNA")
+obj_r$microglia_substate <- factor(rep(c("Homeostatic", "DAM"), length.out = nc),
+                                   levels = c(microglia_substate_levels, "ambiguous", "unassigned"))
+for (z in c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z"))
+  obj_r@meta.data[[z]] <- as.double(seq_len(nc))
+obj_r@misc$microglia_prune <- list(n_retained = nc, n_dropped = 0L)
+obj_r@misc$substate_provenance <- list(
+  substate_table = table(genotype = obj_r$genotype, substate = obj_r$microglia_substate))
+
+rd <- microglia_report_data(obj_r)
+stopifnot(
+  is.data.frame(rd$cell_frame), nrow(rd$cell_frame) == nc,
+  all(c("umap_1", "umap_2", "genotype", "substate",
+        "Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z") %in% names(rd$cell_frame)),
+  identical(levels(rd$cell_frame$genotype), genotype_levels),    # canonical genotype factor preserved
+  is.factor(rd$cell_frame$substate),
+  isTRUE(all.equal(rd$cell_frame$umap_1, as.double(seq_len(nc)))),   # umap col 1 carried through, order-stable
+  rd$n_cells == nc, identical(rd$prune$n_retained, nc),
+  !is.null(rd$provenance$substate_table)
+)
+# guards: missing umap / missing z column / missing substate column fail loud (no silent partial frame)
+obj_nou <- obj_r; obj_nou[["umap"]] <- NULL
+expect_error(microglia_report_data(obj_nou), "umap")
+expect_error(microglia_report_data(obj_r, z_cols = "NOPE_UCell_z"), "z_cols")
+expect_error(microglia_report_data(obj_r, substate_col = "nope"), "substate_col")
+
 cat("ok - test_microglia\n")

@@ -237,6 +237,31 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   tighter-floor skips DAM, COMPLETE-CROSSING guard (absent unit -> fail-loud both orchestrators), dam_direction shape
   + zero-marker NA. Synthetic Seurat (RNG-free), voomWQW warning-free.
 
+## snRNAseq microglia report (P1-S5, built) -- `_microglia.qmd` + `R/microglia.R::microglia_report_data` -> `microglia_report`
+- CHEAP-RENDER INVARIANT (the S5 design constraint): the gate FORCE-renders the report every run reading CACHED
+  targets -> a section qmd must NEVER tar_load the 612MB microglia_annotated. microglia_report_data extracts a
+  COMPACT frame (per-cell {umap_1/2, genotype[factor], substate[factor], 3 *_UCell_z} cell_frame + n_cells + the
+  small $prune/$provenance lists) -> `microglia_report` ~0.5MB. _microglia.qmd tar_loads microglia_report +
+  composition_results + pb_de_microglia + pb_de_substate + symbol_map (all compact) -> render ~12s. The extractor
+  ASSERTS finite z + non-NA genotype/substate (a downstream NA -> a ggplot "removed rows" warning -> warn=2 gate
+  fail) -> the plotting data is render-clean by construction.
+- _microglia.qmd setup `options(warn=2)` + tar_source(); included in index.qmd AFTER _qc.qmd (section flow in map.md).
+  RENDER-WARNING avoidance (warn=2 INSIDE the qmd): ggrepel on the small labelled DAM subset uses max.overlaps=Inf
+  (else "unlabeled data points"); volcano y = -log10(pmax(P.Value, 1e-300)) (caps zero-p -> Inf -> drop-warning);
+  geom_text_repel seed=42L (deterministic layout).
+- PROSE = INLINE-COMPUTED from the loaded targets, NEVER hardcoded -> tracks the actual cached build (sccomp
+  FDR/divergences run-to-run variable -> a hardcoded value drifts). Three adversarial-review fixes (numbers must be
+  RIGHT, not just present), traced live 2026-06-30:
+  (1) interaction df: describe the RAW design df qualitatively ("few replicate degrees of freedom"), show ONLY the
+      computed pbm$interaction$df (=24 = eBayes-MODERATED df.total) as the "effective total" -- df.total != residual
+      df (~9); never label 24 "residual df".
+  (2) sccomp interaction: a setup `int_sentence` reports the ACTUAL sccomp FDR + 95% CI bounds (or "not re-tested ...
+      propeller-only" when sccomp NULL); never assert "CI spanning zero" (run-to-run).
+  (3) dropout caveat: back "no dropped cluster DAM-high" against the DAM-ENRICHED ceiling kept_dam_max (~0.225), NOT
+      the kept FLOOR -- dropped clusters' DAM medians (<=0.13) OVERLAP kept HOMEOSTATIC clusters (~0.10) so
+      drop_dam_max<kept_dam_min is FALSE; report the dropout GENOTYPE (drop_geno=NLGF_MAPTKI via which.max rowSums)
+      vs CLUSTER (drop_clu=6 via colSums) each correctly labelled (old prose mislabelled the genotype "cluster").
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
@@ -278,12 +303,12 @@ Enforcement is layered across qmd + target + script:
 2. tests: loop `tests/test_*.R` each `Rscript -e 'options(warn=2); source(<f>)'` (warn=2 -> stray R warning = error); set -e aborts on first fail.
 3. pipeline: FORCE-render the report each run -- `tar_invalidate(any_of("report")); tar_make()`, tee'd to a log,
    wrapped in `if !` (so the failure message blames tar_make, not `tee`). Forcing = soundness + idempotency: a
-   cached report skips its render -> empty log + warn=2 un-exercised. CHEAP (~8 s): the render READS cached
-   targets (~0.3 GB), it does NOT re-run the heavy load_snrnaseq build (the "8G" is that BUILD's peak, not the
-   stored target). Two render-time catches live in the SOURCES (so they fire on every render, not just check.sh):
-     - `_qc.qmd` setup `options(warn = 2)` -> any R chunk warning -> error -> Quarto halts (error:false default)
-       -> tar_make non-zero. The REAL catch for knitr/R chunk warnings (else they render silently INTO the HTML,
-       never reaching the log or tar_meta).
+   cached report skips its render -> empty log + warn=2 un-exercised. CHEAP (~12 s, grows modestly per section): the
+   render READS cached targets (~0.3 GB), it does NOT re-run the heavy load_snrnaseq build (the "8G" is that BUILD's
+   peak, not the stored target). Two render-time catches live in the SOURCES (so they fire on every render, not just check.sh):
+     - EVERY section qmd setup carries `options(warn = 2)` (`_qc.qmd`, `_microglia.qmd`) -> any R chunk warning ->
+       error -> Quarto halts (error:false default) -> tar_make non-zero. The REAL catch for knitr/R chunk warnings
+       (else they render silently INTO the HTML, never reaching the log or tar_meta).
      - `_targets.R` `tar_quarto(report, quiet = FALSE)` -> Quarto/Pandoc `[WARNING]` lines reach the log;
        default quiet=TRUE SUPPRESSED them, so the pre-review grep was blind to all Quarto/Pandoc warnings.
 4. script-side zero-fault enforcement:
@@ -346,8 +371,9 @@ files aren't scanned -- moot, the report is RE-rendered from source each run, no
   `embed-resources: true` inlines CSS/JS/fonts) + modular `{{< include _section.qmd >}}` (leading
   `_` -> not rendered standalone). NOT a Quarto book (multi-file + `Could not fetch resource
   ./<sibling>.html` nav warnings under embed-resources -> caught by the gate's render-log scan once quiet=FALSE). tar_quarto
-  still detects `tar_load`s inside an included `_*.qmd` (verified: 5 edges through the include); list
-  the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
+  still detects `tar_load`s inside EACH included `_*.qmd` (verified: edges through both `_qc.qmd` and `_microglia.qmd`
+  -- the latter pulls microglia_report/composition_results/pb_de_microglia/pb_de_substate/symbol_map; the gate's
+  force-render + tar_meta scope exercise them); list the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
 - Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29):
   scss:defaults COLOUR vars ($primary/$link-color #B0344D, $code-color #3F5A6B) + the IBM Plex stack
   ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)

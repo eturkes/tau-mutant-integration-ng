@@ -377,3 +377,49 @@ annotate_microglia <- function(seurat_obj, symbol_map,
   )
   obj
 }
+
+# --- P1-S5: compact report-data extraction (keeps the gate render cheap) --------------------
+
+# Extract ONLY what _microglia.qmd plots/tabulates from the ~612MB annotated Seurat, so the
+# force-rendered report (hence EVERY scripts/check.sh run) reads a ~2MB target instead of
+# deserialising the full object -- this preserves the documented cheap-render gate property
+# (the QC chapter already loads the 340MB raw subset; we must not add the heavy annotated one
+# on top). Returns a per-cell plotting frame (UMAP coords + genotype + primary substate + the
+# activation z-scores) plus the small prune / substate-provenance summaries the section reports
+# (both already compact -- passed through verbatim). Pure: no RNG, no I/O. UMAP rows are asserted
+# cell-aligned to meta.data, z-scores asserted finite (annotate_microglia coerces non-finite -> 0
+# upstream) so the report never hits a ggplot missing-value warning (warn=2 -> render error).
+microglia_report_data <- function(seurat_obj,
+                                  substate_col = "microglia_substate",
+                                  z_cols = c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z")) {
+  stopifnot(
+    inherits(seurat_obj, "Seurat"),
+    "umap" %in% SeuratObject::Reductions(seurat_obj),
+    substate_col %in% colnames(seurat_obj@meta.data),
+    "genotype" %in% colnames(seurat_obj@meta.data),
+    all(z_cols %in% colnames(seurat_obj@meta.data)),
+    !is.null(seurat_obj@misc$microglia_prune),
+    !is.null(seurat_obj@misc$substate_provenance)
+  )
+  md  <- seurat_obj@meta.data
+  emb <- SeuratObject::Embeddings(seurat_obj, "umap")
+  stopifnot(identical(rownames(emb), rownames(md)), ncol(emb) >= 2L)   # umap cell-aligned to meta
+  sub <- md[[substate_col]]
+  cell_frame <- data.frame(
+    umap_1   = as.numeric(emb[, 1]),                      # as.numeric strips cell names -> no row.names inference
+    umap_2   = as.numeric(emb[, 2]),
+    genotype = factor(as.character(md$genotype), levels = genotype_levels),
+    substate = factor(as.character(sub),
+                      levels = if (is.factor(sub)) levels(sub) else sort(unique(as.character(sub)))),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  cell_frame[z_cols] <- md[, z_cols, drop = FALSE]         # append the activation z-scores by name (cell-aligned)
+  rownames(cell_frame) <- NULL
+  stopifnot(
+    !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),   # every cell placed (annotate guarantees it)
+    all(vapply(z_cols, function(z) all(is.finite(cell_frame[[z]])), logical(1)))
+  )
+  list(cell_frame = cell_frame, n_cells = ncol(seurat_obj),
+       prune = seurat_obj@misc$microglia_prune,
+       provenance = seurat_obj@misc$substate_provenance)
+}

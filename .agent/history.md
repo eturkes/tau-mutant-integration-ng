@@ -41,3 +41,50 @@ one-shot FRESH-CLONE rebuild is the design contract, verified incrementally acro
 Deferred -> P1+: microglia reprocess (SCT/Harmony/cluster-prune), substate assignment, single-cell DE
 (NEBULA/glmmTMB), pseudobulk DE RESULTS, edgeR-QLF/DESeq2/dream, BPCells (8G RAM relief), col-map DAG
 validation (P4). Out of scope (v1 bloat): cisTarget mm10/SCENIC, SEA-AD human validation.
+
+## P1 snRNAseq microglia core -- closed 2026-06-30 (-> `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`)
+
+The first analysis phase: reprocess + integrate + cluster microglia (S1), UCell substates + contaminant prune
+(S2), substate composition (S3), pseudobulk DE (S4), `_microglia.qmd` report + close (S5). Built the robust
+amyloid->DAM activation headline, supported THREE independent ways (composition, DE, UCell score), plus an
+HONEST under-powered interaction handed to P2. Live facts -> memory.md (P1-S1..S5 sections); wiring -> map.md.
+Below = decisions + rejected alternatives.
+
+- DE METHOD: single-cell DE DROPPED -> pseudobulk limma-voom is the SOLE inference (Squair 2021 / Murphy-Skene
+  2022: cell-level DE = pseudoreplication -> FDR inflation; v1's NEBULA interaction was null anyway -> nothing
+  lost). voomWithQualityWeights + robust eBayes + stageR family screen (omnibus-F, df1=rank=3 -> modified-Holm
+  per-contrast). REJECTED: NEBULA/glmmTMB single-cell, edgeR-QLF/DESeq2/dream (KISS, deferred indefinitely).
+- COMPOSITION: REVERSED the plan's sccomp-primary -> propeller-logit LOCKED primary (+asin sensitivity) + sccomp
+  OPTIONAL off-lock Bayesian cross-check. WHY: CmdStan is a compiled C++ tree OFF the P3M snapshot -> rv cannot
+  lock it -> a Bayesian arm cannot be THE reproducible call. propeller needs a CELL-MEANS design (PropRatio
+  raises per-genotype mean coefs to contrast powers; a factorial design crashes/misreads). REJECTED: sccomp-
+  primary (unlockable), averaging discordant methods (propeller-logit STANDS, discordance flagged not averaged).
+- NORMALISATION: SCTransform v2 (v1 continuity; user choice over the SOTA logNorm lean). Harmony over BATCH ONLY
+  (sex perfectly aliased with batch; never integrate over genotype/amyloid -> DAM is biology). REJECTED: logNorm,
+  Harmony over batch+sex.
+- SUBSTATES: UCell (rank-based, dropout-robust) calibrated PER-SIGNATURE then cluster-argmax (raw UCell not
+  cross-signature comparable; cluster-PRIMARY authoritative, per-cell NOISY); 4 substates + aux MHC/APC.
+  Contaminant prune on RAW identity-vs-contam (z FAILS -- ambient contam pervasive destroys the absolute "is a
+  microglia"); dropped {6,7,8,11}=2944/26104. REJECTED: AddModuleScore (control-bin, unstable on sparse nuclei),
+  z-based prune, per-cell substate proportions, over-pruning.
+- HEADLINE (robust, microglia-led): amyloid (NLGF) drives homeostatic->DAM. Confirmed 3 ways -- composition
+  (propeller DAM-up FDR~1e-10/1e-13, sccomp concordant), DE (DAM markers amyloid-UP frac 1.00/0.94, meanLFC
+  +1.37/+1.85 -> v1-concordant), UCell DAM score shift. INTERACTION (honest, OUTCOME-OPEN): 0 large-effect DE
+  genes BUT 123 stageR small-effect + MDE@80%=0.92 log2FC -> under-powered NOT absent (BACKED by the power
+  statement, never asserted from "0 genes"; absence of evidence != evidence of absence). Static compositional
+  synergy on DAM (propeller sig, sccomp borderline) -> the tau x amyloid synergy is a progression-RATE effect
+  handed to P2 (trajectory). Thrupp 2020 caveat carried throughout (snRNA under-detects ~18% DAM genes -> SCORE
+  not threshold; DE on RAW counts).
+- REPORT: `_microglia.qmd` reads a COMPACT `microglia_report` target (not the 612MB Seurat) -> the gate's force-
+  render stays cheap. Prose INLINE-COMPUTED from targets (never hardcoded). Two codex reviews hardened S3
+  (concordance false-green, sccomp diagnostics + a fresh-build gate hole) + S4 (null/power over-claim, crossing/
+  marker guards).
+
+Verification (honest): every step smoke-tested vs LIVE data then full `scripts/check.sh` green end-to-end (S3 +
+S4 incl. a FORCED fresh rebuild of the heavy target); S5 report renders 0-warning with the microglia chapter.
+Re-baselined on R 4.6 (NOT v1's locked 18/12/55 margins). The interaction's "under-powered not absent" is the
+defensible call -- the static null is reported WITH effect-size/MDE, the synergy deferred to P2 as a rate effect.
+
+Deferred -> P2+: activation pseudotime + interaction-as-progression-rate (P2); TF/kinase mechanism, Gsk3b/Myc,
+NF-kB attenuation (P3); GeoMx spatial + proteome + phospho DE, CCC, integrated divergence (P4); lean synthesis
+report (P5).

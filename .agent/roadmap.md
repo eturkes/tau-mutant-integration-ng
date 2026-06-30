@@ -27,48 +27,20 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: P1 snRNAseq microglia core -> `.agent/p1_snrnaseq_plan.md` (opened 2026-06-29)
-5 steps: S1 reprocess+cluster (SCT+Harmony-batch-only+Louvain) | S2 substates (UCell calibrated-argmax: homeostatic/
-DAM/IFN/proliferative + aux MHC/APC) + contaminant prune | S3 composition (sccomp + propeller) | S4
-pseudobulk DE (whole-MG + per-substate, voomQW + robust eBayes + stageR) | S5 report `_microglia.qmd` + close.
-Gate-locked (2026-06-29, SOTA-researched): single-cell DE DROPPED (pseudobulk sole inference; supersedes
-de_pb.R de_sc forward-ref); composition = sccomp+propeller; normalisation = SCT-v2 (v1 continuity). Science:
-headline = amyloid->DAM (robust, microglia-led); the tau x amyloid interaction = v1-prior null -> P1 reports it
-WITH a power/effect-size stmt (outcome-open), synergy = a rate effect handed to P2. Carry Thrupp 2020 caveat
-(snRNA under-detects ~18% DAM genes; score, not threshold).
-S1 DONE 2026-06-29: `microglia_processed` (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain 12 clusters @res0.4 ->
-UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif distinct argmax); re-run STABLE
-(observed ARI=1.0, recorded threads); gate green.
-S2 DONE 2026-06-30: `microglia_annotated` (UCell substate scoring -> prune contaminant clusters {6,7,8,11}=2944
-cells -> calibrated cluster-argmax labels; Homeo 11174/DAM 11189/IFN 797, 23160 retained); amyloid->DAM
-confirmed descriptively; gate green.
-S3 DONE 2026-06-30: `composition_results` (propeller logit-PRIMARY + asin sensitivity, LOCKED reproducible; sccomp
-OPTIONAL off-lock Bayesian cross-check, CmdStan-unlockable). LIVE-VERIFIED + full gate green end-to-end (incl. a FORCED
-fresh composition_results rebuild): amyloid->DAM STRONG + directionally concordant across both methods (propeller
-FDR~1e-10/1e-13, sccomp FDR~0), Homeostatic mirror-down; interaction DAM positive sig in propeller (FDR 0.027),
-borderline+diagnostic-limited in sccomp (0.051) -> flagged (4/15 concordance flags, propeller-primary stands; static
-synergy handed to P2). Two codex reviews: (1) 8 findings hardened concordance/gate/sccomp; (2) close-review found a
-latent diagnostics bug (`c_R_k_hat` absent in sccomp 2.4.0; per-contrast c_rhat structurally NA) AND a gate hole
-(cmdstanr emits divergence notes via message() with a literal "Warning:" prefix -> a FRESH build's tee'd log tripped the
-gate's ^Warning: scan; green held only because check.sh leaves composition_results cached) -> now capture the final
-fit's $diagnostic_summary(quiet=TRUE) (~2-3% divergent, E-BFMI ~0.71, recorded NOT gated), structurally harden the
-capture, and muffle+record sampler messages -> provenance$sccomp_messages. See plan S3 + memory.md S3 section.
-S4 DONE 2026-06-30: `pb_de_microglia` + `pb_de_substate` (R/de_pb.R: voomWithQualityWeights + robust eBayes; stageR
-omnibus-F screen (df1=rank=3) -> modified-Holm per-contrast confirm; interaction MDE; per-substate min-cell floor fit-or-skip). LIVE-VERIFIED,
-full gate green. Whole-MG: kept 14512, stageR screened 3545; amyloid drives strong DE (nlgf_in_maptki 555up/457dn,
-nlgf_in_p301s 940/1148), DAM markers amyloid-UP frac 1.00/0.94 meanLFC +1.37/+1.85 -> HEADLINE concordant v1 at the DE
-level. tau_alone 0/0 large-effect (124 stageR-confirmed small-effect). INTERACTION 0/0 at |logFC|>0.5 BUT 123
-stageR-confirmed small-effect + MDE@80%=0.92 log2FC (NOMINAL median-gene power) -> under-powered, NOT absent; report 123+MDE/CI (S5), synergy -> P2. Per-substate Homeostatic+DAM
-FIT (amyloid shifts within DAM too), IFN(min5)+Proliferative(0) SKIP + cell_counts. See plan S4 + memory.md S4 section.
-Next: S5 report `_microglia.qmd` + CLOSE-OUT.
+## Active plan: (none) -- P1 CLOSED 2026-06-30; next = PLAN P2 (interaction trajectory)
+P0 + P1 complete. P1 digest -> history.md; plan archived -> `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`.
+No active plan -> next session = PLAN mode: confirm the P2 backlog phase (activation pseudotime; the tau x
+amyloid synergy as a progression-RATE effect, decomposed composition-vs-progression) before opening it.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
   helpers (io / design+contrasts / plot theme), data load + QC sanity, 2x2
   factorial + 5 contrasts, concrete quality gate.
-- P1 snRNAseq microglia core [ACTIVE]: reprocess (SCT) + substates (homeostatic / DAM /
-  IFN / proliferative, UCell), composition (sccomp), pseudobulk DE across contrasts -> the
-  amyloid->DAM activation programme. Interaction = no large-effect DE, v1-prior consistent (reported w/ power stmt) -> rate effect to P2.
+- P1 snRNAseq microglia core [DONE 2026-06-30]: reprocess (SCT) + substates (homeostatic / DAM /
+  IFN / proliferative, UCell), composition (propeller primary + sccomp cross-check), pseudobulk DE across
+  contrasts -> the robust amyloid->DAM activation programme (3-way confirmed: composition + DE + UCell score).
+  Interaction = no large-effect DE, under-powered NOT absent (reported w/ MDE/CI + 123 stageR small-effect) ->
+  synergy = rate effect to P2. Digest -> history.md.
 - P2 Interaction trajectory: activation pseudotime (homeostatic->DAM); test amyloid
   advance + tau x amyloid progression synergy, decomposed composition vs progression.
 - P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase
@@ -127,3 +99,15 @@ Next: S5 report `_microglia.qmd` + CLOSE-OUT.
   reductions {pca,harmony,umap}+cluster factor present; post-Harmony marker separation confirmed (distinct
   argmax per substate); re-run STABLE (observed ARI=1.0 under recorded threads; clusters derive from the
   seeded PCA->Harmony->SNN->Louvain chain, UMAP is viz-only; NOT bitwise-guaranteed per up-to-tolerance); gate green.
+- 2026-06-30 P1-S2..S4 DONE (annotate / composition / pseudobulk-DE; outcomes folded to history.md + memory.md P1
+  sections, full detail in the archived plan) -> P1-S5 DONE -> P1 CLOSED. S5 = `_microglia.qmd` microglia chapter
+  (substate UMAP, composition forest/table, amyloid->DAM volcano + DE counts, under-powered-interaction + P2
+  pointer, Thrupp + dropout caveats) reading a COMPACT `microglia_report` target (microglia_report_data extracts
+  umap+substate+z+prune/provenance from the 612MB annotated -> the gate's force-render stays cheap ~12s). Prose
+  INLINE-COMPUTED from targets (never hardcoded). Adversarial self-review fixed 3 prose-accuracy issues (interaction
+  df.total-vs-residual-df conflation; sccomp CI reported factually, not asserted "spanning zero"; dropout caveat
+  backed against the DAM-ENRICHED ceiling -- dropped clusters' DAM medians overlap kept HOMEOSTATIC, so the floor
+  comparison was false). Full gate green end-to-end (6 tests warn=2 + force-render 0-warning + tar_meta clean across
+  19 targets). Folded P1 digest -> history.md; updated memory (P1-S5 + cheap-render + warn=2-per-section) + map
+  (microglia_report target + _microglia.qmd include + microglia_report_data fn); archived plan ->
+  `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`; reset Active plan to (none). Next = PLAN P2.

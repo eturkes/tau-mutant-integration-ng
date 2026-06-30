@@ -17,10 +17,13 @@ transcriptomics, and bulk proteomics and phosphoproteomics across four mouse mod
 Alzheimer's disease. It asks how amyloid reshapes microglia under different tau
 backgrounds, reading the tau-amyloid interaction across all four modalities.
 
-Analysis sections arrive in later phases. This foundation page marks the reproducible
-spine: a pinned R environment (rv), a pinned Python environment (uv), a targets pipeline,
-and this single self-contained Quarto report. The quality-control pass below confirms that
-every modality loads at its expected shape and that the single-nucleus microglia carry a
-complete genotype-by-batch design.
+The analysis is built on a reproducible spine: a pinned R environment (rv), a pinned Python
+environment (uv), a targets pipeline, and this single self-contained Quarto report. The
+quality-control pass below confirms that every modality loads at its expected shape and that
+the single-nucleus microglia carry a complete genotype-by-batch design. The microglia chapter
+then carries the first phase of the story - how amyloid reshapes the microglial population -
+with the spatial, proteomic and phosphoproteomic modalities to follow.
 
 {{< include _qc.qmd >}}
+
+{{< include _microglia.qmd >}}
