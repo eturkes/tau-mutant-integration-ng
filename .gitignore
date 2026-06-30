@@ -22,6 +22,9 @@
 # sccomp/cmdstanr dumps per-chain CSV draws into ./sccomp_draws_files/ at the build CWD - regenerable
 sccomp_draws_files/
 
+# tokensave code-graph index (Headroom-installed MCP server; regenerable via `tokensave sync`)
+/.tokensave/
+
 # generic R artefacts
 .Rhistory
 .RData
