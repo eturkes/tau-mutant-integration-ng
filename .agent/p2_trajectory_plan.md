@@ -130,7 +130,8 @@ S2a — Per-replicate summary + contrast fit + Kitagawa decomposition (estimatio
     batch = derive_batch(genotype_batch, genotype) per unit. dam_onset = stats::median(pt_raw[substate==dam_state])
     PRE-DECLARED. per_unit cols {genotype_batch, genotype, batch, n_cells, sd_pt, mean_pt, median_pt, q90,
     frac_past}; frac_past = mean(pt_raw > dam_onset) = the ONLY
-    genuinely [0,1] measure. within_<state> = per-unit MEAN pt_raw within each state, on the pt-SCALE and
+    genuinely [0,1] measure. within_<lc> (lc = tolower(state) -> within_homeostatic / within_dam; ONE sanitizer, S2b
+    reuses it -- NEVER the verbatim-cased state) = per-unit MEAN pt_raw within each state, on the pt-SCALE and
     UNtransformed (a within-state mean position is NOT in [0,1]; keeping it on pt_raw puts within_homeostatic in
     the SAME additive units as the Kitagawa progression_cf -> the two PRIMARY endpoints share a scale). State x
     unit count matrix `cnt` (assert all >= 1); pi_mat = cnt col-normalised; mu_mat = per-state per-unit mean;
@@ -146,18 +147,26 @@ S2a — Per-replicate summary + contrast fit + Kitagawa decomposition (estimatio
     colnames(measure_mat)==rownames(design), rownames(contrasts)==colnames(design), full-rank, all finite;
     weights (if given) a matrix, identical(dimnames(weights), dimnames(measure_mat)) (limma consumes weights BY
     POSITION -> assert dimnames match, NOT just dims, to catch row/unit drift), finite & > 0. limma::lmFit(measure_mat, design,
-    weights) -> limma::contrasts.fit -> per-contrast ordinary_t_table. Returns list(fit, top). The `interaction`
+    weights) -> cfit = limma::contrasts.fit(...) -> per-contrast ordinary_t_table. Returns list(fit = cfit, top)
+    where top = setNames(lapply(colnames(contrasts), function(cn) ordinary_t_table(cfit, cn, conf_level)),
+    colnames(contrasts)) -- a NAMED list keyed by contrast (top$interaction = the per-measure interaction table) so
+    fit$top$interaction AND fit$fit$coefficients[,"interaction"] both resolve downstream. The `interaction`
     contrast == the `tau_nlgf` coefficient (assert in test vs manual OLS). Do NOT route through `fit_limma_log`
     (that = limma-TREND + eBayes for MANY log-intensity features, incoherent for a handful of heterogeneous
     pseudotime endpoints).
-  - `kitagawa_channels(pi_mat, mu_mat, pi_bar, mu_bar, tol = 1e-8)`: const = sum(pi_bar*mu_bar); mean_pt =
-    colSums(pi_mat*mu_mat); comp_cf = colSums(pi_mat*mu_bar); prog_cf = colSums(pi_bar*mu_mat); cross =
-    colSums((pi_mat-pi_bar)*(mu_mat-mu_bar)); assert max|mean_pt-(comp_cf+prog_cf+cross-const)| < tol. Returns
+  - `kitagawa_channels(pi_mat, mu_mat, pi_bar, mu_bar, tol = 1e-8)`: assert ALIGNMENT first (every broadcast below is
+    POSITION-based -> a silent wrong split on state-order drift): identical(dimnames(pi_mat), dimnames(mu_mat)),
+    identical(rownames(pi_mat), names(pi_bar)), identical(names(pi_bar), names(mu_bar)). const = sum(pi_bar*mu_bar);
+    mean_pt = colSums(pi_mat*mu_mat); comp_cf = colSums(pi_mat*mu_bar); prog_cf = colSums(pi_bar*mu_mat); cross =
+    colSums((pi_mat-pi_bar)*(mu_mat-mu_bar)) (pi_bar/mu_bar recycle DOWN columns -> need the rownames-aligned state
+    order asserted above); assert max|mean_pt-(comp_cf+prog_cf+cross-const)| < tol. Returns
     df per unit {genotype_batch, mean_pt, comp_cf, prog_cf, cross, const}.
   - `decompose_progression_vs_composition(per_rep, design, contrasts, weights = NULL, conf_level = 0.95)`:
-    build the 4-channel matrix (rows mean_pt, comp_cf, prog_cf, cross; cols = units) via kitagawa_channels ->
-    fit_trajectory_contrasts with ONE shared per-unit weight vector replicated across all 4 channel-rows
-    (matrix(weights, nrow, ncol, byrow = TRUE)) -> exact reconstruction preserved AND progression_cf weighted.
+    build the 4-channel matrix M4 (rows mean_pt, comp_cf, prog_cf, cross; cols = units, dimnames pinned) via
+    kitagawa_channels -> fit_trajectory_contrasts with ONE shared per-unit weight vector (weights = a per-unit vector
+    NAMED by units) replicated across all 4 channel-rows: W4 = matrix(weights[colnames(M4)], nrow(M4), ncol(M4),
+    byrow = TRUE, dimnames = dimnames(M4)) (matrix() DROPS dimnames + index by colnames -> else
+    fit_trajectory_contrasts' identical(dimnames(weights), dimnames(M4)) assert fails) -> exact reconstruction preserved AND progression_cf weighted.
     L_int = fit$fit$coefficients[, "interaction"] (a length-4 NAMED vector over the channel-rows); loadings =
     L_int[c("comp_cf","prog_cf","cross")] / L_int["mean_pt"] (NA loadings if abs(L_int["mean_pt"]) < tol). The
     interaction contrast puts ZERO weight on the intercept, so it annihilates any unit-constant (treatment coding
@@ -176,7 +185,10 @@ S2a — Per-replicate summary + contrast fit + Kitagawa decomposition (estimatio
   within-state mean -> the pure-composition fixture is EXACTLY pure, prog/cross interaction 0 not merely approximate);
   pt01 = squeeze_unit_interval(pt_raw); on_lineage = TRUE. DEFAULT adv encodes a PURE within-state interaction =
   (1.6-0.2)-(1.0-0) = 0.4 with dam_extra=0 -> CONSTANT composition -> 100% progression loading; FLAT adv (all 0)
-  + dam_extra>0 -> PURE composition interaction (prog loading 0, comp 1, EXACT under the midpoint ramp). Cols {cell,
+  + dam_extra>0 -> PURE composition interaction (prog loading 0, comp 1, EXACT under the midpoint ramp). Optional
+  `jitter = 0`: when >0 ADD a deterministic NON-additive perturbation ((gi*bi) %% 5)*jitter to pt_raw (gi/bi =
+  genotype/batch indices, NO RNG) -> breaks the saturated design's zero residual (sigma > 0) for S2b's STRUCTURAL
+  orchestrator test; default 0 keeps the component tests EXACT-pure. Cols {cell,
   genotype_batch, genotype, substate, on_lineage, pt_raw, pt01} (NO batch col -> exercises derive_batch, matching
   the real cell_frame).
   S2a TESTS (tests/test_trajectory.R; all on the deterministic fixture / make_meta16, warn=2):
@@ -201,27 +213,37 @@ S2b — Progression interaction inference + orchestrator + target (pure-R; the l
   Append the 2 inference fns to `R/trajectory.R` (after the S2a fns). namespace-qualified (stats::, limma::, utils::).
   - `freedman_lane_interaction(y, design, int_col = "tau_nlgf", weights = NULL, n_perm = 2000L, seed = 42L)`:
     WLS = OLS on weight-scaled data: r = sqrt(weights, or 1 if NULL); yw = r*y, Xw = r*design. interaction-t helper
-    int_t(yv) (FULL model; Xw fixed across perms -> precompute XtXinv = chol2inv(qr.R(qr(Xw))) ONCE; Xw full-rank
-    -> no pivot -> column order preserved): f = lm.fit(Xw, yv); p = ncol(Xw); df = nrow(Xw) - p; sigma2 =
+    int_t(yv) (FULL model; Xw fixed across perms -> precompute XtXinv = chol2inv(chol(crossprod(Xw))) ONCE -- the
+    pivot-FREE (X'X)^-1 (sidesteps qr()'s LINPACK column-pivoting, so XtXinv's index order matches lm.fit's coef
+    order for the full-rank design); assert all(is.finite(XtXinv))): f = lm.fit(Xw, yv); p = ncol(Xw); df = nrow(Xw) - p; sigma2 =
     sum(f$residuals^2)/df; j = match(int_col, colnames(design)); t = f$coefficients[j] / sqrt(sigma2 * XtXinv[j, j]).
-    t_obs = int_t(yw). REDUCED Xw0 = Xw minus int_col -> weighted fitted fw0 + residuals ew0 (homoscedastic on the
-    WEIGHTED scale -> exchangeable; permuting RAW residuals would NOT be). Each perm: yw* = fw0 + ew0[sample(n)] ->
+    t_obs = int_t(yw). REDUCED Xw0 = Xw minus int_col -> weighted fitted fw0 + residuals ew0 (APPROXIMATELY
+    exchangeable on the WEIGHTED scale -- weights are ESTIMATED from the same unit summaries, so exchangeability is
+    conditional/approximate NOT exact -> this permutation null is a SENSITIVITY, not a nominal-exact test; permuting
+    RAW unweighted residuals would be worse still). Each perm: yw* = fw0 + ew0[sample(n)] ->
     t* = int_t(yw*). RNG-PURE: on.exit save+restore .Random.seed & RNGkind; set.seed(seed, kind = "Mersenne-Twister",
     normal.kind = "Inversion", sample.kind = "Rejection") inside (pin all 3 kinds, matching S1). perm_p =
     (1 + sum(|t*| >= |t_obs|)) / (n_perm + 1). Returns list(t_obs, n_perm, perm_p).
   - `run_trajectory_progression(microglia_trajectory, min_within = 10L, n_perm = 2000L, seed = 42L)`: per_rep =
     pseudotime_per_replicate(cell_frame, lineage_states from provenance$lineage_substates) -> meta =
-    per_unit[, c("genotype","batch")] (rownames = genotype_batch; assert 4x4 balanced) -> factorial_design(meta)
-    (batch now present -> 9 resid df). w_overall = n_cells/sd_pt^2. DIRECT measures {mean_pt, median_pt, q90,
+    per_unit[, c("genotype_batch","genotype","batch")] with rownames(meta) = per_unit$genotype_batch ->
+    assert_complete_crossing(meta, "genotype_batch") (needs genotype_batch + genotype + batch cols = the 4x4
+    balance check, fail-loud) -> factorial_design(meta) (reads genotype/batch + the rownames -> design rownames =
+    genotype_batch matching M's colnames; batch present -> 9 resid df). w_overall = n_cells/sd_pt^2 (NAMED by
+    genotype_batch). DIRECT measures {mean_pt, median_pt, q90,
     within_<used>} (used = states NOT in within_skip) -> M = t(per_unit[, direct_rows]) (dimnames = direct_rows x
     units); per-endpoint weight matrix W built with IDENTICAL dimnames(W) == dimnames(M) (measures x units, same
-    order -- limma weights apply BY POSITION; assert before fitting): mean_pt = n_cells/sd_pt^2; within_<state> =
-    cnt[state,]/per_rep$sd[state,]^2 (state-specific inverse-variance); median_pt & q90 = n_cells/sd_pt^2
+    order -- limma weights apply BY POSITION; assert before fitting): mean_pt = n_cells/sd_pt^2; within_<lc> =
+    cnt[state,]/per_rep$sd[state,]^2 (state-specific inverse-variance, row keyed within_<tolower(state)> to match
+    pseudotime_per_replicate); median_pt & q90 = n_cells/sd_pt^2
     (overall-precision proxy -- quantile sampling variance unmodelled, EXPLORATORY) -> weighted fit + an OLS
     (weights = NULL) sensitivity. BOUNDED frac_past -> rbind(frac_past_logit = log((x+0.5)/(n_cells-x+0.5)),
-    x = round(frac_past*n_cells); frac_past_asin = asin(sqrt(frac_past))); weights = n_cells -> bounded fit. decompose_
-    (weights = w_overall). Freedman-Lane on {progression_cf, within_homeostatic (iff used), frac_past_logit,
-    mean_pt}. PRE-REGISTERED primary family = BH across {progression_cf, within_homeostatic} (drop
+    x = round(frac_past*n_cells); frac_past_asin = asin(sqrt(frac_past))); weights = n_cells (a precision PROXY:
+    EXACT-up-to-constant for the asin VST, only APPROXIMATE for the logit whose delta-method inverse-variance is
+    n*p*(1-p) -- both EXPLORATORY bridges, not primary) -> bounded fit. decompose_progression_vs_composition
+    (weights = w_overall). Freedman-Lane (EACH call weighted to MATCH its limma fit: progression_cf & mean_pt ->
+    w_overall, within_<lc> -> cnt[state,]/sd[state,]^2, frac_past_logit -> n_cells) on {progression_cf,
+    within_homeostatic (iff used), frac_past_logit, mean_pt}. PRE-REGISTERED primary family = BH across {progression_cf, within_homeostatic} (drop
     within_homeostatic if skipped); exploratory = separate BH. provenance (versions, v1_progression_loading ~
     0.94, v1_progression_fdr ~ 0.077). Postcondition stopifnot: interaction on EVERY measure; recon_resid_max <
     tol; primary BH present. Returns list(per_unit, counts, dam_onset, within_skip, design,
@@ -241,10 +263,15 @@ S2b — Progression interaction inference + orchestrator + target (pure-R; the l
     IDENTICALLY across a freedman_lane_interaction call -> the on.exit restore). BANKED FL design -- null:
     e = stats::lm.fit(design, v)$residuals (v deterministic) is design-ORTHOGONAL -> tau_nlgf coef ~ 0 ->
     t_obs ~ 0 -> every |t*| >= |t_obs| -> perm_p ~ 1; signal: y = 2*design[,"tau_nlgf"] + 0.1*e -> perm_p < 0.05.
-  - BANKED: do NOT write a full-orchestrator (run_trajectory_progression) test on the deterministic fixture -- its
-    exact-pure within-genotype design has ZERO residual variance -> sigma = 0 -> t = Inf/NaN on every measure. The
-    orchestrator is validated by (a) the S2a component unit tests, (b) the LIVE smoke below, (c) the gate's
-    tar_make building trajectory_progression FRESH on real noisy data.
+  - BANKED: do NOT assert INFERENTIAL quantities (t / p / perm_p) from run_trajectory_progression on the EXACT-pure
+    fixture -- its zero-residual within-genotype design gives sigma = 0 -> t = Inf/NaN on every measure (a limma
+    zero-variance warning would also red warn=2). But DO add a STRUCTURAL orchestrator test on a NON-additive
+    fixture variant (make_trajectory_cell_frame(jitter > 0) -> sigma > 0): run the FULL orchestrator + assert
+    STRUCTURE only -- every measure carries an interaction row; list fields present; recon_resid_max < tol;
+    primary_family BH keys present; the within_<lc> columns wire through. This catches return-shape / field-name /
+    wiring bugs CHEAPLY in unit tests, BEFORE the context-heavy live smoke. Outcome assertions still come from (a)
+    the S2a component tests, (b) the LIVE smoke below, (c) the gate's tar_make building trajectory_progression
+    FRESH on real noisy data.
   LIVE SMOKE (before the gate): Rscript tar_read(microglia_trajectory) -> run_trajectory_progression -> inspect
   primary_family (BH finite), decomposition$recon_resid_max (< 1e-8), permutation perm_p (finite), interaction
   present on EVERY measure.

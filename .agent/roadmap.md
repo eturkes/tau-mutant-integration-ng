@@ -166,3 +166,9 @@ itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
   trajectory_progression target + FL tests + live smoke + gate (the live-integration half). Banked the expensive
   verification insights into each step spec (OLS-vs-manual needs a NON-additive term or sigma=0; NO
   full-orchestrator fixture test -- the exact-pure fixture has sigma=0 -> t=Inf). Next open = S2a.
+- 2026-06-30 P2-S2a/S2b plan codex-reviewed (PRE-implementation, no code): 11 findings, ALL accepted -> contracts
+  HARDENED (within_<lc> col naming pinned S2a<->S2b; run_trajectory_progression meta now feeds
+  assert_complete_crossing + factorial_design correctly; decompose weight-matrix dimnames set; fit_trajectory_contrasts
+  top = named-list-by-contrast; pivot-free FL chol2inv(chol(crossprod)); per-endpoint FL weights specified; structural
+  orchestrator test on a non-additive fixture jitter added). Core math re-verified CORRECT (Kitagawa identity,
+  const-annihilation under weighted treatment coding, ordinary-t, FL null/signal, midpoint ramp). Next open = S2a.
