@@ -27,10 +27,13 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none) -- P1 CLOSED 2026-06-30; next = PLAN P2 (interaction trajectory)
-P0 + P1 complete. P1 digest -> history.md; plan archived -> `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`.
-No active plan -> next session = PLAN mode: confirm the P2 backlog phase (activation pseudotime; the tau x
-amyloid synergy as a progression-RATE effect, decomposed composition-vs-progression) before opening it.
+## Active plan: finish parked codex P1-S5 review fixes -- EXECUTE (small, bounded)
+The /codex-review of the S5 close raised 14 findings, all accepted; the fix set is applied + live-verified
+except 2 small doc edits, and PARKED on branch `wip-codex-p1s5-review` (main reverted to the S5 close 67b7dbc
+after the unit overflowed one window). Next session = EXECUTE per `.agent/p1s5_review_handoff.md`: restore the
+parked edits, apply the 2 pending edits, run the gate, commit `microglia (p1 s5 review): ... (codex)`, delete
+the branch + handoff, then reset this to (none). Then PLAN P2 (activation pseudotime; tau x amyloid synergy as
+a progression-RATE effect, decomposed composition-vs-progression).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -111,3 +114,10 @@ amyloid synergy as a progression-RATE effect, decomposed composition-vs-progress
   19 targets). Folded P1 digest -> history.md; updated memory (P1-S5 + cheap-render + warn=2-per-section) + map
   (microglia_report target + _microglia.qmd include + microglia_report_data fn); archived plan ->
   `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`; reset Active plan to (none). Next = PLAN P2.
+- 2026-06-30 P1-S5 codex review PARKED (context-overflow remediation): /codex-review of the S5 close raised 14
+  findings, ALL accepted (interaction "small-effect" over-claim -> "sub-threshold-per-contrast"; concordance /
+  pruning / MDE prose accuracy; extractor finite+consistency guards + 4 negative tests; stale ~2MB figure). The
+  fix set was applied + live-cache-verified except 2 small doc edits, but the run overflowed one window before
+  gating -> reverted main to 67b7dbc, parked the fixes on branch `wip-codex-p1s5-review`, wrote
+  `.agent/p1s5_review_handoff.md` so the next session lands it small (restore + 2 pending edits + gate + one
+  `microglia (p1 s5 review): ... (codex)` commit). No main code changed; the S5 close stands gate-green.
