@@ -9,7 +9,7 @@ source("R/de_pb.R")         # assert_complete_crossing (S2b orchestrator dep)
 source("R/trajectory.R")
 source("tests/helpers.R")
 suppressMessages(library(slingshot))
-suppressMessages(library(glmmTMB))    # S3 per-cell sensitivity arm
+invisible(loadNamespace("glmmTMB"))   # S3 arm: LOAD the namespace WITHOUT attaching -> glmmtmb_pt_sensitivity uses glmmTMB:: (an accidental unqualified prod call still fails, matching the target env)
 
 # --- score_axis_pseudotime ---------------------------------------------------------------
 stopifnot(isTRUE(all.equal(score_axis_pseudotime(c(0.3, 0.5), c(0.1, 0.2)), c(0.2, 0.3))))
@@ -273,35 +273,65 @@ stopifnot(
 cat("ok - run_trajectory_progression structure (non-additive fixture)\n")
 
 # --- glmmtmb_pt_sensitivity (P2-S3 supportive arm) -------------------------------------------
+# HEALTH GATE unit: .fit_health_ok() is the single branch point of the degrade cascade -> exercise
+# each FALSE arm directly with synthetic inputs (no fragile optimiser coaxing for !pdHess / non-
+# convergence / degenerate SE), so the cascade's logic is tested independent of glmmTMB's numerics.
+ok_args <- list(pdHess = TRUE, convergence = 0, est = 0.3, se = 0.1, z = 3, p = 0.1, singular = FALSE)
+do_ok   <- function(...) do.call(.fit_health_ok, modifyList(ok_args, list(...)))
+stopifnot(
+  isTRUE(do_ok()),                                         # all-healthy -> TRUE
+  isFALSE(do_ok(pdHess = FALSE)),                          # non-pos-def Hessian
+  isFALSE(do_ok(convergence = 1L)),                        # optimiser did not converge
+  isFALSE(do_ok(se = 0)), isFALSE(do_ok(se = NA_real_)),   # zero / non-finite SE -> infinite z, zero-width CI
+  isFALSE(do_ok(z = Inf)),                                 # non-finite z
+  isFALSE(do_ok(p = NA_real_)), isFALSE(do_ok(p = 1.5)),   # invalid probability
+  isFALSE(do_ok(singular = TRUE)), isFALSE(do_ok(singular = NA)))  # collapsed / unknown RE
+cat("ok - .fit_health_ok degrade-gate branches\n")
+
 # SUCCESS path: a non-additive fixture (jitter > 0 -> non-singular unit RE) yields a RECORDED,
-# finite tau:amyloid interaction via the beta GLMM (or the rank-normal LMM degrade) -> extraction +
-# CI + term resolution exercised. Deterministic (no RNG in the fixture / nlminb optimiser).
+# finite tau:amyloid interaction via the beta GLMM -> extraction + CI + term resolution exercised.
+# Deterministic (no RNG in the fixture / nlminb optimiser; beta wins under the pinned snapshot).
 gs <- glmmtmb_pt_sensitivity(make_trajectory_cell_frame(per_state = 12L, jitter = 0.3))
 stopifnot(
-  gs$method %in% c("glmmTMB_beta", "lmm_ranknorm"),       # a real fit, not a degrade-to-failed
+  gs$method == "glmmTMB_beta",                            # the non-singular RE fits the beta GLMM (NOT a degrade)
   identical(gs$term, "tau:amyloid"),
   all(is.finite(c(gs$estimate, gs$se, gs$z, gs$p_value, gs$ci_l, gs$ci_r, gs$re_sd))),
   gs$ci_l < gs$ci_r, gs$p_value >= 0, gs$p_value <= 1,
-  isFALSE(gs$singular), gs$n_cells == 384L,               # 16 units x (12 Homeo + 12 DAM)
+  isFALSE(gs$singular), gs$n_cells == 384L, gs$n_units == 16L,  # 16 units x (12 Homeo + 12 DAM)
+  is.na(gs$fail_reason),                                  # a real fit records no failure
   is.character(gs$warnings), is.character(gs$messages))
-cat("ok - glmmtmb_pt_sensitivity (beta/LMM success path)\n")
+cat("ok - glmmtmb_pt_sensitivity (beta success path)\n")
 
 # DEGRADE via SINGULAR RE: the default fixture's identical within-genotype units collapse the
 # (1|unit) variance -> both the beta GLMM and the rank-normal LMM are singular -> method="failed".
 gd <- glmmtmb_pt_sensitivity(make_trajectory_cell_frame(per_state = 12L))
 stopifnot(gd$method == "failed",
-          all(is.na(c(gd$estimate, gd$se, gd$p_value, gd$ci_l, gd$ci_r))))
+          all(is.na(c(gd$estimate, gd$se, gd$p_value, gd$ci_l, gd$ci_r))),
+          gd$n_units == 16L, grepl("singular", gd$fail_reason))  # 16 units present, both arms singular -> recorded
 cat("ok - glmmtmb_pt_sensitivity (singular -> failed)\n")
 
-# DEGRADE via NON-ESTIMABLE interaction (+ the never-error contract): drop both amyloid genotypes ->
-# tau:amyloid is all-zero / aliased -> the interaction row is absent -> the fit attempt ERRORS, gets
-# CAPTURED into $messages (muffled), and BOTH arms degrade -> method="failed", never raised.
+# DEGRADE via NON-ESTIMABLE interaction (+ the never-RAISE contract): drop both amyloid genotypes ->
+# amyloid + tau:amyloid columns are all-zero -> glmmTMB drops them as rank-deficient (a captured,
+# muffled MESSAGE, NOT an exception) -> the interaction row is absent -> est NA -> BOTH arms degrade
+# -> method="failed", never raised. fail_reason records "nonestimable"; the drop message is captured.
 cf_noamy <- make_trajectory_cell_frame(per_state = 12L)
 cf_noamy <- cf_noamy[cf_noamy$genotype %in% c("MAPTKI", "P301S"), ]
 gn <- glmmtmb_pt_sensitivity(cf_noamy)
 stopifnot(gn$method == "failed", is.na(gn$estimate), is.na(gn$p_value),
-          gn$n_cells == 192L,                              # 8 units x 24 cells
-          length(gn$messages) >= 1L)                       # the captured fit error(s)
-cat("ok - glmmtmb_pt_sensitivity (non-estimable -> failed, never errors)\n")
+          gn$n_cells == 192L, gn$n_units == 8L,            # 8 units x 24 cells (subset is fine, recorded)
+          grepl("nonestimable", gn$fail_reason),           # interaction dropped (rank-deficient), recorded
+          any(grepl("rank-deficient", gn$messages)))       # the muffled column-drop message captured
+cat("ok - glmmtmb_pt_sensitivity (non-estimable -> failed, never raises)\n")
+
+# FAIL-LOUD on an UNKNOWN genotype: a corrupt / typo label must NOT be silently coded tau=0/amyloid=0
+# (that would bias the interaction towards control). The input contract throws -> surfaces the
+# upstream break (genotype_batch kept prefix-consistent so the genotype-validity guard is the gate).
+cf_bad <- make_trajectory_cell_frame(per_state = 12L)
+cf_bad$genotype <- as.character(cf_bad$genotype)
+hit <- cf_bad$genotype == "MAPTKI"
+cf_bad$genotype[hit]       <- "BOGUS"
+cf_bad$genotype_batch[hit] <- sub("^MAPTKI_", "BOGUS_", cf_bad$genotype_batch[hit])
+stopifnot(inherits(try(glmmtmb_pt_sensitivity(cf_bad), silent = TRUE), "try-error"))
+cat("ok - glmmtmb_pt_sensitivity (unknown genotype -> fail loud)\n")
 
 cat("ALL trajectory tests passed\n")

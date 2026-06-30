@@ -344,14 +344,19 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (1|unit) random intercept. On-lineage = finite pt01; tau/amyloid integer 0/1 from genotype (matching factorial_design);
   batch=derive_batch, unit=genotype_batch factors. Reads the COMPACT microglia_trajectory$cell_frame (NOT 612MB); target
   INDEPENDENT of trajectory_progression. Returns list(method, term, estimate, se, z, p_value, ci_l, ci_r, re_sd,
-  singular, n_cells, warnings, messages).
-- DEGRADE cascade (graceful, NEVER blocks the limma-summary primary): battery = !fit$sdr$pdHess OR fit$fit$convergence!=0
-  OR non-finite est|se OR singular(re_sd<1e-4; also NA re_sd -> singular) OR NULL-on-error -> rank-normal LMM
-  rn=qnorm((rank(pt01)-0.5)/n) ~ same formula, gaussian() (SAME package on-lock, SAME battery) -> if BOTH fail,
-  method="failed" with NA effect + the captured warnings/messages (RECORD a failed-supportive result, never error).
-  method in {glmmTMB_beta, lmm_ranknorm, failed}.
+  singular, n_cells, n_units, fail_reason, warnings, messages); n_units = genotype_batch clusters present (asymptotics
+  basis, RECORDED not asserted -> a dropped unit is honestly reported, not silently reframed as 16).
+- DEGRADE cascade (graceful, NEVER blocks the limma-summary primary): health gate = .fit_health_ok() PURE helper
+  (pdHess & convergence==0 & finite est & finite se>0 & finite z & valid p in [0,1] & non-singular re_sd>=1e-4) -> on any
+  fail (incl. nonestimable interaction = est NA from a rank-deficient column drop, or NULL-on-error) -> rank-normal LMM
+  rn=qnorm((rank(pt01)-0.5)/n) ~ same formula, gaussian() (SAME package on-lock, SAME gate) -> if BOTH fail, method="failed"
+  + NA effect + fail_reason (per-arm error/nonestimable/singular/nonconverge) + captured warnings/messages. A FIT failure
+  NEVER throws; MALFORMED INPUT (missing cols / boundary pt01 / unknown genotype not in genotype_levels / broken
+  genotype_batch) fails LOUD via stopifnot (surfaces an upstream break, not masks it as failed). method in {glmmTMB_beta,
+  lmm_ranknorm, failed}.
 - Wald row read by POSITION (cond cols fixed order Estimate/Std.Error/z/Pr(>|z|)) -> a column-NAME drift can't silently
-  mis-extract; term=intersect(c("tau:amyloid","amyloid:tau"), rownames(cond)) asserted length-1 (present + unambiguous).
+  mis-extract; a positional-integrity guard (z==est/se, p==2*pnorm(-|z|), tol 1e-5) catches the converse (a column-ORDER
+  change) by degrading; term=intersect(c("tau:amyloid","amyloid:tau"), rownames(cond)) asserted length-1.
   .capture_quietly = withCallingHandlers muffling+recording BOTH warnings AND messages (the sccomp lesson: TMB optimisers
   report health via message() too -> a fresh build would red warn=2/tar_meta/^Warning: scan) -> 0 leaked to the gate.
 - glmmTMB on CRAN -> P3M serves the trixie BINARY (the plan's "source-compile TMB" framing was off; CRAN=binary, ABI-built
@@ -363,10 +368,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   MEAN-position analogue of mean_pt; corroborates the position-shift interaction + P1's propeller DAM-fraction composition
   signal) -> NOT progression-specific; the S2b Kitagawa decomposition stays LOAD-BEARING for composition-vs-progression.
   Supportive only; concordance AND discordance both fine.
-- tests (tests/test_trajectory.R, warn=2, deterministic nlminb / NO RNG; suppressMessages(library(glmmTMB)) at head):
-  jitter>0 fixture -> non-singular RE -> real beta fit (success path: finite effect+CI, term resolved); DEFAULT fixture
-  (identical within-genotype units) -> singular both arms -> method="failed" (singular route, 0 msgs); no-amyloid subset
-  (tau:amyloid non-estimable) -> fit errors CAPTURED into $messages -> failed (error route, never raised).
+- tests (tests/test_trajectory.R, warn=2, deterministic nlminb / NO RNG; invisible(loadNamespace("glmmTMB")) at head = load
+  WITHOUT attaching, so an accidental unqualified prod call still fails): .fit_health_ok branches unit-tested directly (each
+  FALSE arm, no optimiser coaxing); jitter=0.3 fixture -> non-singular RE -> beta fit (assert method=="glmmTMB_beta",
+  n_units=16, finite effect+CI, fail_reason NA); DEFAULT fixture (identical within-genotype units) -> singular both arms ->
+  failed (fail_reason "singular", 0 msgs); no-amyloid subset -> tau:amyloid rank-deficient, glmmTMB DROPS it (captured
+  MESSAGE not exception) -> failed (fail_reason "nonestimable", msg "rank-deficient", n_units=8); unknown genotype -> fail loud.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

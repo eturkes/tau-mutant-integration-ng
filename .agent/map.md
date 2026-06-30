@@ -91,11 +91,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       writes / S2b reads). Pure-R, NO new dep; reads the COMPACT S1 target (never the 612MB Seurat).
    + (P2-S3) trajectory.R: glmmtmb_pt_sensitivity (-> trajectory_glmm_sensitivity) -- per-cell beta GLMM
       pt01 ~ tau*amyloid + batch + (1|unit) on the COMPACT S1 cell_frame; SUPPORTIVE (composition-conflated, like
-      mean_pt -> corroborates the position shift, NOT progression). Degrade cascade: singular RE / !pdHess /
-      non-convergence / non-finite est|se / fit error -> rank-normal LMM (same battery) -> RECORDED method="failed"
-      (NA, never errors). Helpers .capture_quietly (muffle+record warnings AND messages, sccomp lesson) +
-      .fit_pt_interaction (fit + Wald-row-by-POSITION + battery). rproject.toml += glmmTMB (CRAN -> P3M trixie
-      BINARY, ABI-clean; namespace-qualified, NOT in tar_option_set packages).
+      mean_pt -> corroborates the position shift, NOT progression). Degrade cascade: nonestimable / singular RE /
+      !pdHess / non-convergence / degenerate se|z|p -> rank-normal LMM (same gate) -> RECORDED method="failed"
+      (NA + fail_reason). A FIT failure never throws; MALFORMED INPUT (missing cols / boundary pt01 / unknown
+      genotype / broken genotype_batch) fails LOUD. Records n_units (asymptotics basis, NOT asserted) + fail_reason.
+      Helpers: .capture_quietly (muffle+record warnings AND messages, sccomp lesson) + .fit_health_ok (PURE
+      unit-tested battery gate: pdHess & converged & finite est & se>0 & finite z & valid p & non-singular) +
+      .fit_pt_interaction (fit + Wald-row-by-POSITION + positional-integrity guard [z==est/se, p==2*pnorm(-|z|)]).
+      rproject.toml += glmmTMB (CRAN -> P3M trixie BINARY, ABI-clean; namespace-qualified, NOT in tar_option_set packages).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -141,7 +144,7 @@ from project root: `Rscript tests/test_<x>.R`.
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
-  - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]
+  - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity: beta success (glmmTMB_beta, n_units=16) / singular->failed / non-estimable->failed (fail_reason + captured messages) / unknown-genotype fail-loud
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):

@@ -45,8 +45,8 @@ dependencies = [
     # (BioCsoft; pulls Bioc SingleCellExperiment / TrajectoryUtils + CRAN princurve [Rcpp]).
     { name = "slingshot",    repository = "BioCsoft" },
     # trajectory sensitivity (P2-S3): glmmTMB per-cell beta GLMM on bounded pseudotime. TMB =
-    # a C++ template (source-compiled), NOT Stan -> fully ON-lock; the P3M snapshot co-pins
-    # glmmTMB<->Matrix<->TMB so the source build loads ABI-clean (no binary-mismatch warning).
+    # a compiled C++ template, NOT Stan -> fully ON-lock; P3M ships the trixie BINARY co-built
+    # against the snapshot's Matrix/TMB, so it loads ABI-clean (no local source build, no mismatch warning).
     "glmmTMB",
     # plotting
     "ggplot2",

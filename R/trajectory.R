@@ -770,13 +770,26 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
   list(value = value, warnings = warns, messages = msgs)
 }
 
+# Health battery for ONE fit's interaction row -> a single tested gate (P2-S3). PURE + deterministic,
+# unit-tested directly so the non-convergence / degenerate-SE branches don't hinge on coaxing the
+# optimiser. ok = pos-def Hessian & optimiser-converged & finite est & finite POSITIVE se (a zero SE
+# gives an infinite z + zero-width CI) & finite z & a valid probability p & a non-singular RE.
+.fit_health_ok <- function(pdHess, convergence, est, se, z, p, singular) {
+  isTRUE(pdHess) && isTRUE(convergence == 0) &&
+    is.finite(est) && is.finite(se) && se > 0 &&
+    is.finite(z) && is.finite(p) && p >= 0 && p <= 1 &&
+    isFALSE(singular)
+}
+
 # Fit ONE glmmTMB model + extract the tau:amyloid interaction Wald row + run the health battery,
 # under .capture_quietly. Returns the capture list; $value = a standardized record
 # list(method, term, estimate, se, z, p_value, ci_l, ci_r, re_sd, singular, ok) when the fit AND
-# extraction succeed, else NULL (any error -> NULL -> the caller degrades). ok = passes the FULL
-# battery (pdHess & convergence==0 & finite est/se & not singular); the SAME battery gates both the
-# beta GLMM and the rank-normal LMM fallback. Wald columns read by POSITION (glmmTMB's fixed order
-# Estimate / Std. Error / z value / Pr(>|z|)) so a column-NAME drift cannot silently mis-extract.
+# extraction succeed, else NULL (any error -> NULL -> the caller degrades). ok = .fit_health_ok()
+# (pdHess & converged & finite est & finite POSITIVE se & finite z & valid p & non-singular RE) --
+# the SAME tested gate for the beta GLMM and the rank-normal LMM fallback. Wald columns read by
+# POSITION (glmmTMB's fixed order Estimate / Std. Error / z value / Pr(>|z|)) so a column-NAME drift
+# cannot mis-extract; a positional-integrity guard (z==est/se, p==2*pnorm(-|z|)) catches the converse
+# (a column-ORDER change) by degrading, which the method=="glmmTMB_beta" test then flags loud.
 .fit_pt_interaction <- function(formula, family, data, method_label) {
   .capture_quietly({
     fit  <- glmmTMB::glmmTMB(formula, data = data, family = family)
@@ -785,11 +798,16 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
     stopifnot(length(term) == 1L, ncol(cond) >= 4L)        # interaction row present + unambiguous
     row  <- cond[term, ]
     est  <- unname(row[1L]); se <- unname(row[2L]); z <- unname(row[3L]); p <- unname(row[4L])
+    # positional-integrity guard (naming-agnostic): confirm cols 3,4 ARE the Wald z & p, so a future
+    # summary-layout change degrades here (NULL -> caller falls back) instead of silently mis-reading.
+    if (is.finite(est) && is.finite(se) && se > 0) {
+      stopifnot(isTRUE(all.equal(z, est / se, tolerance = 1e-5)),
+                isTRUE(all.equal(p, 2 * stats::pnorm(-abs(z)), tolerance = 1e-5)))
+    }
     re   <- glmmTMB::VarCorr(fit)$cond$unit                # 1x1 variance matrix for (1|unit)
     re_sd    <- if (is.null(re)) NA_real_ else sqrt(as.numeric(re)[1])
     singular <- !is.finite(re_sd) || re_sd < 1e-4          # collapsed/unidentifiable RE -> degrade
-    ok <- isTRUE(fit$sdr$pdHess) && isTRUE(fit$fit$convergence == 0) &&
-          is.finite(est) && is.finite(se) && !singular
+    ok <- .fit_health_ok(fit$sdr$pdHess, fit$fit$convergence, est, se, z, p, singular)
     list(method = method_label, term = term, estimate = est, se = se, z = z, p_value = p,
          ci_l = est - stats::qnorm(0.975) * se, ci_r = est + stats::qnorm(0.975) * se,
          re_sd = re_sd, singular = singular, ok = ok)
@@ -800,15 +818,20 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
 # COMPACT microglia_trajectory$cell_frame (NOT the 612MB Seurat); on-lineage = finite pt01.
 # tau / amyloid = integer 0/1 from genotype (matching factorial_design); batch + unit (genotype_batch)
 # as factors. PRIMARY = beta_family() on pt01 (Smithson-Verkuilen-squeezed open (0,1)); DEGRADE to a
-# rank-normal LMM (same package, on-lock) on any battery failure; if BOTH fail, RECORD method="failed"
-# (NA effect) -- never error, the limma-summary primary stands alone. FIXED batch (de_pb-consistent),
-# (1|unit) random intercept. Returns list(method, term, estimate, se, z, p_value, ci_l, ci_r, re_sd,
-# singular, n_cells, warnings, messages) -- supportive, concordance AND discordance both fine.
+# rank-normal LMM (same package, on-lock) on any battery failure; if BOTH fits fail, RECORD
+# method="failed" (NA effect) -- a fit/extraction failure NEVER throws (the supportive arm degrades +
+# records fail_reason). MALFORMED INPUT (missing cols, non-finite/boundary pt01, unknown genotype,
+# broken genotype_batch) fails LOUD via stopifnot -> surfaces an upstream pipeline break, not masks it.
+# FIXED batch (de_pb-consistent), (1|unit) random intercept. Returns list(method, term, estimate, se,
+# z, p_value, ci_l, ci_r, re_sd, singular, n_cells, n_units, fail_reason, warnings, messages) --
+# n_units = genotype_batch clusters present (asymptotics basis, RECORDED not asserted); supportive,
+# concordance AND discordance both fine.
 glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
   stopifnot(is.data.frame(cell_frame),
             all(c("genotype_batch", "genotype", pt_col) %in% names(cell_frame)))
   d0   <- cell_frame[is.finite(cell_frame[[pt_col]]), , drop = FALSE]   # on-lineage cells only
   geno <- as.character(d0$genotype)
+  stopifnot(all(geno %in% genotype_levels))                            # reject unknown/corrupt genotypes (else silently coded tau=0/amyloid=0)
   dat  <- data.frame(
     pt01    = as.numeric(d0[[pt_col]]),
     tau     = as.integer(geno %in% c("P301S", "NLGF_P301S")),
@@ -817,6 +840,7 @@ glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
     unit    = factor(as.character(d0$genotype_batch)),
     stringsAsFactors = FALSE)
   n_cells <- nrow(dat)
+  n_units <- nlevels(dat$unit)                                         # genotype_batch clusters present (GLMM asymptotics basis)
   stopifnot(n_cells >= 1L, all(dat$pt01 > 0 & dat$pt01 < 1))            # beta needs OPEN (0,1)
 
   warns <- character(0); msgs <- character(0)
@@ -824,7 +848,8 @@ glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
   done <- function(rec) list(method = rec$method, term = rec$term, estimate = rec$estimate,
                              se = rec$se, z = rec$z, p_value = rec$p_value, ci_l = rec$ci_l,
                              ci_r = rec$ci_r, re_sd = rec$re_sd, singular = rec$singular,
-                             n_cells = n_cells, warnings = warns, messages = msgs)
+                             n_cells = n_cells, n_units = n_units, fail_reason = NA_character_,
+                             warnings = warns, messages = msgs)
 
   # PRIMARY: beta GLMM on the bounded squeezed pseudotime.
   beta <- collect(.fit_pt_interaction(pt01 ~ tau * amyloid + batch + (1 | unit),
@@ -837,8 +862,18 @@ glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
                                      stats::gaussian(), dat, "lmm_ranknorm"))
   if (!is.null(lmm) && isTRUE(lmm$ok)) return(done(lmm))
 
-  # BOTH degraded -> RECORD a failed-supportive result (NA effect), never error.
+  # BOTH degraded -> RECORD a failed-supportive result (NA effect), never throw on a FIT failure;
+  # carry the best-available attempt diagnostics so the failure is explained, not silent.
+  reason <- function(tag, rec) if (is.null(rec)) paste0(tag, ":error")           # fit/extraction threw
+                               else if (!is.finite(rec$estimate)) paste0(tag, ":nonestimable")  # interaction dropped (rank-deficient)
+                               else if (isTRUE(rec$singular)) paste0(tag, ":singular")          # RE collapsed
+                               else paste0(tag, ":nonconverge")                  # !pdHess / non-zero code / bad se|z|p
+  last   <- if (!is.null(lmm)) lmm else beta              # most-degraded attempt that still returned a record
   list(method = "failed", term = NA_character_, estimate = NA_real_, se = NA_real_,
        z = NA_real_, p_value = NA_real_, ci_l = NA_real_, ci_r = NA_real_,
-       re_sd = NA_real_, singular = NA, n_cells = n_cells, warnings = warns, messages = msgs)
+       re_sd = if (is.null(last)) NA_real_ else last$re_sd,
+       singular = if (is.null(last)) NA else last$singular,
+       n_cells = n_cells, n_units = n_units,
+       fail_reason = paste(reason("beta", beta), reason("lmm", lmm)),
+       warnings = warns, messages = msgs)
 }
