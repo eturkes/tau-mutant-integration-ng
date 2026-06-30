@@ -104,14 +104,20 @@ S1 — Trajectory + pseudotime target.
   rho recorded (concordance OR honest flag); dims {10,15,20} + all-retained sensitivity recorded (PRIMARY = 15);
   per-unit on-lineage/omitted fraction recorded; gate green.
 
-S2 split into S2 (pure-R load-bearing primary, NO new dep) + S3 (glmmTMB supportive arm, isolates the source-
-compile + ABI verify + fresh-build cost) — TWO INDEPENDENT targets off `microglia_trajectory`, each closeable in
-one window. S3's per-cell glmmTMB does NOT depend on S2's per-replicate summary -> clean decouple, no cross-step
-edits. The weighted-limma summary + Kitagawa decomposition is the standalone primary; glmmTMB is supportive.
+S2 (the pure-R primary) is SPLIT AGAIN -> S2a + S2b: even the no-new-dep primary (8 fns + fixture + ~6 test
+groups + live smoke + gate) overflowed one window TWICE. Split at the VERIFICATION SEAM -- S2a = the estimation
+core (per-replicate summary + contrast fit + Kitagawa decomposition; 6 fns, fully verifiable on the deterministic
+fixture, NO target) -> S2b = inference + orchestration (Freedman-Lane + run_trajectory_progression + the
+`trajectory_progression` target + live smoke; the live-integration half). S3 (glmmTMB supportive arm) stays a
+SEPARATE INDEPENDENT target off `microglia_trajectory` (source-compile + ABI verify + fresh build). The
+weighted-limma summary + Kitagawa decomposition (S2a math, S2b inference) is the standalone primary; glmmTMB =
+supportive. Each of S2a / S2b / S3 closeable in one window.
 
-S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new dependency).
-  Append to `R/trajectory.R` (after build_activation_trajectory). All non-base calls namespace-qualified
-  (stats::, limma::). df.residual = 16 - 7 = 9. Contracts:
+S2a — Per-replicate summary + contrast fit + Kitagawa decomposition (estimation core; pure-R, NO new dep, NO target yet).
+  RESUMING? Read ONLY this S2a block + R/design.R `factorial_design` + the tail of R/trajectory.R (after
+  build_activation_trajectory) + tests/helpers.R + tests/test_trajectory.R. SKIP Scope/Stack/other steps.
+  Append the 6 estimation fns to `R/trajectory.R` (after build_activation_trajectory). All non-base calls
+  namespace-qualified (stats::, limma::). df.residual = 16 - 7 = 9. Contracts:
   - `derive_batch(genotype_batch, genotype)` (VECTORISED; base sub() does NOT vectorise over a length>1 pattern ->
     warns + uses pattern[1] only -> mis-extracts under warn=2, so use literal-prefix string ops, NOT regex):
     prefix = paste0(as.character(genotype), "_"); assert all(startsWith(genotype_batch, prefix)); batch =
@@ -160,6 +166,39 @@ S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new d
     L_int["cross"])| < tol. Cell-weighted anchors = primary; rowMeans(pi)/rowMeans(mu) replicate-balanced anchors =
     sensitivity. Returns list(channels, fit, L_int, loadings, interaction = fit$top$interaction, recon_resid_max,
     balanced).
+  FIXTURE (ADD to tests/helpers.R -- the prior WIP was reverted; deterministic, NO RNG): `make_trajectory_cell_frame(
+  per_state = 6L, adv = c(MAPTKI=0, P301S=0.2, NLGF_MAPTKI=1.0, NLGF_P301S=1.6), dam_extra = 0L)` -> 4x4 genotype x
+  batch grid; genotype_batch = paste(genotype, sprintf("batch%02d", 1:4), sep = "_") (so derive_batch round-trips);
+  each unit = per_state Homeostatic + (per_state + dam_extra*(genotype=="NLGF_P301S")) DAM cells -- the extra DAM
+  mass lands ONLY in the double-mutant interaction cell, a genuine tau:amyloid COMPOSITION interaction (NOT an
+  amyloid main effect). pt_raw = 1+adv[g]+ramp (Homeostatic) / 4+adv[g]+ramp (DAM), ramp = ((seq_len(n)-0.5)/n)*0.3
+  (MIDPOINT rule -> block mean EXACTLY 0.15 for ANY block size n, so an unequal DAM count does NOT shift the
+  within-state mean -> the pure-composition fixture is EXACTLY pure, prog/cross interaction 0 not merely approximate);
+  pt01 = squeeze_unit_interval(pt_raw); on_lineage = TRUE. DEFAULT adv encodes a PURE within-state interaction =
+  (1.6-0.2)-(1.0-0) = 0.4 with dam_extra=0 -> CONSTANT composition -> 100% progression loading; FLAT adv (all 0)
+  + dam_extra>0 -> PURE composition interaction (prog loading 0, comp 1, EXACT under the midpoint ramp). Cols {cell,
+  genotype_batch, genotype, substate, on_lineage, pt_raw, pt01} (NO batch col -> exercises derive_batch, matching
+  the real cell_frame).
+  S2a TESTS (tests/test_trajectory.R; all on the deterministic fixture / make_meta16, warn=2):
+  - derive_batch round-trip + fail-loud on a corrupted genotype_batch + a VECTOR call (>1 genotype, exercises the
+    vectorised path).
+  - per-rep shapes + floor skip (min_within=20, per_state=8 -> all within_skip TRUE).
+  - ordinary_t / fit_trajectory_contrasts vs manual OLS: interaction coef == tau_nlgf coef AND t == hand-computed
+    coef/se. BANKED -- the manual-OLS response on make_meta16 MUST carry a NON-ADDITIVE term (e.g.
+    base + ((gi*bi) %% 5) * 0.07, gi/bi = genotype/batch indices) so the SATURATED genotype+batch design leaves
+    residual > 0; a batch-ALIGNED wiggle is fully absorbed -> sigma = 0 -> t = Inf/NaN -> the test is vacuous.
+  - kitagawa identity (reconstruction < 1e-8) + pure-composition / pure-progression channels.
+  - decomposition reconstruction (recon_resid_max < 1e-8) + loadings: pure-progression fixture (DEFAULT adv,
+    per_state=8 -> prog loading ~ 1, comp ~ 0, interaction coef ~ 0.4) AND pure-composition fixture (FLAT adv,
+    dam_extra>0 -> comp loading 1, prog 0, EXACT to 1e-8 via the midpoint ramp).
+  ACCEPTANCE (S2a): the 6 fns implemented + namespace-qualified; fixture added; the 5 test groups pass at warn=2;
+  Kitagawa + decomposition reconstruction asserts pass (< 1e-8). NO target wired (S2b wires it). gate green.
+
+S2b — Progression interaction inference + orchestrator + target (pure-R; the live-integration half).
+  RESUMING? Read ONLY this S2b block + the S2a fns now in R/trajectory.R + R/design.R `factorial_design` +
+  R/de_pb.R `assert_complete_crossing` + _targets.R (the microglia_trajectory target) + tests/test_trajectory.R.
+  SKIP Scope/Stack above.
+  Append the 2 inference fns to `R/trajectory.R` (after the S2a fns). namespace-qualified (stats::, limma::, utils::).
   - `freedman_lane_interaction(y, design, int_col = "tau_nlgf", weights = NULL, n_perm = 2000L, seed = 42L)`:
     WLS = OLS on weight-scaled data: r = sqrt(weights, or 1 if NULL); yw = r*y, Xw = r*design. interaction-t helper
     int_t(yv) (FULL model; Xw fixed across perms -> precompute XtXinv = chol2inv(qr.R(qr(Xw))) ONCE; Xw full-rank
@@ -188,36 +227,31 @@ S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new d
     tol; primary BH present. Returns list(per_unit, counts, dam_onset, within_skip, design,
     contrasts = {weighted, ols, bounded}, decomposition, permutation, primary_family, exploratory_family,
     provenance). (NO glmmTMB here -> S3.)
-  Target `trajectory_progression` = run_trajectory_progression(microglia_trajectory) (reads the COMPACT S1
-  target; pure-R). WITHIN-STATE FLOOR mirrors P1 run_pb_de_substate.
-  FIXTURE (ADD to tests/helpers.R -- the prior WIP was reverted; deterministic, NO RNG): `make_trajectory_cell_frame(
-  per_state = 6L, adv = c(MAPTKI=0, P301S=0.2, NLGF_MAPTKI=1.0, NLGF_P301S=1.6), dam_extra = 0L)` -> 4x4 genotype x
-  batch grid; genotype_batch = paste(genotype, sprintf("batch%02d", 1:4), sep = "_") (so derive_batch round-trips);
-  each unit = per_state Homeostatic + (per_state + dam_extra*(genotype=="NLGF_P301S")) DAM cells -- the extra DAM
-  mass lands ONLY in the double-mutant interaction cell, a genuine tau:amyloid COMPOSITION interaction (NOT an
-  amyloid main effect). pt_raw = 1+adv[g]+ramp (Homeostatic) / 4+adv[g]+ramp (DAM), ramp = ((seq_len(n)-0.5)/n)*0.3
-  (MIDPOINT rule -> block mean EXACTLY 0.15 for ANY block size n, so an unequal DAM count does NOT shift the
-  within-state mean -> the pure-composition fixture is EXACTLY pure, prog/cross interaction 0 not merely approximate);
-  pt01 = squeeze_unit_interval(pt_raw); on_lineage = TRUE. DEFAULT adv encodes a PURE within-state interaction =
-  (1.6-0.2)-(1.0-0) = 0.4 with dam_extra=0 -> CONSTANT composition -> 100% progression loading; FLAT adv (all 0)
-  + dam_extra>0 -> PURE composition interaction (prog loading 0, comp 1, EXACT under the midpoint ramp). Cols {cell, genotype_batch, genotype,
-  substate, on_lineage, pt_raw, pt01} (NO batch col -> exercises derive_batch, matching the real cell_frame).
-  Tests on it: per-rep shapes + floor skip (min_within=20, per_state=8 -> all within_skip
-  TRUE); ordinary_t/fit_trajectory_contrasts vs manual OLS (t matches; interaction == tau_nlgf coef); kitagawa
-  identity + pure-composition / pure-progression; decomposition reconstruction (recon_resid_max < 1e-8) +
-  loadings on the pure-progression fixture (DEFAULT adv, per_state=8: prog loading ~ 1, comp ~ 0, interaction
-  coef ~ 0.4) AND the pure-composition fixture (FLAT adv, dam_extra>0: comp loading 1, prog 0, tol 1e-8 -- exact
-  via the midpoint ramp); derive_batch round-trip + fail-loud on a corrupted genotype_batch + a VECTOR call
-  (>1 genotype, exercises the vectorised path);
-  Freedman-Lane signal (perm_p < 0.05), null (design-orthogonal residual -> perm_p > 0.9), determinism, RNG-
-  purity (runif sequence unchanged across a call).
-  PRE-REGISTER (BEFORE fitting): PRIMARY = progression_cf (Kitagawa) + within_homeostatic (composition-robust);
-  frac_past = the interpretable bridge; mean_pt FLAGGED composition-conflated. Family = BH across the 2 PRIMARY;
-  rest EXPLORATORY (separate FDR). Primary FDR 0.05, REPORT the 0.05-0.10 SUGGESTIVE band + effect + CI (v1
-  ~0.077; R4.6 re-baseline may move it).
-  ACCEPTANCE (outcome-INDEPENDENT): interaction computed on every measure; 3-channel decomposition reconstructs
-  L(mean_pt) (assert passes); primary BH family + Freedman-Lane perm_p RECORDED; v1 divergence reported
-  honestly; gate green.
+  Target `trajectory_progression` = run_trajectory_progression(microglia_trajectory) -> ADD to _targets.R AFTER
+  the microglia_trajectory target: tar_target(trajectory_progression,
+  run_trajectory_progression(microglia_trajectory), format = "qs"). Reads the COMPACT S1 target; pure-R.
+  WITHIN-STATE FLOOR mirrors P1 run_pb_de_substate.
+  PRE-REGISTER (encoded in run_trajectory_progression, BEFORE fitting): PRIMARY = progression_cf (Kitagawa) +
+  within_homeostatic (composition-robust); frac_past = the interpretable bridge; mean_pt FLAGGED
+  composition-conflated. Family = BH across the 2 PRIMARY; rest EXPLORATORY (separate FDR). Primary FDR 0.05,
+  REPORT the 0.05-0.10 SUGGESTIVE band + effect + CI (v1 ~0.077; R4.6 re-baseline may move it).
+  S2b TESTS (tests/test_trajectory.R, warn=2):
+  - Freedman-Lane on a SEPARATE deterministic design (make_meta16 -> factorial_design): signal (perm_p < 0.05),
+    null (perm_p > 0.9), determinism (same seed -> identical perm_p), RNG-purity (a runif draw advances
+    IDENTICALLY across a freedman_lane_interaction call -> the on.exit restore). BANKED FL design -- null:
+    e = stats::lm.fit(design, v)$residuals (v deterministic) is design-ORTHOGONAL -> tau_nlgf coef ~ 0 ->
+    t_obs ~ 0 -> every |t*| >= |t_obs| -> perm_p ~ 1; signal: y = 2*design[,"tau_nlgf"] + 0.1*e -> perm_p < 0.05.
+  - BANKED: do NOT write a full-orchestrator (run_trajectory_progression) test on the deterministic fixture -- its
+    exact-pure within-genotype design has ZERO residual variance -> sigma = 0 -> t = Inf/NaN on every measure. The
+    orchestrator is validated by (a) the S2a component unit tests, (b) the LIVE smoke below, (c) the gate's
+    tar_make building trajectory_progression FRESH on real noisy data.
+  LIVE SMOKE (before the gate): Rscript tar_read(microglia_trajectory) -> run_trajectory_progression -> inspect
+  primary_family (BH finite), decomposition$recon_resid_max (< 1e-8), permutation perm_p (finite), interaction
+  present on EVERY measure.
+  ACCEPTANCE (S2b, outcome-INDEPENDENT): interaction computed on every measure; the target builds on real data via
+  the gate's tar_make; 3-channel decomposition reconstructs L(mean_pt) on real data (recon_resid_max < 1e-8);
+  primary BH family + Freedman-Lane perm_p RECORDED; v1 divergence (loading ~0.94, fdr ~0.077) reported honestly
+  in provenance; gate green.
 
 S3 — glmmTMB per-cell sensitivity arm (supportive; isolates the new-dependency + fresh-build cost).
   Add `glmmTMB` to rproject.toml (CRAN; TMB = C++ template, NOT Stan -> ON-lock; P3M co-pins

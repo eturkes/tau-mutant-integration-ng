@@ -37,9 +37,9 @@ df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per
 S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (S3 = source-compiled glmmTMB/TMB;
 no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
-4 steps (S1 trajectory+pseudotime -> S2 interaction+Kitagawa-decomposition [pure-R primary] -> S3 glmmTMB
-per-cell sensitivity [new-dep arm] -> S4 report). S1 DONE; next open = S2. (S2 split out S3 on 2026-06-30 to
-fit one window — see ledger.)
+5 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
+glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 DONE; next open = S2a. (S2 split out S3, then S2
+itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -156,3 +156,13 @@ fit one window — see ledger.)
   (glmmTMB -> trajectory_glmm_sensitivity, INDEPENDENT target off microglia_trajectory$cell_frame), report -> S4.
   Plan steps now carry inline function contracts (the decided design) so the next session implements, not
   re-derives. Next open = S2.
+- 2026-06-30 P2-S2 SPLIT AGAIN -> S2a + S2b (no code shipped; this session re-authored the full S2 [8 fns +
+  fixture + tests] from the inline contracts but ran out of window before testing/gating -> reverted to 60774f9).
+  LESSON: even the pure-R S2 alone (6 estimation fns + 2 inference fns + fixture + ~6 test groups + live smoke +
+  gate) exceeds one window. Re-split at the VERIFICATION SEAM: S2a = per-replicate summary + contrast fit +
+  Kitagawa decomposition (derive_batch / pseudotime_per_replicate / ordinary_t_table / fit_trajectory_contrasts /
+  kitagawa_channels / decompose_progression_vs_composition + fixture + 5 unit-test groups, fully verifiable on the
+  deterministic fixture, NO target); S2b = Freedman-Lane + run_trajectory_progression orchestrator +
+  trajectory_progression target + FL tests + live smoke + gate (the live-integration half). Banked the expensive
+  verification insights into each step spec (OLS-vs-manual needs a NON-additive term or sigma=0; NO
+  full-orchestrator fixture test -- the exact-pure fixture has sigma=0 -> t=Inf). Next open = S2a.

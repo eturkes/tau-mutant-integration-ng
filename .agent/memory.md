@@ -138,28 +138,14 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Batch random-vs-fixed asymmetry (intentional): propeller/limma FIXED batch (de_pb-consistent); sccomp RANDOM
   batch intercept (~ 0 + genotype + (1|batch)) -> priors regularise the 4-level batch. Unit = genotype_batch (16).
   sccomp cell-means -> colon-free contrasts (no backtick hazard).
-- sccomp call (sccomp source-verified): pass ONLY `cores` -- it is fit_model's real parallelism knob (caps chains via
-  find_optimal_number_of_chains %>% min(cores); sets parallel_chains/threads_per_chain). `parallel_chains` is no formal
-  -> `...` -> collides with the internal mod$sample(parallel_chains=); `chains` IS a fit_model formal (binds+overrides,
-  NOT a collision -- the earlier "chains collides" note was WRONG).
-- sccomp HMC-CONVERGENCE capture (CORRECTED vs codex finding "c_R_k_hat surfaced" -- that column does NOT exist in
-  sccomp 2.4.0): sccomp_test emits c_rhat/c_ess_bulk/c_ess_tail but they are STRUCTURALLY all-NA for CONTRAST rows
-  (sccomp computes rhat/ESS for base design params only, not derived contrasts). REAL signal = the final (outlier-
-  removed) cmdstanr fit's $diagnostic_summary(quiet=TRUE) reached via attr(fit,"fit") (pass_fit=TRUE default): per-chain
-  divergent / max-treedepth / E-BFMI -> run_sccomp's `diagnostics` attr -> provenance$sccomp_diagnostics + a
-  sccomp_status note. Block is structurally HARDENED (outer tryCatch + an `ok` length/finiteness check): any API drift
-  or malformed/short summary degrades to NULL, never a misleading all-zero record. RECORDED not gated; LOCKED propeller
-  keeps full strictness; withCallingHandlers still captures any genuine R warning into `warnings` (0 on live runs).
-- sccomp GATE HOLE (codex-found, EMPIRICALLY confirmed + fixed 2026-06-30): cmdstanr emits sampler health via
-  message() with a literal "Warning:" prefix ("Warning: N of M transitions ended with a divergence"), NOT R warning()
-  -> the warning-only withCallingHandlers caught nothing AND the notes reached stderr -> the tee'd tar_make log -> the
-  gate's anchored `^Warning:` scan. A FRESH composition_results rebuild therefore REDDENED the gate; it stayed green
-  only because check.sh invalidates ONLY `report`, leaving composition_results cached (sccomp never re-ran under the
-  gate -- a real cached-target blind spot for the off-lock arm). FIX: run_sccomp's withCallingHandlers now ALSO catches
-  message() -> muffles + records into the `messages` attr -> provenance$sccomp_messages (the divergence notes +
-  sccomp-says/init chatter recorded, log clean). VERIFIED: forced fresh build (tar_invalidate composition_results +
-  report) -> anchored grep clean, full gate green. Lesson: a "RECORDED not gated" claim for a heavy optional arm must
-  be checked on a FRESH build, not a cached one -- the gate's cheap-by-design `report`-only invalidation hides it.
+- sccomp arm internals (P1-S3 build detail -- closed; full saga in git + archived plan): `cores`-ONLY fit_model call
+  (the real parallelism knob; `parallel_chains` would collide via `...`); HMC health read from the final cmdstanr
+  fit's $diagnostic_summary via attr(fit,"fit") (sccomp_test's c_rhat/c_ess are all-NA for contrast rows), hardened to
+  NULL on API drift, RECORDED not gated. DURABLE (also in the Quality-gate section, forwarded to the P2-S3 glmmTMB
+  arm): cmdstanr reports divergences via message() carrying a literal "Warning:" prefix, NOT warning() -> a
+  warning-only handler misses it AND it reaches the tee'd log -> the gate's `^Warning:` scan reddens; the
+  cached-target blind spot (check.sh rebuilds ONLY `report`) masked it until a forced fresh build. FIX: run_sccomp's
+  withCallingHandlers now muffles+records BOTH warnings AND messages -> capture both for any heavy/optimiser arm.
 - OFF-lock backend (scripts/install-cmdstan.sh, idempotent): cmdstanr from the Stan r-universe -> tools/rlib-stan
   (SEPARATE lib so `rv sync` never prunes it) + CmdStan compiled -> tools/cmdstan. _targets.R prepends the lib +
   sets CMDSTAN iff BOTH exist. sccomp_backend_ready() requires the PROJECT-LOCAL tools/rlib-stan + tools/cmdstan/
