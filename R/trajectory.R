@@ -511,3 +511,218 @@ decompose_progression_vs_composition <- function(per_rep, design, contrasts,
        loadings = primary$loadings, interaction = primary$fit$top$interaction,
        recon_resid_max = primary$recon_resid_max, balanced = balanced)
 }
+
+# ============================================================================================
+# P2-S2b: progression-interaction inference + orchestrator + the trajectory_progression target.
+# The weighted-limma per-replicate-summary interaction (S2a) is the PRIMARY inference; S2b adds a
+# Freedman-Lane permutation null (a distribution-light SENSITIVITY) and run_trajectory_progression,
+# which wires S1's compact target -> per-replicate summary -> factorial design -> weighted / OLS /
+# bounded contrast fits + the 3-channel Kitagawa decomposition + the permutation null, under a
+# PRE-REGISTERED primary BH family {progression_cf, within_homeostatic}. Pure-R, NO new dependency
+# (glmmTMB is S3). All non-base calls namespace-qualified.
+
+# Freedman-Lane permutation null for the 2x2 interaction coefficient (int_col, default tau_nlgf) of
+# a weighted least-squares fit. WLS = OLS on weight-scaled data (row-scale y + design by
+# sqrt(weights)); the interaction t is recomputed under each permutation of the REDUCED-model
+# (interaction-dropped) WEIGHTED residuals added back to the reduced fit. The weights are ESTIMATED
+# from the same per-unit summaries -> exchangeability on the weighted scale is approximate /
+# conditional, NOT exact -> a SENSITIVITY cross-check of the parametric ordinary-t, never a
+# nominal-exact primary (permuting raw unweighted residuals would be worse still). Xw is fixed
+# across permutations -> precompute the pivot-FREE (X'X)^-1 ONCE (its index order matches lm.fit's
+# coef order for the full-rank design, sidestepping qr() column-pivoting). RNG-pure: pins the seed +
+# all three kinds for the permutations, restores the caller's stream on exit. Returns
+# list(t_obs, n_perm, perm_p). Pure.
+freedman_lane_interaction <- function(y, design, int_col = "tau_nlgf", weights = NULL,
+                                      n_perm = 2000L, seed = 42L) {
+  stopifnot(is.numeric(y), is.matrix(design), !is.null(colnames(design)),
+            length(y) == nrow(design), all(is.finite(y)), all(is.finite(design)),
+            int_col %in% colnames(design), qr(design)$rank == ncol(design),
+            length(n_perm) == 1L, is.finite(n_perm), n_perm >= 1L)
+  n <- length(y)
+  if (!is.null(weights)) {
+    stopifnot(is.numeric(weights), length(weights) == n,
+              all(is.finite(weights)), all(weights > 0))
+  }
+  r  <- if (is.null(weights)) rep(1, n) else sqrt(weights)
+  yw <- r * y
+  Xw <- r * design                                       # row-scale by sqrt(weights) -> WLS as OLS
+  XtXinv <- chol2inv(chol(crossprod(Xw)))                # pivot-FREE (X'X)^-1: index order == lm.fit coefs
+  stopifnot(all(is.finite(XtXinv)))
+  j  <- match(int_col, colnames(design))
+  p  <- ncol(Xw); df <- n - p
+  stopifnot(df >= 1L)
+  int_t <- function(yv) {                                # full-model WLS interaction t (Xw fixed)
+    f <- stats::lm.fit(Xw, yv)
+    sigma2 <- sum(f$residuals^2) / df
+    unname(f$coefficients[j] / sqrt(sigma2 * XtXinv[j, j]))
+  }
+  t_obs <- int_t(yw)
+  Xw0 <- Xw[, colnames(Xw) != int_col, drop = FALSE]     # reduced (interaction-dropped) weighted fit
+  f0  <- stats::lm.fit(Xw0, yw)
+  fw0 <- f0$fitted.values; ew0 <- f0$residuals           # exchangeable residuals on the weighted scale
+  # RNG-pure: pin seed + all three kinds for the permutations; restore the caller's stream on exit
+  # (RNGkind FIRST then assign .Random.seed -- RNGkind reinitialises the stream).
+  old_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (has_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  on.exit({
+    RNGkind(old_kind[1], old_kind[2], old_kind[3])
+    if (has_seed) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+      rm(".Random.seed", envir = .GlobalEnv)
+  }, add = TRUE)
+  set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion",
+           sample.kind = "Rejection")
+  t_star <- vapply(seq_len(n_perm), function(b) int_t(fw0 + ew0[sample.int(n)]), numeric(1))
+  list(t_obs = t_obs, n_perm = as.integer(n_perm),
+       perm_p = (1 + sum(abs(t_star) >= abs(t_obs))) / (n_perm + 1))
+}
+
+# Orchestrate the progression-interaction inference from the COMPACT microglia_trajectory target
+# (S1). Collapses on-lineage per-cell pseudotime to the 16 genotype_batch summaries, builds the
+# factorial design (9 residual df), and fits the interaction on every endpoint three ways:
+#   - weighted: direct measures {mean_pt, median_pt, q90, within_<used>}, inverse-summary-variance
+#     weights (mean/median/q90 = n/sd_pt^2 overall precision; within_<state> = state n/sd^2);
+#   - ols: the same direct measures unweighted (a weighting-sensitivity);
+#   - bounded: frac_past on the logit + asin VST bridges (weights = n_cells; EXPLORATORY).
+# Plus the exact 3-channel Kitagawa decomposition (cell-weighted anchors) and a Freedman-Lane
+# permutation null on {progression_cf, within_homeostatic, frac_past_logit, mean_pt}, each weighted
+# to MATCH its limma fit. PRE-REGISTERED: primary family = BH across {progression_cf,
+# within_homeostatic} (composition-robust); everything else is a SEPARATE exploratory BH, and mean_pt
+# is flagged composition-conflated. Reads the compact target; pure-R (NO glmmTMB -> S3). Returns the
+# per-unit summary, the three fits, the decomposition, the permutation null, the two BH families, and
+# provenance (incl. the v1 progression loading ~0.94 / fdr ~0.077 for honest reconciliation).
+run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
+                                       n_perm = 2000L, seed = 42L) {
+  prov_in        <- microglia_trajectory$provenance
+  lineage_states <- prov_in$lineage_substates
+  dam_state      <- prov_in$terminal_substate
+  root_state     <- prov_in$root_substate
+  stopifnot(is.list(microglia_trajectory), "cell_frame" %in% names(microglia_trajectory),
+            is.character(lineage_states), length(lineage_states) >= 2L,
+            dam_state %in% lineage_states, root_state %in% lineage_states)
+
+  per_rep  <- pseudotime_per_replicate(microglia_trajectory$cell_frame, lineage_states,
+                                       dam_state = dam_state, min_within = min_within)
+  per_unit <- per_rep$per_unit
+  gb       <- per_unit$genotype_batch
+  within_skip <- per_rep$within_skip
+  used_states <- per_rep$states[!within_skip[per_rep$states]]
+
+  # factorial design over the 16 units (rownames = genotype_batch -> match the measure columns).
+  meta <- per_unit[, c("genotype_batch", "genotype", "batch")]
+  rownames(meta) <- gb
+  assert_complete_crossing(meta, "genotype_batch")            # 4x4 balance, fail loud
+  fd <- factorial_design(meta)
+  design <- fd$design; contrasts <- fd$contrasts
+  units_order <- rownames(design)
+
+  # direct-measure matrix (measures x units) + the per-endpoint inverse-variance weight matrix
+  # (IDENTICAL dimnames -- limma applies weights BY POSITION).
+  within_used <- unname(vapply(used_states, within_state_col, character(1)))
+  direct_rows <- c("mean_pt", "median_pt", "q90", within_used)
+  M <- t(as.matrix(per_unit[, direct_rows, drop = FALSE]))
+  dimnames(M) <- list(direct_rows, gb)
+  w_overall <- stats::setNames(per_unit$n_cells / per_unit$sd_pt^2, gb)
+  W <- matrix(NA_real_, nrow(M), ncol(M), dimnames = dimnames(M))
+  for (rn in c("mean_pt", "median_pt", "q90")) W[rn, ] <- w_overall[colnames(M)]
+  for (s in used_states)
+    W[within_state_col(s), ] <-
+      per_rep$counts[s, colnames(M)] / per_rep$sd[s, colnames(M)]^2
+  stopifnot(identical(dimnames(W), dimnames(M)), all(is.finite(W)), all(W > 0))
+  fit_weighted <- fit_trajectory_contrasts(M, design, contrasts, weights = W)
+  fit_ols      <- fit_trajectory_contrasts(M, design, contrasts, weights = NULL)
+
+  # BOUNDED frac_past on the logit + asin VST bridges (weights = n_cells; EXPLORATORY).
+  x <- round(per_unit$frac_past * per_unit$n_cells)
+  frac_logit <- log((x + 0.5) / (per_unit$n_cells - x + 0.5))
+  frac_asin  <- asin(sqrt(per_unit$frac_past))
+  B  <- rbind(frac_past_logit = frac_logit, frac_past_asin = frac_asin)
+  colnames(B) <- gb
+  WB <- matrix(per_unit$n_cells, nrow(B), ncol(B), byrow = TRUE, dimnames = dimnames(B))
+  stopifnot(all(is.finite(WB)), all(WB > 0))
+  fit_bounded <- fit_trajectory_contrasts(B, design, contrasts, weights = WB)
+
+  # exact 3-channel decomposition (cell-weighted anchors primary; one shared per-unit weight vector).
+  decomposition <- decompose_progression_vs_composition(per_rep, design, contrasts,
+                                                        weights = w_overall)
+
+  # Freedman-Lane null, EACH call weighted to MATCH its limma fit.
+  fl <- function(y_named, w_named)
+    freedman_lane_interaction(y_named[units_order], design, int_col = "tau_nlgf",
+                              weights = w_named[units_order], n_perm = n_perm, seed = seed)
+  perm <- list(
+    mean_pt = fl(stats::setNames(per_unit$mean_pt, gb), w_overall),
+    progression_cf = fl(stats::setNames(decomposition$channels$prog_cf,
+                                        decomposition$channels$genotype_batch), w_overall),
+    frac_past_logit = fl(stats::setNames(frac_logit, gb),
+                         stats::setNames(per_unit$n_cells, gb)))
+  if (root_state %in% used_states) {
+    wcol <- within_state_col(root_state)
+    w_within <- stats::setNames(per_rep$counts[root_state, ] / per_rep$sd[root_state, ]^2,
+                                colnames(per_rep$counts))
+    perm[[wcol]] <- fl(stats::setNames(per_unit[[wcol]], gb), w_within)
+  }
+
+  # assemble the per-measure interaction table from the MATCHING fit, attach perm_p, split into the
+  # PRE-REGISTERED primary BH family {progression_cf, within_homeostatic} + a separate exploratory BH.
+  wint <- fit_weighted$top$interaction
+  dint <- decomposition$interaction
+  bint <- fit_bounded$top$interaction
+  grab <- function(top_int, src, out = src, perm_p = NA_real_) {
+    rrow <- top_int[top_int$measure == src,
+                    c("coef", "se", "t", "df", "p_value", "ci_l", "ci_r"), drop = FALSE]
+    stopifnot(nrow(rrow) == 1L)
+    data.frame(measure = out, rrow, perm_p = perm_p, row.names = NULL, stringsAsFactors = FALSE)
+  }
+  rows <- list(
+    grab(dint, "prog_cf", "progression_cf", perm$progression_cf$perm_p),
+    grab(wint, "mean_pt", perm_p = perm$mean_pt$perm_p),
+    grab(wint, "median_pt"), grab(wint, "q90"),
+    grab(dint, "comp_cf"), grab(dint, "cross"),
+    grab(bint, "frac_past_logit", perm_p = perm$frac_past_logit$perm_p),
+    grab(bint, "frac_past_asin"))
+  for (s in used_states) {
+    mc <- within_state_col(s)
+    pp <- if (!is.null(perm[[mc]])) perm[[mc]]$perm_p else NA_real_
+    rows[[length(rows) + 1L]] <- grab(wint, mc, perm_p = pp)
+  }
+  all_int <- do.call(rbind, rows)
+  primary_measures <- c("progression_cf", within_state_col(root_state))
+  primary_measures <- primary_measures[primary_measures %in% all_int$measure]
+  is_primary <- all_int$measure %in% primary_measures
+  primary_family     <- all_int[is_primary, , drop = FALSE]
+  exploratory_family <- all_int[!is_primary, , drop = FALSE]
+  primary_family$fdr     <- stats::p.adjust(primary_family$p_value, "BH")
+  exploratory_family$fdr <- stats::p.adjust(exploratory_family$p_value, "BH")
+  rownames(primary_family) <- NULL; rownames(exploratory_family) <- NULL
+
+  provenance <- list(
+    limma_version = as.character(utils::packageVersion("limma")),
+    r_version = as.character(getRversion()), seed = seed, n_perm = as.integer(n_perm),
+    min_within = min_within, used_states = used_states, within_skip = within_skip,
+    dam_onset = per_rep$dam_onset, primary_measures = primary_measures,
+    progression_loading = unname(decomposition$loadings["prog_cf"]),
+    composition_loading = unname(decomposition$loadings["comp_cf"]),
+    cross_loading = unname(decomposition$loadings["cross"]),
+    recon_resid_max = decomposition$recon_resid_max,
+    v1_progression_loading = 0.94, v1_progression_fdr = 0.077)
+
+  # postconditions: interaction on EVERY measure, exact reconstruction, primary BH present + finite.
+  stopifnot(
+    all(direct_rows %in% wint$measure),
+    all(c("frac_past_logit", "frac_past_asin") %in% bint$measure),
+    all(c("mean_pt", "comp_cf", "prog_cf", "cross") %in% dint$measure),
+    decomposition$recon_resid_max < 1e-8,
+    nrow(primary_family) >= 1L, "progression_cf" %in% primary_family$measure,
+    all(is.finite(primary_family$fdr)), all(is.finite(primary_family$p_value)),
+    all(is.finite(c(perm$mean_pt$perm_p, perm$progression_cf$perm_p,
+                    perm$frac_past_logit$perm_p))))
+
+  list(per_unit = per_unit, counts = per_rep$counts, dam_onset = per_rep$dam_onset,
+       within_skip = within_skip, design = design,
+       contrasts = list(weighted = fit_weighted, ols = fit_ols, bounded = fit_bounded),
+       decomposition = decomposition, permutation = perm,
+       primary_family = primary_family, exploratory_family = exploratory_family,
+       provenance = provenance)
+}

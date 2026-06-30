@@ -5,6 +5,7 @@
 source("R/constants.R")
 source("R/microglia.R")     # reprocess_thread_env (trajectory_provenance dep)
 source("R/design.R")        # factorial_design (S2a contrast-fit + decomposition tests)
+source("R/de_pb.R")         # assert_complete_crossing (S2b orchestrator dep)
 source("R/trajectory.R")
 source("tests/helpers.R")
 suppressMessages(library(slingshot))
@@ -196,5 +197,59 @@ M_nc <- M; colnames(M_nc) <- NULL
 expect_error(fit_trajectory_contrasts(M_nc, fd$design, fd$contrasts), "colnames(measure_mat)")
 expect_error(kitagawa_channels(prog_pr$pi * 2, prog_pr$mu, prog_pr$pi_bar, prog_pr$mu_bar))  # cols sum to 2
 cat("ok - fail-loud contract guards\n")
+
+# =========================================================================================
+# P2-S2b: progression-interaction inference (Freedman-Lane + orchestrator).
+# =========================================================================================
+
+# --- freedman_lane_interaction: null / signal / determinism / RNG-purity / weighted ---------
+fdm <- factorial_design(make_meta16())
+v   <- as.numeric(1:16)                                    # deterministic, NO RNG
+e   <- stats::lm.fit(fdm$design, v)$residuals              # design-ORTHOGONAL -> tau_nlgf coef ~ 0
+fl_null <- freedman_lane_interaction(e, fdm$design, n_perm = 999L)
+stopifnot(abs(fl_null$t_obs) < 1e-6,                       # orthogonal residual -> ~0 interaction t
+          fl_null$perm_p > 0.9)                            # ... so almost all |t*| >= |t_obs|
+fl_sig <- freedman_lane_interaction(2 * fdm$design[, "tau_nlgf"] + 0.1 * e, fdm$design, n_perm = 999L)
+stopifnot(fl_sig$perm_p < 0.05)                            # strong interaction -> small perm_p
+y_det <- 2 * fdm$design[, "tau_nlgf"] + 0.1 * e
+stopifnot(identical(freedman_lane_interaction(y_det, fdm$design, n_perm = 999L, seed = 7L)$perm_p,
+                    freedman_lane_interaction(y_det, fdm$design, n_perm = 999L, seed = 7L)$perm_p))
+set.seed(123); a1 <- runif(1)                              # RNG-purity: FL leaves the caller's stream
+invisible(freedman_lane_interaction(y_det, fdm$design, n_perm = 50L))   # ... untouched (on.exit restore)
+a2 <- runif(1)
+set.seed(123); b1 <- runif(1); b2 <- runif(1)
+stopifnot(identical(a1, b1), identical(a2, b2))
+flw <- freedman_lane_interaction(y_det, fdm$design, weights = 1 + (1:16), n_perm = 99L)  # weighted path
+stopifnot(is.finite(flw$t_obs), flw$perm_p >= 0, flw$perm_p <= 1)
+cat("ok - freedman_lane_interaction\n")
+
+# --- run_trajectory_progression: STRUCTURE on a NON-additive fixture (sigma > 0) -------------
+# jitter > 0 breaks the saturated design's zero residual -> finite t (no limma zero-variance warning
+# under warn=2); assert RETURN STRUCTURE + exact reconstruction only (inferential values come from
+# the S2a component tests + the LIVE smoke + the gate's fresh tar_make on real data).
+fake_traj <- list(
+  cell_frame = make_trajectory_cell_frame(per_state = 12L, jitter = 0.3),
+  provenance = list(lineage_substates = c("Homeostatic", "DAM"),
+                    root_substate = "Homeostatic", terminal_substate = "DAM"))
+rp <- run_trajectory_progression(fake_traj, n_perm = 199L)
+stopifnot(
+  all(c("per_unit", "counts", "dam_onset", "within_skip", "design", "contrasts",
+        "decomposition", "permutation", "primary_family", "exploratory_family",
+        "provenance") %in% names(rp)),
+  all(c("weighted", "ols", "bounded") %in% names(rp$contrasts)),
+  all(c("mean_pt", "median_pt", "q90", "within_homeostatic", "within_dam") %in%
+        rp$contrasts$weighted$top$interaction$measure),    # interaction on every direct measure
+  all(c("frac_past_logit", "frac_past_asin") %in% rp$contrasts$bounded$top$interaction$measure),
+  all(c("mean_pt", "comp_cf", "prog_cf", "cross") %in% rp$decomposition$interaction$measure),
+  rp$decomposition$recon_resid_max < 1e-8,                 # exact reconstruction on noisy data
+  "progression_cf" %in% rp$primary_family$measure,
+  "within_homeostatic" %in% rp$primary_family$measure,     # used (per_state 12 >= floor 10)
+  nrow(rp$primary_family) == 2L,
+  all(is.finite(rp$primary_family$p_value)), all(is.finite(rp$primary_family$fdr)),
+  all(c("within_homeostatic", "within_dam") %in% names(rp$per_unit)),   # within_<lc> wire through
+  all(is.finite(c(rp$permutation$mean_pt$perm_p, rp$permutation$progression_cf$perm_p,
+                  rp$permutation$frac_past_logit$perm_p,
+                  rp$permutation$within_homeostatic$perm_p))))
+cat("ok - run_trajectory_progression structure (non-additive fixture)\n")
 
 cat("ALL trajectory tests passed\n")

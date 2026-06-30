@@ -38,7 +38,7 @@ S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (
 no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 5 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
-glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 + S2a DONE; next open = S2b. (S2 split out S3, then S2
+glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 + S2a + S2b DONE; next open = S3. (S2 split out S3, then S2
 itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -180,3 +180,15 @@ itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
   vector across the 4 channel-rows). 2 gate gotchas fixed -> memory.md (limma drops the 1-row coef/stdev.unscaled
   rowname; tapply over a single factor returns a non-conformable 1-D array). NO target/wiring (pure fns). Gate green.
   Next open = S2b.
+- 2026-06-30 P2-S2b DONE -> `R/trajectory.R` +2 inference fns (`freedman_lane_interaction`,
+  `run_trajectory_progression`) -> target `trajectory_progression` (`_targets.R`, reads COMPACT
+  microglia_trajectory, NO 612MB load) + `tests/test_trajectory.R` +2 groups (source R/de_pb.R for
+  assert_complete_crossing). Weighted/OLS/bounded limma interaction fits + 3-channel Kitagawa decompose +
+  Freedman-Lane perm null; PRE-REGISTERED primary BH {progression_cf, within_homeostatic} (detail -> memory.md).
+  HEADLINE (R4.6 re-baseline; numbers DRIFT-PRONE): the interaction RAISES mean_pt (p~0.04) BUT Kitagawa
+  attributes it to COMPOSITION (comp_cf SIG fdr~0.025) NOT progression (prog_cf NEGATIVE/NS, perm_p~0.18; recon
+  6.7e-15); primary family BOTH NS -> NO progression-beyond-composition synergy. DIVERGES v1 (~0.94 prog
+  loading): R4.6 says the advance = MORE DAM CELLS (confirms P1's sig DAM-fraction interaction), not
+  cells-advancing-FURTHER -> defensible negative on the distinct progression question (acceptance
+  outcome-independent). FL = SENSITIVITY not nominal-exact. Gate green (21 targets, built fresh on real data,
+  tar_meta + render clean). Next open = S3 (glmmTMB per-cell sensitivity).

@@ -307,6 +307,27 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   dam_extra>0 -> pure composition (comp loading 1); jitter>0 = NON-additive ((gi*bi)%%5)*jitter -> sigma>0 for S2b's
   structural orchestrator test. NO batch col -> exercises derive_batch.
 
+## snRNAseq microglia trajectory progression inference (P2-S2b, built) -- `R/trajectory.R` +2 fns -> target `trajectory_progression`
+- run_trajectory_progression(microglia_trajectory): COMPACT S1 target -> pseudotime_per_replicate -> factorial_design (9 resid
+  df) -> 3 limma fits {weighted direct (mean_pt/median_pt/q90/within_<used>, inv-summary-var weights), ols sensitivity, bounded
+  (frac_past logit+asin VST, w=n_cells, EXPLORATORY)} + decompose_progression_vs_composition + freedman_lane_interaction on
+  {progression_cf, within_homeostatic, frac_past_logit, mean_pt}. PRE-REGISTERED primary BH family = {progression_cf,
+  within_homeostatic}; rest separate exploratory BH; mean_pt FLAGGED composition-conflated. Pure-R, NO new dep.
+- freedman_lane_interaction = WLS-as-OLS permutation null (permute REDUCED-model weighted residuals; pivot-free XtXinv once;
+  RNG-pure -- pins seed+3 kinds, restores caller stream on.exit, RNGkind-THEN-.Random.seed). SENSITIVITY not nominal-exact
+  (weights ESTIMATED from same summaries -> approximate exchangeability); each FL call weighted to MATCH its limma fit.
+- HEADLINE (R4.6 re-baseline; EXACT numbers DRIFT-PRONE -> S4 inline-computes, NEVER hardcode; the QUALITATIVE finding is durable):
+  the 2x2 interaction RAISES mean pseudotime position (mean_pt coef>0, ~p 0.04) BUT the 3-channel Kitagawa shows this is
+  COMPOSITION (comp_cf loading ~+1.25, the SIG channel ~fdr 0.025) NOT progression (prog_cf loading NEGATIVE ~-0.55, NS, perm_p
+  ~0.18; cross ~+0.29; loadings sum 1.0, recon 6.7e-15). PRE-REGISTERED primary {progression_cf, within_homeostatic} BOTH NS ->
+  NO progression-beyond-composition synergy. DIVERGES from v1 (~0.94 progression loading): R4.6 attributes the interaction
+  advance to MORE DAM CELLS (composition -- CONFIRMS P1's sig DAM-fraction interaction), not cells-advancing-FURTHER. mean_pt
+  alone (+2, p~0.04) MISLEADS as "advance" -> the decomposition is LOAD-BEARING (read comp/prog channels, never bare mean_pt). S4
+  frames composition-confirmed + progression-null honestly.
+- tests: source R/de_pb.R (assert_complete_crossing dep); FL null (design-orthogonal resid -> t_obs~0 -> perm_p~1) / signal
+  (2*tau_nlgf col -> perm_p<0.05) / determinism / RNG-purity / weighted; structural orchestrator on the jitter>0 fixture
+  (sigma>0 dodges the limma zero-variance warn under warn=2 -- the EXACT-pure fixture saturates -> sigma=0 -> Inf t).
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

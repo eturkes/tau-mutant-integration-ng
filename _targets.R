@@ -91,6 +91,12 @@ list(
   # (serialized ~0.8MB, in-memory ~3.3MB; cheap-render).
   tar_target(microglia_trajectory, build_activation_trajectory(microglia_annotated), format = "qs"),
 
+  # S2b: progression-interaction inference. Collapse on-lineage pseudotime to the 16 genotype_batch
+  # summaries -> factorial design (9 resid df) -> weighted / OLS / bounded interaction fits + the
+  # exact 3-channel Kitagawa decomposition + a Freedman-Lane permutation null; PRE-REGISTERED primary
+  # BH family {progression_cf, within_homeostatic}. Pure-R off the COMPACT S1 target (no 612MB load).
+  tar_target(trajectory_progression, run_trajectory_progression(microglia_trajectory), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),
