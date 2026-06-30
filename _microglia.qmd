@@ -4,7 +4,7 @@ This chapter is the single-nucleus core of the study. From the reprocessed, batc
 microglia (SCT normalisation, Harmony over batch only) it places each nucleus into a canonical
 substate, tests whether substate composition shifts across the genotype contrasts, and runs
 pseudobulk differential expression to characterise the activation programme and to weigh the
-tau-by-amyloid interaction. The headline, supported three independent ways below, is that
+tau-by-amyloid interaction. The headline, supported three complementary ways below, is that
 amyloid (NLGF) drives microglia out of a homeostatic state into disease-associated microglia
 (DAM); mutant tau scales the size of that response without, on its own, redrawing the
 programme. One measurement caveat frames everything that follows: single-nucleus capture
@@ -60,14 +60,34 @@ int_sentence <- if (is.null(int_sc))
   sprintf("under sccomp it sits near the significance boundary (FDR %s, 95%% credible interval [%.2f, %.2f])",
           fmt_p(int_sc$c_fdr), int_sc$c_lower, int_sc$c_upper)
 
+# Interaction stageR genes carry REAL fold-changes (every one clears the |log2FC| effect bar; what
+# they miss is the stricter STANDALONE per-contrast FDR) -> describe them as sub-threshold-per-
+# contrast, never "small effect". Compute the descriptors so the prose tracks the cached fit.
+lfc <- pbm$thresholds$lfc; fdr <- pbm$thresholds$fdr
+int_conf <- pbm$stageR$stage_padj[, "interaction"] <= pbm$stageR$alpha
+int_conf[is.na(int_conf)] <- FALSE
+int_tt   <- pbm$top$interaction[match(rownames(pbm$stageR$stage_padj)[int_conf],
+                                      pbm$top$interaction$gene), ]
+n_int_stageR <- nrow(int_tt)
+med_int_lfc  <- median(abs(int_tt$logFC))      # typical confirmed-gene effect size (log2 units)
+min_int_adjp <- min(int_tt$adj.P.Val)          # most significant interaction gene, standalone per-contrast
+# Within-DAM amyloid DE + which substates were fit -> let the prose track the fit, not a hardcode.
+dam_fit <- pbs$per_substate$DAM
+dam_amyloid_de <- if (identical(dam_fit$status, "fit"))
+  sum(abs(dam_fit$top$nlgf_in_p301s$logFC) > lfc & dam_fit$top$nlgf_in_p301s$adj.P.Val < fdr) else NA_integer_
+fit_subs <- names(Filter(function(p) identical(p$status, "fit"), pbs$per_substate))
+
 # Back the "no dropped cluster was DAM-high" caveat with the recorded per-cluster DAM medians
 # (S2 prune provenance) rather than asserting it; report the genotype/cluster dropout factually.
 # Dropped clusters' DAM medians OVERLAP the kept homeostatic clusters -> the honest comparison is
 # against the DAM-ENRICHED ceiling (kept_dam_max): no dropped cluster reaches the DAM compartment.
 qcr      <- mrd$prune$qc_rationale
 dbg      <- mrd$prune$dropped_by_genotype
-drop_geno <- names(which.max(rowSums(dbg)))                       # genotype losing the most nuclei
-drop_clu  <- names(which.max(colSums(dbg)))                       # cluster contributing the most
+drp_by_geno <- rowSums(dbg)                                       # absolute nuclei dropped per genotype
+drop_frac   <- drp_by_geno / (drp_by_geno + as.integer(table(cf$genotype)[names(drp_by_geno)]))
+drop_geno   <- names(which.max(drop_frac))                       # genotype losing the largest FRACTION (here also the largest count)
+drop_geno_pct <- round(100 * max(drop_frac))                     # that fraction, as a percent
+drop_clu    <- names(which.max(colSums(dbg)))                    # cluster contributing the most nuclei (absolute)
 drop_dam_max <- max(qcr[as.character(mrd$prune$dropped), "DAM_med"])                            # top DAM median, dropped
 kept_dam_max <- max(qcr[setdiff(rownames(qcr), as.character(mrd$prune$dropped)), "DAM_med"])    # DAM-enriched ceiling, kept
 ```
@@ -83,8 +103,8 @@ remain. They resolve into `r format(sum(cf$substate == "Homeostatic"), big.mark 
 homeostatic, `r format(sum(cf$substate == "DAM"), big.mark = ",")` DAM and
 `r sum(cf$substate == "IFN")` IFN nuclei; no cluster is proliferative-dominant, so that level
 carries no cells (sparse cycling markers average out at the cluster level rather than forming a
-coherent population). Every substate signature maps in full to the assayed genes
-(`r paste(sprintf("%s %s", names(mrd$provenance$n_used), mrd$provenance$n_used)[2:5], collapse = ", ")`).
+coherent population). Each substate signature is scored on its genes found in the assay
+(`r paste(sprintf("%s %s", names(mrd$provenance$n_used), mrd$provenance$n_used)[2:5], collapse = ", ")` genes used).
 
 ```{r}
 #| label: umap
@@ -166,7 +186,7 @@ one - a rate question handed to the trajectory phase.
 #| label: composition-forest
 #| fig-width: 8
 #| fig-height: 4.5
-#| fig-cap: "Substate composition effects (sccomp posterior effect on the logit proportion, with 95% credible intervals) for DAM and homeostatic microglia across the five contrasts. DAM and homeostatic move as mirror images; both amyloid contrasts are far from zero, the interaction is small."
+#| fig-cap: "Substate composition effects for DAM and homeostatic microglia across the five contrasts (sccomp posterior on the logit proportion with 95% credible intervals where the Bayesian arm ran, otherwise the propeller t-statistic). DAM and homeostatic move as mirror images; both amyloid contrasts are far from zero, the interaction is small."
 ctr_levels <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
 if (!is.null(comp$sccomp)) {
   fdf <- comp$sccomp[comp$sccomp$substate %in% c("Homeostatic", "DAM"), ]
@@ -208,15 +228,14 @@ if (!is.null(comp$sccomp)) {
   ctab$`sccomp FDR`    <- fmt_p(sc$c_fdr)
 }
 knitr::kable(ctab, row.names = FALSE,
-             caption = "DAM composition across the five contrasts: propeller (primary, batch-fixed) and sccomp (cross-check, random batch). Direction is read from the t-statistic / effect, not the marginal proportion ratio.")
+             caption = "DAM composition across the five contrasts: propeller (primary, batch-fixed) and, where its Stan backend is present, sccomp (cross-check, random batch). Direction is read from the t-statistic / effect, not the marginal proportion ratio.")
 
 flagged <- comp$concordance[comp$concordance$flag, c("contrast", "substate")]
 ```
 
 Cross-method concordance flags `r nrow(flagged)` of `r nrow(comp$concordance)`
-contrast-by-substate cells (`r paste(sprintf("%s/%s", flagged$contrast, flagged$substate), collapse = "; ")`):
-the sparse IFN compartment carries most of them, plus the DAM interaction sitting on the
-significance boundary. Per the pre-declared rule the propeller-logit call stands; the
+contrast-by-substate cells (`r paste(sprintf("%s/%s", flagged$contrast, flagged$substate), collapse = "; ")`)`r if (nrow(flagged) > 0 && all(flagged$substate == "IFN")) ", all on the sparse IFN compartment, where a few hundred nuclei let the two methods split on sign or significance" else ""`.
+`r if (!any(flagged$contrast == "interaction" & flagged$substate == "DAM")) "The DAM interaction is concordant here - both methods call it significant - so its borderline element is the sccomp effect size (above), not the cross-method agreement. " else ""`Per the pre-declared rule the propeller-logit call stands; the
 disagreements are reported, never averaged away.
 
 ## The amyloid-to-DAM expression programme
@@ -277,14 +296,17 @@ knitr::kable(sig_tab, row.names = FALSE,
 
 No gene clears the large-effect bar on the `interaction` contrast (0 up, 0 down at
 |log2FC| > `r lfc`, FDR < `r fdr`), yet the stageR family screen still confirms
-`r sum(pbm$stageR$stage_padj[, "interaction"] <= pbm$stageR$alpha, na.rm = TRUE)` genes with
-smaller effects, so this is not an empty result. The difference-of-differences carries roughly
+`r n_int_stageR` interaction genes - every one with a substantial fold-change (all above the `r lfc`
+log2 effect bar, median `r round(med_int_lfc, 1)`) that the stricter standalone per-contrast test
+cannot individually resolve (its most significant gene sits at FDR `r round(min_int_adjp, 2)`), so
+this is not an empty result. The difference-of-differences carries roughly
 twice the standard error of a main effect, and the pseudobulk design leaves few replicate degrees
 of freedom - eBayes moderation lifts the effective total to `r round(pbm$interaction$df)`: the
-minimum log2 fold-change detectable at 80% power for the median gene is
+minimum log2 fold-change detectable at a nominal 80% per-test power for the median gene is
 `r round(pbm$interaction$mde, 2)` (median posterior SE `r round(pbm$interaction$median_se, 3)`). The honest reading is therefore that a per-gene
-interaction below about `r round(pbm$interaction$mde, 1)` log2 units would be invisible to this
-design - absence of large-effect genes is not evidence of no interaction. Crucially, the
+interaction below about `r round(pbm$interaction$mde, 1)` log2 units falls under this design's
+nominal detection floor - and the multiple-testing-corrected discovery floor is higher still - so
+absence of large-effect genes is not evidence of no interaction. Crucially, the
 compositional interaction on DAM *is* significant, which points to a synergy expressed as
 compartment size and progression rate rather than as per-gene fold-change. That rate question -
 does amyloid advance microglia further along the activation trajectory on a mutant-tau
@@ -293,11 +315,12 @@ background - is the subject of the next phase.
 ## Per-substate differential expression
 
 Repeating the pseudobulk fit within each substate is only valid where every replicate unit
-carries enough cells. Under a floor of `r pbs$min_cells` cells per unit, homeostatic and DAM
-microglia qualify and are fitted; IFN (as few as `r min(pbs$cell_counts["IFN", ])` cells in a
-unit) and the absent proliferative level are left descriptive-only. Within the DAM compartment
-amyloid still shifts expression, confirming the programme is graded, not merely a change in how
-many cells are DAM.
+carries enough cells. Under a floor of `r pbs$min_cells` cells per unit, the substates that clear
+it on every unit (`r knitr::combine_words(fit_subs)`) are fitted; IFN (as few as
+`r min(pbs$cell_counts["IFN", ])` cells in a unit) and the empty proliferative level are left
+descriptive-only. Within the DAM compartment alone, amyloid still moves `r dam_amyloid_de` genes
+past the large-effect bar (NLGF_P301S vs P301S), confirming the programme is graded - a shift in
+what DAM cells express, not merely how many cells are DAM.
 
 ```{r}
 #| label: substate-de
@@ -321,14 +344,14 @@ knitr::kable(do.call(rbind, sub_rows), row.names = FALSE,
 Three caveats travel with these results. First, the Thrupp under-detection already noted: DAM is
 scored, not thresholded, and the differential tests run on raw counts, so the attenuation biases
 against the DAM signal rather than inventing it. Second, contaminant pruning removed proportionally
-more low-quality nuclei from the `r drop_geno` background (mostly cluster `r drop_clu`), but every
-dropped cluster scores low on DAM - the highest dropped-cluster median (`r round(drop_dam_max, 2)`)
-falls well short of the DAM-enriched clusters that drive the headline (medians up to
-`r round(kept_dam_max, 2)`, all retained) - so the amyloid-to-DAM headline cannot be a pruning
-artefact; the asymmetry is reported in full below rather than hidden. Third,
-the sccomp cross-check is a supportive, off-lock arm: its sampler showed a small number of
-divergent transitions with otherwise healthy diagnostics, so it corroborates direction and
-magnitude but the locked propeller call is the primary inference.
+more low-quality nuclei from the `r drop_geno` background (about `r drop_geno_pct`% of it, mostly
+cluster `r drop_clu`) than from the others. Because every dropped cluster scores low on DAM - the
+highest dropped-cluster median (`r round(drop_dam_max, 2)`) falls well short of the DAM-enriched
+clusters that drive the headline (medians up to `r round(kept_dam_max, 2)`, all retained) - the
+pruning cannot have manufactured the amyloid-to-DAM signal by discarding DAM-high nuclei. Removing
+low-DAM nuclei can only nudge a genotype's DAM fraction upward, so this genotype-skewed dropout is
+reported in full below rather than hidden. Third,
+`r if (!is.null(comp$sccomp)) "the sccomp cross-check is a supportive, off-lock arm: its sampler showed a small number of divergent transitions with otherwise healthy diagnostics, so it corroborates direction and magnitude but the locked propeller call is the primary inference." else "the sccomp Bayesian cross-check did not run on this build (its Stan backend was absent), so the locked propeller call stands alone as the primary inference."`
 
 ```{r}
 #| label: dropout

@@ -46,7 +46,7 @@ validation (P4). Out of scope (v1 bloat): cisTarget mm10/SCENIC, SEA-AD human va
 
 The first analysis phase: reprocess + integrate + cluster microglia (S1), UCell substates + contaminant prune
 (S2), substate composition (S3), pseudobulk DE (S4), `_microglia.qmd` report + close (S5). Built the robust
-amyloid->DAM activation headline, supported THREE independent ways (composition, DE, UCell score), plus an
+amyloid->DAM activation headline, supported three complementary ways (composition, DE, UCell score), plus an
 HONEST under-powered interaction handed to P2. Live facts -> memory.md (P1-S1..S5 sections); wiring -> map.md.
 Below = decisions + rejected alternatives.
 
@@ -70,7 +70,8 @@ Below = decisions + rejected alternatives.
 - HEADLINE (robust, microglia-led): amyloid (NLGF) drives homeostatic->DAM. Confirmed 3 ways -- composition
   (propeller DAM-up FDR~1e-10/1e-13, sccomp concordant), DE (DAM markers amyloid-UP frac 1.00/0.94, meanLFC
   +1.37/+1.85 -> v1-concordant), UCell DAM score shift. INTERACTION (honest, OUTCOME-OPEN): 0 large-effect DE
-  genes BUT 123 stageR small-effect + MDE@80%=0.92 log2FC -> under-powered NOT absent (BACKED by the power
+  genes BUT 123 stageR-confirmed (real |logFC|>0.5, median ~1.1; sub-threshold standalone per-contrast FDR, min
+  adj.P 0.17) + MDE@80%=0.92 log2FC -> under-powered NOT absent (BACKED by the power
   statement, never asserted from "0 genes"; absence of evidence != evidence of absence). Static compositional
   synergy on DAM (propeller sig, sccomp borderline) -> the tau x amyloid synergy is a progression-RATE effect
   handed to P2 (trajectory). Thrupp 2020 caveat carried throughout (snRNA under-detects ~18% DAM genes -> SCORE

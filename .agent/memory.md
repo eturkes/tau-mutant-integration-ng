@@ -185,10 +185,11 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   it as shown); point estimates corroborate propeller -> treat sccomp SUPPORTIVE not definitive (adapt_delta is the
   lever if a later phase hardens the Bayesian arm). HEADLINE robust: amyloid -> DAM up (nlgf_in_maptki/nlgf_in_p301s)
   STRONG and directionally concordant in both methods -- propeller t=10.8/14.4 FDR~1e-10/1e-13, sccomp c_effect
-  +1.45/+1.83 FDR~0; Homeostatic mirror-down. INTERACTION DAM positive: propeller FDR 0.027 (sig) vs sccomp 0.051
-  (borderline, diagnostic-limited) -> FLAGGED, propeller-primary stands; static synergy handed to P2 trajectory.
-  interaction Homeostatic down sig in both. Concordance flagged 4/15 (3 sparse-IFN n=797 sign/sig noise + the
-  interaction-DAM sig-borderline).
+  +1.45/+1.83 FDR~0; Homeostatic mirror-down. INTERACTION DAM positive under propeller (sig);
+  under sccomp near-boundary (FDR ~0.04-0.05, run-to-run on the few divergences) -> propeller-primary stands;
+  static synergy handed to P2. interaction Homeostatic down sig in both. Concordance flags = 3 STABLE sparse-IFN
+  cells (n=797 sign/sig noise) + the DAM-interaction cell ONLY on sccomp draws landing >0.05 -> 3-4/15 across
+  draws; the report inline-computes the live set (propeller-primary authoritative, never averaged).
 
 ## snRNAseq microglia pseudobulk DE (P1-S4, built) -- `R/de_pb.R` -> `pb_de_microglia` + `pb_de_substate`
 - DE on RAW RNA counts (33683 ENSMUSG genes), NOT SCT -- microglia_annotated keeps BOTH assays; aggregate by
@@ -223,10 +224,11 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   -> an absent unit fails LOUD, never a silent <16-unit sub-design. LIVE: Homeostatic
   (min 52) + DAM (min 31) FIT; IFN (min 5, 15/16 units pass) + Proliferative (0) SKIP.
 - LIVE RESULTS (2026-06-30; re-baselined R 4.6, NOT v1's locked margins): whole-MG kept 14512, stageR screened 3545.
-  sig (|logFC|>0.5 & FDR<0.05) up/dn: tau_alone 0/0 (no LARGE-effect genes; 124 stageR small-effect), nlgf_in_maptki 555/457,
+  sig (|logFC|>0.5 & FDR<0.05) up/dn: tau_alone 0/0 (no LARGE-effect genes; 124 stageR-confirmed), nlgf_in_maptki 555/457,
   nlgf_in_p301s 940/1148, tau_in_nlgf 202/764, interaction 0/0. DAM markers amyloid-UP: frac_up 1.00/0.94, meanLFC
   +1.37/+1.85, n_sig_up 11/16 -> HEADLINE amyloid->DAM concordant v1 at the DE level. INTERACTION 0/0 at the
-  effect-size threshold BUT stageR confirms 123 SMALL-effect genes (no LARGE-effect DE != no DE) + MDE@80%=0.92
+  effect-size threshold BUT stageR confirms 123 genes ALL with |logFC|>0.5 (median ~1.1), failing only the stricter
+  standalone per-contrast FDR (min adj.P 0.17) -> sub-threshold-per-contrast NOT small-effect (no LARGE DE != no DE) + MDE@80%=0.92
   log2FC (median_se 0.315, df 24; NOMINAL median-gene power, not FDR discovery) -> under-powered, NOT "absent";
   report the 123 + MDE/CI (S5), hand synergy to P2. Per-substate FIT:
   Homeostatic kept 13599/screened 1241 (interaction MDE 1.12), DAM kept 9148/screened 415 (MDE 1.49; amyloid still
@@ -328,7 +330,7 @@ files aren't scanned -- moot, the report is RE-rendered from source each run, no
   on failure. helpers.R = deterministic synthetic fixtures (make_fake_seurat / make_meta16 /
   expect_error[+pattern]; NO RNG or clock). Current set: test_design (5-contrast weights +
   factorial==cell-means property), test_de_pb (pseudobulk 16-col + fit_limma_voom/log smokes), test_io
-  (loader contracts on tempfiles), test_plot (device-free theme/scale/concordance). They are data-free
+  (loader contracts on tempfiles), test_plot (device-free theme/scale/concordance), test_composition (propeller/sccomp arm + concordance), test_microglia (reprocess + microglia_report_data extractor/guards). They are data-free
   synthetic; live-data smoke-testing per module still happens once before commit.
 - Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 

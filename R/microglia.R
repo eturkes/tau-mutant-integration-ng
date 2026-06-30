@@ -381,7 +381,7 @@ annotate_microglia <- function(seurat_obj, symbol_map,
 # --- P1-S5: compact report-data extraction (keeps the gate render cheap) --------------------
 
 # Extract ONLY what _microglia.qmd plots/tabulates from the ~612MB annotated Seurat, so the
-# force-rendered report (hence EVERY scripts/check.sh run) reads a ~2MB target instead of
+# force-rendered report (hence EVERY scripts/check.sh run) reads a ~0.5MB target instead of
 # deserialising the full object -- this preserves the documented cheap-render gate property
 # (the QC chapter already loads the 340MB raw subset; we must not add the heavy annotated one
 # on top). Returns a per-cell plotting frame (UMAP coords + genotype + primary substate + the
@@ -415,11 +415,17 @@ microglia_report_data <- function(seurat_obj,
   )
   cell_frame[z_cols] <- md[, z_cols, drop = FALSE]         # append the activation z-scores by name (cell-aligned)
   rownames(cell_frame) <- NULL
+  prov  <- seurat_obj@misc$substate_provenance
+  prune <- seurat_obj@misc$microglia_prune
+  # cell_frame is the single source of truth -> assert the passed-through summaries AGREE with it
+  # (catches drift between the S2/S3 provenance table and this S5 per-cell frame).
+  sub_counts <- table(factor(as.character(sub), levels = colnames(prov$substate_table)))
   stopifnot(
     !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),   # every cell placed (annotate guarantees it)
-    all(vapply(z_cols, function(z) all(is.finite(cell_frame[[z]])), logical(1)))
+    all(is.finite(cell_frame$umap_1)), all(is.finite(cell_frame$umap_2)),   # finite coords -> no ggplot drop
+    all(vapply(z_cols, function(z) all(is.finite(cell_frame[[z]])), logical(1))),
+    identical(as.integer(colSums(prov$substate_table)), as.integer(sub_counts)),  # provenance == per-cell counts
+    isTRUE(prune$n_retained == ncol(seurat_obj))               # retained count == frame rows
   )
-  list(cell_frame = cell_frame, n_cells = ncol(seurat_obj),
-       prune = seurat_obj@misc$microglia_prune,
-       provenance = seurat_obj@misc$substate_provenance)
+  list(cell_frame = cell_frame, n_cells = ncol(seurat_obj), prune = prune, provenance = prov)
 }

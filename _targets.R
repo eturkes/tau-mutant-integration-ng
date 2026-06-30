@@ -79,7 +79,7 @@ list(
 
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + substate +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
-  # so _microglia.qmd (and every force-rendered gate run) reads a ~2MB target, not the 612MB Seurat.
+  # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.
   tar_target(microglia_report, microglia_report_data(microglia_annotated), format = "qs"),
 
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),

@@ -160,4 +160,21 @@ expect_error(microglia_report_data(obj_nou), "umap")
 expect_error(microglia_report_data(obj_r, z_cols = "NOPE_UCell_z"), "z_cols")
 expect_error(microglia_report_data(obj_r, substate_col = "nope"), "substate_col")
 
+# S5-hardening guards (codex review): non-finite coords/z and provenance-vs-per-cell drift fail loud
+emb_inf <- emb; emb_inf[1, 1] <- Inf
+obj_inf <- obj_r
+obj_inf[["umap"]] <- SeuratObject::CreateDimReducObject(embeddings = emb_inf, key = "UMAP_", assay = "RNA")
+expect_error(microglia_report_data(obj_inf), "finite")            # non-finite UMAP coord rejected
+
+obj_z <- obj_r; obj_z@meta.data[["DAM_UCell_z"]][1] <- NA_real_
+expect_error(microglia_report_data(obj_z), "finite")              # non-finite activation z rejected
+
+obj_st <- obj_r
+obj_st@misc$substate_provenance$substate_table[1] <-
+  obj_st@misc$substate_provenance$substate_table[1] + 5L
+expect_error(microglia_report_data(obj_st))                       # provenance table disagreeing with per-cell counts
+
+obj_nr <- obj_r; obj_nr@misc$microglia_prune$n_retained <- nc - 1L
+expect_error(microglia_report_data(obj_nr))                       # n_retained != frame rows rejected
+
 cat("ok - test_microglia\n")
