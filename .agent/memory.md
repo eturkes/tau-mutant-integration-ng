@@ -309,7 +309,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 
 ## snRNAseq microglia trajectory progression inference (P2-S2b, built) -- `R/trajectory.R` +2 fns -> target `trajectory_progression`
 - run_trajectory_progression(microglia_trajectory): COMPACT S1 target -> pseudotime_per_replicate -> factorial_design (9 resid
-  df) -> 3 limma fits {weighted direct (mean_pt/median_pt/q90/within_<used>, inv-summary-var weights), ols sensitivity, bounded
+  df) -> 3 limma fits {weighted direct (mean_pt/median_pt/q90/within_<used>, SHARED n/sd^2 weights = mean-precision heuristic, NOT quantile-exact for median_pt/q90 + chosen for EXACT Kitagawa reconstruction so progression_cf = shared-weight DECOMPOSITION test, not channel-specific IV inference), ols sensitivity, bounded
   (frac_past logit+asin VST, w=n_cells, EXPLORATORY)} + decompose_progression_vs_composition + freedman_lane_interaction on
   {progression_cf, within_homeostatic, frac_past_logit, mean_pt}. PRE-REGISTERED primary BH family = {progression_cf,
   within_homeostatic}; rest separate exploratory BH; mean_pt FLAGGED composition-conflated. Pure-R, NO new dep.
@@ -320,13 +320,23 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   the 2x2 interaction RAISES mean pseudotime position (mean_pt coef>0, ~p 0.04) BUT the 3-channel Kitagawa shows this is
   COMPOSITION (comp_cf loading ~+1.25, the SIG channel ~fdr 0.025) NOT progression (prog_cf loading NEGATIVE ~-0.55, NS, perm_p
   ~0.18; cross ~+0.29; loadings sum 1.0, recon 6.7e-15). PRE-REGISTERED primary {progression_cf, within_homeostatic} BOTH NS ->
-  NO progression-beyond-composition synergy. DIVERGES from v1 (~0.94 progression loading): R4.6 attributes the interaction
-  advance to MORE DAM CELLS (composition -- CONFIRMS P1's sig DAM-fraction interaction), not cells-advancing-FURTHER. mean_pt
+  no statistically SUPPORTED progression-beyond-composition signal (negative/NS estimate, NOT proven absence -- absence of
+  evidence). DIVERGES from v1 (~0.94 progression loading): R4.6 attributes the interaction advance MAINLY to MORE DAM CELLS
+  (composition -- CONFIRMS P1's sig DAM-fraction interaction), with no DETECTED cells-advancing-FURTHER signal. mean_pt
   alone (+2, p~0.04) MISLEADS as "advance" -> the decomposition is LOAD-BEARING (read comp/prog channels, never bare mean_pt). S4
   frames composition-confirmed + progression-null honestly.
 - tests: source R/de_pb.R (assert_complete_crossing dep); FL null (design-orthogonal resid -> t_obs~0 -> perm_p~1) / signal
   (2*tau_nlgf col -> perm_p<0.05) / determinism / RNG-purity / weighted; structural orchestrator on the jitter>0 fixture
   (sigma>0 dodges the limma zero-variance warn under warn=2 -- the EXACT-pure fixture saturates -> sigma=0 -> Inf t).
+- REVIEW-HARDENED (codex, 8 findings accepted): LOCAL 16-unit/9-df full-4x4 crossing guard in the orchestrator --
+  assert_complete_crossing (shared P1 fn) only checks n_units==prod(OBSERVED levels), so a dropped batch (4x3=12u/6df)
+  PASSES it; guard LOCALLY (leave the shared fn untouched -> no heavy-pb-target invalidation). min_within floor 1->2
+  (within-state sd needs >=2 cells/unit) + explicit within-sd finite+positive guard; provenance += planned_primary /
+  primary_within_skipped (primary = analyzable subset if root state too thin, not silently 1-row). FL lm-oracle TEST
+  GOTCHA: a design-orthogonal y_det -> near-collinear WEIGHTED fit -> |t|~5e15 -> all.equal(tolerance=) REQUIRED (abs()<eps
+  fails though relative match is 4e-16 when |t| is huge). Weight HONESTY: w_overall=n/sd^2 = shared mean-precision (chosen
+  for exact Kitagawa reconstruction), NOT channel-specific IV nor quantile-precision -> progression_cf = shared-weight
+  DECOMPOSITION test; "no progression synergy" softened to "no statistically SUPPORTED signal" (absence of evidence).
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

@@ -187,8 +187,13 @@ itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
   Freedman-Lane perm null; PRE-REGISTERED primary BH {progression_cf, within_homeostatic} (detail -> memory.md).
   HEADLINE (R4.6 re-baseline; numbers DRIFT-PRONE): the interaction RAISES mean_pt (p~0.04) BUT Kitagawa
   attributes it to COMPOSITION (comp_cf SIG fdr~0.025) NOT progression (prog_cf NEGATIVE/NS, perm_p~0.18; recon
-  6.7e-15); primary family BOTH NS -> NO progression-beyond-composition synergy. DIVERGES v1 (~0.94 prog
-  loading): R4.6 says the advance = MORE DAM CELLS (confirms P1's sig DAM-fraction interaction), not
-  cells-advancing-FURTHER -> defensible negative on the distinct progression question (acceptance
+  6.7e-15); primary family BOTH NS -> no statistically supported progression-beyond-composition signal (neg/NS
+  estimate, NOT proven absence). DIVERGES v1 (~0.94 prog loading): R4.6 says the advance is MAINLY MORE
+  DAM CELLS (confirms P1's sig DAM-fraction interaction), no detected further-advance -> defensible
+  negative on the distinct progression question (acceptance
   outcome-independent). FL = SENSITIVITY not nominal-exact. Gate green (21 targets, built fresh on real data,
-  tar_meta + render clean). Next open = S3 (glmmTMB per-cell sensitivity).
+  tar_meta + render clean). CODEX-REVIEWED (8 findings all accepted, gate stays green): local 16u/9df crossing
+  guard (shared assert_complete_crossing passes a complete sub-rectangle), min_within>=2 + within-sd guard,
+  planned_primary/primary_within_skipped provenance, FL lm-oracle equality test (relative tol), + claim-honesty
+  softening (shared-weight decomposition test; "no SUPPORTED progression signal" not "no synergy"). Next open = S3
+  (glmmTMB per-cell sensitivity).

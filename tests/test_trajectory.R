@@ -221,6 +221,20 @@ set.seed(123); b1 <- runif(1); b2 <- runif(1)
 stopifnot(identical(a1, b1), identical(a2, b2))
 flw <- freedman_lane_interaction(y_det, fdm$design, weights = 1 + (1:16), n_perm = 99L)  # weighted path
 stopifnot(is.finite(flw$t_obs), flw$perm_p >= 0, flw$perm_p <= 1)
+# t_obs matches an INDEPENDENT weighted-lm oracle (lm.wfit internally, no sqrt-scaling) -> validates
+# the WLS-as-OLS reduction + the pivot-free chol2inv coefficient indexing
+wv  <- 1 + (1:16)
+dd  <- as.data.frame(fdm$design); names(dd) <- make.names(names(dd)); dd$RESP <- y_det
+lmw <- stats::lm(RESP ~ . - 1, data = dd, weights = wv)   # y_det near-collinear -> |t| huge; use RELATIVE tol
+stopifnot(isTRUE(all.equal(flw$t_obs, summary(lmw)$coefficients["tau_nlgf", "t value"], tolerance = 1e-6)))
+# RNG-purity edge cases: fabricates NO caller seed when none existed, and restores a NON-default kind
+if (exists(".Random.seed", envir = .GlobalEnv)) rm(".Random.seed", envir = .GlobalEnv)
+invisible(freedman_lane_interaction(y_det, fdm$design, n_perm = 10L))
+stopifnot(!exists(".Random.seed", envir = .GlobalEnv))     # no .Random.seed fabricated in the caller
+k0 <- RNGkind(); RNGkind("L'Ecuyer-CMRG")
+invisible(freedman_lane_interaction(y_det, fdm$design, n_perm = 10L))
+stopifnot(identical(RNGkind()[1], "L'Ecuyer-CMRG"))        # kind restored, not left Mersenne-Twister
+do.call(RNGkind, as.list(k0))                              # restore the test's own RNG kind
 cat("ok - freedman_lane_interaction\n")
 
 # --- run_trajectory_progression: STRUCTURE on a NON-additive fixture (sigma > 0) -------------
@@ -249,7 +263,12 @@ stopifnot(
   all(c("within_homeostatic", "within_dam") %in% names(rp$per_unit)),   # within_<lc> wire through
   all(is.finite(c(rp$permutation$mean_pt$perm_p, rp$permutation$progression_cf$perm_p,
                   rp$permutation$frac_past_logit$perm_p,
-                  rp$permutation$within_homeostatic$perm_p))))
+                  rp$permutation$within_homeostatic$perm_p))),
+  # primary + exploratory FDR are adjusted SEPARATELY (each its own BH, not one pooled p.adjust)
+  isTRUE(all.equal(rp$primary_family$fdr, p.adjust(rp$primary_family$p_value, "BH"))),
+  isTRUE(all.equal(rp$exploratory_family$fdr, p.adjust(rp$exploratory_family$p_value, "BH"))),
+  rp$provenance$primary_within_skipped == FALSE,           # root state retained on this fixture
+  identical(rp$provenance$planned_primary, c("progression_cf", "within_homeostatic")))
 cat("ok - run_trajectory_progression structure (non-additive fixture)\n")
 
 cat("ALL trajectory tests passed\n")

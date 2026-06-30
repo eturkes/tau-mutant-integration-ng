@@ -325,8 +325,8 @@ pseudotime_per_replicate <- function(cell_frame, lineage_states, dam_state = "DA
   stopifnot(is.data.frame(cell_frame),
             all(c("genotype_batch", "genotype", "substate", "pt_raw") %in% names(cell_frame)),
             is.character(lineage_states), dam_state %in% lineage_states,
-            "min_within must be a single integer >= 1" =
-              (length(min_within) == 1L && is.finite(min_within) && min_within >= 1L))
+            "min_within must be a single integer >= 2 (within-state sd needs >=2 cells/unit)" =
+              (length(min_within) == 1L && is.finite(min_within) && min_within >= 2L))
   cf   <- cell_frame[is.finite(cell_frame$pt_raw), , drop = FALSE]   # on-lineage cells
   stopifnot("no on-lineage cells: every pt_raw is non-finite" = nrow(cf) > 0L)
   sub  <- as.character(cf$substate)
@@ -537,7 +537,8 @@ freedman_lane_interaction <- function(y, design, int_col = "tau_nlgf", weights =
   stopifnot(is.numeric(y), is.matrix(design), !is.null(colnames(design)),
             length(y) == nrow(design), all(is.finite(y)), all(is.finite(design)),
             int_col %in% colnames(design), qr(design)$rank == ncol(design),
-            length(n_perm) == 1L, is.finite(n_perm), n_perm >= 1L)
+            length(n_perm) == 1L, is.finite(n_perm), n_perm >= 1L, n_perm == round(n_perm),
+            length(seed) == 1L, is.finite(seed), seed == round(seed))
   n <- length(y)
   if (!is.null(weights)) {
     stopifnot(is.numeric(weights), length(weights) == n,
@@ -616,9 +617,21 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
   fd <- factorial_design(meta)
   design <- fd$design; contrasts <- fd$contrasts
   units_order <- rownames(design)
+  # assert_complete_crossing only checks n_units == prod(OBSERVED levels) -> it passes a complete
+  # SUB-rectangle (a dropped batch -> 4x3 = 12 units / 6 resid df). Enforce the DOCUMENTED full 4x4
+  # design here: exactly one unit per genotype x batch cell + the 16-unit / 9-resid-df shape. An
+  # upstream unit/batch loss (e.g. a genotype_batch with zero on-lineage cells) then fails loud, not
+  # silently as a lower-power fit that contradicts the 9-df claim.
+  stopifnot("expected the full 16-unit genotype x batch design (9 residual df)" =
+              (nrow(design) == 16L && nrow(design) - ncol(design) == 9L),
+            "genotype x batch must be crossed exactly once per cell" =
+              all(table(meta$genotype, meta$batch) == 1L))
 
-  # direct-measure matrix (measures x units) + the per-endpoint inverse-variance weight matrix
-  # (IDENTICAL dimnames -- limma applies weights BY POSITION).
+  # direct-measure matrix (measures x units) + the per-endpoint weight matrix (IDENTICAL dimnames --
+  # limma applies weights BY POSITION). w_overall = n_cells/sd_pt^2 = a SHARED mean-precision weight
+  # reused across mean/median/q90 (heuristic for the two quantiles) + chosen so the Kitagawa channels
+  # reconstruct EXACTLY under one shared weight -> progression_cf is a shared-weight DECOMPOSITION
+  # test, not channel-specific inverse-variance inference.
   within_used <- unname(vapply(used_states, within_state_col, character(1)))
   direct_rows <- c("mean_pt", "median_pt", "q90", within_used)
   M <- t(as.matrix(per_unit[, direct_rows, drop = FALSE]))
@@ -629,7 +642,11 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
   for (s in used_states)
     W[within_state_col(s), ] <-
       per_rep$counts[s, colnames(M)] / per_rep$sd[s, colnames(M)]^2
-  stopifnot(identical(dimnames(W), dimnames(M)), all(is.finite(W)), all(W > 0))
+  within_sd_ok <- vapply(used_states, function(s)
+    all(is.finite(per_rep$sd[s, ]) & per_rep$sd[s, ] > 0), logical(1))
+  stopifnot("within-state pt sd must be finite + positive (>=2 distinct cells/unit); raise min_within" =
+              all(within_sd_ok),
+            identical(dimnames(W), dimnames(M)), all(is.finite(W)), all(W > 0))
   fit_weighted <- fit_trajectory_contrasts(M, design, contrasts, weights = W)
   fit_ols      <- fit_trajectory_contrasts(M, design, contrasts, weights = NULL)
 
@@ -702,6 +719,8 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
     r_version = as.character(getRversion()), seed = seed, n_perm = as.integer(n_perm),
     min_within = min_within, used_states = used_states, within_skip = within_skip,
     dam_onset = per_rep$dam_onset, primary_measures = primary_measures,
+    planned_primary = c("progression_cf", within_state_col(root_state)),    # the PRE-REGISTERED pair
+    primary_within_skipped = !(within_state_col(root_state) %in% primary_measures),  # root too thin -> analyzable subset
     progression_loading = unname(decomposition$loadings["prog_cf"]),
     composition_loading = unname(decomposition$loadings["comp_cf"]),
     cross_loading = unname(decomposition$loadings["cross"]),
