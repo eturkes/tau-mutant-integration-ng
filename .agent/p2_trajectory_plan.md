@@ -13,7 +13,8 @@ ordering; "rate/acceleration" is the biological INTERPRETATION under the age-mat
 assumption (stated, NOT measured — no longitudinal time / RNA velocity here). Input = cached
 `microglia_annotated` (612MB: harmony reduction + per-cell UCell scores + substate labels +
 genotype/batch/genotype_batch). Precondition MET (P1 closed) -> NO external/data gate. Outputs =
-`microglia_trajectory` + `trajectory_progression` targets + `_trajectory.qmd` report section.
+`microglia_trajectory` + `trajectory_progression` + `trajectory_glmm_sensitivity` targets + `_trajectory.qmd`
+report section.
 
 ## Stack (DEFAULT; fully on-lock, reuses the factorial machinery)
 v1 recon (Arc M — the EXECUTED analysis that found "the one positive orthogonal interaction") + 2026 SOTA
@@ -164,8 +165,15 @@ S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new d
     contrasts = {weighted, ols, bounded}, decomposition, permutation, primary_family, exploratory_family,
     provenance). (NO glmmTMB here -> S3.)
   Target `trajectory_progression` = run_trajectory_progression(microglia_trajectory) (reads the COMPACT S1
-  target; pure-R). WITHIN-STATE FLOOR mirrors P1 run_pb_de_substate. Tests on `make_trajectory_cell_frame`
-  fixture (helpers.R, already built): per-rep shapes + floor skip (min_within=20, per_state=8 -> all within_skip
+  target; pure-R). WITHIN-STATE FLOOR mirrors P1 run_pb_de_substate.
+  FIXTURE (ADD to tests/helpers.R -- the prior WIP was reverted; deterministic, NO RNG): `make_trajectory_cell_frame(
+  per_state = 6L, adv = c(MAPTKI=0, P301S=0.2, NLGF_MAPTKI=1.0, NLGF_P301S=1.6), dam_extra = 0L)` -> 4x4 genotype x
+  batch grid; each unit = per_state Homeostatic + (per_state + dam_extra*amyloid) DAM cells; pt_raw = 1+adv[g]+ramp
+  (Homeostatic) / 4+adv[g]+ramp (DAM), ramp = (seq_len(n)/n)*0.3; pt01 = squeeze_unit_interval(pt_raw); on_lineage =
+  TRUE. adv encodes a PURE within-state interaction = (1.6-0.2)-(1.0-0) = 0.4; dam_extra=0 -> CONSTANT composition
+  -> Kitagawa loads ~100% progression (dam_extra>0 injects a composition channel for that test). Cols {cell,
+  genotype_batch, genotype, substate, on_lineage, pt_raw, pt01}.
+  Tests on it: per-rep shapes + floor skip (min_within=20, per_state=8 -> all within_skip
   TRUE); ordinary_t/fit_trajectory_contrasts vs manual OLS (t matches; interaction == tau_nlgf coef); kitagawa
   identity + pure-composition / pure-progression; decomposition reconstruction (recon_resid_max < 1e-8) +
   loadings on the pure-progression fixture (per_state=8: prog loading ~ 1, comp ~ 0, interaction coef ~ 0.4);
