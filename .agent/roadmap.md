@@ -28,11 +28,12 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P2 interaction trajectory -> `.agent/p2_trajectory_plan.md` (OPENED 2026-06-30)
-Tests the PIVOTAL claim P1 deferred: tau x amyloid synergy as a progression-RATE effect along the
-homeostatic->DAM activation trajectory (static-null in P1 composition + DE). Stack DECIDED = LEAN ON-LOCK
-(user gate): slingshot (harmony 15-dim) + UCell score-axis anchor; interaction off per-replicate pseudotime
-summaries through the EXISTING factorial_design/make_contrast_matrix (respects 16 units); Kitagawa
-composition-vs-progression decomposition; glmmTMB per-cell sensitivity. ALL pure-R from the pinned snapshot
+Tests the PIVOTAL claim P1 deferred: tau x amyloid synergy as PROGRESSION (extent-of-advance) along the
+homeostatic->DAM activation trajectory. P1 ESTABLISHED a static COMPOSITIONAL synergy (propeller DAM-fraction
+interaction sig; DE under-powered) -> P2 isolates the PROGRESSION channel BEYOND that composition shift. Stack
+DECIDED = LEAN ON-LOCK (user gate): slingshot (harmony 15-dim) + UCell score-axis concordance anchor; weighted
+per-replicate (16-unit) pseudotime-summary interaction through EXISTING factorial_design (no eBayes; 9 resid
+df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per-cell sensitivity (supportive). ALL pure-R from the pinned snapshot
 (no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 3 steps (S1 trajectory+pseudotime -> S2 interaction+decomposition -> S3 report). Next open = S1.
