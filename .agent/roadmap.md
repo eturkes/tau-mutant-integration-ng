@@ -36,7 +36,9 @@ per-replicate (16-unit) pseudotime-summary interaction through EXISTING factoria
 df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per-cell sensitivity (supportive). ALL pure-R from the pinned snapshot
 (no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
-3 steps (S1 trajectory+pseudotime -> S2 interaction+decomposition -> S3 report). S1 DONE; next open = S2.
+4 steps (S1 trajectory+pseudotime -> S2 interaction+Kitagawa-decomposition [pure-R primary] -> S3 glmmTMB
+per-cell sensitivity [new-dep arm] -> S4 report). S1 DONE; next open = S2. (S2 split out S3 on 2026-06-30 to
+fit one window — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -144,5 +146,11 @@ df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per
   score-axis concordance rho=0.62 (moderate-large, clears 0.5 gross-failure floor; slingshot=transcriptome vs
   score-axis=marker contrast -> related-not-identical); sensitivity robust (dims-10/20 + all-retained rho 0.99 vs
   primary); IFN omitted-fraction balanced across genotypes (low single-digit % -> conditioning barely skews interaction).
-  Compact target ~3.4MB, 0 build warnings, gate green. Outcomes -> memory.md. Next open = S2 (interaction +
-  3-channel Kitagawa decomposition + glmmTMB sensitivity).
+  Compact target ~3.4MB, 0 build warnings, gate green. Outcomes -> memory.md.
+- 2026-06-30 P2-S2 SPLIT (no code shipped; a prior session ran out of window writing the original combined
+  S2). Old S2 bundled the pure-R primary (weighted-limma 16-unit interaction + 3-channel Kitagawa) with the
+  glmmTMB supportive arm (source-compiled new dep + ABI verify + fresh real-data build) + all tests -> two
+  windows of work. Reverted that session, re-split into S2 (pure-R, NO new dep -> trajectory_progression) + S3
+  (glmmTMB -> trajectory_glmm_sensitivity, INDEPENDENT target off microglia_trajectory$cell_frame), report -> S4.
+  Plan steps now carry inline function contracts (the decided design) so the next session implements, not
+  re-derives. Next open = S2.

@@ -85,6 +85,9 @@ NO Python, NO GitHub. A leanness + reproducibility WIN over v1 (which carried Py
   pseudobulk DE). OUT of P2.
 
 ## Steps (each one-window-closeable; gate-independent — microglia_annotated already cached)
+Each step spec is SELF-CONTAINED (function contracts inline). Resuming mid-plan: read ONLY your step + the
+files it names (R/design.R factorial_design, R/trajectory.R tail, tests/helpers.R) — the Scope/Stack/DECIDED
+rationale above is read-once, skip it. Implement the contracts as written; they encode decisions already made.
 
 S1 — Trajectory + pseudotime target.
   NEW `R/trajectory.R` pure helpers: `build_activation_trajectory` (slingshot harmony[1:15], homeostatic->DAM,
@@ -99,39 +102,115 @@ S1 — Trajectory + pseudotime target.
   rho recorded (concordance OR honest flag); dims {10,15,20} + all-retained sensitivity recorded (PRIMARY = 15);
   per-unit on-lineage/omitted fraction recorded; gate green.
 
-S2 — Progression interaction + decomposition target.
-  `pseudotime_per_replicate` (16-unit summaries on pt_raw: mean_pt, median_pt, q90 leading-edge, within_<state>
-  means, + per-unit n_cells & sd for inverse-variance weights; frac_past = fraction of cells past DAM-onset
-  [pooled DAM-cell median pt_raw], a bounded [0,1] measure) | `fit_trajectory_contrasts` (reuse
-  `factorial_design`'s design + 5 contrasts; FIT each measure by inverse-variance-weighted `limma::lmFit` on
-  the measures x 16 matrix WITHOUT eBayes [no strength-borrowing across HETEROGENEOUS measures; per-measure
-  residual variance, 9 df] -> `contrasts.fit` -> ordinary t + CI; do NOT route through `fit_limma_log` [that is
-  limma-TREND + eBayes for MANY log-intensity features, incoherent for a handful of pseudotime endpoints];
-  pt-scale measures on pt_raw UNtransformed, bounded [0,1] measures (frac_past, within_state) logit/asin in
-  SEPARATE fits) | `decompose_progression_vs_composition` (3 Kitagawa channels comp/prog/cross + reconstruction
-  assert) | glmmTMB per-cell sensitivity. WITHIN-STATE FLOOR: mirror P1 `run_pb_de_substate` min-cells/unit ->
-  SKIP within_<state> for any state below floor in any unit (no NA/noisy means); ALWAYS store the state x unit
-  count + on-lineage table. Target `trajectory_progression` = contrast tables + 3 decomposition channels +
-  glmmTMB effect/CI/p + provenance.
-  PRE-REGISTER (state BEFORE fitting): PRIMARY progression endpoint = progression_cf (Kitagawa) +
-  within_homeostatic (composition-robust); frac_past = the interpretable bridge; mean_pt reported but FLAGGED
-  composition-conflated. MULTIPLICITY family = BH across the 2 PRIMARY interaction tests; all other
-  measures/contrasts EXPLORATORY with a separately-labelled FDR. Primary FDR 0.05, REPORT the 0.05-0.10
-  SUGGESTIVE band + effect + CI (v1's progression interaction sat there ~0.077; R4.6 re-baseline may move it).
-  ACCEPTANCE (outcome-INDEPENDENT): interaction contrast computed on every measure; 3-channel decomposition
-  reconstructs L(mean_pt) (assert passes); glmmTMB FIT COMPLETES with `tau:amyloid` effect/CI/p RECORDED
-  (concordance AND discordance both FLAGGED, neither required for success); divergence from v1 reported
+S2 split into S2 (pure-R load-bearing primary, NO new dep) + S3 (glmmTMB supportive arm, isolates the source-
+compile + ABI verify + fresh-build cost) — TWO INDEPENDENT targets off `microglia_trajectory`, each closeable in
+one window. S2's per-cell glmmTMB does NOT depend on S2's per-replicate summary -> clean decouple, no cross-step
+edits. The weighted-limma summary + Kitagawa decomposition is the standalone primary; glmmTMB is supportive.
+
+S2 — Progression interaction + decomposition target (pure-R, on-lock, NO new dependency).
+  Append to `R/trajectory.R` (after build_activation_trajectory). All non-base calls namespace-qualified
+  (stats::, limma::). df.residual = 16 - 7 = 9. Contracts:
+  - `pseudotime_per_replicate(cell_frame, lineage_states, dam_state = "DAM", min_within = 10L)`: filter to
+    is.finite(pt_raw) (on-lineage); assert substate %in% lineage_states + validate_trajectory_units(unit,geno);
+    dam_onset = stats::median(pt_raw[substate==dam_state]) PRE-DECLARED. per_unit cols {genotype_batch, genotype,
+    n_cells, sd_pt, mean_pt, median_pt, q90, frac_past}; frac_past = mean(pt_raw > dam_onset) = the ONLY
+    genuinely [0,1] measure. within_<state> = per-unit MEAN pt_raw within each state, on the pt-SCALE and
+    UNtransformed (a within-state mean position is NOT in [0,1]; keeping it on pt_raw puts within_homeostatic in
+    the SAME additive units as the Kitagawa progression_cf -> the two PRIMARY endpoints share a scale). State x
+    unit count matrix `cnt` (assert all >= 1); pi_mat = cnt col-normalised; mu_mat = per-state per-unit mean;
+    pi_bar = rowSums(cnt)/sum(cnt) (CELL-weighted pooled composition); mu_bar = per-state pooled mean;
+    within_skip[state] = any(cnt[state, ] < min_within). Returns list(per_unit, states, units, counts = cnt, pi,
+    mu, pi_bar, mu_bar, dam_onset, within_skip, min_within).
+  - `ordinary_t_table(fit, contrast_name, conf_level = 0.95)`: ordinary t from a contrasts.fit'd limma fit
+    WITHOUT eBayes (topTable REQUIRES eBayes -> compute by hand): coef = fit$coefficients[,c]; se =
+    fit$sigma * fit$stdev.unscaled[,c]; df = fit$df.residual; t = coef/se; p = 2*stats::pt(-abs(t), df); CI =
+    coef -/+ stats::qt(1-(1-conf)/2, df)*se. Returns df {measure, contrast, coef, se, t, df, p_value, ci_l, ci_r}.
+  - `fit_trajectory_contrasts(measure_mat, design, contrasts, weights = NULL, conf_level = 0.95)`: assert
+    colnames(measure_mat)==rownames(design), rownames(contrasts)==colnames(design), full-rank, all finite;
+    weights (if given) a matrix matching dim(measure_mat), finite & > 0. limma::lmFit(measure_mat, design,
+    weights) -> limma::contrasts.fit -> per-contrast ordinary_t_table. Returns list(fit, top). The `interaction`
+    contrast == the `tau_nlgf` coefficient (assert in test vs manual OLS). Do NOT route through `fit_limma_log`
+    (that = limma-TREND + eBayes for MANY log-intensity features, incoherent for a handful of heterogeneous
+    pseudotime endpoints).
+  - `kitagawa_channels(pi_mat, mu_mat, pi_bar, mu_bar, tol = 1e-8)`: const = sum(pi_bar*mu_bar); mean_pt =
+    colSums(pi_mat*mu_mat); comp_cf = colSums(pi_mat*mu_bar); prog_cf = colSums(pi_bar*mu_mat); cross =
+    colSums((pi_mat-pi_bar)*(mu_mat-mu_bar)); assert max|mean_pt-(comp_cf+prog_cf+cross-const)| < tol. Returns
+    df per unit {genotype_batch, mean_pt, comp_cf, prog_cf, cross, const}.
+  - `decompose_progression_vs_composition(per_rep, design, contrasts, weights = NULL, conf_level = 0.95)`:
+    build the 4-channel matrix (rows mean_pt, comp_cf, prog_cf, cross; cols = units) via kitagawa_channels ->
+    fit_trajectory_contrasts with ONE shared per-unit weight vector replicated across all 4 channel-rows
+    (matrix(weights, nrow, ncol, byrow = TRUE)) -> exact reconstruction preserved AND progression_cf weighted.
+    L = per-channel interaction coefs; loadings = sweep(L[c(comp_cf,prog_cf,cross), ], 2, L["mean_pt", ], "/").
+    The linear interaction annihilates the constant (contrast coefs sum to 0) -> assert recon_resid =
+    |L(mean_pt) - (L(comp)+L(prog)+L(cross))| < tol. Cell-weighted anchors = primary; rowMeans(pi)/rowMeans(mu)
+    replicate-balanced anchors = sensitivity. Returns list(channels, fit, L, loadings, interaction =
+    fit$top$interaction, recon_resid_max, balanced).
+  - `freedman_lane_interaction(y, design, int_col = "tau_nlgf", weights = NULL, n_perm = 2000L, seed = 42L)`:
+    WLS interaction-t (precompute (X'WX)^-1); permute the REDUCED-model (X minus int_col) residuals; RNG-PURE
+    (save + restore .Random.seed & RNGkind via on.exit; set.seed inside). perm_p = (1 + sum(|t_perm| >=
+    |t_obs|)) / (n_perm + 1). Returns list(t_obs, n_perm, perm_p).
+  - `run_trajectory_progression(microglia_trajectory, min_within = 10L, n_perm = 2000L, seed = 42L)`: per_rep =
+    pseudotime_per_replicate(cell_frame, lineage_states from provenance$lineage_substates) -> meta
+    (genotype/batch, rownames = genotype_batch; assert 4x4 balanced) -> factorial_design(meta). w_overall =
+    n_cells/sd_pt^2. DIRECT measures {mean_pt, median_pt, q90, within_<used>} (used = states NOT in within_skip)
+    -> M = t(per_unit[, direct_rows]); per-measure inverse-variance weight matrix -> weighted fit + an OLS
+    (weights = NULL) sensitivity. BOUNDED frac_past -> rbind(frac_past_logit = empirical-logit with 0.5
+    continuity correction, frac_past_asin = asin(sqrt(frac_past))); weights = n_cells -> bounded fit. decompose_
+    (weights = w_overall). Freedman-Lane on {progression_cf, within_homeostatic (iff used), frac_past_logit,
+    mean_pt}. PRE-REGISTERED primary family = BH across {progression_cf, within_homeostatic} (drop
+    within_homeostatic if skipped); exploratory = separate BH. provenance (versions, v1_progression_loading ~
+    0.94, v1_progression_fdr ~ 0.077). Postcondition stopifnot: interaction on EVERY measure; recon_resid_max <
+    tol; primary BH present. Returns list(per_unit, counts, dam_onset, within_skip, design,
+    contrasts = {weighted, ols, bounded}, decomposition, permutation, primary_family, exploratory_family,
+    provenance). (NO glmmTMB here -> S3.)
+  Target `trajectory_progression` = run_trajectory_progression(microglia_trajectory) (reads the COMPACT S1
+  target; pure-R). WITHIN-STATE FLOOR mirrors P1 run_pb_de_substate. Tests on `make_trajectory_cell_frame`
+  fixture (helpers.R, already built): per-rep shapes + floor skip (min_within=20, per_state=8 -> all within_skip
+  TRUE); ordinary_t/fit_trajectory_contrasts vs manual OLS (t matches; interaction == tau_nlgf coef); kitagawa
+  identity + pure-composition / pure-progression; decomposition reconstruction (recon_resid_max < 1e-8) +
+  loadings on the pure-progression fixture (per_state=8: prog loading ~ 1, comp ~ 0, interaction coef ~ 0.4);
+  Freedman-Lane signal (perm_p < 0.05), null (design-orthogonal residual -> perm_p > 0.9), determinism, RNG-
+  purity (runif sequence unchanged across a call).
+  PRE-REGISTER (BEFORE fitting): PRIMARY = progression_cf (Kitagawa) + within_homeostatic (composition-robust);
+  frac_past = the interpretable bridge; mean_pt FLAGGED composition-conflated. Family = BH across the 2 PRIMARY;
+  rest EXPLORATORY (separate FDR). Primary FDR 0.05, REPORT the 0.05-0.10 SUGGESTIVE band + effect + CI (v1
+  ~0.077; R4.6 re-baseline may move it).
+  ACCEPTANCE (outcome-INDEPENDENT): interaction computed on every measure; 3-channel decomposition reconstructs
+  L(mean_pt) (assert passes); primary BH family + Freedman-Lane perm_p RECORDED; v1 divergence reported
   honestly; gate green.
 
-S3 — Report + integration.
+S3 — glmmTMB per-cell sensitivity arm (supportive; isolates the new-dependency + fresh-build cost).
+  Add `glmmTMB` to rproject.toml (CRAN; TMB = C++ template, NOT Stan -> ON-lock; P3M co-pins
+  glmmTMB<->Matrix<->TMB so the source build loads ABI-clean) -> `rv sync` -> verify it library()-loads under
+  options(warn=2) with NO binary-mismatch warning. Append `glmmtmb_pt_sensitivity(cell_frame)` to
+  `R/trajectory.R`: on-lineage cells (finite pt01); tau/amyloid as integer 0/1 from genotype; batch + unit as
+  factors. capture() = withCallingHandlers MUFFLING + RECORDING both warnings AND messages (the sccomp lesson:
+  optimisers report convergence health via message(), not warning() -> the gate's warn=2 + tar_meta would else
+  red). Fit pt01 ~ tau*amyloid + batch + (1|unit), glmmTMB::beta_family(); extract from
+  summary(fit)$coefficients$cond the row intersect(c("tau:amyloid","amyloid:tau"), rownames): est/se/z/p, CI =
+  est -/+ stats::qnorm(0.975)*se, re_sd from VarCorr, singular = re_sd < 1e-4. DEGRADE to a rank-normal LMM on
+  NULL/singular fit (graceful; the limma-summary primary stands alone). Returns list(method, term, estimate, se,
+  z, p_value, ci_l, ci_r, re_sd, singular, n_cells, warnings, messages). Target `trajectory_glmm_sensitivity` =
+  glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame) -- reads the COMPACT per-cell frame, INDEPENDENT of
+  trajectory_progression. Smoke-test on the synthetic fixture; then a FRESH `tar_make` of
+  trajectory_glmm_sensitivity on the real microglia_trajectory (the gate force-invalidates ONLY `report`, so
+  build this target explicitly) to confirm the glmmTMB arm is gate-clean (warnings captured; no tar_meta/render-
+  log red). Test: returns a recorded tau:amyloid effect on the synthetic frame; the degrade path is exercised.
+  ACCEPTANCE (outcome-INDEPENDENT): glmmTMB (or the degraded LMM) COMPLETES with `tau:amyloid` effect/CI/p
+  RECORDED + FLAGGED supportive (concordance AND discordance both fine, neither required); no gate red from the
+  captured warnings; gate green.
+
+S4 — Report + integration.
   `_trajectory.qmd` (trajectory UMAP x pseudotime; pseudotime density/ridge by genotype; interaction FOREST
   [contrasts x measures]; composition-vs-progression-vs-cross decomposition bar; headline progression_cf/frac_past
-  interaction; activation-ordering + rooting + position-not-rate + lineage-conditioning(omitted-fraction) +
-  transcriptionally-close-substates caveats) + compact `trajectory_report_data` extractor (slim frame + the
-  contrast/decomposition tables; cheap-render) + wire into index.qmd AFTER _microglia.qmd + update
-  _microglia.qmd's "P2 pointer" -> built. Prose INLINE-COMPUTED from the loaded targets (never hardcoded —
-  tracks the cached build). ACCEPTANCE: report renders 0-warning under warn=2; headline + 3-channel
-  decomposition + caveats present; gate green. -> then CLOSE-OUT.
+  interaction; glmmTMB tau:amyloid effect/CI annotated SUPPORTIVE; activation-ordering + rooting +
+  position-not-rate + lineage-conditioning(omitted-fraction) + transcriptionally-close-substates caveats) +
+  compact `trajectory_report_data` extractor (slim frame + the contrast/decomposition tables + the glmmTMB
+  effect row; cheap-render) loading BOTH `trajectory_progression` and `trajectory_glmm_sensitivity` + wire into
+  index.qmd AFTER _microglia.qmd + update _microglia.qmd's "P2 pointer" -> built. Prose INLINE-COMPUTED from the
+  loaded targets (never hardcoded — tracks the cached build). ACCEPTANCE: report renders 0-warning under
+  warn=2; headline + 3-channel decomposition + glmmTMB supportive + caveats present; gate green. -> then
+  CLOSE-OUT.
 
 ## Reproducibility / risks
 - rproject.toml: `slingshot` (BioCsoft; auto-pulls SingleCellExperiment / princurve / TrajectoryUtils — pure-R
@@ -139,7 +218,8 @@ S3 — Report + integration.
   codex-verified) -> co-pin glmmTMB<->Matrix<->TMB ABI (source-compile from snapshot -> no binary-mismatch warning).
 - slingshot determinism: principal-curve is deterministic given embedding + labels (+ seed); the harmony
   embedding is the stable P1 cached input. Record seed + provenance (S1 mirror of reprocess_provenance).
-- gate cheap-render: BOTH trajectory targets COMPACT; no qmd tar_loads the 612MB object.
+- gate cheap-render: ALL THREE trajectory targets COMPACT (trajectory_glmm_sensitivity reads the compact
+  per-cell frame, not the 612MB object); no qmd tar_loads the 612MB object.
 - glmmTMB can degrade (singular fit) like the sccomp arm -> the locked limma-summary + decomposition is the
   standalone primary; the sensitivity is supportive, not load-bearing.
 
