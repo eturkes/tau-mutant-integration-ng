@@ -43,8 +43,11 @@ dependencies = [
     { name = "stageR",       repository = "BioCsoft" },
     # trajectory (P2-S1): slingshot principal-curve pseudotime on the harmony embedding
     # (BioCsoft; pulls Bioc SingleCellExperiment / TrajectoryUtils + CRAN princurve [Rcpp]).
-    # glmmTMB (per-cell GLMM sensitivity) is added in P2-S3 where it is actually loaded.
     { name = "slingshot",    repository = "BioCsoft" },
+    # trajectory sensitivity (P2-S3): glmmTMB per-cell beta GLMM on bounded pseudotime. TMB =
+    # a C++ template (source-compiled), NOT Stan -> fully ON-lock; the P3M snapshot co-pins
+    # glmmTMB<->Matrix<->TMB so the source build loads ABI-clean (no binary-mismatch warning).
+    "glmmTMB",
     # plotting
     "ggplot2",
     "ggrepel",

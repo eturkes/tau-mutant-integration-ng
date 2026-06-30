@@ -745,3 +745,100 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
        primary_family = primary_family, exploratory_family = exploratory_family,
        provenance = provenance)
 }
+
+# ============================================================================================
+# P2-S3: glmmTMB per-cell pseudotime sensitivity (SUPPORTIVE arm).
+# A replication-aware per-cell confirmation that models the FULL bounded (possibly bimodal)
+# distribution the 16-unit summary collapses. The weighted-limma summary + Kitagawa decomposition
+# (S2a/S2b) is the standalone PRIMARY; this arm is supportive at 16 clusters (asymptotics weak) and
+# DEGRADES gracefully (singular RE -> rank-normal LMM -> a RECORDED method="failed"), NEVER blocking.
+# On-lock: TMB = a C++ template, NOT Stan. All non-base calls namespace-qualified.
+# ============================================================================================
+
+# Evaluate `expr`, capturing + MUFFLING both warnings AND messages (the sccomp lesson, R/composition.R:
+# glmmTMB/TMB optimisers can report convergence health via message() carrying a literal "Warning:" too,
+# NOT only warning() -> a fresh build would RED the gate's warn=2 / tar_meta / anchored ^Warning: log
+# scan). Returns list(value, warnings, messages); value = NULL when `expr` errors (a fit/extraction
+# failure -> the caller degrades). The structured health flags below are the authoritative record.
+.capture_quietly <- function(expr) {
+  warns <- character(0); msgs <- character(0)
+  value <- withCallingHandlers(
+    tryCatch(expr, error = function(e) { msgs <<- c(msgs, paste0("error: ", conditionMessage(e))); NULL }),
+    warning = function(w) { warns <<- c(warns, conditionMessage(w)); invokeRestart("muffleWarning") },
+    message = function(m) { msgs  <<- c(msgs,  conditionMessage(m)); invokeRestart("muffleMessage") }
+  )
+  list(value = value, warnings = warns, messages = msgs)
+}
+
+# Fit ONE glmmTMB model + extract the tau:amyloid interaction Wald row + run the health battery,
+# under .capture_quietly. Returns the capture list; $value = a standardized record
+# list(method, term, estimate, se, z, p_value, ci_l, ci_r, re_sd, singular, ok) when the fit AND
+# extraction succeed, else NULL (any error -> NULL -> the caller degrades). ok = passes the FULL
+# battery (pdHess & convergence==0 & finite est/se & not singular); the SAME battery gates both the
+# beta GLMM and the rank-normal LMM fallback. Wald columns read by POSITION (glmmTMB's fixed order
+# Estimate / Std. Error / z value / Pr(>|z|)) so a column-NAME drift cannot silently mis-extract.
+.fit_pt_interaction <- function(formula, family, data, method_label) {
+  .capture_quietly({
+    fit  <- glmmTMB::glmmTMB(formula, data = data, family = family)
+    cond <- summary(fit)$coefficients$cond
+    term <- intersect(c("tau:amyloid", "amyloid:tau"), rownames(cond))
+    stopifnot(length(term) == 1L, ncol(cond) >= 4L)        # interaction row present + unambiguous
+    row  <- cond[term, ]
+    est  <- unname(row[1L]); se <- unname(row[2L]); z <- unname(row[3L]); p <- unname(row[4L])
+    re   <- glmmTMB::VarCorr(fit)$cond$unit                # 1x1 variance matrix for (1|unit)
+    re_sd    <- if (is.null(re)) NA_real_ else sqrt(as.numeric(re)[1])
+    singular <- !is.finite(re_sd) || re_sd < 1e-4          # collapsed/unidentifiable RE -> degrade
+    ok <- isTRUE(fit$sdr$pdHess) && isTRUE(fit$fit$convergence == 0) &&
+          is.finite(est) && is.finite(se) && !singular
+    list(method = method_label, term = term, estimate = est, se = se, z = z, p_value = p,
+         ci_l = est - stats::qnorm(0.975) * se, ci_r = est + stats::qnorm(0.975) * se,
+         re_sd = re_sd, singular = singular, ok = ok)
+  })
+}
+
+# Per-cell beta-GLMM sensitivity for the tau:amyloid interaction on bounded pseudotime. Reads the
+# COMPACT microglia_trajectory$cell_frame (NOT the 612MB Seurat); on-lineage = finite pt01.
+# tau / amyloid = integer 0/1 from genotype (matching factorial_design); batch + unit (genotype_batch)
+# as factors. PRIMARY = beta_family() on pt01 (Smithson-Verkuilen-squeezed open (0,1)); DEGRADE to a
+# rank-normal LMM (same package, on-lock) on any battery failure; if BOTH fail, RECORD method="failed"
+# (NA effect) -- never error, the limma-summary primary stands alone. FIXED batch (de_pb-consistent),
+# (1|unit) random intercept. Returns list(method, term, estimate, se, z, p_value, ci_l, ci_r, re_sd,
+# singular, n_cells, warnings, messages) -- supportive, concordance AND discordance both fine.
+glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
+  stopifnot(is.data.frame(cell_frame),
+            all(c("genotype_batch", "genotype", pt_col) %in% names(cell_frame)))
+  d0   <- cell_frame[is.finite(cell_frame[[pt_col]]), , drop = FALSE]   # on-lineage cells only
+  geno <- as.character(d0$genotype)
+  dat  <- data.frame(
+    pt01    = as.numeric(d0[[pt_col]]),
+    tau     = as.integer(geno %in% c("P301S", "NLGF_P301S")),
+    amyloid = as.integer(geno %in% c("NLGF_MAPTKI", "NLGF_P301S")),
+    batch   = factor(derive_batch(as.character(d0$genotype_batch), geno)),
+    unit    = factor(as.character(d0$genotype_batch)),
+    stringsAsFactors = FALSE)
+  n_cells <- nrow(dat)
+  stopifnot(n_cells >= 1L, all(dat$pt01 > 0 & dat$pt01 < 1))            # beta needs OPEN (0,1)
+
+  warns <- character(0); msgs <- character(0)
+  collect <- function(cap) { warns <<- c(warns, cap$warnings); msgs <<- c(msgs, cap$messages); cap$value }
+  done <- function(rec) list(method = rec$method, term = rec$term, estimate = rec$estimate,
+                             se = rec$se, z = rec$z, p_value = rec$p_value, ci_l = rec$ci_l,
+                             ci_r = rec$ci_r, re_sd = rec$re_sd, singular = rec$singular,
+                             n_cells = n_cells, warnings = warns, messages = msgs)
+
+  # PRIMARY: beta GLMM on the bounded squeezed pseudotime.
+  beta <- collect(.fit_pt_interaction(pt01 ~ tau * amyloid + batch + (1 | unit),
+                                      glmmTMB::beta_family(), dat, "glmmTMB_beta"))
+  if (!is.null(beta) && isTRUE(beta$ok)) return(done(beta))
+
+  # DEGRADE: rank-normal LMM (on-lock, SAME package), same interaction extraction + battery.
+  dat$rn <- stats::qnorm((rank(dat$pt01) - 0.5) / n_cells)
+  lmm <- collect(.fit_pt_interaction(rn ~ tau * amyloid + batch + (1 | unit),
+                                     stats::gaussian(), dat, "lmm_ranknorm"))
+  if (!is.null(lmm) && isTRUE(lmm$ok)) return(done(lmm))
+
+  # BOTH degraded -> RECORD a failed-supportive result (NA effect), never error.
+  list(method = "failed", term = NA_character_, estimate = NA_real_, se = NA_real_,
+       z = NA_real_, p_value = NA_real_, ci_l = NA_real_, ci_r = NA_real_,
+       re_sd = NA_real_, singular = NA, n_cells = n_cells, warnings = warns, messages = msgs)
+}

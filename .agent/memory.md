@@ -338,6 +338,36 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   for exact Kitagawa reconstruction), NOT channel-specific IV nor quantile-precision -> progression_cf = shared-weight
   DECOMPOSITION test; "no progression synergy" softened to "no statistically SUPPORTED signal" (absence of evidence).
 
+## snRNAseq microglia trajectory glmmTMB sensitivity (P2-S3, built) -- `R/trajectory.R::glmmtmb_pt_sensitivity` -> target `trajectory_glmm_sensitivity`
+- SUPPORTIVE per-cell beta GLMM (replication-aware confirmation modelling the full bounded distribution the 16-unit
+  summary collapses): pt01 ~ tau*amyloid + batch + (1|unit), glmmTMB::beta_family(); FIXED batch (de_pb-consistent),
+  (1|unit) random intercept. On-lineage = finite pt01; tau/amyloid integer 0/1 from genotype (matching factorial_design);
+  batch=derive_batch, unit=genotype_batch factors. Reads the COMPACT microglia_trajectory$cell_frame (NOT 612MB); target
+  INDEPENDENT of trajectory_progression. Returns list(method, term, estimate, se, z, p_value, ci_l, ci_r, re_sd,
+  singular, n_cells, warnings, messages).
+- DEGRADE cascade (graceful, NEVER blocks the limma-summary primary): battery = !fit$sdr$pdHess OR fit$fit$convergence!=0
+  OR non-finite est|se OR singular(re_sd<1e-4; also NA re_sd -> singular) OR NULL-on-error -> rank-normal LMM
+  rn=qnorm((rank(pt01)-0.5)/n) ~ same formula, gaussian() (SAME package on-lock, SAME battery) -> if BOTH fail,
+  method="failed" with NA effect + the captured warnings/messages (RECORD a failed-supportive result, never error).
+  method in {glmmTMB_beta, lmm_ranknorm, failed}.
+- Wald row read by POSITION (cond cols fixed order Estimate/Std.Error/z/Pr(>|z|)) -> a column-NAME drift can't silently
+  mis-extract; term=intersect(c("tau:amyloid","amyloid:tau"), rownames(cond)) asserted length-1 (present + unambiguous).
+  .capture_quietly = withCallingHandlers muffling+recording BOTH warnings AND messages (the sccomp lesson: TMB optimisers
+  report health via message() too -> a fresh build would red warn=2/tar_meta/^Warning: scan) -> 0 leaked to the gate.
+- glmmTMB on CRAN -> P3M serves the trixie BINARY (the plan's "source-compile TMB" framing was off; CRAN=binary, ABI-built
+  together at the snapshot -> loads 0-warning under warn=2; no co-pin handwork needed). glmmTMB 1.1.14 / TMB 1.9.21 /
+  Matrix 1.7.5. Namespace-qualified (glmmTMB::), NOT in tar_option_set packages (like slingshot); rproject.toml + rv.lock co-pin.
+- LIVE (2026-07-01, R4.6; EXACT numbers DRIFT-PRONE -> S4 inline-computes, the QUALITATIVE read is durable):
+  method=glmmTMB_beta on 22363 on-lineage cells, tau:amyloid est +0.123 (logit), se 0.050, z 2.44, p~0.015, CI
+  [0.024,0.222] excludes 0, re_sd 0.047 (non-singular). Build 1.5s, tar_meta NA/NA. COMPOSITION-CONFLATED (the per-cell
+  MEAN-position analogue of mean_pt; corroborates the position-shift interaction + P1's propeller DAM-fraction composition
+  signal) -> NOT progression-specific; the S2b Kitagawa decomposition stays LOAD-BEARING for composition-vs-progression.
+  Supportive only; concordance AND discordance both fine.
+- tests (tests/test_trajectory.R, warn=2, deterministic nlminb / NO RNG; suppressMessages(library(glmmTMB)) at head):
+  jitter>0 fixture -> non-singular RE -> real beta fit (success path: finite effect+CI, term resolved); DEFAULT fixture
+  (identical within-genotype units) -> singular both arms -> method="failed" (singular route, 0 msgs); no-amyloid subset
+  (tau:amyloid non-estimable) -> fit errors CAPTURED into $messages -> failed (error route, never raised).
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

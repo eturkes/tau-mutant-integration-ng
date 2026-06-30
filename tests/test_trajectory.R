@@ -9,6 +9,7 @@ source("R/de_pb.R")         # assert_complete_crossing (S2b orchestrator dep)
 source("R/trajectory.R")
 source("tests/helpers.R")
 suppressMessages(library(slingshot))
+suppressMessages(library(glmmTMB))    # S3 per-cell sensitivity arm
 
 # --- score_axis_pseudotime ---------------------------------------------------------------
 stopifnot(isTRUE(all.equal(score_axis_pseudotime(c(0.3, 0.5), c(0.1, 0.2)), c(0.2, 0.3))))
@@ -270,5 +271,37 @@ stopifnot(
   rp$provenance$primary_within_skipped == FALSE,           # root state retained on this fixture
   identical(rp$provenance$planned_primary, c("progression_cf", "within_homeostatic")))
 cat("ok - run_trajectory_progression structure (non-additive fixture)\n")
+
+# --- glmmtmb_pt_sensitivity (P2-S3 supportive arm) -------------------------------------------
+# SUCCESS path: a non-additive fixture (jitter > 0 -> non-singular unit RE) yields a RECORDED,
+# finite tau:amyloid interaction via the beta GLMM (or the rank-normal LMM degrade) -> extraction +
+# CI + term resolution exercised. Deterministic (no RNG in the fixture / nlminb optimiser).
+gs <- glmmtmb_pt_sensitivity(make_trajectory_cell_frame(per_state = 12L, jitter = 0.3))
+stopifnot(
+  gs$method %in% c("glmmTMB_beta", "lmm_ranknorm"),       # a real fit, not a degrade-to-failed
+  identical(gs$term, "tau:amyloid"),
+  all(is.finite(c(gs$estimate, gs$se, gs$z, gs$p_value, gs$ci_l, gs$ci_r, gs$re_sd))),
+  gs$ci_l < gs$ci_r, gs$p_value >= 0, gs$p_value <= 1,
+  isFALSE(gs$singular), gs$n_cells == 384L,               # 16 units x (12 Homeo + 12 DAM)
+  is.character(gs$warnings), is.character(gs$messages))
+cat("ok - glmmtmb_pt_sensitivity (beta/LMM success path)\n")
+
+# DEGRADE via SINGULAR RE: the default fixture's identical within-genotype units collapse the
+# (1|unit) variance -> both the beta GLMM and the rank-normal LMM are singular -> method="failed".
+gd <- glmmtmb_pt_sensitivity(make_trajectory_cell_frame(per_state = 12L))
+stopifnot(gd$method == "failed",
+          all(is.na(c(gd$estimate, gd$se, gd$p_value, gd$ci_l, gd$ci_r))))
+cat("ok - glmmtmb_pt_sensitivity (singular -> failed)\n")
+
+# DEGRADE via NON-ESTIMABLE interaction (+ the never-error contract): drop both amyloid genotypes ->
+# tau:amyloid is all-zero / aliased -> the interaction row is absent -> the fit attempt ERRORS, gets
+# CAPTURED into $messages (muffled), and BOTH arms degrade -> method="failed", never raised.
+cf_noamy <- make_trajectory_cell_frame(per_state = 12L)
+cf_noamy <- cf_noamy[cf_noamy$genotype %in% c("MAPTKI", "P301S"), ]
+gn <- glmmtmb_pt_sensitivity(cf_noamy)
+stopifnot(gn$method == "failed", is.na(gn$estimate), is.na(gn$p_value),
+          gn$n_cells == 192L,                              # 8 units x 24 cells
+          length(gn$messages) >= 1L)                       # the captured fit error(s)
+cat("ok - glmmtmb_pt_sensitivity (non-estimable -> failed, never errors)\n")
 
 cat("ALL trajectory tests passed\n")

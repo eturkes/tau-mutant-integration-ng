@@ -97,6 +97,12 @@ list(
   # BH family {progression_cf, within_homeostatic}. Pure-R off the COMPACT S1 target (no 612MB load).
   tar_target(trajectory_progression, run_trajectory_progression(microglia_trajectory), format = "qs"),
 
+  # S3: per-cell glmmTMB beta-GLMM sensitivity for the tau:amyloid interaction on bounded pseudotime
+  # (pt01 ~ tau*amyloid + batch + (1|unit)). SUPPORTIVE (16 clusters -> weak asymptotics); degrades
+  # singular RE -> rank-normal LMM -> a RECORDED method="failed", never blocking the limma-summary
+  # primary. Reads the COMPACT S1 per-cell frame (not the 612MB Seurat), INDEPENDENT of trajectory_progression.
+  tar_target(trajectory_glmm_sensitivity, glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

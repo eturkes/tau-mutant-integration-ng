@@ -38,8 +38,8 @@ S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (
 no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 5 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
-glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 + S2a + S2b DONE; next open = S3. (S2 split out S3, then S2
-itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
+glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 + S2a + S2b + S3 DONE; next open = S4 (report). (S2 split
+out S3, then S2 itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -197,3 +197,14 @@ itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
   planned_primary/primary_within_skipped provenance, FL lm-oracle equality test (relative tol), + claim-honesty
   softening (shared-weight decomposition test; "no SUPPORTED progression signal" not "no synergy"). Next open = S3
   (glmmTMB per-cell sensitivity).
+- 2026-07-01 P2-S3 DONE -> `R/trajectory.R` +`glmmtmb_pt_sensitivity` (+ helpers `.capture_quietly` /
+  `.fit_pt_interaction`) -> target `trajectory_glmm_sensitivity` (`_targets.R`, reads COMPACT
+  microglia_trajectory$cell_frame, INDEPENDENT of trajectory_progression) + `tests/test_trajectory.R` +3 groups +
+  rproject.toml/rv.lock += glmmTMB. SUPPORTIVE per-cell beta GLMM pt01 ~ tau*amyloid + batch + (1|unit); degrade
+  cascade singular/!pdHess/non-converge/non-finite/error -> rank-normal LMM -> RECORDED method="failed" (NA, never
+  errors); Wald row by POSITION; .capture_quietly muffles+records warnings AND messages (sccomp lesson) -> 0 gate
+  leak (detail -> memory.md). glmmTMB on CRAN = P3M trixie BINARY (plan's "source-compile" framing off), ABI-clean
+  0-warning load (1.1.14/TMB 1.9.21/Matrix 1.7.5). LIVE (R4.6, DRIFT-PRONE): method=glmmTMB_beta on 22363 cells,
+  tau:amyloid +0.123 logit (p~0.015, CI excludes 0), non-singular; 1.5s, tar_meta NA/NA. COMPOSITION-CONFLATED (the
+  per-cell mean_pt analogue -> corroborates the position shift, NOT progression; S2b Kitagawa stays load-bearing).
+  Full gate green (39 tests, 22 targets, render clean). Next open = S4 (report + integration) -> then CLOSE-OUT.
