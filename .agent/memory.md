@@ -92,16 +92,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   Fcrls/Hexb/Tyrobp) -- NEVER use homeostatic markers for "is a microglia" (DAM downregulates P2ry12/Tmem119) +
   canonical_microglia_markers (Homeostatic / DAM[s1+s2 MERGED, one Apoe-Trem2 programme] / IFN / Proliferative +
   MHC_APC aux) + microglia_substate_levels (argmax set) + contam_signatures (Oligo/Neuron/Astro).
-- PRUNE rule uses RAW identity-vs-best-contam, NOT z. z-based identity argmax FAILS: ambient oligo/neuron/astro
-  is pervasive background (medians 0.10-0.15) so z-centering destroys the absolute "is this a microglia at all".
-  Drop if id_med<0.15 OR mglike_frac<0.30 (frac cells raw identity > best raw contam) -- 2-D OR rule, a cluster
-  dropped on one axis can sit high on the other. Two contaminant kinds: low-IDENTITY {6,7,11} id_med<=0.091
-  (7 id_med=0, clean gap to kept>=0.158); DOUBLET {8} id_med 0.187 (ABOVE floor, even above kept cluster 10) but
-  neuron-per-cell (Neuron med 0.300 vs ~0.15 bg) -> dropped on mglike 0.244. mglike gap clean (drop<=0.244 /
-  keep>=0.381); id gap NOT clean (8 overlaps) + BINDING kept margin THIN (cluster 10 IFN id_med 0.1576, 0.0076
-  over floor) -> id_floor LOAD-BEARING, re-derive per dataset. Exact margins + DAM/lineage medians stored
-  @misc$microglia_prune (separation, qc_rationale). Dropped {6,7,8,11}=2944/26104 (11.3%) -> 23160 retained;
-  doublets precomputed all-0 (logged no-op).
+- PRUNE rule uses RAW identity-vs-best-contam, NOT z. z-based argmax FAILS: ambient oligo/neuron/astro is pervasive
+  background -> z-centering destroys the absolute "is this a microglia at all". Drop if id_med<0.15 OR
+  mglike_frac<0.30 (frac cells with raw identity > best raw contam) -- a 2-D OR rule (a cluster dropped on one axis
+  can sit high on the other) catching BOTH low-identity AND neuron-doublet contaminants. id_floor is LOAD-BEARING
+  (a kept cluster sat only 0.0076 over it) -> re-derive per dataset. Exact margins + cluster ids + DAM/lineage
+  medians stored @misc$microglia_prune (separation, qc_rationale); dropped 2944/26104 (11.3%) -> 23160 retained.
 - SUBSTATE: cluster-PRIMARY is authoritative; per-cell secondary is NOISY (z-argmax over-calls sparse IFN/Prolif)
   -> report cluster-level proportions, not per-cell. z-scale 4 substate sigs on RETAINED cells -> cluster-mean-z
   argmax; unassigned if best z<=0; ambiguous if top-two both>amb_floor(0.10) AND within tol(0.10) -- amb_floor
@@ -177,19 +173,15 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   logical). CODEX-REVIEWED + hardened (8 findings: concordance false-green, sccomp-error-now-loud, PropRatio
   interaction-scale doc, project-local backend gate, c_R_k_hat surfaced, balance guard, cores-comment fix, backend
   provenance). sccomp cores/chains API SOURCE-VERIFIED (cores-only call correct).
-- LIVE-RUN VERIFIED 2026-06-30 (full scripts/check.sh green end-to-end, incl. a FORCED fresh composition_results
-  rebuild): tar_make built composition_results (~32s) on real microglia_annotated; cores fix holds (no parallel_chains
-  collision). sccomp final fit = 6 chains, ~2-3% divergent transitions (run-to-run variable, e.g. 96-101/3996), E-BFMI
-  ~0.71, 0 treedepth -> recorded NOT gated. Divergences are nonzero but few with healthy E-BFMI/treedepth; a few-level
-  (1|batch) random-effect funnel is the PLAUSIBLE source but is NOT localized by the summary diagnostics (do not claim
-  it as shown); point estimates corroborate propeller -> treat sccomp SUPPORTIVE not definitive (adapt_delta is the
-  lever if a later phase hardens the Bayesian arm). HEADLINE robust: amyloid -> DAM up (nlgf_in_maptki/nlgf_in_p301s)
-  STRONG and directionally concordant in both methods -- propeller t=10.8/14.4 FDR~1e-10/1e-13, sccomp c_effect
-  +1.45/+1.83 FDR~0; Homeostatic mirror-down. INTERACTION DAM positive under propeller (sig);
-  under sccomp near-boundary (FDR ~0.04-0.05, run-to-run on the few divergences) -> propeller-primary stands;
-  static synergy handed to P2. interaction Homeostatic down sig in both. Concordance flags = 3 STABLE sparse-IFN
-  cells (n=797 sign/sig noise) + the DAM-interaction cell ONLY on sccomp draws landing >0.05 -> 3-4/15 across
-  draws; the report inline-computes the live set (propeller-primary authoritative, never averaged).
+- LIVE-RUN VERIFIED 2026-06-30 (full scripts/check.sh green, incl. a FORCED fresh composition_results rebuild;
+  cores fix holds, no parallel_chains collision; headline + run numbers -> history.md + provenance, drift-prone).
+  sccomp final fit ~2-3% divergent (run-to-run), healthy E-BFMI/treedepth -> recorded NOT gated, treat SUPPORTIVE
+  not definitive: the few-level (1|batch) funnel is the PLAUSIBLE divergence source but NOT localized by the summary
+  diagnostics (do not claim it shown; adapt_delta the lever if a later phase hardens the Bayesian arm). Point
+  estimates corroborate propeller; amyloid->DAM STRONG + concordant both methods, interaction DAM-positive sig
+  under propeller / near-boundary under sccomp -> propeller-primary stands, static synergy -> P2. Concordance flags
+  = sparse-IFN sign/sig noise (n=797) + the DAM-interaction cell only on sccomp draws >0.05 -> report INLINE-computes
+  the live set (propeller-primary authoritative, never averaged).
 
 ## snRNAseq microglia pseudobulk DE (P1-S4, built) -- `R/de_pb.R` -> `pb_de_microglia` + `pb_de_substate`
 - DE on RAW RNA counts (33683 ENSMUSG genes), NOT SCT -- microglia_annotated keeps BOTH assays; aggregate by
@@ -223,16 +215,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   assert a COMPLETE genotype x batch crossing up front (assert_complete_crossing: n_units == prod covariate levels)
   -> an absent unit fails LOUD, never a silent <16-unit sub-design. LIVE: Homeostatic
   (min 52) + DAM (min 31) FIT; IFN (min 5, 15/16 units pass) + Proliferative (0) SKIP.
-- LIVE RESULTS (2026-06-30; re-baselined R 4.6, NOT v1's locked margins): whole-MG kept 14512, stageR screened 3545.
-  sig (|logFC|>0.5 & FDR<0.05) up/dn: tau_alone 0/0 (no LARGE-effect genes; 124 stageR-confirmed), nlgf_in_maptki 555/457,
-  nlgf_in_p301s 940/1148, tau_in_nlgf 202/764, interaction 0/0. DAM markers amyloid-UP: frac_up 1.00/0.94, meanLFC
-  +1.37/+1.85, n_sig_up 11/16 -> HEADLINE amyloid->DAM concordant v1 at the DE level. INTERACTION 0/0 at the
-  effect-size threshold BUT stageR confirms 123 genes ALL with |logFC|>0.5 (median ~1.1), failing only the stricter
-  standalone per-contrast FDR (min adj.P 0.17) -> sub-threshold-per-contrast NOT small-effect (no LARGE DE != no DE) + MDE@80%=0.92
-  log2FC (median_se 0.315, df 24; NOMINAL median-gene power, not FDR discovery) -> under-powered, NOT "absent";
-  report the 123 + MDE/CI (S5), hand synergy to P2. Per-substate FIT:
-  Homeostatic kept 13599/screened 1241 (interaction MDE 1.12), DAM kept 9148/screened 415 (MDE 1.49; amyloid still
-  shifts WITHIN DAM, nlgf_in_p301s 86/74) -- fewer cells -> larger per-substate MDE (honest).
+- LIVE RESULTS (2026-06-30, R 4.6 re-baseline NOT v1's margins; full counts -> history.md + the cached targets,
+  drift-prone): whole-MG amyloid->DAM STRONG (DAM markers amyloid-UP, v1-concordant at the DE level). INTERACTION
+  0 large-effect genes BUT 123 stageR-confirmed (|logFC|>0.5 median ~1.1, failing only the stricter standalone
+  per-contrast FDR) + MDE@80%~0.92 log2FC -> UNDER-POWERED not absent (report the 123 + MDE/CI, synergy -> P2;
+  no-LARGE-DE != no-DE, absence-of-evidence != evidence-of-absence). Per-substate: Homeostatic + DAM FIT (IFN/Prolif
+  skip); fewer cells -> larger MDE (honest), amyloid still shifts WITHIN DAM.
 - tests/test_de_pb.R extended (warn=2 clean): cells= subset + validation (all-present/no-dup, partial-bad fail-loud),
   SCREEN df1=rank=3 calibration (F.p.value==pf(F,3,df) != pf(F,5,df)), de_pseudobulk structure + CI cols + stageR
   matrix colnames + finite interaction MDE, run_pb_de_substate fit/skip statuses + 4x16 cell_counts + skip-reason +
@@ -337,41 +325,26 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Heavy installs/compute: expect long runs; smoke-test helpers via `Rscript -e '...'`
   against the live data BEFORE any full run.
 
-## Quality gate (concrete + review-hardened; P0-S5) -- `scripts/check.sh`, fail-loud, zero-fault
-Run from anywhere (cd's to root); any fault -> non-zero. tar_make's exit is NOT enough: returns 0 on CAPTURED
-target warnings, and is blind to warnings raised in the report's SEPARATE knitr/Quarto render process.
-Enforcement is layered across qmd + target + script:
-1. env: `rv sync` + `uv sync` (idempotent; skip via `CHECK_SKIP_SYNC=1`).
-2. tests: loop `tests/test_*.R` each `Rscript -e 'options(warn=2); source(<f>)'` (warn=2 -> stray R warning = error); set -e aborts on first fail.
-3. pipeline: FORCE-render the report each run -- `tar_invalidate(any_of("report")); tar_make()`, tee'd to a log,
-   wrapped in `if !` (so the failure message blames tar_make, not `tee`). Forcing = soundness + idempotency: a
-   cached report skips its render -> empty log + warn=2 un-exercised. CHEAP (~12 s, grows modestly per section): the
-   render READS cached targets (~0.3 GB), it does NOT re-run the heavy load_snrnaseq build (the "8G" is that BUILD's
-   peak, not the stored target). Two render-time catches live in the SOURCES (so they fire on every render, not just check.sh):
-     - EVERY section qmd setup carries `options(warn = 2)` (`_qc.qmd`, `_microglia.qmd`) -> any R chunk warning ->
-       error -> Quarto halts (error:false default) -> tar_make non-zero. The REAL catch for knitr/R chunk warnings
-       (else they render silently INTO the HTML, never reaching the log or tar_meta).
-     - `_targets.R` `tar_quarto(report, quiet = FALSE)` -> Quarto/Pandoc `[WARNING]` lines reach the log;
-       default quiet=TRUE SUPPRESSED them, so the pre-review grep was blind to all Quarto/Pandoc warnings.
-4. script-side zero-fault enforcement:
-   (a) `tar_meta(error,warnings)` all-NA; kept rows = `name %in% tar_manifest()$name | parent %in%` it (current
-       targets + their dynamic branches) -> drops tar_source'd fns/globals (~45 meta rows vs 13) + stale dead rows. warn=2 here too.
-   (b) render-log `command grep -nE` (GNU grep, not the rg-fff shadow), ANCHORED forms only: `^[WARNING]`
-       `^Warning:` `^Warning in ` `^Warning messages?:` `^WARN` -> benign "warn" substrings (paths/labels)
-       can't false-red. Exit discriminated 0=fault / 1=clean / >=2=grep infra. grep sits in an `if`-cond
-       (exempt from set -e AND the ERR trap; else the clean exit-1 prints a spurious GATE-FAILED line).
-Negative-tested: a chunk `warning()` -> render error -> gate exit 1 (no PASS); the anchored pattern matches the
-5 real warning forms, ignores benign false-positive lines. Residual: out-of-band edits to `_report/` output
-files aren't scanned -- moot, the report is RE-rendered from source each run, not trusted from disk.
-   Negative-tested: the grep matches `[WARNING]`/`Warning message:`/bare `WARN` and ignores benign tar_make
-   lines; a `stopifnot(FALSE)` test drives exit 1. A current store -> tar_make is a no-op but 4(a)/(b) still run.
-- Committed tests = `tests/test_*.R`: plain `stopifnot` fail-loud scripts (zero new deps, mirror io.R's
-  assertion idiom), source the R/ files they exercise + `tests/helpers.R`, print `ok - <x>`, non-zero exit
-  on failure. helpers.R = deterministic synthetic fixtures (make_fake_seurat / make_meta16 /
-  expect_error[+pattern]; NO RNG or clock). Current set: test_design (5-contrast weights +
-  factorial==cell-means property), test_de_pb (pseudobulk 16-col + fit_limma_voom/log smokes), test_io
-  (loader contracts on tempfiles), test_plot (device-free theme/scale/concordance), test_composition (propeller/sccomp arm + concordance), test_microglia (reprocess + microglia_report_data extractor/guards). They are data-free
-  synthetic; live-data smoke-testing per module still happens once before commit.
+## Quality gate (P0-S5) -- `scripts/check.sh` (self-documenting header), fail-loud zero-fault, run from anywhere
+tar_make's exit is NOT enough: it returns 0 on CAPTURED target warnings + is blind to the report's SEPARATE
+knitr/Quarto render. Layered: env (`rv sync`+`uv sync`; skip `CHECK_SKIP_SYNC=1`) | tests warn=2 | FORCE-render
+report tee'd to a log | `tar_meta` error+warnings all-NA (scoped to current targets+branches) | anchored render-log
+grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_snrnaseq build). Durable lessons:
+- EVERY section qmd setup carries `options(warn=2)` -> a chunk warning halts the render (else it renders SILENTLY
+  into the HTML, never reaching the log/tar_meta). `tar_quarto(report, quiet=FALSE)` lets Quarto/Pandoc `[WARNING]`
+  lines reach the log (default quiet=TRUE hid them).
+- CACHED-TARGET BLIND SPOT (load-bearing): check.sh force-invalidates ONLY `report`; every other target stays
+  CACHED during the gate -> a heavy/off-lock arm's warnings never re-surface unless forced. Any "RECORDED not
+  gated" claim MUST be re-verified on a FRESH build of that target (tar_invalidate it + report), not a cached one
+  (the sccomp message() hole hid exactly here -- see P1-S3; same risk for the P2-S3 glmmTMB arm).
+- render-log scan = `command grep -nE` (GNU, not the rg-fff shadow), ANCHORED forms only (`^[WARNING]` `^Warning:`
+  `^Warning in ` `^Warning messages?:` `^WARN`) so benign "warn" substrings can't false-red; exit 0=fault/1=clean/
+  >=2=infra, sits in an `if`-cond (exempt from set -e + ERR trap). NEGATIVE-TESTED both ways (chunk warning -> exit
+  1; benign lines ignored). Residual: out-of-band edits to `_report/` output aren't scanned (moot -- re-rendered each run).
+- Committed tests `tests/test_*.R` = plain `stopifnot` fail-loud scripts (zero new deps), source the R/ files they
+  exercise + `tests/helpers.R` (deterministic synthetic fixtures, NO RNG/clock; expect_error[+pattern]), print
+  `ok - <x>`, non-zero exit on fail. Set: test_design, test_de_pb, test_io, test_plot, test_composition,
+  test_microglia, test_trajectory. Data-free; per-module live-data smoke-test still happens once before commit.
 - Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 
 ## Operational
@@ -425,13 +398,10 @@ files aren't scanned -- moot, the report is RE-rendered from source each run, no
   list them in `tar_quarto(extra_files=)` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
   (device font) so figures stay decoupled from this chrome + warning-free.
-- Theme-CSS DETECTION gotcha (CORRECTED -- supersedes "colours embed raw"): once an `@font-face url()`
-  is in the theme, Quarto embeds the WHOLE compiled theme CSS as a URL-ENCODED `data:text/css,...` URI,
-  so BOTH colours AND fonts encode -- `#B0344D`->`%23B0344D`, `IBM Plex`->`IBM%20Plex`, the woff2 data
-  URI -> `woff2%3Bbase64%2Cd09GMg` (d09GMg = wOF2 magic). RAW `.count` then reads ~0 for everything
-  theme-side (raw-embed held ONLY for the pre-fonts colours-only theme). Match the ENCODED tokens (fast)
-  or URLdecode/urllib.unquote the data:text/css blocks first -- URLdecode of the ~1MB blob is VERY SLOW,
-  so prefer encoded matching. Figures are PNG base64 (`data:image/png`), so their `#B0344D` is not raw either.
+- Theme-CSS DETECTION gotcha: with an `@font-face url()` in the theme, Quarto URL-encodes the WHOLE compiled
+  theme CSS into a `data:text/css,...` URI -> to verify embedding, match ENCODED tokens (`#B0344D`->`%23B0344D`,
+  woff2 magic -> `d09GMg`); RAW `.count` reads ~0 theme-side and URLdecoding the ~1MB blob is very slow. Figures
+  embed as `data:image/png` base64, so their colours are not raw either.
 - Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
   is deny-Read -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
   script), not a Bash `rm`. Inspect the output HTML the same way (output dir is deny-Read): build the
