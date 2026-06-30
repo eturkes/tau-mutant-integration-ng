@@ -27,10 +27,15 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none) -- P1 CLOSED 2026-06-30; next = PLAN P2 (interaction trajectory)
-P0 + P1 complete. P1 digest -> history.md; plan archived -> `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`.
-No active plan -> next session = PLAN mode: confirm the P2 backlog phase (activation pseudotime; the tau x
-amyloid synergy as a progression-RATE effect, decomposed composition-vs-progression) before opening it.
+## Active plan: P2 interaction trajectory -> `.agent/p2_trajectory_plan.md` (OPENED 2026-06-30)
+Tests the PIVOTAL claim P1 deferred: tau x amyloid synergy as a progression-RATE effect along the
+homeostatic->DAM activation trajectory (static-null in P1 composition + DE). Stack DECIDED = LEAN ON-LOCK
+(user gate): slingshot (harmony 15-dim) + UCell score-axis anchor; interaction off per-replicate pseudotime
+summaries through the EXISTING factorial_design/make_contrast_matrix (respects 16 units); Kitagawa
+composition-vs-progression decomposition; glmmTMB per-cell sensitivity. ALL pure-R from the pinned snapshot
+(no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
++ 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
+3 steps (S1 trajectory+pseudotime -> S2 interaction+decomposition -> S3 report). Next open = S1.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -41,8 +46,9 @@ amyloid synergy as a progression-RATE effect, decomposed composition-vs-progress
   contrasts -> the robust amyloid->DAM activation programme (3-way confirmed: composition + DE + UCell score).
   Interaction = no large-effect DE, under-powered NOT absent (reported w/ MDE/CI + 123 stageR-confirmed, real |logFC| but sub-threshold per-contrast FDR) ->
   synergy = rate effect to P2. Digest -> history.md.
-- P2 Interaction trajectory: activation pseudotime (homeostatic->DAM); test amyloid
-  advance + tau x amyloid progression synergy, decomposed composition vs progression.
+- P2 Interaction trajectory [OPENED 2026-06-30 -> p2_trajectory_plan.md]: activation pseudotime
+  (homeostatic->DAM); test amyloid advance + tau x amyloid progression synergy, decomposed composition vs
+  progression.
 - P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase
   (decoupleR / OmniPath) -> Gsk3b / Myc; NF-kB attenuation check.
 - P4 Cross-modality: GeoMx spatial DE (+ light deconvolution if it earns it),
@@ -120,3 +126,13 @@ amyloid synergy as a progression-RATE effect, decomposed composition-vs-progress
   `microglia (p1 s5 review): ... (codex)` commit). No main code changed; the S5 close stands gate-green.
   LANDED 2026-06-30 (next commit): restored the parked fixes + applied the 2 pending doc edits, gate green,
   branch + handoff deleted -- P1-S5 review CLOSED.
+- 2026-06-30 P2 OPENED -> `.agent/p2_trajectory_plan.md`. User confirmed P2 (vs P3/P4 reorder). Research =
+  2 parallel agents: Explore mined v1's EXECUTED trajectory analysis (Arc M -- "the one positive orthogonal
+  interaction" = synergistic homeostatic->DAM acceleration; slingshot on harmony[1:15] + limma on 16-replicate
+  pseudotime summaries via the SAME factorial machinery + Kitagawa composition/progression decomposition ->
+  interaction loaded progression ~94% sig, null composition; Arc-O gene tradeSeq margin-neutral/contaminated/
+  fragile-internals); general-purpose swept 2026 SOTA (condiments/tradeSeq pseudoreplicate + no factorial
+  interaction interface -> descriptive only; per-replicate-summary + factorial = the replication-correct
+  inferential route; glmmTMB beta-GLMM = on-lock per-cell sensitivity, TMB not Stan). CONVERGED. Decision gate ->
+  LEAN ON-LOCK (rejected +destiny DPT, +off-lock Lamian). Entire stack pure-R from the pinned snapshot. Plan = 3
+  steps; next = EXECUTE S1.
