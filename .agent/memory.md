@@ -145,10 +145,15 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - sccomp call (sccomp source-verified): pass ONLY `cores` -- it is fit_model's real parallelism knob (caps chains via
   find_optimal_number_of_chains %>% min(cores); sets parallel_chains/threads_per_chain). `parallel_chains` is no formal
   -> `...` -> collides with the internal mod$sample(parallel_chains=); `chains` IS a fit_model formal (binds+overrides,
-  NOT a collision -- the earlier "chains collides" note was WRONG). withCallingHandlers muffles + records sampler
-  warnings into attr "warnings"; run_sccomp surfaces c_R_k_hat (split-Rhat); orchestrator reports warning-count + max
-  Rhat in sccomp_status. Diagnostics RECORDED not gated -> OFF-lock arm never fails the warn=2 gate on a Stan note;
-  LOCKED propeller keeps full strictness.
+  NOT a collision -- the earlier "chains collides" note was WRONG).
+- sccomp HMC-CONVERGENCE capture (CORRECTED vs codex finding "c_R_k_hat surfaced" -- that column does NOT exist in
+  sccomp 2.4.0): sccomp_test emits c_rhat/c_ess_bulk/c_ess_tail but they are STRUCTURALLY all-NA for CONTRAST rows
+  (sccomp computes rhat/ESS for base design params only, not derived contrasts), and divergences surface via message()
+  NOT warning() -> withCallingHandlers catches nothing. REAL signal = the final (outlier-removed) cmdstanr fit's
+  $diagnostic_summary() reached via attr(fit,"fit") (pass_fit=TRUE default): per-chain divergent / max-treedepth /
+  E-BFMI -> run_sccomp's `diagnostics` attr -> provenance$sccomp_diagnostics + a sccomp_status note. RECORDED not gated
+  (divergences are messages anyway) -> OFF-lock arm never fails the warn=2 gate; LOCKED propeller keeps full strictness.
+  withCallingHandlers still captures any genuine R warning into `warnings` (0 on the live run).
 - OFF-lock backend (scripts/install-cmdstan.sh, idempotent): cmdstanr from the Stan r-universe -> tools/rlib-stan
   (SEPARATE lib so `rv sync` never prunes it) + CmdStan compiled -> tools/cmdstan. _targets.R prepends the lib +
   sets CMDSTAN iff BOTH exist. sccomp_backend_ready() requires the PROJECT-LOCAL tools/rlib-stan + tools/cmdstan/
@@ -161,9 +166,16 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   propeller direction DAM-up + Homeostatic-down + prop_ratio>1 for logit AND asin, concordance flagging, sccomp gate
   logical). CODEX-REVIEWED + hardened (8 findings: concordance false-green, sccomp-error-now-loud, PropRatio
   interaction-scale doc, project-local backend gate, c_R_k_hat surfaced, balance guard, cores-comment fix, backend
-  provenance). sccomp cores/chains API SOURCE-VERIFIED (cores-only call correct). DEFERRED to next session: live
-  sccomp run (orchestrator on real microglia_annotated -> exercises the cores fix + fail-loud path live) + full
-  scripts/check.sh. Backend smoke-confirmed PRE-fix (CmdStan 2.39.0); live HMC behavior still UNVERIFIED.
+  provenance). sccomp cores/chains API SOURCE-VERIFIED (cores-only call correct).
+- LIVE-RUN VERIFIED 2026-06-30 (full scripts/check.sh green end-to-end): tar_make built composition_results (29.5s)
+  on real microglia_annotated; cores fix holds (no parallel_chains collision). sccomp final fit = 6 chains, 96/3996
+  (~2.4%) divergent, E-BFMI 0.72, 0 treedepth -> recorded NOT gated (divergences from the 4-level (1|batch) random-
+  effect funnel; ebfmi healthy -> localized, estimates corroborate -> treat sccomp SUPPORTIVE not definitive;
+  adapt_delta is the lever if a later phase hardens the Bayesian arm). HEADLINE robust across BOTH methods: DAM up
+  under amyloid (nlgf_in_maptki/nlgf_in_p301s) propeller t=10.8/14.4 FDR~1e-10/1e-13, sccomp c_effect +1.45/+1.83
+  FDR~0; Homeostatic mirror-down. INTERACTION DAM positive (synergy): propeller FDR 0.027 (sig) vs sccomp 0.051
+  (borderline) -> FLAGGED; interaction Homeostatic down sig in both. Concordance flagged 4/15 (3 sparse-IFN n=797
+  sign/sig noise + the interaction-DAM sig-borderline) -> propeller-logit stands per the pre-declared rule.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

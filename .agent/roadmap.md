@@ -42,11 +42,13 @@ UMAP); marker separation confirmed post-Harmony (homeostatic/DAM/IFN/prolif dist
 S2 DONE 2026-06-30: `microglia_annotated` (UCell substate scoring -> prune contaminant clusters {6,7,8,11}=2944
 cells -> calibrated cluster-argmax labels; Homeo 11174/DAM 11189/IFN 797, 23160 retained); amyloid->DAM
 confirmed descriptively; gate green.
-S3 IN PROGRESS 2026-06-30: `R/composition.R` + `composition_results` target + `tests/test_composition.R` BUILT.
-propeller (logit primary + asin) = LOCKED reproducible call; sccomp = OPTIONAL off-lock cross-check (CmdStan
-unlockable -> reproducibility REVERSAL from the sccomp-primary plan). propeller path + pure helpers unit-green at
-warn=2; CODEX-REVIEWED + hardened (8 findings, all accepted/fixed). **NEXT:** live sccomp run + full gate
-(DEFERRED), then commit-close. See plan S3 + memory.md S3 section.
+S3 DONE 2026-06-30: `composition_results` (propeller logit-PRIMARY + asin sensitivity, LOCKED reproducible; sccomp
+OPTIONAL off-lock Bayesian cross-check, CmdStan-unlockable). LIVE-VERIFIED + full gate green end-to-end: amyloid->DAM
+ROBUST across both methods (propeller FDR~1e-10/1e-13, sccomp FDR~0), Homeostatic mirror-down; interaction DAM positive
+(synergy) sig in propeller (FDR 0.027), borderline in sccomp (0.051) -> flagged (4/15 concordance flags, propeller-logit
+stands). Fixed a latent diagnostics bug surfacing the live run: codex's `c_R_k_hat` column is absent in sccomp 2.4.0 and
+per-contrast c_rhat is structurally NA -> now capture the final fit's $diagnostic_summary (96/3996 ~2.4% divergent,
+E-BFMI 0.72, recorded NOT gated). CODEX-REVIEWED earlier (8 findings). See plan S3 + memory.md S3 section.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
