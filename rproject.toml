@@ -42,7 +42,7 @@ dependencies = [
     # stageR: stage-wise family screen (omnibus F) -> per-contrast confirm across the 5 contrasts (P1-S4)
     { name = "stageR",       repository = "BioCsoft" },
     # trajectory (P2-S1): slingshot principal-curve pseudotime on the harmony embedding
-    # (BioCsoft; auto-pulls SingleCellExperiment / princurve / TrajectoryUtils -- pure-R Bioc).
+    # (BioCsoft; pulls Bioc SingleCellExperiment / TrajectoryUtils + CRAN princurve [Rcpp]).
     # glmmTMB (per-cell GLMM sensitivity) is added in P2-S2 where it is actually loaded.
     { name = "slingshot",    repository = "BioCsoft" },
     # plotting

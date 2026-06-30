@@ -283,22 +283,26 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   SENSITIVITY highly robust: dims-10 rho 0.990 / dims-20 0.997 / all-retained 0.990 vs primary. all-retained (IFN
   included, dims 15) = a single PATH Homeostatic->IFN->DAM (IFN intermediate, not a branch).
 - SELECTION-EFFECT audit (the lineage-conditioning risk): omitted (IFN) fraction BALANCED across genotypes
-  (0.029-0.036) -> conditioning on H->D barely skews the interaction; report, never hide. per_unit table (16 units)
+  (low single-digit %, exact in per_unit table) -> conditioning on H->D barely skews interaction; report, never hide. (16 units)
   stores n_cells / n_on_lineage / omitted_frac.
 - score_axis_pt = RAW DAM_UCell - Homeostatic_UCell (assumption-light: both UCell [0,1] rank scores, no population
   z-centring). pt01 = Smithson-Verkuilen squeeze (min-max scale -> (y*(n-1)+0.5)/n) into the OPEN (0,1) for the S2
-  beta GLMM; off-lineage NA preserved. Target = COMPACT list {cell_frame 23160x10 ~3.4MB, per_unit, lineage,
-  sensitivity df, provenance(versions/seed/RNG/threads + dims/rho/dam_pt_rho/omitted)} -- NOT the 612MB Seurat (build
+  beta GLMM; off-lineage NA preserved. Target = COMPACT list {cell_frame 23160x10, per_unit, lineage,
+  sensitivity df, provenance(versions/seed/RNG/threads + dims/rho/dam_pt_rho/omitted)}; serialized ~0.8MB / in-memory
+  ~3.3MB -- NOT the 612MB Seurat (build
   reads it once, ~218s for 4 slingshot fits; one-time, the gate force-renders cached targets). 0 build warnings.
 - slingshot GOTCHA: its covariance-scaled MST distance (.dist_clusters_scaled -> solve(s1+s2)) ERRORS "system is
   computationally singular" on a near-degenerate per-cluster covariance -> synthetic TEST fixtures need FULL-RANK
   well-conditioned blobs (distinct-frequency sinusoids, comparable amplitude), NOT tiny collinear ripples (real
   harmony clusters are full-rank, no issue). run_slingshot_lineage extracts the DAM-TERMINAL lineage (>2 clusters may
   branch -> pick the terminal-in-DAM lineage, longest if tied; off-lineage cells keep slingshot's NA).
-- rproject.toml: slingshot (BioCsoft; pulled princurve 2.1.6 + TrajectoryUtils 1.20.0, SingleCellExperiment already
+- rproject.toml: slingshot (BioCsoft; pulled CRAN princurve [needs Rcpp] + Bioc TrajectoryUtils, SingleCellExperiment already
   present). glmmTMB (per-cell GLMM sensitivity) deferred to P2-S2 where it is actually loaded (ABI-warning handling
   belongs with the live load test). Pure helpers UNIT-tested (tests/test_trajectory.R, warn=2 clean) on
-  make_trajectory_embedding (helpers.R: 2-cluster + with_ifn branch); heavy orchestrator smoke-tested live.
+  make_trajectory_embedding (helpers.R: 2-cluster + with_ifn branch) + validate_trajectory_units metadata guards;
+  orchestrator covered by the gate tar_make (full-Seurat unit test DEFERRED). run_slingshot_lineage is RNG-PURE
+  (pins seed + all 3 kinds, restores caller .Random.seed on exit); rooting now GATED both ways (dam_pt_rho>0,
+  homeo_pt_rho<0). validate_trajectory_units = fail-loud per-unit audit (no-NA/blank unit, geno in levels, one geno/unit).
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

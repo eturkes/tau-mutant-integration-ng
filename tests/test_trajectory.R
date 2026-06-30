@@ -31,6 +31,8 @@ stopifnot(isTRUE(all.equal(trajectory_concordance(1:10, 10:1)$rho, -1)))
 cc <- trajectory_concordance(c(NA, 2:10), 1:10)                  # complete pairs only
 stopifnot(cc$n == 9L, isTRUE(all.equal(cc$rho, 1)))
 expect_error(trajectory_concordance(c(1, NA), c(NA, 1)))         # < 2 complete pairs
+expect_error(trajectory_concordance(rep(2, 5), 1:5))             # constant pt -> Spearman undefined
+expect_error(trajectory_concordance(1:5, rep(2, 5)))             # constant score -> Spearman undefined
 cat("ok - trajectory_concordance\n")
 
 # --- run_slingshot_lineage: forced single Homeostatic->DAM --------------------------------
@@ -62,5 +64,14 @@ pv <- trajectory_provenance(42L)
 stopifnot(is.list(pv), "slingshot" %in% names(pv$versions), pv$seed == 42L,
           length(pv$rng_kind) == 3L, nzchar(pv$r_version))
 cat("ok - trajectory_provenance\n")
+
+# --- validate_trajectory_units (per-unit metadata fail-loud audit) ------------------------
+g1 <- genotype_levels[1]; g2 <- genotype_levels[2]
+stopifnot(validate_trajectory_units(c("u1", "u1", "u2"), c(g1, g1, g2)))  # one geno/unit -> ok
+expect_error(validate_trajectory_units(c("u1", NA), c(g1, g2)))           # missing unit id
+expect_error(validate_trajectory_units(c("u1", ""), c(g1, g2)))           # blank unit id
+expect_error(validate_trajectory_units(c("u1", "u2"), c(g1, "ZZZ")))      # genotype off-levels
+expect_error(validate_trajectory_units(c("u1", "u1"), c(g1, g2)))         # mixed geno in one unit
+cat("ok - validate_trajectory_units\n")
 
 cat("ALL trajectory tests passed\n")

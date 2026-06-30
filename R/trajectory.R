@@ -6,7 +6,7 @@
 # lineage (off-lineage flag + NA pt), not deleted -> per-unit omitted fraction is reported,
 # never hidden. Pseudotime is an ACTIVATION ORDERING (position/extent of advance), NOT
 # developmental time or potency -- direction rests on slingshot rooting + DAM-marker
-# monotonicity, validated post-hoc, never a potency claim. All non-base calls namespace-
+# rank association, validated post-hoc, never a potency claim. All non-base calls namespace-
 # qualified (targets attaches only `quarto`). Pure helpers unit-tested; the heavy
 # orchestrator (build_activation_trajectory) is smoke-tested live on microglia_annotated.
 
@@ -47,7 +47,9 @@ squeeze_unit_interval <- function(x) {
 trajectory_concordance <- function(pt, score_axis) {
   stopifnot(is.numeric(pt), is.numeric(score_axis), length(pt) == length(score_axis))
   ok <- is.finite(pt) & is.finite(score_axis)
-  stopifnot(sum(ok) >= 2L)
+  stopifnot(sum(ok) >= 2L,                             # >=2 finite pairs for a correlation
+            length(unique(pt[ok])) >= 2L,              # constant pt or score -> Spearman undefined
+            length(unique(score_axis[ok])) >= 2L)      # (fail loud, not a silent NA rho)
   list(rho = stats::cor(pt[ok], score_axis[ok], method = "spearman"), n = sum(ok))
 }
 
@@ -56,17 +58,28 @@ trajectory_concordance <- function(pt, score_axis) {
 # unit-testable on a synthetic embedding. 2-cluster labels guarantee a single lineage; >2
 # (all-retained sensitivity, IFN present) may branch -> the DAM-terminal lineage is selected
 # (longest if tied) and off-lineage cells keep slingshot's NA. Rooted at `start_clus` ->
-# pseudotime increases away from the homeostatic root. seed set for belt-and-braces
-# determinism (the principal curve is RNG-free given embedding + labels).
+# pseudotime increases away from the homeostatic root. RNG seed + all three kinds pinned for
+# the fit, and the caller's RNG state restored on exit (pure); the curve is RNG-free given inputs.
 run_slingshot_lineage <- function(embedding, cluster_labels, start_clus, terminal_clus,
                                    seed = 42L) {
   stopifnot(is.matrix(embedding), !is.null(rownames(embedding)), ncol(embedding) >= 2L,
             all(is.finite(embedding)),
             length(cluster_labels) == nrow(embedding),
-            start_clus %in% cluster_labels, terminal_clus %in% cluster_labels)
-  old_kind <- RNGkind("Mersenne-Twister")
-  on.exit(RNGkind(old_kind[1], old_kind[2], old_kind[3]), add = TRUE)
-  set.seed(seed)
+            start_clus %in% cluster_labels, terminal_clus %in% cluster_labels,
+            all(table(as.character(cluster_labels)) >= 2L)) # >=2 cells/cluster (covariance; singular-cov gotcha)
+  # Pin seed + all three RNG kinds for the fit, then RESTORE the caller's RNG state on exit
+  # (kind + .Random.seed) so the helper leaves no random-stream side effect downstream.
+  old_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (has_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  on.exit({
+    RNGkind(old_kind[1], old_kind[2], old_kind[3])
+    if (has_seed) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+      rm(".Random.seed", envir = .GlobalEnv)
+  }, add = TRUE)
+  set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion",
+           sample.kind = "Rejection")
   res <- slingshot::slingshot(embedding, clusterLabels = as.character(cluster_labels),
                               start.clus = start_clus)
   lins <- slingshot::slingLineages(res)
@@ -100,6 +113,20 @@ trajectory_provenance <- function(seed) {
   )
 }
 
+# Fail-loud audit of per-unit metadata before the per-unit omitted-fraction summary: every
+# cell needs a non-missing replicate unit + a genotype in the declared levels, and each unit
+# must carry EXACTLY ONE genotype (the summary takes the first genotype per unit, so mixed
+# metadata would silently corrupt the audit). Pure + data.frame-testable (no Seurat needed).
+validate_trajectory_units <- function(unit_vec, geno_vec, levels = genotype_levels) {
+  stopifnot(is.character(unit_vec), is.character(geno_vec),
+            length(unit_vec) == length(geno_vec),
+            !anyNA(unit_vec), all(nzchar(unit_vec)),               # no missing/blank unit id
+            !anyNA(geno_vec), all(geno_vec %in% levels),          # genotype in declared levels
+            all(tapply(geno_vec, unit_vec,                        # one genotype per unit
+                       function(g) length(unique(g))) == 1L))
+  invisible(TRUE)
+}
+
 # Orchestrate the activation-trajectory target from microglia_annotated. Reads the cached
 # harmony embedding + per-cell UCell scores + substate labels (NO recompute), fits the
 # PRIMARY Homeostatic->DAM slingshot pseudotime (dims 1:primary_dims), a FIXED sensitivity
@@ -128,11 +155,15 @@ build_activation_trajectory <- function(seurat_obj,
     all(c(substate_col, dam_col, homeo_col, unit_col, genotype_col) %in%
           colnames(seurat_obj@meta.data)),
     is.numeric(primary_dims), length(primary_dims) == 1L,
-    all(is.finite(sensitivity_dims)))
+    primary_dims >= 2L, primary_dims == round(primary_dims),       # positive whole-number dims
+    is.numeric(sensitivity_dims), length(sensitivity_dims) >= 1L,
+    all(is.finite(sensitivity_dims)), all(sensitivity_dims >= 2L),
+    all(sensitivity_dims == round(sensitivity_dims)))
   md <- seurat_obj@meta.data
   emb_full <- SeuratObject::Embeddings(seurat_obj, reduction)
   stopifnot(identical(rownames(emb_full), rownames(md)),
-            ncol(emb_full) >= max(c(primary_dims, sensitivity_dims)))
+            ncol(emb_full) >= max(c(primary_dims, sensitivity_dims)),
+            is.numeric(md[[dam_col]]), is.numeric(md[[homeo_col]])) # score cols numeric, not factor
 
   sub <- as.character(md[[substate_col]])
   dam <- as.numeric(md[[dam_col]]); homeo <- as.numeric(md[[homeo_col]])
@@ -178,11 +209,16 @@ build_activation_trajectory <- function(seurat_obj,
   sensitivity <- do.call(rbind, lapply(sens_rows,
     function(r) r[c("variant", "spearman_vs_primary", "n_lineages", "n_shared")]))
 
+  # fail-loud per-unit metadata audit before the frame (mixed/missing unit or off-levels
+  # genotype would silently corrupt the per-unit omitted-fraction summary below).
+  unit_vec <- as.character(md[[unit_col]]); geno_vec <- as.character(md[[genotype_col]])
+  validate_trajectory_units(unit_vec, geno_vec)
+
   # per-cell compact frame (all retained cells; off-lineage pt NA, score-axis always defined).
   cell_frame <- data.frame(
     cell = rownames(md),
-    genotype_batch = as.character(md[[unit_col]]),
-    genotype = factor(as.character(md[[genotype_col]]), levels = genotype_levels),
+    genotype_batch = unit_vec,
+    genotype = factor(geno_vec, levels = genotype_levels),
     substate = factor(sub, levels = sort(unique(sub))),
     on_lineage = on_lineage,
     pt_raw = pt_raw, pt01 = pt01, score_axis_pt = score_axis_pt,
@@ -216,7 +252,7 @@ build_activation_trajectory <- function(seurat_obj,
   # score-axis = marker contrast; they are related, not identical), so this is an honest flag.
   prov$concordance_floor <- concordance_floor
   prov$concordant <- isTRUE(conc$rho >= concordance_floor)
-  # directional rooting validation (recorded): DAM up, Homeostatic down along pseudotime.
+  # directional rooting (recorded here, GATED in the postconditions): DAM up, Homeostatic down.
   on0 <- is.finite(pt_raw)
   prov$dam_pt_rho <- stats::cor(pt_raw[on0], dam[on0], method = "spearman")
   prov$homeo_pt_rho <- stats::cor(pt_raw[on0], homeo[on0], method = "spearman")
@@ -235,10 +271,11 @@ build_activation_trajectory <- function(seurat_obj,
     prim$n_lineages == 1L,                                   # single clean primary lineage
     identical(prim$lineage, c(root_substate, terminal_substate)),
     sum(on) == sum(on_lineage), !anyNA(pt_raw[on_lineage]),  # every on-lineage cell ordered
-    stats::cor(pt_raw[on], dam[on], method = "spearman") > 0, # DAM monotone in pt (rooting OK)
+    prov$dam_pt_rho > 0, prov$homeo_pt_rho < 0,              # DAM rises, Homeo falls along pt (rooting)
     all(pt01[on] > 0 & pt01[on] < 1),                        # squeeze opened the interval
     is.finite(conc$rho),                                     # concordance recorded
     nrow(cell_frame) == nrow(md), nrow(per_unit) == nlevels(u),
+    sum(per_unit$n_cells) == nrow(cell_frame),              # per-unit partition covers all cells
     all(is.finite(sensitivity$spearman_vs_primary)))        # every sensitivity recorded
 
   list(cell_frame = cell_frame, per_unit = per_unit,

@@ -86,8 +86,9 @@ list(
   # S1: activation pseudotime. slingshot on the harmony embedding (dims 1:15), forced single
   # Homeostatic->DAM lineage (2 substate super-clusters), IFN/Proliferative omitted (off-lineage
   # flag, not deleted). Compact per-cell frame (pt_raw/pt01/score-axis + on-lineage flag) +
-  # per-unit omitted fraction + a fixed dims {10,15,20}+all-retained sensitivity + score-axis
-  # concordance. Reads the 612MB annotated object once; stores a ~3.4MB target (cheap-render).
+  # per-unit omitted fraction + a fixed sensitivity (dims 10 & 20 vs primary 15, + all-retained)
+  # + score-axis concordance. Reads the 612MB annotated object once; stores a compact target
+  # (serialized ~0.8MB, in-memory ~3.3MB; cheap-render).
   tar_target(microglia_trajectory, build_activation_trajectory(microglia_annotated), format = "qs"),
 
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),

@@ -99,7 +99,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        pb_de_substate       <- run_pb_de_substate(microglia_annotated)  # per-substate DE: Homeo+DAM fit, IFN/Prolif skip (min-cell floor); cell_counts (7MB)
        microglia_report     <- microglia_report_data(microglia_annotated)  # compact report frame (umap+substate+z) + prune/provenance; ~0.5MB (keeps gate render cheap)
   - P2 interaction trajectory (format="qs"; consumes microglia_annotated):
-       microglia_trajectory <- build_activation_trajectory(microglia_annotated)  # slingshot H->D pseudotime; per-cell frame + per-unit omitted-frac + sensitivity + concordance; ~3.4MB
+       microglia_trajectory <- build_activation_trajectory(microglia_annotated)  # slingshot H->D pseudotime; per-cell frame + per-unit omitted-frac + sensitivity + concordance; serialized ~0.8MB / in-mem ~3.3MB
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`

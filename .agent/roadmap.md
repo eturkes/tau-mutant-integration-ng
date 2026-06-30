@@ -143,6 +143,6 @@ df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per
   (on_lineage flag + NA pt). LIVE: direction correct (mean pt Homeo 22.3 < DAM 36.2; Spearman pt-vs-DAM +0.56);
   score-axis concordance rho=0.62 (moderate-large, clears 0.5 gross-failure floor; slingshot=transcriptome vs
   score-axis=marker contrast -> related-not-identical); sensitivity robust (dims-10/20 + all-retained rho 0.99 vs
-  primary); IFN omitted-fraction balanced across genotypes (0.029-0.036 -> conditioning barely skews interaction).
+  primary); IFN omitted-fraction balanced across genotypes (low single-digit % -> conditioning barely skews interaction).
   Compact target ~3.4MB, 0 build warnings, gate green. Outcomes -> memory.md. Next open = S2 (interaction +
   3-channel Kitagawa decomposition + glmmTMB sensitivity).
