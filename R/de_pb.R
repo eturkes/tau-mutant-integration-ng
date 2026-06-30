@@ -20,8 +20,8 @@ pseudobulk_counts <- function(seurat_obj, group_col, assay = "RNA", layer = "cou
   stopifnot(identical(rownames(seurat_obj@meta.data), colnames(counts)),
             length(groups) == ncol(counts), !anyNA(groups))
   if (!is.null(cells)) {   # restrict to a cell subset (e.g. one substate) BEFORE aggregating
+    stopifnot(!anyDuplicated(cells), all(cells %in% colnames(counts)))   # bad/dup cell -> fail loud
     sel <- colnames(counts) %in% cells
-    stopifnot(any(sel))
     counts <- counts[, sel, drop = FALSE]
     groups <- groups[sel]
   }
@@ -125,10 +125,11 @@ prevalence_filter <- function(mat, group, min_present = 3L, min_groups = 2L) {
 
 # stageR two-stage family test across the 5-contrast set. SCREEN on the moderated omnibus F
 # (H0: every contrast == 0, i.e. no genotype effect on the gene) with BH at the target OFDR;
-# CONFIRM per-contrast within each screened gene by Holm (FWER-valid under arbitrary dependence
-# -> safe for the rank-deficient contrast family). Returns the raw screen p-values, the
-# stage-wise adjusted matrix (genes x {padjScreen, the 5 contrasts}; confirmation NA where the
-# gene fails the screen -> a contrast is significant at OFDR alpha iff its column < alpha), and
+# CONFIRM per-contrast within each screened gene by stageR's modified post-screen Holm -- FWER-valid
+# under arbitrary dependence (safe for the rank-deficient contrast family), and NOT plain p.adjust
+# Holm: stageR folds the OFDR screen scaling into the per-gene step. Returns the raw screen p-values,
+# the stage-wise adjusted matrix (genes x {padjScreen, the 5 contrasts}; confirmation NA where the
+# gene fails the screen -> a contrast is significant at OFDR alpha iff its column <= alpha), and
 # the screened-gene count. stageR is on-snapshot -> a locked, reproducible inference layer.
 stage_wise_test <- function(fit, alpha = 0.05) {
   stopifnot(!is.null(fit$F.p.value), !is.null(fit$p.value),
@@ -141,20 +142,23 @@ stage_wise_test <- function(fit, alpha = 0.05) {
   # text has no ^Warning anchor) -> muffle so heavy fresh builds keep a clean log
   padj <- suppressMessages(stageR::getAdjustedPValues(obj, onlySignificantGenes = FALSE, order = FALSE))
   list(alpha = alpha, screen_p = pScreen, stage_padj = padj,
-       n_screened = sum(padj[, "padjScreen"] < alpha, na.rm = TRUE))
+       n_screened = sum(padj[, "padjScreen"] <= alpha, na.rm = TRUE))
 }
 
 # Honest power statement for the under-powered diff-of-differences `interaction` contrast: the
-# median per-gene posterior SE + the minimum detectable logFC at `power` for the median gene.
-# With ~9 residual df + eBayes variance shrinkage the interaction stays under-powered -> report
-# the MDE/CI, never a bare "0 genes" null (absence of evidence != evidence of absence).
+# NOMINAL minimum detectable log2FC at `power` for the median gene = median posterior SE x the
+# two-sided-t multiplier. This is per-test nominal-t power -- NOT stageR/OFDR/BH discovery power,
+# and NOT gene-specific. Read it as "the median gene needs an effect >= mde to be detectable at
+# this alpha/power": context for the threshold count, never a bare "0 genes" null (absence of
+# evidence != evidence of absence). ~9 residual df + eBayes shrinkage -> df.total is the reference.
 interaction_power <- function(fit, contrast = "interaction", power = 0.80, alpha = 0.05) {
   stopifnot(contrast %in% colnames(fit$coefficients))
-  se   <- sqrt(fit$s2.post) * fit$stdev.unscaled[, contrast]
-  df   <- stats::median(fit$df.total)
-  mult <- stats::qt(1 - alpha / 2, df) + stats::qt(power, df)   # two-sided alpha, one-sided power
-  list(contrast = contrast, df = df, median_se = stats::median(se),
-       mde = mult * stats::median(se), power = power, alpha = alpha)
+  se     <- sqrt(fit$s2.post) * fit$stdev.unscaled[, contrast]
+  df     <- stats::median(fit$df.total, na.rm = TRUE)
+  mult   <- stats::qt(1 - alpha / 2, df) + stats::qt(power, df)   # two-sided alpha, one-sided power
+  med_se <- stats::median(se, na.rm = TRUE)
+  list(contrast = contrast, df = df, median_se = med_se,
+       mde = mult * med_se, power = power, alpha = alpha)
 }
 
 # Single-population pseudobulk DE: aggregate counts by sample_col -> factorial design + the 5
@@ -178,20 +182,34 @@ de_pseudobulk <- function(seurat, sample_col = "genotype_batch",
 dam_direction <- function(top, symbol_map, markers = canonical_microglia_markers$DAM,
                           contrasts = c("nlgf_in_maptki", "nlgf_in_p301s"),
                           lfc = 0.5, fdr = 0.05) {
-  ens <- symbol_map$ensembl[match(markers, symbol_map$symbol)]
-  ens <- ens[!is.na(ens)]
+  ens   <- unique(symbol_map$ensembl[match(markers, symbol_map$symbol)])   # first hit/symbol, dedup
+  ens   <- ens[!is.na(ens)]
+  n_req <- length(markers); n_mapped <- length(ens)   # surface map attrition, not just the in-fit count
   lapply(stats::setNames(contrasts, contrasts), function(cn) {
     sub <- top[[cn]][top[[cn]]$gene %in% ens, , drop = FALSE]
-    list(n_markers_in_fit = nrow(sub), frac_up = mean(sub$logFC > 0),
-         mean_logFC = mean(sub$logFC),
-         n_sig_up = sum(sub$logFC > lfc & sub$adj.P.Val < fdr))
+    n   <- nrow(sub)                                   # NA (not NaN) when no marker survives the fit
+    list(n_markers_requested = n_req, n_markers_mapped = n_mapped, n_markers_in_fit = n,
+         frac_up    = if (n) mean(sub$logFC > 0) else NA_real_,
+         mean_logFC = if (n) mean(sub$logFC)     else NA_real_,
+         n_sig_up   = sum(sub$logFC > lfc & sub$adj.P.Val < fdr))
   })
+}
+
+# Guarantee the replicate units form a COMPLETE crossing of the covariates (the balanced
+# genotype x batch design). A unit absent from the object would silently shrink the design and fit
+# on fewer units -> assert n_units == prod(covariate levels) so a broken object fails loud, not quiet.
+assert_complete_crossing <- function(meta, sample_col, covariate_cols = c("genotype", "batch")) {
+  n_units <- length(unique(as.character(meta[[sample_col]])))
+  n_cross <- prod(vapply(covariate_cols,
+                         function(cc) length(unique(as.character(meta[[cc]]))), integer(1)))
+  stopifnot(n_units == n_cross)
 }
 
 # S4 target: whole-microglia pseudobulk DE (the headline amyloid -> DAM activation programme) +
 # the DAM-direction concordance vs the v1 prior. RAW RNA counts -> pseudobulk by genotype_batch
 # (the 16 replicate units).
 run_pb_de_microglia <- function(seurat, symbol_map, assay = "RNA", min_count = 5, alpha = 0.05) {
+  assert_complete_crossing(seurat@meta.data, "genotype_batch")   # all 16 units present, else fail loud
   res <- de_pseudobulk(seurat, assay = assay, min_count = min_count, alpha = alpha)
   res$level          <- "whole_microglia"
   res$n_cells        <- ncol(seurat)
@@ -208,6 +226,7 @@ run_pb_de_substate <- function(seurat, substate_col = "microglia_substate",
                                sample_col = "genotype_batch",
                                substates = microglia_substate_levels,
                                min_cells = 10, assay = "RNA", min_count = 5, alpha = 0.05) {
+  assert_complete_crossing(seurat@meta.data, sample_col)   # all 16 units present, else fail loud
   sub  <- as.character(seurat@meta.data[[substate_col]])
   unit <- droplevels(factor(as.character(seurat@meta.data[[sample_col]])))
   ct   <- table(substate = factor(sub, levels = substates), unit = unit)   # substate x unit

@@ -66,7 +66,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (scripts/install-cmdstan.sh -> tools/rlib-stan + tools/cmdstan).
    + (P1-S4) de_pb.R: run_pb_de_microglia (whole-MG) / run_pb_de_substate (per-substate, min-cell floor fit-or-skip)
       -> de_pseudobulk (build_pseudobulk -> factorial_design -> fit_limma_voom[voomWQW+robust eBayes] -> stage_wise_test
-      -> interaction_power). stage_wise_test = stageR screen (omnibus F) + Holm per-contrast confirm. dam_direction =
+      -> interaction_power). stage_wise_test = stageR screen (omnibus F, df1=rank=3) + modified-Holm per-contrast confirm. dam_direction =
       amyloid->DAM concordance vs v1. stageR added (rproject.toml, BioCsoft).
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df

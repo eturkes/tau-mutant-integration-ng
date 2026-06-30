@@ -202,31 +202,40 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   AVOIDS Seurat::subset (its benign messages would dirty heavy build logs). Caller pre-guards estimability.
 - stageR (1.34.0, BioCsoft, on-snapshot -> LOCKED reproducible layer; pulled no heavy deps -- SummarizedExperiment
   already present). stage_wise_test: pScreen = fit$F.p.value (moderated omnibus F = "any genotype effect"; the 5
-  contrasts span the rank-3 genotype subspace, limma's F uses the right rank), pConfirmation = per-contrast p,
-  method="holm" (FWER-valid under ARBITRARY dependence -> correct despite the rank-deficient contrast family),
-  alpha=OFDR. getAdjustedPValues -> matrix [genes x {padjScreen, 5 contrasts}]; confirmation NA where the gene fails
-  the screen -> a contrast is sig at OFDR iff its column < alpha. GATE NOTE: getAdjustedPValues (NOT
+  contrasts span the rank-3 genotype subspace; limma's classifyTestsF keys df1 off the contrast-covariance RANK
+  (df1=3, NOT ncol=5 -- VERIFIED: F.p.value == pf(F, 3, df.total); the moderated-F VALUE is mildly basis-dependent
+  under rank deficiency, but its null df -- the screen's validity -- is right), pConfirmation = per-contrast p,
+  method="holm" = stageR's MODIFIED post-screen Holm (NOT plain p.adjust Holm: folds in the OFDR screen scaling;
+  FWER-valid under ARBITRARY dependence -> correct despite the rank-deficient contrast family), alpha=OFDR.
+  getAdjustedPValues -> matrix [genes x {padjScreen, 5 contrasts}]; confirmation NA where the gene fails the screen
+  -> a contrast is sig at OFDR iff its column <= alpha. GATE NOTE: getAdjustedPValues (NOT
   stageWiseAdjustment) emits ONE message() restating the fixed-OFDR caveat -- informational/deterministic, text has
   NO ^Warning/^WARN anchor (so it would not red the gate even on a fresh build reaching the log) -> suppressMessages
   it for clean logs. These targets stay cached under check.sh (only `report` is force-invalidated) so they don't
   re-run during the gate anyway.
-- interaction_power: median per-gene posterior SE (sqrt(s2.post)*stdev.unscaled[,"interaction"]) -> MDE at 80% power
-  via qt(median df.total). The HONEST under-powered-interaction statement (report MDE/CI, never a bare "0 genes").
+- interaction_power: median per-gene posterior SE (sqrt(s2.post)*stdev.unscaled[,"interaction"]) -> NOMINAL minimum
+  detectable log2FC at 80% power for the MEDIAN gene, via qt(median df.total). Per-test nominal-t power -- NOT
+  stageR/OFDR/BH discovery power, NOT gene-specific; context for the threshold count, never a bare "0 genes".
 - MIN-CELL FLOOR (per-substate fit-or-skip): fit iff EVERY genotype_batch unit has >= min_cells (default 10) of the
   substate (0-cell units fail too) -> full estimable factorial design; else SKIP -> descriptive-only. cell_counts
-  (substate x 16-unit) table ALWAYS stored (report dropout asymmetry). Real argmax substates only. LIVE: Homeostatic
+  (substate x 16-unit) table ALWAYS stored (report dropout asymmetry). Real argmax substates only. Both run_pb_de_*
+  assert a COMPLETE genotype x batch crossing up front (assert_complete_crossing: n_units == prod covariate levels)
+  -> an absent unit fails LOUD, never a silent <16-unit sub-design. LIVE: Homeostatic
   (min 52) + DAM (min 31) FIT; IFN (min 5, 15/16 units pass) + Proliferative (0) SKIP.
 - LIVE RESULTS (2026-06-30; re-baselined R 4.6, NOT v1's locked margins): whole-MG kept 14512, stageR screened 3545.
-  sig (|logFC|>0.5 & FDR<0.05) up/dn: tau_alone 0/0 (tau-alone barely perturbs microglia), nlgf_in_maptki 555/457,
+  sig (|logFC|>0.5 & FDR<0.05) up/dn: tau_alone 0/0 (no LARGE-effect genes; 124 stageR small-effect), nlgf_in_maptki 555/457,
   nlgf_in_p301s 940/1148, tau_in_nlgf 202/764, interaction 0/0. DAM markers amyloid-UP: frac_up 1.00/0.94, meanLFC
-  +1.37/+1.85, n_sig_up 11/16 -> HEADLINE amyloid->DAM concordant v1 at the DE level. INTERACTION static-null at the
-  effect-size threshold BUT stageR confirms 123 SMALL-effect genes + MDE@80%=0.92 log2FC (median_se 0.315, df 24) ->
-  under-powered below ~0.9, NOT "absent"; report the 123 + MDE/CI (S5), hand synergy to P2. Per-substate FIT:
+  +1.37/+1.85, n_sig_up 11/16 -> HEADLINE amyloid->DAM concordant v1 at the DE level. INTERACTION 0/0 at the
+  effect-size threshold BUT stageR confirms 123 SMALL-effect genes (no LARGE-effect DE != no DE) + MDE@80%=0.92
+  log2FC (median_se 0.315, df 24; NOMINAL median-gene power, not FDR discovery) -> under-powered, NOT "absent";
+  report the 123 + MDE/CI (S5), hand synergy to P2. Per-substate FIT:
   Homeostatic kept 13599/screened 1241 (interaction MDE 1.12), DAM kept 9148/screened 415 (MDE 1.49; amyloid still
   shifts WITHIN DAM, nlgf_in_p301s 86/74) -- fewer cells -> larger per-substate MDE (honest).
-- tests/test_de_pb.R extended (warn=2 clean): cells= subset (+ no-match fail-loud), de_pseudobulk structure +
-  CI cols + stageR matrix colnames + finite interaction MDE, run_pb_de_substate fit/skip statuses + 4x16 cell_counts
-  + skip-reason + tighter-floor skips DAM, dam_direction shape. Synthetic Seurat (RNG-free), voomWQW warning-free.
+- tests/test_de_pb.R extended (warn=2 clean): cells= subset + validation (all-present/no-dup, partial-bad fail-loud),
+  SCREEN df1=rank=3 calibration (F.p.value==pf(F,3,df) != pf(F,5,df)), de_pseudobulk structure + CI cols + stageR
+  matrix colnames + finite interaction MDE, run_pb_de_substate fit/skip statuses + 4x16 cell_counts + skip-reason +
+  tighter-floor skips DAM, COMPLETE-CROSSING guard (absent unit -> fail-loud both orchestrators), dam_direction shape
+  + zero-marker NA. Synthetic Seurat (RNG-free), voomWQW warning-free.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

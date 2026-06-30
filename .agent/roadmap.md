@@ -54,11 +54,11 @@ gate's ^Warning: scan; green held only because check.sh leaves composition_resul
 fit's $diagnostic_summary(quiet=TRUE) (~2-3% divergent, E-BFMI ~0.71, recorded NOT gated), structurally harden the
 capture, and muffle+record sampler messages -> provenance$sccomp_messages. See plan S3 + memory.md S3 section.
 S4 DONE 2026-06-30: `pb_de_microglia` + `pb_de_substate` (R/de_pb.R: voomWithQualityWeights + robust eBayes; stageR
-omnibus-F screen -> Holm per-contrast confirm; interaction MDE; per-substate min-cell floor fit-or-skip). LIVE-VERIFIED,
+omnibus-F screen (df1=rank=3) -> modified-Holm per-contrast confirm; interaction MDE; per-substate min-cell floor fit-or-skip). LIVE-VERIFIED,
 full gate green. Whole-MG: kept 14512, stageR screened 3545; amyloid drives strong DE (nlgf_in_maptki 555up/457dn,
 nlgf_in_p301s 940/1148), DAM markers amyloid-UP frac 1.00/0.94 meanLFC +1.37/+1.85 -> HEADLINE concordant v1 at the DE
-level. tau_alone null (0/0). INTERACTION static-null at |logFC|>0.5 (0 genes) BUT 123 stageR-confirmed small-effect +
-MDE@80%=0.92 log2FC -> under-powered, NOT absent; report 123+MDE/CI (S5), synergy -> P2. Per-substate Homeostatic+DAM
+level. tau_alone 0/0 large-effect (124 stageR-confirmed small-effect). INTERACTION 0/0 at |logFC|>0.5 BUT 123
+stageR-confirmed small-effect + MDE@80%=0.92 log2FC (NOMINAL median-gene power) -> under-powered, NOT absent; report 123+MDE/CI (S5), synergy -> P2. Per-substate Homeostatic+DAM
 FIT (amyloid shifts within DAM too), IFN(min5)+Proliferative(0) SKIP + cell_counts. See plan S4 + memory.md S4 section.
 Next: S5 report `_microglia.qmd` + CLOSE-OUT.
 
@@ -68,7 +68,7 @@ Next: S5 report `_microglia.qmd` + CLOSE-OUT.
   factorial + 5 contrasts, concrete quality gate.
 - P1 snRNAseq microglia core [ACTIVE]: reprocess (SCT) + substates (homeostatic / DAM /
   IFN / proliferative, UCell), composition (sccomp), pseudobulk DE across contrasts -> the
-  amyloid->DAM activation programme. Static interaction = v1-prior null (reported w/ power stmt) -> rate effect to P2.
+  amyloid->DAM activation programme. Interaction = no large-effect DE, v1-prior consistent (reported w/ power stmt) -> rate effect to P2.
 - P2 Interaction trajectory: activation pseudotime (homeostatic->DAM); test amyloid
   advance + tau x amyloid progression synergy, decomposed composition vs progression.
 - P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase

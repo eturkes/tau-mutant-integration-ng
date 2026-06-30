@@ -12,8 +12,8 @@ produce, as targets DAG nodes feeding ONE incremental report section:
 2. substate labels (homeostatic / DAM / IFN / proliferative; aux MHC/APC score);
 3. compositional test of substate shifts across the 5 contrasts (sccomp + propeller);
 4. pseudobulk DE across the 5 contrasts (whole-MG + per-substate) -> the robust
-   amyloid->DAM activation programme (headline #1) + an honest STATIC-NULL interaction
-   that forward-points to P2 (trajectory);
+   amyloid->DAM activation programme (headline #1) + an honest under-powered interaction
+   (no large-effect genes) that forward-points to P2 (trajectory);
 5. a `_microglia.qmd` report section + CLOSE-OUT.
 
 Out of P1 (deferred / dropped): trajectory + interaction-as-rate -> P2; TF/kinase
@@ -162,7 +162,7 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
 
 - **S5 report section + CLOSE-OUT** [render].
   `_microglia.qmd` (UCell substate UMAP, proportions, composition results, amyloid->DAM DE programme,
-  static-null interaction + P2 forward-pointer, Thrupp caveat); include in index.qmd; add to
+  under-powered interaction (no large-effect DE) + P2 forward-pointer, Thrupp caveat); include in index.qmd; add to
   tar_quarto(extra_files) if needed; figures via theme_tau + scale_*_genotype (British English, hyphens).
   New tests wired into gate. Update memory (SOTA decisions, gotchas) + map (P1 wiring) + history (P1 digest);
   archive this plan; reset roadmap Active plan.

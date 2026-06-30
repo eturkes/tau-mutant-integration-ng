@@ -61,6 +61,17 @@ for (tt in vfit$top) {
 }
 # fail loud when counts columns are not aligned to the design rows (limma fits by position, not name)
 expect_error(fit_limma_voom(counts[, 16:1], fd$design, fd$contrasts, min_count = 5), "colnames(counts)")
+# stageR screen omnibus-F is calibrated on the genotype subspace RANK (3), not the contrast COLUMN
+# count (5): limma's classifyTestsF keys df1 off the contrast-covariance rank, so the 2 redundant
+# canonical contrasts do NOT inflate the screen's reference df. Reconstruct F.p.value with df1 = 3 vs
+# df1 = 5 -> only df1 = 3 reproduces limma's screen p-value EXACTLY, proving the screen tests "any
+# genotype effect" on the correct 3-df subspace. (The moderated-F VALUE is mildly basis-dependent
+# under rank deficiency, but the screen's validity rests on this null df, which is right.)
+.fp3 <- stats::pf(vfit$fit$F, df1 = 3, df2 = vfit$fit$df.total, lower.tail = FALSE)
+.fp5 <- stats::pf(vfit$fit$F, df1 = 5, df2 = vfit$fit$df.total, lower.tail = FALSE)
+stopifnot(qr(fd$contrasts)$rank == 3L,
+          isTRUE(all.equal(unname(vfit$fit$F.p.value), unname(.fp3))),    # df1 = rank = 3
+          !isTRUE(all.equal(unname(vfit$fit$F.p.value), unname(.fp5))))   # not df1 = ncol = 5
 
 # --- fit_limma_log smoke (proteomics-style, no batch): 5 named topTables ----------------
 meta_p <- data.frame(genotype = rep(genotype_levels, each = 4L), row.names = paste0("p", 1:16))
@@ -87,7 +98,10 @@ s4obj$microglia_substate <- factor(
 dam_cells <- colnames(s4obj)[s4obj$microglia_substate == "DAM"]
 pcsub <- pseudobulk_counts(s4obj, "genotype_batch", cells = dam_cells)
 stopifnot(ncol(pcsub) == 16L, nrow(pcsub) == 200L)
-expect_error(pseudobulk_counts(s4obj, "genotype_batch", cells = "no_such_cell"), "any(sel)")
+expect_error(pseudobulk_counts(s4obj, "genotype_batch", cells = "no_such_cell"), "cells %in% colnames")
+# a PARTIALLY-bad cell vector also fails loud -- silently dropping an unknown cell would mis-subset
+expect_error(pseudobulk_counts(s4obj, "genotype_batch", cells = c(dam_cells[1], "no_such_cell")),
+             "cells %in% colnames")
 
 # --- de_pseudobulk: 16-sample fit, 5 CI topTables, stageR matrix, finite interaction MDE -
 dpb <- de_pseudobulk(s4obj)
@@ -117,7 +131,20 @@ s4map <- data.frame(ensembl = rownames(s4obj),
                     symbol = paste0("Sym", seq_len(nrow(s4obj))), stringsAsFactors = FALSE)
 dconc <- dam_direction(dpb$top, s4map, markers = c("Sym10", "Sym20", "Sym30"))
 stopifnot(identical(names(dconc), c("nlgf_in_maptki", "nlgf_in_p301s")),
-          dconc$nlgf_in_maptki$n_markers_in_fit >= 1L,
+          dconc$nlgf_in_maptki$n_markers_in_fit >= 1L, dconc$nlgf_in_maptki$n_markers_mapped >= 1L,
           is.finite(dconc$nlgf_in_maptki$frac_up), is.finite(dconc$nlgf_in_maptki$mean_logFC))
+# dam_direction with zero mappable markers -> explicit NA (not NaN) + surfaced request/map attrition
+.dz <- dam_direction(dpb$top, s4map, markers = "Sym_absent")
+stopifnot(.dz$nlgf_in_maptki$n_markers_requested == 1L, .dz$nlgf_in_maptki$n_markers_mapped == 0L,
+          .dz$nlgf_in_maptki$n_markers_in_fit == 0L, is.na(.dz$nlgf_in_maptki$frac_up),
+          is.na(.dz$nlgf_in_maptki$mean_logFC), .dz$nlgf_in_maptki$n_sig_up == 0L)
+
+# --- complete-crossing guard: an absent genotype_batch unit fails loud, never a silent <16-unit fit
+.full <- make_meta16(); .full$genotype_batch <- paste(.full$genotype, .full$batch, sep = "_")
+assert_complete_crossing(.full, "genotype_batch")                  # full 4x4 crossing -> no error
+expect_error(assert_complete_crossing(.full[-1, , drop = FALSE], "genotype_batch"), "n_cross")
+.drop1 <- colnames(s4obj)[s4obj$genotype_batch != unique(s4obj$genotype_batch)[1]]
+expect_error(run_pb_de_substate(s4obj[, .drop1], min_cells = 3L), "n_cross")   # orchestrators wire the guard
+expect_error(run_pb_de_microglia(s4obj[, .drop1], s4map), "n_cross")
 
 cat("ok - test_de_pb\n")
