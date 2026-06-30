@@ -37,9 +37,10 @@ df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per
 S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (S3 = source-compiled glmmTMB/TMB;
 no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
-5 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
-glmmTMB per-cell sensitivity [new-dep arm] -> S4 report). S1 + S2a + S2b + S3 DONE; next open = S4 (report). (S2 split
-out S3, then S2 itself split into S2a/S2b, on 2026-06-30 to fit one window each — see ledger.)
+6 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
+glmmTMB per-cell sensitivity [new-dep arm] -> S4a report-data extractor+target + S4b chapter+wiring). S1 + S2a +
+S2b + S3 DONE; next open = S4a (S4 split into S4a/S4b + the done work PARKED on branch wip-p2s4-report, 2026-07-01).
+(S2 split out S3, then S2 -> S2a/S2b, then S4 -> S4a/S4b, all 2026-06-30..07-01 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -208,3 +209,14 @@ out S3, then S2 itself split into S2a/S2b, on 2026-06-30 to fit one window each 
   tau:amyloid +0.123 logit (p~0.015, CI excludes 0), non-singular; 1.5s, tar_meta NA/NA. COMPOSITION-CONFLATED (the
   per-cell mean_pt analogue -> corroborates the position shift, NOT progression; S2b Kitagawa stays load-bearing).
   Full gate green (39 tests, 22 targets, render clean). Next open = S4 (report + integration) -> then CLOSE-OUT.
+- 2026-07-01 P2-S4 SPLIT -> S4a + S4b (no code shipped on main; the done work PARKED on branch wip-p2s4-report,
+  main reverted to 863cb75, orphan trajectory_report object pruned, gate green on clean main). The combined S4
+  (trajectory_report_data extractor + trajectory_report target + _trajectory.qmd chapter + index wiring +
+  _microglia.qmd pointer + test + render-debug + gate + docs + commit + close-out) overflowed one window. PARKED
+  (built-validated pre-revert): the extractor + target (R/trajectory.R + _targets.R; the target built 674KB, all
+  fields) + the FULL _trajectory.qmd draft (title "synergy adds DAM cells rather than advancing them", inline-
+  computed prose, 5 sections / 3 figs / 2 tables / glmmTMB inline / provenance; UNRENDERED). Re-split at the
+  data/report seam: S4a = compact extractor + trajectory_report target + a structure/guard test (pure-R, no
+  render); S4b = restore the qmd + wire index/_microglia pointer + render-debug to 0-warning + docs. Each restores
+  its parked files (`git checkout wip-p2s4-report -- <file>`) -> near-mechanical, no re-derive, no re-read of R/
+  model files. DELETE the branch after S4b lands. Next open = S4a.

@@ -309,17 +309,64 @@ S3 — glmmTMB per-cell sensitivity arm (supportive; isolates the new-dependency
   COMPLETES with `tau:amyloid` effect/CI/p RECORDED + FLAGGED supportive (concordance AND discordance both fine,
   neither required); no gate red from the captured warnings; gate green.
 
-S4 — Report + integration.
-  `_trajectory.qmd` (trajectory UMAP x pseudotime; pseudotime density/ridge by genotype; interaction FOREST
-  [contrasts x measures]; composition-vs-progression-vs-cross decomposition bar; headline progression_cf/frac_past
-  interaction; glmmTMB tau:amyloid effect/CI annotated SUPPORTIVE; activation-ordering + rooting +
-  position-not-rate + lineage-conditioning(omitted-fraction) + transcriptionally-close-substates caveats) +
-  compact `trajectory_report_data` extractor (slim frame + the contrast/decomposition tables + the glmmTMB
-  effect row; cheap-render) loading BOTH `trajectory_progression` and `trajectory_glmm_sensitivity` + wire into
-  index.qmd AFTER _microglia.qmd + update _microglia.qmd's "P2 pointer" -> built. Prose INLINE-COMPUTED from the
-  loaded targets (never hardcoded — tracks the cached build). ACCEPTANCE: report renders 0-warning under
-  warn=2; headline + 3-channel decomposition + glmmTMB supportive + caveats present; gate green. -> then
-  CLOSE-OUT.
+S4 — Report + integration. SPLIT (2026-07-01) into S4a (data layer) + S4b (report layer): the combined S4
+(extractor + target + qmd + wiring + pointers + test + render-debug + gate + docs + commit + close-out) overflowed
+one window. WORK PARKED on branch `wip-p2s4-report` (pre-revert): R/trajectory.R (+`trajectory_report_data` extractor
+appended after glmmtmb_pt_sensitivity, BUILT-VALIDATED — the target built 674KB, all fields present), _targets.R
+(+`trajectory_report` target after trajectory_glmm_sensitivity), _trajectory.qmd (FULL chapter draft, UNRENDERED).
+Each sub-step RESTORES its parked files (`git checkout wip-p2s4-report -- <file>`) → near-mechanical, NO re-derive,
+NO re-read of R/ model files. DELETE the branch after S4b lands. Headline numbers live in memory.md P2-S2b/S3 and are
+INLINE-COMPUTED in the qmd (never hardcoded). Caveat: main HEAD 863cb75 has no trajectory_report code/object (pruned)
+— restore from the branch.
+
+S4a — Compact extractor + target + test (data layer; pure-R, NO render).
+  RESUMING? Read ONLY this S4a block + R/microglia.R::microglia_report_data (the MODEL extractor) + the tail of
+  R/trajectory.R (where the extractor appends) + tests/test_trajectory.R + tests/helpers.R. SKIP Scope/Stack/other steps.
+  RESTORE the parked extractor + target: `git checkout wip-p2s4-report -- R/trajectory.R _targets.R`; `git diff` MUST
+  show ONLY the appended fn + the one new target (else inspect).
+  `trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)` = compact
+  extractor reading the 3 COMPACT trajectory targets (NEVER the 612MB Seurat — cheap-render invariant). Returns
+  list{cell_frame(genotype/substate/on_lineage/pt_raw/score_axis_pt), interaction(rbind primary+exploratory families,
+  +family col), weighted_top(5-contrast mean_pt rows), decomposition(loadings/L_int/interaction), per_unit,
+  lineage_per_unit, sensitivity, glmm(the S3 row subset), provenance(dims/root/concordance/loadings/v1/n_perm/seed/
+  versions)}. Fail-loud stopifnot on every input's structure + finite/consistency guards (MIRROR microglia_report_data).
+  Target `trajectory_report` (format="qs") after trajectory_glmm_sensitivity in _targets.R.
+  TEST (add to tests/test_trajectory.R): REUSE the microglia_trajectory stub the S2b structural-orchestrator test
+  builds (make_trajectory_cell_frame(jitter>0)); extend it with the per_unit / sensitivity / provenance fields the
+  extractor reads → run run_trajectory_progression + glmmtmb_pt_sensitivity on it → trajectory_report_data(...) →
+  assert the returned list carries every documented field (+ "progression_cf" in interaction$measure, finite
+  coef/fdr, comp_cf/prog_cf/cross in decomposition$loadings) AND a fail-loud guard fires on a malformed input
+  (drop a required name → expect_error). The extractor is BUILT-VALIDATED → the only NEW work is this test.
+  ACCEPTANCE (S4a): extractor + target restored; test passes at warn=2; the gate builds `trajectory_report` FRESH on
+  real data (the force-render still renders index.qmd WITHOUT the trajectory chapter — not wired till S4b → the
+  unrendered qmd cannot red the gate); map.md += trajectory_report target + trajectory_report_data fn; gate green;
+  commit `trajectory (p2 s4a): compact report-data extractor + target + test`.
+
+S4b — Chapter + wiring (report layer; the render-debug half).
+  RESUMING? Read ONLY this S4b block + (after restoring) _trajectory.qmd + _microglia.qmd (MODEL chapter + the 2
+  "P2 pointer" sentences) + index.qmd (include list + Overview). SKIP Scope/Stack/other steps AND the R/ model files
+  (the qmd is parked-complete — do NOT re-derive it).
+  RESTORE the parked chapter: `git checkout wip-p2s4-report -- _trajectory.qmd`. COMPLETE draft: title
+  `# The tau-amyloid synergy adds DAM cells rather than advancing them {#sec-trajectory}`; warn=2 setup w/ inline
+  helpers (irow/mp_ctr/fmt_p + adaptive glmm_sentence + per-genotype conditioning audit); sections (amyloid axis
+  shift / composition-not-progression / per-cell glmmTMB / reconciliation+robustness+concordance / caveats+
+  provenance); 3 fig chunks (pseudotime-shift, decomposition, concordance), 2 table chunks (interaction-table,
+  conditioning), glmmTMB inline, provenance cat. Prose INLINE-COMPUTED from trajectory_report.
+  WIRE: index.qmd → add `{{< include _trajectory.qmd >}}` AFTER `{{< include _microglia.qmd >}}`; extend the Overview
+  paragraph to name the trajectory chapter (activation-axis advance; synergy = composition not progression).
+  POINTER: _microglia.qmd → rewrite the 2 forward-pointer sentences (locate by "rate question handed to the
+  trajectory phase" + "the subject of the next phase") to reflect P2 is BUILT + found the synergy COMPOSITIONAL
+  (more DAM cells, NO supported further-advance); cross-ref @sec-trajectory. British English + hyphens.
+  DEP: the qmd uses patchwork (`(p_a | p_b)`) — CONFIRMED already in rproject.toml + installed + used by
+  _microglia.qmd/_qc.qmd (NO new dep). All other infrastructure (theme_tau, scale_fill_genotype, genotype_levels)
+  is confirmed present → render-debug should surface only minor typos (a field name, an aes/scale) if anything.
+  RENDER-DEBUG: scripts/check.sh now force-renders index.qmd WITH _trajectory.qmd under warn=2 → fix any chunk
+  warning/error. Iterate to 0-warning.
+  ACCEPTANCE (S4b): report renders 0-warning under warn=2; headline + 3-channel decomposition + glmmTMB supportive +
+  the 5 caveats present; gate green. memory.md += a P2-S4 section (cheap-render invariant for _trajectory.qmd + any
+  render gotcha); map.md += _trajectory.qmd include. Commit `trajectory (p2 s4b): trajectory chapter + index wiring +
+  microglia pointer`. DELETE branch `wip-p2s4-report`. → CLOSE-OUT (next session = session-prompt CLOSE-OUT mode:
+  adversarial plan review, fold P2 digest → history.md, archive the plan, reset Active plan).
 
 ## Reproducibility / risks
 - rproject.toml: `slingshot` (BioCsoft; auto-pulls SingleCellExperiment / princurve / TrajectoryUtils — pure-R
