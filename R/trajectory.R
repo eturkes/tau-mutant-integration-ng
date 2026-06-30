@@ -324,8 +324,11 @@ pseudotime_per_replicate <- function(cell_frame, lineage_states, dam_state = "DA
                                      min_within = 10L) {
   stopifnot(is.data.frame(cell_frame),
             all(c("genotype_batch", "genotype", "substate", "pt_raw") %in% names(cell_frame)),
-            is.character(lineage_states), dam_state %in% lineage_states)
+            is.character(lineage_states), dam_state %in% lineage_states,
+            "min_within must be a single integer >= 1" =
+              (length(min_within) == 1L && is.finite(min_within) && min_within >= 1L))
   cf   <- cell_frame[is.finite(cell_frame$pt_raw), , drop = FALSE]   # on-lineage cells
+  stopifnot("no on-lineage cells: every pt_raw is non-finite" = nrow(cf) > 0L)
   sub  <- as.character(cf$substate)
   unit <- as.character(cf$genotype_batch)
   geno <- as.character(cf$genotype)
@@ -402,6 +405,7 @@ ordinary_t_table <- function(fit, contrast_name, conf_level = 0.95) {
 fit_trajectory_contrasts <- function(measure_mat, design, contrasts, weights = NULL,
                                      conf_level = 0.95) {
   stopifnot(is.matrix(measure_mat), !is.null(rownames(measure_mat)),
+            !is.null(colnames(measure_mat)),
             identical(colnames(measure_mat), rownames(design)),
             identical(rownames(contrasts), colnames(design)),
             qr(design)$rank == ncol(design),
@@ -417,6 +421,20 @@ fit_trajectory_contrasts <- function(measure_mat, design, contrasts, weights = N
   # the input rows; lmFit preserves feature count + order) so ordinary_t_table keys them.
   rownames(cfit$coefficients)    <- rownames(measure_mat)
   rownames(cfit$stdev.unscaled)  <- rownames(measure_mat)
+  if (!is.null(weights)) {
+    # limma::contrasts.fit derives a multi-coefficient contrast's SE from the UNWEIGHTED coef
+    # correlation (cov.coefficients = (X'X)^-1) -> under per-feature weights it is exact ONLY for a
+    # single-coef contrast or a balanced design (verified to diverge ~13% on an unbalanced one).
+    # Override stdev.unscaled with the EXACT per-feature weighted normal-equation value so the
+    # ordinary t holds for EVERY contrast independent of balance (the weighted-lmFit coefficients +
+    # sigma are already exact WLS). se(contrast c, feature i) = sigma_i * sqrt(c' (X'W_iX)^-1 c).
+    su <- vapply(seq_len(nrow(measure_mat)), function(i) {
+      xtwx_inv <- chol2inv(chol(crossprod(design, design * weights[i, ])))
+      sqrt(diag(crossprod(contrasts, xtwx_inv %*% contrasts)))
+    }, numeric(ncol(contrasts)))
+    cfit$stdev.unscaled <- matrix(su, nrow(measure_mat), ncol(contrasts), byrow = TRUE,
+                                  dimnames = list(rownames(measure_mat), colnames(contrasts)))
+  }
   top <- stats::setNames(
     lapply(colnames(contrasts), function(cn) ordinary_t_table(cfit, cn, conf_level)),
     colnames(contrasts))
@@ -437,7 +455,10 @@ kitagawa_channels <- function(pi_mat, mu_mat, pi_bar, mu_bar, tol = 1e-8) {
             identical(rownames(pi_mat), names(pi_bar)),
             identical(names(pi_bar), names(mu_bar)),
             all(is.finite(pi_mat)), all(is.finite(mu_mat)),
-            all(is.finite(pi_bar)), all(is.finite(mu_bar)))
+            all(is.finite(pi_bar)), all(is.finite(mu_bar)),
+            all(pi_mat >= 0), all(pi_bar >= 0),                  # pi is a genuine composition ...
+            max(abs(colSums(pi_mat) - 1)) < tol,                 # ... columns sum to 1 ...
+            abs(sum(pi_bar) - 1) < tol)                          # ... as does the pooled anchor
   const   <- sum(pi_bar * mu_bar)
   mean_pt <- colSums(pi_mat * mu_mat)
   comp_cf <- colSums(pi_mat * mu_bar)
@@ -454,7 +475,7 @@ kitagawa_channels <- function(pi_mat, mu_mat, pi_bar, mu_bar, tol = 1e-8) {
 # channels. The interaction contrast L() is LINEAR + intercept-free -> L(mean_pt) = L(comp_cf) +
 # L(prog_cf) + L(cross) EXACTLY (const is unit-constant, annihilated). The exactness needs ONE
 # shared per-unit weight vector replicated across the 4 channel-rows (the SAME WLS operator hits
-# each row); differing per-row weights would break reconstruction. loadings = the 3 channel
+# each row); differing per-row weights generally break it. loadings = the 3 channel
 # interaction coefs / L(mean_pt) (NA if |L(mean_pt)| < tol). Cell-weighted pooled anchors =
 # PRIMARY; replicate-balanced (rowMeans) anchors = a SENSITIVITY. Pure.
 decompose_progression_vs_composition <- function(per_rep, design, contrasts,

@@ -285,8 +285,15 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   = the ONE col sanitizer S2a writes + S2b reads back (never hand-case). EXACT 3-channel Kitagawa shift-share
   (comp/prog/cross) holds on RAW pt_raw ONLY (logit/asin break additivity); the interaction contrast is
   intercept-free so it annihilates the unit-constant -> L(mean_pt)=L(comp)+L(prog)+L(cross), reconstruction <1e-8
-  VERIFIED. Exactness needs ONE shared per-unit weight vector replicated across the 4 channel-rows (same WLS
-  operator each row); differing per-row weights would break it.
+  VERIFIED. Coefficient-reconstruction exactness needs ONE shared per-unit weight vector replicated across the 4
+  channel-rows (same WLS operator each row); differing per-row weights generally break it. Parametric weighted
+  contrast SE: limma::contrasts.fit derives a multi-coef contrast SE from the UNWEIGHTED corr ((X'X)^-1) -> exact
+  only for a single-coef contrast OR a balanced design (interaction=tau_nlgf is single-coef -> always exact; the
+  real 16-unit factorial is balanced -> exact, but a dropped unit unbalances it). fit_trajectory_contrasts now
+  OVERRIDES stdev.unscaled with the exact per-feature normal-equation value (chol2inv(chol(X'W_iX))) when weighted
+  -> ordinary t exact for EVERY contrast independent of balance. The 16-unit/9-df complete crossing is enforced by
+  S2b's run_trajectory_progression (assert_complete_crossing); the S2a primitives stay crossing-agnostic (full-rank
+  guard only).
 - GATE gotcha (limma 1-row fit): limma::lmFit DROPS the single feature rowname (coefficients rowname NULL) ->
   fit_trajectory_contrasts RESTORES rownames(coefficients/stdev.unscaled) <- rownames(measure_mat) so
   ordinary_t_table keys the measure labels (forward to ANY 1-feature limma fit).

@@ -166,4 +166,35 @@ stopifnot(dec2$recon_resid_max < 1e-8,
           abs(dec2$loadings[["prog_cf"]]) < 1e-8)
 cat("ok - decompose_progression_vs_composition\n")
 
+# --- weighted contrasts: EXACT per-feature WLS SE on an UNBALANCED design ------------------
+# limma::contrasts.fit approximates a multi-coef contrast's SE under per-row weights (it reuses the
+# unweighted coef correlation); fit_trajectory_contrasts overrides it with the exact value. An
+# UNBALANCED design is required to distinguish the two -- on a balanced design both are exact.
+Xw <- cbind(b0 = 1, g = c(0, 0, 0, 1, 1, 1), x = c(0, 1, 2, 0, 1, 3)); rownames(Xw) <- paste0("u", 1:6)
+Cw <- cbind(g_only = c(0, 1, 0), sum_gx = c(0, 1, 1)); rownames(Cw) <- colnames(Xw)
+Mw <- rbind(m1 = c(2, 3, 5, 4, 6, 9), m2 = c(1, 1, 2, 3, 5, 8)); colnames(Mw) <- rownames(Xw)
+Ww <- rbind(m1 = c(1, 1, 1, 1, 1, 20), m2 = c(20, 1, 1, 1, 1, 1)); colnames(Ww) <- rownames(Xw)
+ftw <- fit_trajectory_contrasts(Mw, Xw, Cw, weights = Ww)
+for (i in 1:2) {
+  o   <- stats::lm.wfit(Xw, Mw[i, ], Ww[i, ])
+  sig <- sqrt(sum(Ww[i, ] * o$residuals^2) / o$df.residual)
+  XtWXinv <- chol2inv(chol(crossprod(Xw, Xw * Ww[i, ])))
+  for (cn in colnames(Cw))
+    stopifnot(abs(ftw$top[[cn]]$se[i] -
+                  sig * sqrt(as.numeric(t(Cw[, cn]) %*% XtWXinv %*% Cw[, cn]))) < 1e-9)
+  stopifnot(max(abs(ftw$fit$coefficients[i, ] - drop(crossprod(Cw, o$coefficients)))) < 1e-9)
+}
+cat("ok - fit_trajectory_contrasts weighted SE exact (unbalanced)\n")
+
+# --- fail-loud contract guards -------------------------------------------------------------
+ls2 <- c("Homeostatic", "DAM")
+cf_na <- make_trajectory_cell_frame(); cf_na$pt_raw <- NA_real_
+expect_error(pseudotime_per_replicate(cf_na, ls2), "no on-lineage cells")          # all pt non-finite
+expect_error(pseudotime_per_replicate(make_trajectory_cell_frame(), ls2, min_within = 0L), "min_within")
+expect_error(pseudotime_per_replicate(make_trajectory_cell_frame(), ls2, min_within = NA_integer_), "min_within")
+M_nc <- M; colnames(M_nc) <- NULL
+expect_error(fit_trajectory_contrasts(M_nc, fd$design, fd$contrasts), "colnames(measure_mat)")
+expect_error(kitagawa_channels(prog_pr$pi * 2, prog_pr$mu, prog_pr$pi_bar, prog_pr$mu_bar))  # cols sum to 2
+cat("ok - fail-loud contract guards\n")
+
 cat("ALL trajectory tests passed\n")
