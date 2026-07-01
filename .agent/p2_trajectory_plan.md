@@ -377,6 +377,12 @@ S4b — Chapter + wiring (report layer; the render-debug half).
   is confirmed present → render-debug should surface only minor typos (a field name, an aes/scale) if anything.
   RENDER-DEBUG: scripts/check.sh now force-renders index.qmd WITH _trajectory.qmd under warn=2 → fix any chunk
   warning/error. Iterate to 0-warning.
+  S4a-REVIEW NOTE (codex low:955, deferred here): `trd$decomposition` is DEAD OUTPUT — the parked qmd draws its
+  decomposition figure from provenance loadings (composition/progression/cross_loading → geom_col), never from
+  `trd$decomposition`. DECIDE: wire the figure to `trd$decomposition$loadings` (bundled+guarded) OR drop
+  `decomposition` from trajectory_report_data output + its test assertion. Same call for other unread bundle fields
+  (glmm$term/se/z, unread per_unit cols) — keep as provenance or trim the API. (`%d`-coercion is a NON-issue: R
+  sprintf %d accepts whole-valued doubles, which the extractor's int1 already guarantees → no qmd/extractor cast.)
   ACCEPTANCE (S4b): report renders 0-warning under warn=2; headline + 3-channel decomposition + glmmTMB supportive +
   the 5 caveats present; gate green. memory.md += a P2-S4 section (cheap-render invariant for _trajectory.qmd + any
   render gotcha + the extractor guard-bar + the fixture composition-degeneracy: constant composition → NaN

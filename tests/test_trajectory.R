@@ -385,23 +385,67 @@ stopifnot(
   !any(vapply(trd$provenance, is.null, logical(1))))         # every assembled provenance field non-NULL
 cat("ok - trajectory_report_data (fields + qmd-indexed measures + finite inference)\n")
 
-# HARDENED guards FAIL LOUD on a dropped now-required name (else a silent NA-fill breaks mid-render):
-expect_error(trajectory_report_data(s4_mt, s4_tp, modifyList(s4_glmm, list(n_cells = NULL))))  # 13-name glmm set
-s4_tp_bad <- s4_tp; s4_tp_bad$contrasts$weighted <- NULL                                        # weighted_top gone
-expect_error(trajectory_report_data(s4_mt, s4_tp_bad, s4_glmm))
-s4_mt_bad <- s4_mt; s4_mt_bad$provenance$dam_pt_rho <- NULL                                      # a prose provenance source
-expect_error(trajectory_report_data(s4_mt_bad, s4_tp, s4_glmm))
+# HARDENED guards FAIL LOUD on a dropped now-required name (regexp pins the guard that fires first, so an
+# unrelated earlier error cannot masquerade as a pass):
+expect_error(trajectory_report_data(s4_mt, s4_tp, modifyList(s4_glmm, list(n_cells = NULL))),
+             '"method", "term", "estimate"')                            # up-front 13-name glmm set (msg truncates at tail)
+s4_tp_bad <- s4_tp; s4_tp_bad$contrasts$weighted <- NULL                 # weighted_top gone
+expect_error(trajectory_report_data(s4_mt, s4_tp_bad, s4_glmm), "weighted")
+s4_mt_bad <- s4_mt; s4_mt_bad$provenance$dam_pt_rho <- NULL              # a prose provenance source
+expect_error(trajectory_report_data(s4_mt_bad, s4_tp, s4_glmm), '"primary_dims", "lineage_substates", "root_substate"')
 cat("ok - trajectory_report_data hardened guards fail loud on malformed input\n")
 
 # perm_p column + each canonical weighted_top mean_pt row are DIRECT qmd render inputs (it$perm_p table +
 # int_*$perm_p prose; mp_ctr(cn) coef/CI feed the p_ctr geom_pointrange) -> guard them too, else a dropped
 # column/row breaks mid-render, not at the extractor.
 s4_tp_np <- s4_tp; s4_tp_np$primary_family$perm_p <- NULL; s4_tp_np$exploratory_family$perm_p <- NULL
-expect_error(trajectory_report_data(s4_mt, s4_tp_np, s4_glmm))                                   # interaction$perm_p gone
+expect_error(trajectory_report_data(s4_mt, s4_tp_np, s4_glmm), "perm_p")                         # interaction$perm_p gone
 s4_tp_wm <- s4_tp
 s4_tp_wm$contrasts$weighted$top$tau_alone <-
   s4_tp_wm$contrasts$weighted$top$tau_alone[s4_tp_wm$contrasts$weighted$top$tau_alone$measure != "mean_pt", ]
-expect_error(trajectory_report_data(s4_mt, s4_tp_wm, s4_glmm))                                   # weighted_top mean_pt row gone
+expect_error(trajectory_report_data(s4_mt, s4_tp_wm, s4_glmm), "vapply(canonical_contrasts, function(cn)")  # weighted_top mean_pt row gone
 cat("ok - trajectory_report_data guards perm_p col + weighted mean_pt render inputs\n")
+
+# POSITIVE: the returned bundle carries every qmd-critical read the hardened postconditions protect,
+# present + finite -> a regression that drops/NAs any of them is caught here, not mid-render.
+stopifnot(
+  all(vapply(c("nlgf_in_maptki", "nlgf_in_p301s"), function(cn) {          # prose fmt_p(amy_$p_value)
+    w <- trd$weighted_top[[cn]]; isTRUE(is.finite(w$p_value[w$measure == "mean_pt"])) }, logical(1))),
+  is.data.frame(trd$per_unit), nrow(trd$per_unit) == 16L,                   # nrow(trd$per_unit) (%d)
+  nrow(trd$sensitivity) >= 1L, all(is.finite(trd$sensitivity$spearman_vs_primary)),   # min(...) robustness
+  trd$glmm$method %in% c("glmmTMB_beta", "lmm_ranknorm", "failed"),
+  trd$glmm$method == "failed" ||
+    all(is.finite(unlist(trd$glmm[c("estimate", "ci_l", "ci_r", "p_value", "re_sd")]))),
+  all(vapply(trd$provenance[c("primary_dims", "n_perm", "seed")],          # %d-fed -> integer-valued
+             function(x) x == round(x), logical(1))),
+  all(vapply(trd$provenance[c("dam_onset", "composition_loading", "progression_loading",
+                              "cross_loading", "recon_resid_max", "omitted_frac_overall",
+                              "concordance_rho", "concordance_floor")],
+             function(x) is.numeric(x) && length(x) == 1L && is.finite(x), logical(1))))
+cat("ok - trajectory_report_data bundles finite qmd-critical inference (weighted p / per_unit / sens / glmm / prov)\n")
+
+# NEGATIVE: each NEW postcondition rejects an input that PASSES the up-front guards (regexp pins the guard):
+s4_tp_hc <- s4_tp                                                          # interaction coef COLUMN gone (both families)
+s4_tp_hc$primary_family$coef <- NULL; s4_tp_hc$exploratory_family$coef <- NULL
+expect_error(trajectory_report_data(s4_mt, s4_tp_hc, s4_glmm), '"measure", "family", "coef", "ci_l"')  # existence BEFORE vacuous is.finite(NULL)
+s4_tp_wp <- s4_tp; s4_tp_wp$contrasts$weighted$top$nlgf_in_maptki$p_value <- NULL  # weighted amyloid p_value col gone
+expect_error(trajectory_report_data(s4_mt, s4_tp_wp, s4_glmm), "vapply(canonical_contrasts, function(cn)")
+s4_tp_pu <- s4_tp; s4_tp_pu$per_unit <- s4_tp_pu$per_unit[0, ]             # tp$per_unit emptied (no up-front guard)
+expect_error(trajectory_report_data(s4_mt, s4_tp_pu, s4_glmm), "per_unit")
+s4_mt_se <- s4_mt; s4_mt_se$sensitivity <- s4_mt_se$sensitivity[0, ]       # sensitivity emptied -> min() Inf+warn
+expect_error(trajectory_report_data(s4_mt_se, s4_tp, s4_glmm), "sensitivity")
+expect_error(trajectory_report_data(s4_mt, s4_tp, modifyList(s4_glmm, list(method = "bogus"))), "method")  # arm enum
+s4_tp_do <- s4_tp; s4_tp_do$provenance$dam_onset <- NA_real_              # geom_hline-fed scalar non-finite
+expect_error(trajectory_report_data(s4_mt, s4_tp_do, s4_glmm), 'pv[c("dam_onset", "composition_loading"')
+s4_mt_pd <- s4_mt; s4_mt_pd$provenance$primary_dims <- 15.5               # %d-fed provenance not integer-valued
+expect_error(trajectory_report_data(s4_mt_pd, s4_tp, s4_glmm), "int1")
+cat("ok - trajectory_report_data new postconditions reject malformed col/row/value inputs\n")
+
+# the finite coef/CI/p/fdr postcondition is a documented BUILD-FATAL gate: a degenerate zero-variance
+# endpoint (constant per-unit DAM composition -> comp_cf/cross se=0 -> NaN p/fdr, which the varied-
+# composition fixture above deliberately dodges) must HALT the report, not table NaN. A NaN p proves it:
+s4_tp_nan <- s4_tp; s4_tp_nan$primary_family$p_value[1] <- NaN
+expect_error(trajectory_report_data(s4_mt, s4_tp_nan, s4_glmm), "finite")
+cat("ok - trajectory_report_data finite-inference gate HALTS on a NaN endpoint\n")
 
 cat("ALL trajectory tests passed\n")

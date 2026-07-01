@@ -998,39 +998,65 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
       r_version          = tp$provenance$r_version)) -> out
 
   # render-cleanliness postconditions (mirror microglia_report_data): the qmd must never hit a ggplot
-  # missing-value warning (warn=2 -> render error). on-lineage cells carry finite pt; the score-axis is
-  # defined for every cell; genotype/substate are fully labelled; the interaction table is complete.
-  on <- cell_frame$on_lineage
-  # every measure _trajectory.qmd indexes via irow() (match into interaction$measure) + every
-  # canonical contrast mp_ctr() pulls from weighted_top -> assert both present so a dropped/renamed
-  # measure or contrast fails at the extractor, not as an empty inline value mid-render.
+  # missing-value warning (warn=2 -> render error) nor a sprintf/%d type error. every value the qmd
+  # inline-formats or feeds a geom is present + finite; existence is asserted BEFORE is.finite() so a
+  # dropped column fails HERE, never vacuously (all(is.finite(NULL)) == TRUE lets a missing col slip).
+  on   <- cell_frame$on_lineage
+  it   <- out$interaction                                 # qmd irow()/interaction-table source
+  gl   <- out$glmm                                        # qmd supportive-arm sentence + provenance line
+  pv   <- out$provenance                                  # qmd inline-formats many scalars + feeds 2 geoms
+  fin1 <- function(x) is.numeric(x) && length(x) == 1L && is.finite(x)   # finite length-1 numeric
+  int1 <- function(x) fin1(x) && x == round(x)            # + integer-VALUED (R %d accepts whole doubles -> no coercion)
+  str1 <- function(x) is.character(x) && length(x) == 1L && !is.na(x)    # non-NA length-1 string
+  # every measure _trajectory.qmd indexes via irow() (match into interaction$measure) + every canonical
+  # contrast mp_ctr() pulls from weighted_top -> assert both present + UNIQUE so a dropped/renamed/
+  # duplicated measure or contrast fails at the extractor, not as an empty/first-of-dup inline value.
   irow_measures <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic",
                      "within_dam", "median_pt", "q90", "frac_past_logit", "frac_past_asin")
   canonical_contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
   perm_inlined <- c("mean_pt", "progression_cf")          # rows whose perm_p the qmd prints via round() (headline stat)
   stopifnot(
-    nrow(cell_frame) >= 1L, any(on),
+    nrow(cell_frame) >= 1L, is.logical(on), !anyNA(on), any(on),  # logical mask (cf[cf$on_lineage,]) -> no NA, >= 1 on-lineage
     !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),
     all(is.finite(cell_frame$pt_raw[on])),                # every on-lineage cell ordered
     all(is.finite(cell_frame$score_axis_pt)),             # score-axis defined for all cells
-    all(irow_measures %in% out$interaction$measure),      # every qmd-indexed interaction measure present
+    all(c("measure", "family", "coef", "ci_l", "ci_r", "p_value", "fdr") %in% names(it)),  # cols exist BEFORE finite
+    all(irow_measures %in% it$measure),                   # every qmd-indexed interaction measure present ...
+    all(vapply(irow_measures, function(m) sum(it$measure == m) == 1L, logical(1))),  # ... exactly once (match 1st-of-dup)
     # finite coef/CI/p/fdr across BOTH families is an INTENTIONAL build-fatal data-quality gate: a
     # zero-variance endpoint (constant per-unit composition -> comp_cf/cross se=0 -> NaN p/fdr) halts
     # the report rather than tabling NaN. Validated non-degenerate on the current data; if real data
     # ever hits a degenerate EXPLORATORY endpoint, S4b adds graceful "-" formatting + exempts it here.
-    all(is.finite(out$interaction$coef)), all(is.finite(out$interaction$fdr)),
-    all(is.finite(out$interaction$ci_l)), all(is.finite(out$interaction$ci_r)),
-    all(is.finite(out$interaction$p_value)),
-    "perm_p" %in% names(out$interaction),                 # table col it$perm_p (NA-tolerant there); inlined rows:
-    all(is.finite(out$interaction$perm_p[out$interaction$measure %in% perm_inlined])),  # mean_pt+prog_cf prose p
+    all(is.finite(it$coef)), all(is.finite(it$fdr)),
+    all(is.finite(it$ci_l)), all(is.finite(it$ci_r)), all(is.finite(it$p_value)),
+    "perm_p" %in% names(it),                              # table col it$perm_p (NA-tolerant there); inlined rows:
+    all(is.finite(it$perm_p[it$measure %in% perm_inlined])),  # mean_pt+prog_cf prose p
     all(canonical_contrasts %in% names(out$weighted_top)),  # 5 canonical contrasts for mp_ctr()
     all(vapply(canonical_contrasts, function(cn) {         # each mp_ctr(cn) mean_pt row feeds p_ctr geom_pointrange
-      w <- out$weighted_top[[cn]]                          # -> exactly one finite coef/CI or ggplot warns (warn=2 red)
-      is.data.frame(w) && all(c("measure", "coef", "ci_l", "ci_r") %in% names(w)) &&
+      w <- out$weighted_top[[cn]]                          # (coef/CI) + the two amyloid rows' p_value the prose (fmt_p)
+      is.data.frame(w) && all(c("measure", "coef", "ci_l", "ci_r", "p_value") %in% names(w)) &&
         sum(w$measure == "mean_pt") == 1L &&
-        all(is.finite(unlist(w[w$measure == "mean_pt", c("coef", "ci_l", "ci_r")])))
+        all(is.finite(unlist(w[w$measure == "mean_pt", c("coef", "ci_l", "ci_r", "p_value")])))
     }, logical(1))),
     all(c("comp_cf", "prog_cf", "cross") %in% names(out$decomposition$loadings)),
-    !any(vapply(out$provenance, is.null, logical(1))))    # every assembled provenance field non-NULL
+    is.data.frame(out$per_unit), nrow(out$per_unit) >= 1L,     # qmd prints nrow(trd$per_unit) (%d)
+    nrow(out$sensitivity) >= 1L, all(is.finite(out$sensitivity$spearman_vs_primary)),  # qmd min(...) -> Inf+warn if empty
+    # glmm supportive arm: method picks the sentence branch; the NOT-failed branch inline-formats
+    # effect/CI/p + re_sd (finite -> never prints "NA"/"Inf"); n_cells/n_units print unconditionally.
+    length(gl$method) == 1L, gl$method %in% c("glmmTMB_beta", "lmm_ranknorm", "failed"),
+    fin1(gl$n_cells), int1(gl$n_units), length(gl$re_sd) == 1L, length(gl$singular) == 1L,
+    gl$method == "failed" || (fin1(gl$estimate) && fin1(gl$ci_l) && fin1(gl$ci_r) &&
+                              fin1(gl$p_value) && fin1(gl$re_sd)),
+    gl$method != "failed" || length(gl$fail_reason) == 1L,   # failed branch prints fail_reason instead
+    # provenance: fields the qmd feeds a geom (dam_onset -> geom_hline; *_loading -> geom_col) or inline-
+    # formats must be finite (NA = warn=2 red / "NA" text); dims/perm/seed integer-valued for %d; the
+    # substate/version strings non-NA; concordant a scalar flag; the rest (assembled, not inline-read) non-NULL.
+    all(vapply(pv[c("dam_onset", "composition_loading", "progression_loading", "cross_loading",
+                    "dam_pt_rho", "homeo_pt_rho", "concordance_rho", "concordance_floor",
+                    "recon_resid_max", "omitted_frac_overall")], fin1, logical(1))),
+    all(vapply(pv[c("primary_dims", "n_perm", "seed")], int1, logical(1))),
+    all(vapply(pv[c("root_substate", "terminal_substate", "limma_version", "r_version")], str1, logical(1))),
+    is.logical(pv$concordant), length(pv$concordant) == 1L, !is.na(pv$concordant),
+    !any(vapply(pv, is.null, logical(1))))                # every assembled provenance field non-NULL
   out
 }
