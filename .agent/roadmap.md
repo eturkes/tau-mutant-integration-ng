@@ -288,3 +288,49 @@ wip-p2s4-report) DELETED at S4b close.
   trd$decomposition, comp_cf/progression_cf/cross labels align across extractor/test/qmd, include placement +
   #sec-trajectory unique, no residual ggplot trans=. Rebuilt trajectory_report fresh on real data (new postconds
   pass, no false-red) + re-render 0-warning + tests warn=2. Commit `trajectory (p2 s4b review): ... (codex)`.
+
+## Context ledger (per work-unit session)
+Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
+wasn't). Value = FINAL window occupancy = exactly what `.agent/context.sh` reports at session close (last
+assistant turn: input + cache_creation + cache_read, over the window; format `N% used/window`); every row
+is /200K (all recorded sessions ran on the 200K cap). One row per work SESSION (step + its review in one row;
+commits chronological). Compacted sessions read BELOW their in-session peak (final != high-water; e.g. the
+P1-S4 row is 45% final vs an 88% peak) -> read each as end-state, not total workload. Omitted: 9 no-commit
+sessions with no unit recorded here (research / orient / failed-prompt / remote-push help, the temporary
+milestone report-refresh, and this bookkeeping session).
+```text
+ctx (final)      date   work unit  (session step [+ review]; commits chronological)
+---------------  -----  ---------------------------------------------------------------------
+51% 103K/200K    06-29  git init + upstream-config merge; seed v1 -> archive (82130a5, archive branch)
+95% 191K/200K    06-29  scaffold rebuild: fresh main + reset .agent/config (586f691)
+30% 60K/200K     06-29  memory: storage/data symlink provenance (222a3ab)
+46% 92K/200K     06-29  P0 plan + codex-review hardening (f765085, f612ede)
+20% 39K/200K     06-29  infra: /codex-review rollout-path fix (d0e870b)
+59% 117K/200K    06-29  P0-S1 spine: env + targets/quarto scaffold +review (37216a8, 39bb692)
+62% 123K/200K    06-29  P0-S2 data: io loaders + 4 modality targets +review (a8312b9, 66aa492)
+88% 176K/200K    06-29  P0-S3 design: 5-contrast + pseudobulk/bulk DE +review (e6b183f, 466c65f)
+68% 136K/200K    06-29  P0-S4 handoff: standalone-HTML report decision +review (b4f1496, a2c4db1)
+42% 85K/200K     06-29  P0-S4 report checkpoint: offline-HTML pivot +review (2cbf238, 4951c63)
+73% 147K/200K    06-29  P0-S4 report: IBM Plex theme + plot tests, S4 close +review (9365c82, d29e38b)
+67% 134K/200K    06-29  P0-S5 gate scripts/check.sh + P0 close +review (998950d, 961dd22, b53f22f)
+53% 106K/200K    06-29  P1 plan +review (0555e55, 0316bcb)
+72% 145K/200K    06-29  P1-S1 microglia reprocess+cluster +review (6c69986, 1706fa9)
+84% 168K/200K    06-30  P1-S2 substate annotate + prune +review (612dbd0, 5992e39)
+88% 176K/200K    06-30  P1-S3 composition propeller + sccomp +review (7713248, cdff4bc)
+76% 151K/200K    06-30  infra: gitignore .tokensave/ index (7a2518b)
+79% 158K/200K    06-30  P1-S3 composition close: live sccomp arm +review (e27c41e, 7ca25f9)
+54% 109K/200K    06-30  infra: upstream Claude config sync (a8593ec)
+45% 90K/200K     06-30  P1-S4 pseudobulk DE + stageR +review (64bf2c2, 94d4505)
+55% 110K/200K    06-30  P1-S5 microglia report + P1 close + handoff +review (67b7dbc, 7a5e4d3, cf974bd)
+67% 134K/200K    06-30  P2 plan +review (a6d58e2, 3fca9c2)
+59% 118K/200K    06-30  P2-S1 slingshot pseudotime +review (d79219d, 3a1ff11)
+83% 167K/200K    06-30  P2 plan: S2 -> S2/S3 split + memory trim +reviews (1d8d6c3, 7f96505, 20be54f, 3507b84, 60774f9)
+86% 173K/200K    06-30  P2 plan: S2 -> S2a/S2b split +review (a62fc40, c54d854)
+67% 134K/200K    06-30  P2-S2a estimation core +review (d92ace9, a99312b)
+87% 174K/200K    06-30  P2-S2b interaction inference + FL null +review (3a8e2ef, 2c9e8b1)
+81% 161K/200K    07-01  P2-S3 glmmTMB per-cell sensitivity +review (14fe8aa, 863cb75)
+72% 145K/200K    07-01  P2-S4 split (S4a/S4b) +review (1f8f3f2, d15e6c7)
+88% 177K/200K    07-01  P2-S4a handoff: park hardened extractor +review (0818d5d, 9111d69)
+21% 42K/200K     07-01  P2-S4a extractor+target restore +review (b82b6f2, 15be78b)
+71% 143K/200K    07-01  P2-S4b chapter + wiring (P2 steps complete) +review (d5c4ccb, cbbd129)
+```
