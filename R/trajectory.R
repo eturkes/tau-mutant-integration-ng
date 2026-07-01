@@ -877,3 +877,160 @@ glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
        fail_reason = paste(reason("beta", beta), reason("lmm", lmm)),
        warnings = warns, messages = msgs)
 }
+
+# ============================================================================================
+# P2-S4: compact report-data extraction for the trajectory chapter (keeps the gate render cheap).
+# Bundle EVERYTHING _trajectory.qmd plots/tabulates from the three trajectory targets into one
+# small target, so the force-rendered report (hence EVERY scripts/check.sh run) tar_loads a single
+# compact object -- never the 612MB Seurat. All three inputs are ALREADY compact (microglia_trajectory
+# ~3.3MB in memory; the two inference targets are small), so no heavy object is read here. Pure: no
+# RNG, no I/O. The per-cell plotting frame is asserted render-clean by construction (finite pt on
+# on-lineage cells, finite score-axis, no missing genotype/substate) so the qmd never trips a ggplot
+# missing-value warning under warn=2 (which would red the gate).
+# ============================================================================================
+trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
+                                   trajectory_glmm_sensitivity) {
+  stopifnot(
+    is.list(microglia_trajectory),
+    all(c("cell_frame", "per_unit", "sensitivity", "provenance") %in% names(microglia_trajectory)),
+    is.list(trajectory_progression),
+    all(c("per_unit", "contrasts", "decomposition", "primary_family",
+          "exploratory_family", "provenance") %in% names(trajectory_progression)),
+    is.list(trajectory_glmm_sensitivity),
+    # FULL 13-name glmm set: the [c(...)] row-subset below NA-FILLS any missing name (a silent
+    # false-green that surfaces only mid-render) -> require every name the subset pulls, up front.
+    all(c("method", "term", "estimate", "se", "z", "p_value", "ci_l", "ci_r", "re_sd",
+          "singular", "n_cells", "n_units", "fail_reason") %in%
+          names(trajectory_glmm_sensitivity)))
+  tcf <- microglia_trajectory$cell_frame
+  tp  <- trajectory_progression
+  mp  <- microglia_trajectory$provenance
+  stopifnot(
+    is.data.frame(tcf),
+    all(c("genotype", "substate", "on_lineage", "pt_raw", "score_axis_pt") %in% names(tcf)),
+    # NESTED fields the body reads (mirror microglia_report_data: guard EVERY field the body pulls,
+    # not just the top-level containers) -> a malformed input fails HERE, never as a silent NULL that
+    # only breaks mid-render.
+    is.list(tp$contrasts), "weighted" %in% names(tp$contrasts),
+    is.list(tp$contrasts$weighted), "top" %in% names(tp$contrasts$weighted),   # weighted_top (5 contrasts)
+    all(c("loadings", "L_int", "interaction") %in% names(tp$decomposition)),
+    # per_unit + sensitivity columns the conditioning + robustness panels read:
+    is.data.frame(microglia_trajectory$per_unit),
+    all(c("genotype", "n_cells", "n_on_lineage", "omitted_frac") %in%
+          names(microglia_trajectory$per_unit)),
+    is.data.frame(microglia_trajectory$sensitivity),
+    all(c("variant", "spearman_vs_primary") %in% names(microglia_trajectory$sensitivity)),
+    # provenance source fields the inline prose pulls (assembled into out$provenance below):
+    all(c("primary_dims", "lineage_substates", "root_substate", "terminal_substate",
+          "concordance_rho", "concordance_floor", "concordant", "dam_pt_rho", "homeo_pt_rho",
+          "omitted_frac_overall") %in% names(mp)),
+    all(c("dam_onset", "used_states", "within_skip", "primary_measures", "planned_primary",
+          "primary_within_skipped", "progression_loading", "composition_loading", "cross_loading",
+          "recon_resid_max", "v1_progression_loading", "v1_progression_fdr", "n_perm", "seed",
+          "limma_version", "r_version") %in% names(tp$provenance)))
+
+  # slim per-cell plotting frame (off-lineage cells keep NA pt; the qmd filters on_lineage for the
+  # pseudotime panels and uses the always-defined score-axis for the concordance panel).
+  cell_frame <- data.frame(
+    genotype      = tcf$genotype,                          # factor over genotype_levels (preserved)
+    substate      = tcf$substate,
+    on_lineage    = tcf$on_lineage,
+    pt_raw        = tcf$pt_raw,
+    score_axis_pt = tcf$score_axis_pt,
+    row.names = NULL, stringsAsFactors = FALSE)
+
+  # interaction across EVERY measure (primary BH family + the separate exploratory BH), tagged with
+  # the family so the forest can colour/group them; each row carries coef / SE / 95% CI / ordinary-t
+  # p / Freedman-Lane perm_p / BH FDR. The pt_raw-scale measures {mean_pt, comp_cf, progression_cf,
+  # cross, within_*} share additive units (one forest axis); frac_past_* are transformed bridges (flagged).
+  interaction <- rbind(
+    cbind(family = "primary",     tp$primary_family,     stringsAsFactors = FALSE),
+    cbind(family = "exploratory", tp$exploratory_family, stringsAsFactors = FALSE))
+  rownames(interaction) <- NULL
+
+  # exact 3-channel decomposition of the interaction on mean pseudotime: the per-channel interaction
+  # coefs (L_int over mean_pt / comp_cf / prog_cf / cross) + the loadings (each channel / mean_pt,
+  # summing to 1) + the per-channel inference table -> the headline composition-vs-progression split.
+  decomposition <- list(
+    loadings    = tp$decomposition$loadings,              # named: comp_cf / prog_cf / cross
+    L_int       = tp$decomposition$L_int,                 # named: mean_pt / comp_cf / prog_cf / cross
+    interaction = tp$decomposition$interaction)           # per-channel coef/se/ci/p table
+
+  list(
+    cell_frame   = cell_frame,
+    interaction  = interaction,
+    weighted_top = tp$contrasts$weighted$top,             # named-by-contrast per-measure tables (5 contrasts)
+    decomposition = decomposition,
+    per_unit     = tp$per_unit,                           # 16-unit summary (mean_pt, frac_past, within_*, n_cells, sd_pt)
+    lineage_per_unit = microglia_trajectory$per_unit,     # per-unit n_on_lineage + omitted_frac (conditioning audit)
+    sensitivity  = microglia_trajectory$sensitivity,      # dims {10,20} + all-retained robustness vs primary
+    glmm = trajectory_glmm_sensitivity[c("method", "term", "estimate", "se", "z", "p_value",
+                                         "ci_l", "ci_r", "re_sd", "singular", "n_cells",
+                                         "n_units", "fail_reason")],  # supportive per-cell arm (warnings/messages dropped)
+    provenance = list(
+      # slingshot trajectory build (microglia_trajectory):
+      primary_dims       = mp$primary_dims,
+      lineage_substates  = mp$lineage_substates,
+      root_substate      = mp$root_substate,
+      terminal_substate  = mp$terminal_substate,
+      concordance_rho    = mp$concordance_rho,
+      concordance_floor  = mp$concordance_floor,
+      concordant         = mp$concordant,
+      dam_pt_rho         = mp$dam_pt_rho,
+      homeo_pt_rho       = mp$homeo_pt_rho,
+      omitted_frac_overall = mp$omitted_frac_overall,
+      # progression inference (trajectory_progression):
+      dam_onset          = tp$provenance$dam_onset,
+      used_states        = tp$provenance$used_states,
+      within_skip        = tp$provenance$within_skip,
+      primary_measures   = tp$provenance$primary_measures,
+      planned_primary    = tp$provenance$planned_primary,
+      primary_within_skipped = tp$provenance$primary_within_skipped,
+      progression_loading = tp$provenance$progression_loading,
+      composition_loading = tp$provenance$composition_loading,
+      cross_loading      = tp$provenance$cross_loading,
+      recon_resid_max    = tp$provenance$recon_resid_max,
+      v1_progression_loading = tp$provenance$v1_progression_loading,
+      v1_progression_fdr = tp$provenance$v1_progression_fdr,
+      n_perm             = tp$provenance$n_perm,
+      seed               = tp$provenance$seed,
+      limma_version      = tp$provenance$limma_version,
+      r_version          = tp$provenance$r_version)) -> out
+
+  # render-cleanliness postconditions (mirror microglia_report_data): the qmd must never hit a ggplot
+  # missing-value warning (warn=2 -> render error). on-lineage cells carry finite pt; the score-axis is
+  # defined for every cell; genotype/substate are fully labelled; the interaction table is complete.
+  on <- cell_frame$on_lineage
+  # every measure _trajectory.qmd indexes via irow() (match into interaction$measure) + every
+  # canonical contrast mp_ctr() pulls from weighted_top -> assert both present so a dropped/renamed
+  # measure or contrast fails at the extractor, not as an empty inline value mid-render.
+  irow_measures <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic",
+                     "within_dam", "median_pt", "q90", "frac_past_logit", "frac_past_asin")
+  canonical_contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
+  perm_inlined <- c("mean_pt", "progression_cf")          # rows whose perm_p the qmd prints via round() (headline stat)
+  stopifnot(
+    nrow(cell_frame) >= 1L, any(on),
+    !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),
+    all(is.finite(cell_frame$pt_raw[on])),                # every on-lineage cell ordered
+    all(is.finite(cell_frame$score_axis_pt)),             # score-axis defined for all cells
+    all(irow_measures %in% out$interaction$measure),      # every qmd-indexed interaction measure present
+    # finite coef/CI/p/fdr across BOTH families is an INTENTIONAL build-fatal data-quality gate: a
+    # zero-variance endpoint (constant per-unit composition -> comp_cf/cross se=0 -> NaN p/fdr) halts
+    # the report rather than tabling NaN. Validated non-degenerate on the current data; if real data
+    # ever hits a degenerate EXPLORATORY endpoint, S4b adds graceful "-" formatting + exempts it here.
+    all(is.finite(out$interaction$coef)), all(is.finite(out$interaction$fdr)),
+    all(is.finite(out$interaction$ci_l)), all(is.finite(out$interaction$ci_r)),
+    all(is.finite(out$interaction$p_value)),
+    "perm_p" %in% names(out$interaction),                 # table col it$perm_p (NA-tolerant there); inlined rows:
+    all(is.finite(out$interaction$perm_p[out$interaction$measure %in% perm_inlined])),  # mean_pt+prog_cf prose p
+    all(canonical_contrasts %in% names(out$weighted_top)),  # 5 canonical contrasts for mp_ctr()
+    all(vapply(canonical_contrasts, function(cn) {         # each mp_ctr(cn) mean_pt row feeds p_ctr geom_pointrange
+      w <- out$weighted_top[[cn]]                          # -> exactly one finite coef/CI or ggplot warns (warn=2 red)
+      is.data.frame(w) && all(c("measure", "coef", "ci_l", "ci_r") %in% names(w)) &&
+        sum(w$measure == "mean_pt") == 1L &&
+        all(is.finite(unlist(w[w$measure == "mean_pt", c("coef", "ci_l", "ci_r")])))
+    }, logical(1))),
+    all(c("comp_cf", "prog_cf", "cross") %in% names(out$decomposition$loadings)),
+    !any(vapply(out$provenance, is.null, logical(1))))    # every assembled provenance field non-NULL
+  out
+}

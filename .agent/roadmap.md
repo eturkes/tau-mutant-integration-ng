@@ -40,8 +40,9 @@ no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the on
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 6 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
 glmmTMB per-cell sensitivity [new-dep arm] -> S4a report-data extractor+target + S4b chapter+wiring). S1 + S2a +
-S2b + S3 DONE; next open = S4a -- now a MECHANICAL restore (its VALIDATED hardened extractor+target+test are PARKED
-on branch wip-p2s4a-hardened after the guard-derivation overflowed a 2nd window; S4b's qmd stays on wip-p2s4-report, 2026-07-01).
+S2b + S3 + S4a DONE; next open = S4b -- MECHANICAL restore of the parked _trajectory.qmd chapter (wip-p2s4-report)
++ index wiring + microglia forward-pointer rewrite + render-debug to 0-warning (S4a landed the report-data
+extractor + trajectory_report target + guard test from wip-p2s4a-hardened; 2026-07-01). DELETE both wip branches when S4b closes.
 (S2 split out S3, then S2 -> S2a/S2b, then S4 -> S4a/S4b, all 2026-06-30..07-01 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -243,3 +244,12 @@ on branch wip-p2s4a-hardened after the guard-derivation overflowed a 2nd window;
   build 25ms, tar_meta NA); AMENDED the branch bae0cf2 -> 7139b09 (now +234: R/trajectory.R +157 / _targets.R +7 /
   test +70) + synced the S4a spec (hash/counts/explicit fresh-build cmd) + marked the stale sentence superseded.
   S4a stays MECHANICAL.
+- 2026-07-01 P2-S4a DONE (mechanical restore, as planned -- no re-derivation): reconciled first (main d15e6c7..HEAD
+  did NOT touch the 3 files -- only .agent docs), then `git checkout wip-p2s4a-hardened -- R/trajectory.R _targets.R
+  tests/test_trajectory.R` -> diff HEAD = EXACTLY +234 (R/trajectory.R +157 / _targets.R +7 / test +70), the parked
+  hardened extractor + `trajectory_report` target + guard test. Force-built the new leaf FRESH (tar_invalidate +
+  tar_make trajectory_report, 29ms/338kB, tar_meta error+warnings NA -> guards pass on the REAL cached targets, no
+  false-red) then full gate GREEN (23 targets now, up from 22; tests warn=2 incl. the +70-line guard test; force-
+  render clean; render-log clean). map.md += trajectory_report_data fn + trajectory_report target + the S4a test
+  line. Both wip branches LEFT for S4b to delete. Next open = S4b (restore _trajectory.qmd + wire index + rewrite
+  the microglia pointer + render-debug to 0-warning).

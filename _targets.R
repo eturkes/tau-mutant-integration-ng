@@ -103,6 +103,13 @@ list(
   # primary. Reads the COMPACT S1 per-cell frame (not the 612MB Seurat), INDEPENDENT of trajectory_progression.
   tar_target(trajectory_glmm_sensitivity, glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame), format = "qs"),
 
+  # S4: compact report-data extraction. Bundles the per-cell pseudotime frame + the interaction /
+  # decomposition tables + the glmmTMB supportive row from the three (already compact) trajectory
+  # targets into one small object, so _trajectory.qmd (and every force-rendered gate run) tar_loads
+  # a single compact target -- no 612MB Seurat, no heavy re-read (all three inputs are compact).
+  tar_target(trajectory_report, trajectory_report_data(microglia_trajectory, trajectory_progression,
+                                                       trajectory_glmm_sensitivity), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

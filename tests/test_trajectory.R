@@ -334,4 +334,74 @@ cf_bad$genotype_batch[hit] <- sub("^MAPTKI_", "BOGUS_", cf_bad$genotype_batch[hi
 stopifnot(inherits(try(glmmtmb_pt_sensitivity(cf_bad), silent = TRUE), "try-error"))
 cat("ok - glmmtmb_pt_sensitivity (unknown genotype -> fail loud)\n")
 
+# --- P2-S4a: trajectory_report_data compact extractor ---------------------------------------
+# REUSE the S2b/S3 non-additive fixture (jitter > 0 -> a real beta GLMM + sigma > 0), extended into
+# a microglia_trajectory stub carrying the per_unit / sensitivity / provenance fields the extractor
+# reads. score_axis_pt is the one S1 cell_frame column the fixture omits -> add it (= pt01) so the
+# extractor's score-axis guard has an input. Assert the bundle carries every documented field + every
+# qmd-indexed measure/contrast, and that the HARDENED guards fail loud on a dropped required name.
+s4_cf <- make_trajectory_cell_frame(per_state = 12L, jitter = 0.3)
+# Vary composition per unit so comp_cf + cross are non-degenerate: a constant 12/12 split gives them
+# ZERO residual variance -> NaN p -> NaN fdr (the extractor's finite-fdr postcondition, valid on real
+# data where composition varies). Drop the last k%%3 DAM cells (0/1/2) per unit -> every unit keeps
+# >= 10 DAM (the min_within floor) and the DAM fraction varies within + across genotypes.
+s4_cf <- do.call(rbind, Map(function(part, k) {
+  d <- k %% 3L
+  if (d == 0L) part else part[-utils::tail(which(part$substate == "DAM"), d), , drop = FALSE]
+}, split(s4_cf, s4_cf$genotype_batch), seq_len(16L)))
+rownames(s4_cf) <- NULL
+s4_cf$score_axis_pt <- s4_cf$pt01                            # S1 column the fixture omits; extractor reads it
+s4_units <- unique(s4_cf[c("genotype_batch", "genotype")])
+s4_n     <- as.integer(table(s4_cf$genotype_batch)[s4_units$genotype_batch])
+s4_mt <- list(
+  cell_frame  = s4_cf,
+  per_unit    = data.frame(genotype_batch = s4_units$genotype_batch, genotype = s4_units$genotype,
+                           n_cells = s4_n, n_on_lineage = s4_n, omitted_frac = 0,
+                           stringsAsFactors = FALSE),
+  sensitivity = data.frame(variant = c("dims10", "dims20", "all_retained"),
+                           spearman_vs_primary = c(0.99, 0.997, 0.99),
+                           n_lineages = 1L, n_shared = 100L, stringsAsFactors = FALSE),
+  provenance  = list(primary_dims = 15L, lineage_substates = c("Homeostatic", "DAM"),
+                     root_substate = "Homeostatic", terminal_substate = "DAM",
+                     concordance_rho = 0.62, concordance_floor = 0.5, concordant = TRUE,
+                     dam_pt_rho = 0.56, homeo_pt_rho = -0.40, omitted_frac_overall = 0.02))
+s4_tp   <- run_trajectory_progression(s4_mt, n_perm = 199L)
+s4_glmm <- glmmtmb_pt_sensitivity(s4_mt$cell_frame)
+trd <- trajectory_report_data(s4_mt, s4_tp, s4_glmm)
+stopifnot(
+  all(c("cell_frame", "interaction", "weighted_top", "decomposition", "per_unit",
+        "lineage_per_unit", "sensitivity", "glmm", "provenance") %in% names(trd)),
+  all(c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam",
+        "median_pt", "q90", "frac_past_logit", "frac_past_asin") %in% trd$interaction$measure),
+  all(is.finite(trd$interaction$coef)), all(is.finite(trd$interaction$ci_l)),
+  all(is.finite(trd$interaction$ci_r)), all(is.finite(trd$interaction$p_value)),
+  all(is.finite(trd$interaction$fdr)),
+  "perm_p" %in% names(trd$interaction),                      # qmd table/prose col (extractor guards existence + inlined rows)
+  all(c("comp_cf", "prog_cf", "cross") %in% names(trd$decomposition$loadings)),
+  all(c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction") %in%
+        names(trd$weighted_top)),
+  setequal(names(trd$glmm), c("method", "term", "estimate", "se", "z", "p_value", "ci_l", "ci_r",
+                              "re_sd", "singular", "n_cells", "n_units", "fail_reason")),
+  !any(vapply(trd$provenance, is.null, logical(1))))         # every assembled provenance field non-NULL
+cat("ok - trajectory_report_data (fields + qmd-indexed measures + finite inference)\n")
+
+# HARDENED guards FAIL LOUD on a dropped now-required name (else a silent NA-fill breaks mid-render):
+expect_error(trajectory_report_data(s4_mt, s4_tp, modifyList(s4_glmm, list(n_cells = NULL))))  # 13-name glmm set
+s4_tp_bad <- s4_tp; s4_tp_bad$contrasts$weighted <- NULL                                        # weighted_top gone
+expect_error(trajectory_report_data(s4_mt, s4_tp_bad, s4_glmm))
+s4_mt_bad <- s4_mt; s4_mt_bad$provenance$dam_pt_rho <- NULL                                      # a prose provenance source
+expect_error(trajectory_report_data(s4_mt_bad, s4_tp, s4_glmm))
+cat("ok - trajectory_report_data hardened guards fail loud on malformed input\n")
+
+# perm_p column + each canonical weighted_top mean_pt row are DIRECT qmd render inputs (it$perm_p table +
+# int_*$perm_p prose; mp_ctr(cn) coef/CI feed the p_ctr geom_pointrange) -> guard them too, else a dropped
+# column/row breaks mid-render, not at the extractor.
+s4_tp_np <- s4_tp; s4_tp_np$primary_family$perm_p <- NULL; s4_tp_np$exploratory_family$perm_p <- NULL
+expect_error(trajectory_report_data(s4_mt, s4_tp_np, s4_glmm))                                   # interaction$perm_p gone
+s4_tp_wm <- s4_tp
+s4_tp_wm$contrasts$weighted$top$tau_alone <-
+  s4_tp_wm$contrasts$weighted$top$tau_alone[s4_tp_wm$contrasts$weighted$top$tau_alone$measure != "mean_pt", ]
+expect_error(trajectory_report_data(s4_mt, s4_tp_wm, s4_glmm))                                   # weighted_top mean_pt row gone
+cat("ok - trajectory_report_data guards perm_p col + weighted mean_pt render inputs\n")
+
 cat("ALL trajectory tests passed\n")
