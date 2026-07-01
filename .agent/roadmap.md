@@ -219,9 +219,9 @@ on branch wip-p2s4a-hardened after the guard-derivation overflowed a 2nd window;
   fields) + the FULL _trajectory.qmd draft (title "synergy adds DAM cells rather than advancing them", inline-
   computed prose, 5 sections / 3 figs / 2 tables / glmmTMB inline / provenance; UNRENDERED). Re-split at the
   data/report seam: S4a = compact extractor + trajectory_report target + a structure/guard test (pure-R, no
-  render); S4b = restore the qmd + wire index/_microglia pointer + render-debug to 0-warning + docs. Each restores
-  its parked files (`git checkout wip-p2s4-report -- <file>`) -> near-mechanical, no re-derive, no re-read of R/
-  model files. DELETE the branch after S4b lands. Next open = S4a.
+  render); S4b = restore the qmd + wire index/_microglia pointer + render-debug to 0-warning + docs. [SUPERSEDED by
+  the 2nd-split entry below -- S4a restores its 3 files from wip-p2s4a-hardened; ONLY _trajectory.qmd comes from
+  wip-p2s4-report.] DELETE both branches after S4b lands. Next open = S4a.
 - 2026-07-01 P2-S4a guard-hardening PARKED (context-overflow remediation, 2nd split): S4a's NEW work -- harden the
   restored extractor's stopifnot to guard EVERY nested field the body reads (mirror microglia_report_data) + the
   structure/guard test -- required heavy re-derivation (enumerate the exact nested-field guards against the real
@@ -234,3 +234,12 @@ on branch wip-p2s4a-hardened after the guard-derivation overflowed a 2nd window;
   REWROTE S4a into a MECHANICAL restore (git checkout the 3 files + gate + map.md + commit -- no re-derivation, no
   large-file reads, no fixture debugging). S4b's qmd stays on wip-p2s4-report (restore ONLY _trajectory.qmd there;
   its pre-hardening extractor is superseded). Next open = S4a (mechanical).
+- 2026-07-01 P2-S4a codex review (parked code + handoff): review found guard-vs-use gaps -- `interaction$perm_p`
+  (qmd table + inlined prose) + each canonical `weighted_top` mean_pt row (feeds the p_ctr geom_pointrange -> a
+  dropped/NaN row warns under warn=2, red gate) were unguarded, a finite-fdr postcondition overclaim, and a stale
+  restore-from-wip-p2s4-report sentence. Hardened the parked extractor (guard perm_p existence + inlined-row
+  finiteness + each weighted_top mean_pt finite coef/CI; document finite-p/fdr as an INTENTIONAL build-fatal
+  data-quality gate, not a proven universal) + 2 negative tests; re-validated (test warn=2 + fresh trajectory_report
+  build 25ms, tar_meta NA); AMENDED the branch bae0cf2 -> 7139b09 (now +234: R/trajectory.R +157 / _targets.R +7 /
+  test +70) + synced the S4a spec (hash/counts/explicit fresh-build cmd) + marked the stale sentence superseded.
+  S4a stays MECHANICAL.
