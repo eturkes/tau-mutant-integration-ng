@@ -182,7 +182,7 @@ so it is flagged rather than asserted. A static compositional interaction of thi
 further question - does mutant tau also push microglia further along the same activation
 programme, or does it simply enlarge the DAM endpoint? The trajectory chapter (@sec-trajectory)
 takes that up directly and finds the latter: the synergy is carried by compartment size, not by
-a faster advance.
+cells advancing further along the axis.
 
 ```{r}
 #| label: composition-forest

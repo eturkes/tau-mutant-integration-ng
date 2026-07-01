@@ -371,6 +371,7 @@ trd <- trajectory_report_data(s4_mt, s4_tp, s4_glmm)
 stopifnot(
   all(c("cell_frame", "interaction", "weighted_top", "per_unit",
         "lineage_per_unit", "sensitivity", "glmm", "provenance") %in% names(trd)),
+  !("decomposition" %in% names(trd)),                        # dropped (codex 955): dead figure-shaped output -> lock the removal
   all(c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam",
         "median_pt", "q90", "frac_past_logit", "frac_past_asin") %in% trd$interaction$measure),
   all(is.finite(trd$interaction$coef)), all(is.finite(trd$interaction$ci_l)),

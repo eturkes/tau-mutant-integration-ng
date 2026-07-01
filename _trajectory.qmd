@@ -6,9 +6,10 @@ the compositional interaction on DAM is significant: on a mutant-tau background 
 travelled *further* into activation are two different claims, and the pseudobulk interaction was
 under-powered to separate them. This chapter orders the same nuclei along an activation
 pseudotime and asks the distinct question the composition test cannot: beyond making more DAM
-cells, does mutant tau push microglia further along the activation axis? The answer, read three
-ways below, is no - the tau-amyloid synergy is expressed almost entirely as compartment size, not
-as a faster advance. Two framings travel with every number here: pseudotime is an activation
+cells, does mutant tau push microglia further along the activation axis? Read three ways below,
+it does not detectably - no channel gives statistically supported evidence of further advance, and
+the tau-amyloid synergy is expressed almost entirely as compartment size rather than as cells
+sitting further along the axis. Two framings travel with every number here: pseudotime is an activation
 *ordering* (position and extent of advance), not developmental time or potency, and because the
 data are a single cross-sectional snapshot, "advance" is a position statement, never a measured
 rate.
@@ -58,6 +59,13 @@ glmm_sentence <- if (identical(glmm$method, "failed"))
           glmm$fail_reason) else
   sprintf("places the interaction at %+.3f on the %s scale (95%% CI [%.3f, %.3f], p %s)",
           glmm$estimate, glmm_scale, glmm$ci_l, glmm$ci_r, fmt_p(glmm$p_value))
+# provenance line for the per-cell arm, branched like the sentence: a failed fit carries NA re_sd /
+# singular (extractor allows it on the failed branch), so print fail_reason there, never "NA".
+glmm_prov <- if (identical(glmm$method, "failed"))
+  sprintf("Per-cell sensitivity: %s on %s nuclei / %d units (%s).",
+          glmm$method, format(glmm$n_cells, big.mark = ","), glmm$n_units, glmm$fail_reason) else
+  sprintf("Per-cell sensitivity: %s on %s nuclei / %d units (random-effect SD %.3f, singular = %s).",
+          glmm$method, format(glmm$n_cells, big.mark = ","), glmm$n_units, glmm$re_sd, glmm$singular)
 
 # per-genotype lineage-conditioning audit (omitted IFN/proliferative fraction).
 lpu  <- trd$lineage_per_unit
@@ -195,8 +203,8 @@ knitr::kable(itab, row.names = FALSE,
 
 ## A per-cell model corroborates the position shift
 
-The summary-level test aggregates each of the 16 genotype-by-batch units to one number, which is
-the right scale for the interaction inference but discards the per-cell distribution. As a
+The summary-level test aggregates each of the `r glmm$n_units` genotype-by-batch units to one
+number, which is the right scale for the interaction inference but discards the per-cell distribution. As a
 supportive cross-check, a per-cell beta generalised linear mixed model
 (`pt01 ~ tau * amyloid + batch + (1 | unit)`, `r format(glmm$n_cells, big.mark = ",")` on-lineage
 nuclei over `r glmm$n_units` replicate units) `r glmm_sentence`. This agrees that the interaction
@@ -210,8 +218,8 @@ would be acceptable.
 
 This re-baselines a v1 result rather than reproducing it. v1's point estimate had loaded the same
 interaction mostly onto progression (about `r prov$v1_progression_loading` of the effect) at a
-suggestive significance (FDR about `r prov$v1_progression_fdr`); on R 4.6 the decomposition
-attributes it mainly to composition instead, and neither the progression nor the within-state
+suggestive significance (FDR about `r prov$v1_progression_fdr`); on R `r prov$r_version` the
+decomposition attributes it mainly to composition instead, and neither the progression nor the within-state
 channel clears significance. The qualitative headline - a real, modest tau-amyloid synergy carried
 by the DAM compartment - is unchanged; its mechanistic reading shifts from "faster cells" toward
 "more cells". The ordering itself is stable and marker-concordant: refitting on 10 and 20 harmony
@@ -244,8 +252,8 @@ have. Third, the lineage conditions on the homeostatic-to-DAM cells, omitting th
 proliferative nuclei (`r omit_pct`% of microglia overall); were that omission genotype-skewed it
 could bias the interaction, so the per-genotype omitted fraction is reported below and is balanced
 across genotypes. Fourth, the within-state and composition channels are anchored on cell-weighted
-pooled positions, so the decomposition is conditional on those anchors (a replicate-balanced
-re-anchoring is carried alongside). Fifth, the substates are transcriptionally close, which is why
+pooled positions, so the decomposition is conditional on that anchoring. Fifth, the substates are
+transcriptionally close, which is why
 the marker score-axis concordance is moderate rather than near-perfect and is read as a guard, not
 an independent validation.
 
@@ -264,9 +272,9 @@ knitr::kable(
 ```{r}
 #| label: trajectory-provenance
 #| echo: true
-cat(sprintf("slingshot on harmony[1:%d], rooted at %s -> %s; pseudotime concordant with marker score-axis (rho %.2f, floor %.2f: %s).\nProgression inference: %d-unit weighted factorial, %d Freedman-Lane permutations, seed %d, limma %s, R %s.\nPer-cell sensitivity: %s on %s nuclei / %d units (random-effect SD %.3f, singular = %s).\n",
+cat(sprintf("slingshot on harmony[1:%d], rooted at %s -> %s; pseudotime concordant with marker score-axis (rho %.2f, floor %.2f: %s).\nProgression inference: %d-unit weighted factorial, %d Freedman-Lane permutations, seed %d, limma %s, R %s.\n",
   prov$primary_dims, prov$root_substate, prov$terminal_substate, prov$concordance_rho,
   prov$concordance_floor, ifelse(isTRUE(prov$concordant), "pass", "FLAG"),
-  nrow(trd$per_unit), prov$n_perm, prov$seed, prov$limma_version, prov$r_version,
-  glmm$method, format(glmm$n_cells, big.mark = ","), glmm$n_units, glmm$re_sd, glmm$singular))
+  nrow(trd$per_unit), prov$n_perm, prov$seed, prov$limma_version, prov$r_version))
+cat(glmm_prov, "\n", sep = "")
 ```

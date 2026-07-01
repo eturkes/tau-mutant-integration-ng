@@ -149,7 +149,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                (P2 trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_report [ONE
                 compact target] -> pseudotime-shift + composition-not-progression 3-channel decomposition + per-cell
                 glmmTMB supportive + score-axis concordance + 5 caveats/provenance; headline = synergy adds DAM
-                cells, no supported further-advance; ALL prose inline-computed from trajectory_report, never hardcoded)
+                cells, no supported further-advance; inference numbers inline-computed from trajectory_report, never
+                hardcoded [fixed design constants -- resid df, sensitivity dims -- stated as text])
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)

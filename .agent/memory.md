@@ -381,7 +381,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   targets (microglia_trajectory / trajectory_progression / trajectory_glmm_sensitivity) into: slim per-cell cell_frame
   (genotype/substate/on_lineage/pt_raw/score_axis_pt) + interaction table (primary+exploratory BH families;
   coef/CI/perm_p/FDR) + weighted_top (5 contrasts) + per_unit + lineage_per_unit + sensitivity + glmm 13-name subset +
-  provenance. ALL prose INLINE-COMPUTED from trajectory_report (R4.6 numbers drift-prone), NEVER hardcoded.
+  provenance. Drift-prone inference numbers (coefs/p/loadings/rho, R version, unit count) INLINE-COMPUTED from
+  trajectory_report (R4.6 re-baseline), NEVER hardcoded; only fixed design constants (9 resid df, sensitivity dims
+  10/20) stated as text (they change only with the design/config, not the data).
 - EXTRACTOR GUARD-BAR (S4a, mirrors microglia_report_data; the qmd render-cleanliness contract): up-front input-schema
   stopifnot on EVERY nested field the body reads + assembled-bundle postconditions with COL-EXISTENCE-BEFORE-FINITENESS
   (a dropped col fails HERE, never vacuously -- all(is.finite(NULL))==TRUE lets a missing col slip). Guards: finite

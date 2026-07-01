@@ -999,6 +999,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
   it   <- out$interaction                                 # qmd irow()/interaction-table source
   gl   <- out$glmm                                        # qmd supportive-arm sentence + provenance line
   pv   <- out$provenance                                  # qmd inline-formats many scalars + feeds 2 geoms
+  lpu  <- out$lineage_per_unit                            # qmd conditioning audit: aggregate n_cells/n_on_lineage by genotype
   fin1 <- function(x) is.numeric(x) && length(x) == 1L && is.finite(x)   # finite length-1 numeric
   int1 <- function(x) fin1(x) && x == round(x)            # + integer-VALUED (R %d accepts whole doubles -> no coercion)
   str1 <- function(x) is.character(x) && length(x) == 1L && !is.na(x)    # non-NA length-1 string
@@ -1034,6 +1035,12 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     }, logical(1))),
     is.data.frame(out$per_unit), nrow(out$per_unit) >= 1L,     # qmd prints nrow(trd$per_unit) (%d)
     nrow(out$sensitivity) >= 1L, all(is.finite(out$sensitivity$spearman_vs_primary)),  # qmd min(...) -> Inf+warn if empty
+    # lineage-conditioning audit (lpu): qmd aggregates n_cells/n_on_lineage by genotype + prints
+    # omitted% -> finite positive counts, on-lineage bounded [0, n_cells], known non-missing genotype
+    # (an NA/Inf count or unknown genotype -> NaN omitted% or a dropped-level warn under warn=2).
+    nrow(lpu) >= 1L, all(is.finite(lpu$n_cells)), all(lpu$n_cells > 0),
+    all(is.finite(lpu$n_on_lineage)), all(lpu$n_on_lineage >= 0 & lpu$n_on_lineage <= lpu$n_cells),
+    !anyNA(lpu$genotype), all(as.character(lpu$genotype) %in% genotype_levels),
     # glmm supportive arm: method picks the sentence branch; the NOT-failed branch inline-formats
     # effect/CI/p + re_sd (finite -> never prints "NA"/"Inf"); n_cells/n_units print unconditionally.
     length(gl$method) == 1L, gl$method %in% c("glmmTMB_beta", "lmm_ranknorm", "failed"),
@@ -1046,7 +1053,13 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     # substate/version strings non-NA; concordant a scalar flag; the rest (assembled, not inline-read) non-NULL.
     all(vapply(pv[c("dam_onset", "composition_loading", "progression_loading", "cross_loading",
                     "dam_pt_rho", "homeo_pt_rho", "concordance_rho", "concordance_floor",
-                    "recon_resid_max", "omitted_frac_overall")], fin1, logical(1))),
+                    "recon_resid_max", "omitted_frac_overall",
+                    "v1_progression_loading", "v1_progression_fdr")], fin1, logical(1))),  # last two inline-printed
+    # the qmd prints the reconstruction residual + claims the three loadings "sum to one by
+    # construction" -> back both at the report layer (run_trajectory_progression gates recon < 1e-8;
+    # this catches a corrupted provenance copy where residual + loadings diverge).
+    pv$recon_resid_max < 1e-6,
+    abs(pv$composition_loading + pv$progression_loading + pv$cross_loading - 1) < 1e-5,
     all(vapply(pv[c("primary_dims", "n_perm", "seed")], int1, logical(1))),
     all(vapply(pv[c("root_substate", "terminal_substate", "limma_version", "r_version")], str1, logical(1))),
     is.logical(pv$concordant), length(pv$concordant) == 1L, !is.na(pv$concordant),

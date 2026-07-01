@@ -271,3 +271,20 @@ wip-p2s4-report) DELETED at S4b close.
   include chain + @sec-trajectory pointer. Both wip branches (wip-p2s4a-hardened, wip-p2s4-report) DELETED. Next
   mode = CLOSE-OUT (adversarial plan review; fold P2 digest -> history.md; archive plan; reset Active plan; revise
   Cohesive-story finding #2 wording per the R4.6 re-baseline).
+- 2026-07-01 P2-S4b codex review (of d5c4ccb): 8 findings (0 high / 3 med / 5 low), ALL accepted, gate stays green.
+  HONESTY (med): intro's bare "the answer is no" overclaimed proven absence -> "does not detectably / no
+  statistically supported evidence of further advance"; dropped "faster advance" rate wording (chapter disavows
+  rate) across _trajectory.qmd + _microglia.qmd; index Overview += "mainly". MED2: the provenance cat printed
+  "random-effect SD NA, singular = NA" on a FAILED glmm (only the prose sentence branched on method=="failed") ->
+  added a glmm_prov branch that prints fail_reason instead. MED3: report-layer extractor now backs the qmd's
+  "reconstruction residual" print + "three loadings sum to one" claim (recon_resid_max < 1e-6 + loadings-sum within
+  1e-5; run_trajectory_progression still gates the exact < 1e-8, this catches a corrupted provenance copy). LOW:
+  inlined the two data-derived hardcodes (16 units -> glmm$n_units, R 4.6 -> prov$r_version), left 9 resid df +
+  sensitivity dims 10/20 as fixed DESIGN constants + scoped the memory/map "inline-computed" claim to match; added
+  lineage_per_unit value/bounds postconditions (finite positive n_cells, on-lineage in [0,n_cells], known genotype)
+  + folded v1_progression_loading/fdr into the finite provenance guard; dropped the un-surfaced/un-guarded
+  "replicate-balanced re-anchoring is carried alongside" caveat clause (computed upstream, never surfaced here);
+  test now asserts !("decomposition" %in% names(trd)) to lock the S4a-955 drop. Codex CHECKED CLEAN: no qmd reads
+  trd$decomposition, comp_cf/progression_cf/cross labels align across extractor/test/qmd, include placement +
+  #sec-trajectory unique, no residual ggplot trans=. Rebuilt trajectory_report fresh on real data (new postconds
+  pass, no false-red) + re-render 0-warning + tests warn=2. Commit `trajectory (p2 s4b review): ... (codex)`.
