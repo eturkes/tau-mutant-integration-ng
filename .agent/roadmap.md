@@ -40,7 +40,8 @@ no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the on
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 6 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
 glmmTMB per-cell sensitivity [new-dep arm] -> S4a report-data extractor+target + S4b chapter+wiring). S1 + S2a +
-S2b + S3 DONE; next open = S4a (S4 split into S4a/S4b + the done work PARKED on branch wip-p2s4-report, 2026-07-01).
+S2b + S3 DONE; next open = S4a -- now a MECHANICAL restore (its VALIDATED hardened extractor+target+test are PARKED
+on branch wip-p2s4a-hardened after the guard-derivation overflowed a 2nd window; S4b's qmd stays on wip-p2s4-report, 2026-07-01).
 (S2 split out S3, then S2 -> S2a/S2b, then S4 -> S4a/S4b, all 2026-06-30..07-01 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -221,3 +222,15 @@ S2b + S3 DONE; next open = S4a (S4 split into S4a/S4b + the done work PARKED on 
   render); S4b = restore the qmd + wire index/_microglia pointer + render-debug to 0-warning + docs. Each restores
   its parked files (`git checkout wip-p2s4-report -- <file>`) -> near-mechanical, no re-derive, no re-read of R/
   model files. DELETE the branch after S4b lands. Next open = S4a.
+- 2026-07-01 P2-S4a guard-hardening PARKED (context-overflow remediation, 2nd split): S4a's NEW work -- harden the
+  restored extractor's stopifnot to guard EVERY nested field the body reads (mirror microglia_report_data) + the
+  structure/guard test -- required heavy re-derivation (enumerate the exact nested-field guards against the real
+  cached targets; discover + fix a fixture composition-degeneracy [CONSTANT 12/12 per-unit composition -> zero
+  comp_cf/cross residual variance -> NaN fdr -> VARY per-unit DAM drop k%%3, each >=10 retained]; validate a fresh
+  674KB trajectory_report build) and overflowed one window before the full gate. Remediation (mirrors the P1-S5
+  review + P2-S4 parks): reverted main to the gated d15e6c7 (clean; orphan trajectory_report object pruned; gate
+  RE-VERIFIED green), parked the VALIDATED work (hardened extractor+guards + trajectory_report target + guard test;
+  trajectory test passes warn=2, target built fresh on real data) on branch wip-p2s4a-hardened (bae0cf2), and
+  REWROTE S4a into a MECHANICAL restore (git checkout the 3 files + gate + map.md + commit -- no re-derivation, no
+  large-file reads, no fixture debugging). S4b's qmd stays on wip-p2s4-report (restore ONLY _trajectory.qmd there;
+  its pre-hardening extractor is superseded). Next open = S4a (mechanical).
