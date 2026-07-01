@@ -21,9 +21,13 @@ The analysis is built on a reproducible spine: a pinned R environment (rv), a pi
 environment (uv), a targets pipeline, and this single self-contained Quarto report. The
 quality-control pass below confirms that every modality loads at its expected shape and that
 the single-nucleus microglia carry a complete genotype-by-batch design. The microglia chapter
-then carries the first phase of the story - how amyloid reshapes the microglial population -
-with the spatial, proteomic and phosphoproteomic modalities to follow.
+then carries the first phase of the story - how amyloid reshapes the microglial population. The
+trajectory chapter orders those same nuclei along an activation axis and finds the tau-amyloid
+synergy expressed as more disease-associated cells rather than as cells advancing further along
+it, with the spatial, proteomic and phosphoproteomic modalities to follow.
 
 {{< include _qc.qmd >}}
 
 {{< include _microglia.qmd >}}
+
+{{< include _trajectory.qmd >}}

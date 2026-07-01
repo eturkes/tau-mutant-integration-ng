@@ -375,6 +375,43 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   failed (fail_reason "singular", 0 msgs); no-amyloid subset -> tau:amyloid rank-deficient, glmmTMB DROPS it (captured
   MESSAGE not exception) -> failed (fail_reason "nonestimable", msg "rank-deficient", n_units=8); unknown genotype -> fail loud.
 
+## snRNAseq microglia trajectory report (P2-S4, built) -- `_trajectory.qmd` + `R/trajectory.R::trajectory_report_data` -> `trajectory_report`
+- CHEAP-RENDER INVARIANT (mirrors P1-S5): _trajectory.qmd tar_loads ONE compact target (`trajectory_report` ~0.34MB),
+  NEVER the 612MB Seurat -> gate force-render stays cheap. trajectory_report_data bundles the 3 COMPACT trajectory
+  targets (microglia_trajectory / trajectory_progression / trajectory_glmm_sensitivity) into: slim per-cell cell_frame
+  (genotype/substate/on_lineage/pt_raw/score_axis_pt) + interaction table (primary+exploratory BH families;
+  coef/CI/perm_p/FDR) + weighted_top (5 contrasts) + per_unit + lineage_per_unit + sensitivity + glmm 13-name subset +
+  provenance. ALL prose INLINE-COMPUTED from trajectory_report (R4.6 numbers drift-prone), NEVER hardcoded.
+- EXTRACTOR GUARD-BAR (S4a, mirrors microglia_report_data; the qmd render-cleanliness contract): up-front input-schema
+  stopifnot on EVERY nested field the body reads + assembled-bundle postconditions with COL-EXISTENCE-BEFORE-FINITENESS
+  (a dropped col fails HERE, never vacuously -- all(is.finite(NULL))==TRUE lets a missing col slip). Guards: finite
+  coef/CI/p/fdr across BOTH interaction families; perm_p finite on the 2 INLINED rows {mean_pt, progression_cf}; each of
+  the 5 canonical weighted_top contrasts has a finite mean_pt coef/CI (feeds p_ctr geom_pointrange); glmm 13-name set +
+  provenance scalars finite/int-valued/string by role. The finite-p/fdr assertion is an INTENTIONAL build-fatal
+  data-quality gate (validated non-degenerate on CURRENT data, NOT a proven universal); a future degenerate EXPLORATORY
+  endpoint would red it -> then add graceful "-" formatting + exempt that row.
+- FIXTURE COMPOSITION-DEGENERACY (baked into the S4a guard test, durable): CONSTANT per-unit composition (12/12) zeroes
+  the comp_cf/cross residual variance -> se=0 -> NaN p -> NaN fdr -> the finite-fdr postcondition reds. The test VARIES
+  per-unit composition (drop k%%3 DAM cells/unit, each >=10 retained) so comp_cf/cross are non-degenerate.
+- decomposition NOT re-bundled (S4b, codex 955): the qmd draws its loadings figure+prose from provenance
+  (composition/progression/cross_loading, guarded finite) + per-channel coefs from the comp_cf/progression_cf/cross ROWS
+  of the interaction table -> a `decomposition` field only DUPLICATED those two live sources (dead figure-shaped output).
+  Kept: `glmm` (full 13-name mirror of the S3 target) + `per_unit` (full 16-unit summary) as faithful RESULT records
+  despite a few unread fields -- distinct from decomposition (a redundant duplicate of data used elsewhere).
+- RENDER GOTCHA (ggplot2 4.0.3, generalises to any qmd): scale_*_gradient(`trans=`) DEPRECATED at 3.5.0 -> use
+  `transform=` (else a lifecycle deprecation WARNING -> warn=2 render error -> red gate). The concordance geom_bin2d fill
+  uses transform="log10". Every other trajectory geom already renders clean under _microglia.qmd's 4.0.3 pass.
+- WIRING: index.qmd includes _trajectory.qmd AFTER _microglia.qmd; the Overview names it. `@sec-trajectory` cross-refs
+  resolve across the full rendered doc regardless of include order. _microglia.qmd's 2 forward-pointers rewritten (P2
+  BUILT; synergy = DAM composition, NO supported further-advance; cross-ref @sec-trajectory). tar_quarto auto-detects the
+  trajectory_report tar_load edge THROUGH the include; NO new extra_files (theme/fonts shared), NO new dep (patchwork
+  already used by _microglia.qmd/_qc.qmd).
+- CHAPTER (title "The tau-amyloid synergy adds DAM cells rather than advancing them"): amyloid-axis-shift ->
+  composition-not-progression 3-channel decomposition -> per-cell glmmTMB supportive (composition-conflated) ->
+  reconciliation/robustness/concordance -> 5 caveats+provenance (activation-ordering not time; position not rate;
+  lineage-conditioning balanced; cell-weighted anchors; transcriptionally-close substates). Full render = 52 chunks
+  0-warning, report ~3.6MB, 23 targets.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

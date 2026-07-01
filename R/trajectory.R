@@ -894,7 +894,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     is.list(microglia_trajectory),
     all(c("cell_frame", "per_unit", "sensitivity", "provenance") %in% names(microglia_trajectory)),
     is.list(trajectory_progression),
-    all(c("per_unit", "contrasts", "decomposition", "primary_family",
+    all(c("per_unit", "contrasts", "primary_family",
           "exploratory_family", "provenance") %in% names(trajectory_progression)),
     is.list(trajectory_glmm_sensitivity),
     # FULL 13-name glmm set: the [c(...)] row-subset below NA-FILLS any missing name (a silent
@@ -913,7 +913,6 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     # only breaks mid-render.
     is.list(tp$contrasts), "weighted" %in% names(tp$contrasts),
     is.list(tp$contrasts$weighted), "top" %in% names(tp$contrasts$weighted),   # weighted_top (5 contrasts)
-    all(c("loadings", "L_int", "interaction") %in% names(tp$decomposition)),
     # per_unit + sensitivity columns the conditioning + robustness panels read:
     is.data.frame(microglia_trajectory$per_unit),
     all(c("genotype", "n_cells", "n_on_lineage", "omitted_frac") %in%
@@ -948,19 +947,14 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     cbind(family = "exploratory", tp$exploratory_family, stringsAsFactors = FALSE))
   rownames(interaction) <- NULL
 
-  # exact 3-channel decomposition of the interaction on mean pseudotime: the per-channel interaction
-  # coefs (L_int over mean_pt / comp_cf / prog_cf / cross) + the loadings (each channel / mean_pt,
-  # summing to 1) + the per-channel inference table -> the headline composition-vs-progression split.
-  decomposition <- list(
-    loadings    = tp$decomposition$loadings,              # named: comp_cf / prog_cf / cross
-    L_int       = tp$decomposition$L_int,                 # named: mean_pt / comp_cf / prog_cf / cross
-    interaction = tp$decomposition$interaction)           # per-channel coef/se/ci/p table
-
+  # the 3-channel decomposition is NOT re-bundled: the qmd draws its loadings figure + prose from the
+  # provenance loadings (composition/progression/cross_loading, guarded finite below) and the per-channel
+  # coefs from the comp_cf/progression_cf/cross rows of `interaction` above -> a `decomposition` field
+  # would only duplicate those two live sources (dead figure-shaped output, codex 955).
   list(
     cell_frame   = cell_frame,
     interaction  = interaction,
     weighted_top = tp$contrasts$weighted$top,             # named-by-contrast per-measure tables (5 contrasts)
-    decomposition = decomposition,
     per_unit     = tp$per_unit,                           # 16-unit summary (mean_pt, frac_past, within_*, n_cells, sd_pt)
     lineage_per_unit = microglia_trajectory$per_unit,     # per-unit n_on_lineage + omitted_frac (conditioning audit)
     sensitivity  = microglia_trajectory$sensitivity,      # dims {10,20} + all-retained robustness vs primary
@@ -1038,7 +1032,6 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
         sum(w$measure == "mean_pt") == 1L &&
         all(is.finite(unlist(w[w$measure == "mean_pt", c("coef", "ci_l", "ci_r", "p_value")])))
     }, logical(1))),
-    all(c("comp_cf", "prog_cf", "cross") %in% names(out$decomposition$loadings)),
     is.data.frame(out$per_unit), nrow(out$per_unit) >= 1L,     # qmd prints nrow(trd$per_unit) (%d)
     nrow(out$sensitivity) >= 1L, all(is.finite(out$sensitivity$spearman_vs_primary)),  # qmd min(...) -> Inf+warn if empty
     # glmm supportive arm: method picks the sentence branch; the NOT-failed branch inline-formats

@@ -39,10 +39,11 @@ S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (
 no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
 + 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
 6 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
-glmmTMB per-cell sensitivity [new-dep arm] -> S4a report-data extractor+target + S4b chapter+wiring). S1 + S2a +
-S2b + S3 + S4a DONE; next open = S4b -- MECHANICAL restore of the parked _trajectory.qmd chapter (wip-p2s4-report)
-+ index wiring + microglia forward-pointer rewrite + render-debug to 0-warning (S4a landed the report-data
-extractor + trajectory_report target + guard test from wip-p2s4a-hardened; 2026-07-01). DELETE both wip branches when S4b closes.
+glmmTMB per-cell sensitivity [new-dep arm] -> S4a report-data extractor+target + S4b chapter+wiring). S1..S4b ALL
+DONE (2026-07-01) -> P2 steps COMPLETE, UNREVIEWED -> next mode = CLOSE-OUT (adversarial plan review; fold P2 digest
+-> history.md; archive the plan; reset Active plan; + REVISE the Cohesive-story finding #2 wording -- synergy = DAM
+COMPOSITION not progression/acceleration -- per the R4.6 re-baseline). Both wip branches (wip-p2s4a-hardened,
+wip-p2s4-report) DELETED at S4b close.
 (S2 split out S3, then S2 -> S2a/S2b, then S4 -> S4a/S4b, all 2026-06-30..07-01 to fit one window each — see ledger.)
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -253,3 +254,20 @@ extractor + trajectory_report target + guard test from wip-p2s4a-hardened; 2026-
   render clean; render-log clean). map.md += trajectory_report_data fn + trajectory_report target + the S4a test
   line. Both wip branches LEFT for S4b to delete. Next open = S4b (restore _trajectory.qmd + wire index + rewrite
   the microglia pointer + render-debug to 0-warning).
+- 2026-07-01 P2-S4b DONE -> P2 STEPS COMPLETE. Restored ONLY `_trajectory.qmd` from wip-p2s4-report (its pre-
+  hardening R/trajectory.R + _targets.R superseded by S4a's), wired `{{< include _trajectory.qmd >}}` after
+  _microglia.qmd + extended index Overview to name the trajectory chapter (activation-axis advance; synergy =
+  composition not progression), rewrote the 2 _microglia.qmd forward-pointers (P2 built; synergy is compositional
+  -- more DAM cells, no supported further-advance; cross-ref @sec-trajectory). Chapter (title "the tau-amyloid
+  synergy adds DAM cells rather than advancing them", {#sec-trajectory}) reads the COMPACT trajectory_report,
+  prose ALL inline-computed. RESOLVED the S4a codex low:955 (trd$decomposition dead output): DROPPED it -- the qmd
+  draws loadings from prov$*_loading (guarded finite) + per-channel coefs from the interaction comp_cf/
+  progression_cf/cross rows, so a decomposition field only duplicated two live sources (figure-shaped dead output);
+  updated R/trajectory.R extractor (guard-names + postconditions) + test to match. RENDER gotcha -> memory.md:
+  ggplot2 4.0.3 deprecates scale_*_gradient(trans=) at 3.5.0 -> transform= (lifecycle warning reds warn=2);
+  caught proactively, rendered 0-warning first try. Force-built trajectory_report fresh (44ms/338kB, tar_meta NA)
+  then full gate GREEN (52 render chunks 0-warning, report 3.61MB/14.1s, tar_meta clean 23 targets, render-log
+  clean; test_trajectory.R all groups warn=2). Docs: memory.md += P2-S4 built section; map.md += _trajectory.qmd
+  include chain + @sec-trajectory pointer. Both wip branches (wip-p2s4a-hardened, wip-p2s4-report) DELETED. Next
+  mode = CLOSE-OUT (adversarial plan review; fold P2 digest -> history.md; archive plan; reset Active plan; revise
+  Cohesive-story finding #2 wording per the R4.6 re-baseline).

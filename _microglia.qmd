@@ -178,9 +178,11 @@ Stan backend is present. Both amyloid contrasts move DAM strongly up and the hom
 fraction strongly down, with very small tail probabilities (table below). The tau-by-amyloid
 `interaction` on DAM is positive and significant under propeller
 (FDR `r fmt_p(int_prop_fdr)`); `r int_sentence`,
-so it is flagged rather than asserted. A static compositional interaction of this size is
-consistent with mutant tau accelerating the same activation programme rather than opening a new
-one - a rate question handed to the trajectory phase.
+so it is flagged rather than asserted. A static compositional interaction of this size raises a
+further question - does mutant tau also push microglia further along the same activation
+programme, or does it simply enlarge the DAM endpoint? The trajectory chapter (@sec-trajectory)
+takes that up directly and finds the latter: the synergy is carried by compartment size, not by
+a faster advance.
 
 ```{r}
 #| label: composition-forest
@@ -307,10 +309,11 @@ minimum log2 fold-change detectable at a nominal 80% per-test power for the medi
 interaction below about `r round(pbm$interaction$mde, 1)` log2 units falls under this design's
 nominal detection floor - and the multiple-testing-corrected discovery floor is higher still - so
 absence of large-effect genes is not evidence of no interaction. Crucially, the
-compositional interaction on DAM *is* significant, which points to a synergy expressed as
-compartment size and progression rate rather than as per-gene fold-change. That rate question -
-does amyloid advance microglia further along the activation trajectory on a mutant-tau
-background - is the subject of the next phase.
+compositional interaction on DAM *is* significant, which points to a synergy expressed through
+compartment size rather than per-gene fold-change. The trajectory chapter (@sec-trajectory) then
+separates the two ways that synergy could act - more DAM cells, or cells advancing further along
+the activation axis - and resolves it as the former: the tau-amyloid interaction adds DAM cells,
+with no statistically supported signal that it advances them further.
 
 ## Per-substate differential expression
 

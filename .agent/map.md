@@ -102,14 +102,17 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
    + (P2-S4a) trajectory.R: trajectory_report_data (-> trajectory_report target) -- bundles the 3 COMPACT
       trajectory targets (microglia_trajectory / trajectory_progression / trajectory_glmm_sensitivity, NEVER the
       612MB Seurat) into ONE ~0.34MB object: slim per-cell plotting frame + interaction table (primary+exploratory
-      families; coef/CI/perm_p/FDR) + 3-channel decomposition (L_int/loadings/table) + per_unit + lineage_per_unit
-      + sensitivity + glmm 13-name subset + provenance -> keeps _trajectory.qmd (+ every gate force-render) compact.
+      families; coef/CI/perm_p/FDR -- the comp_cf/progression_cf/cross decomposition channels are ROWS here) +
+      per_unit + lineage_per_unit + sensitivity + glmm 13-name subset + provenance (incl. the 3 decomposition
+      loadings) -> keeps _trajectory.qmd (+ every gate force-render) compact. NO separate `decomposition` field
+      (S4b, codex 955): the qmd reads loadings from provenance + per-channel coefs from interaction rows -> a
+      decomposition bundle would only duplicate those two live sources.
       Two guard layers: up-front stopifnot validates the 3 INPUTS' schema; render-cleanliness POSTCONDITIONS
       validate the ASSEMBLED bundle -- interaction col-EXISTENCE asserted BEFORE is.finite (a dropped rbind-sourced
       col fails loud, not vacuously via all(is.finite(NULL))==TRUE) + measure uniqueness + finite coef/ci/p/fdr/perm_p;
       weighted mean_pt coef/CI/p_value present+finite on all 5 canonical contrasts; per_unit/sensitivity non-empty +
       finite; glmm method-enum + finite estimate/CI/p/re_sd; provenance fin1/int1/str1 scalars + logical concordant;
-      labelled genotype/substate. Pure: no RNG/IO. (_trajectory.qmd render layer -> S4b.)
+      labelled genotype/substate. Pure: no RNG/IO. (_trajectory.qmd render layer = the report include chain below, S4b DONE.)
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -132,7 +135,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        microglia_trajectory <- build_activation_trajectory(microglia_annotated)  # slingshot H->D pseudotime; per-cell frame + per-unit omitted-frac + sensitivity + concordance; serialized ~0.8MB / in-mem ~3.3MB
        trajectory_progression <- run_trajectory_progression(microglia_trajectory)  # S2b: 16-unit pseudotime summaries -> weighted/ols/bounded interaction fits + 3-channel Kitagawa decompose + Freedman-Lane null; primary BH {progression_cf, within_homeostatic}; reads COMPACT S1 target (no 612MB load)
        trajectory_glmm_sensitivity <- glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame)  # S3: per-cell beta GLMM tau:amyloid (degrade -> rank-normal LMM -> method="failed"); supportive, INDEPENDENT of trajectory_progression; ~0.3KB
-       trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # S4a: bundles the 3 compact targets -> one ~0.34MB render object (slim cell_frame + interaction/decomposition tables + glmm row + provenance); two-layer guards (input schema + assembled-bundle postconditions: col-existence-before-finiteness, weighted mean_pt p on all 5 contrasts, glmm/provenance scalars); keeps gate force-render cheap
+       trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # S4a: bundles the 3 compact targets -> one ~0.34MB render object (slim cell_frame + interaction table [decomposition channels as rows] + weighted_top + per_unit + lineage_per_unit + sensitivity + glmm row + provenance [incl. decomposition loadings]); two-layer guards (input schema + assembled-bundle postconditions: col-existence-before-finiteness, weighted mean_pt p on all 5 contrasts, glmm/provenance scalars); keeps gate force-render cheap
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -141,7 +144,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                                                           --{{< include >}}--> `_microglia.qmd`
                (P1 microglia chapter: setup `options(warn=2)`; tar_load microglia_report + composition_results +
                 pb_de_microglia + pb_de_substate + symbol_map -> substate UMAP, composition forest/table,
-                amyloid->DAM volcano + DE counts, under-powered interaction + P2 pointer, Thrupp + dropout caveats)
+                amyloid->DAM volcano + DE counts, under-powered interaction + @sec-trajectory pointer, Thrupp + dropout caveats)
+                                                          --{{< include >}}--> `_trajectory.qmd`
+               (P2 trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_report [ONE
+                compact target] -> pseudotime-shift + composition-not-progression 3-channel decomposition + per-cell
+                glmmTMB supportive + score-axis concordance + 5 caveats/provenance; headline = synergy adds DAM
+                cells, no supported further-advance; ALL prose inline-computed from trajectory_report, never hardcoded)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)
@@ -171,7 +179,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd _microglia.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

@@ -369,7 +369,7 @@ s4_tp   <- run_trajectory_progression(s4_mt, n_perm = 199L)
 s4_glmm <- glmmtmb_pt_sensitivity(s4_mt$cell_frame)
 trd <- trajectory_report_data(s4_mt, s4_tp, s4_glmm)
 stopifnot(
-  all(c("cell_frame", "interaction", "weighted_top", "decomposition", "per_unit",
+  all(c("cell_frame", "interaction", "weighted_top", "per_unit",
         "lineage_per_unit", "sensitivity", "glmm", "provenance") %in% names(trd)),
   all(c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam",
         "median_pt", "q90", "frac_past_logit", "frac_past_asin") %in% trd$interaction$measure),
@@ -377,7 +377,7 @@ stopifnot(
   all(is.finite(trd$interaction$ci_r)), all(is.finite(trd$interaction$p_value)),
   all(is.finite(trd$interaction$fdr)),
   "perm_p" %in% names(trd$interaction),                      # qmd table/prose col (extractor guards existence + inlined rows)
-  all(c("comp_cf", "prog_cf", "cross") %in% names(trd$decomposition$loadings)),
+  all(c("comp_cf", "progression_cf", "cross") %in% trd$interaction$measure),  # per-channel decomposition coefs live here (no separate $decomposition)
   all(c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction") %in%
         names(trd$weighted_top)),
   setequal(names(trd$glmm), c("method", "term", "estimate", "se", "z", "p_value", "ci_l", "ci_r",
