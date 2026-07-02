@@ -74,6 +74,29 @@ nf_sentence <- if (identical(nf_status, "supported")) {
 } else {
   "The predeclared NF-kB attenuation gate is not supported."
 }
+nf_detail_sentence <- if (isTRUE(mrd$nfkb$verdict$primary_discordant)) {
+  paste0("The two primary rows disagree in sign: the NF-kB TF-family score is ",
+         fmt_num(nf_tf$score), " (primary-family FDR ", fmt_p(nf_tf$primary_family_fdr),
+         "), while the sign-aware NF-kB target-GSEA score is ", fmt_num(nf_gsea$score),
+         " (primary-family FDR ", fmt_p(nf_gsea$primary_family_fdr), ").")
+} else if (isTRUE(mrd$nfkb$verdict$primary_negative)) {
+  paste0("Both primary rows are negative: the NF-kB TF-family score is ",
+         fmt_num(nf_tf$score), " (primary-family FDR ", fmt_p(nf_tf$primary_family_fdr),
+         ") and the sign-aware NF-kB target-GSEA score is ", fmt_num(nf_gsea$score),
+         " (primary-family FDR ", fmt_p(nf_gsea$primary_family_fdr), ").")
+} else {
+  paste0("The primary rows are not concordantly negative: the NF-kB TF-family score is ",
+         fmt_num(nf_tf$score), " (primary-family FDR ", fmt_p(nf_tf$primary_family_fdr),
+         ") and the sign-aware NF-kB target-GSEA score is ", fmt_num(nf_gsea$score),
+         " (primary-family FDR ", fmt_p(nf_gsea$primary_family_fdr), ").")
+}
+nf_conclusion_sentence <- if (identical(nf_status, "supported")) {
+  "That clears the specific attenuation rule."
+} else if (identical(nf_status, "directional_only")) {
+  "That leaves the evidence directional but below the predeclared FDR rule."
+} else {
+  "That makes the rebuilt evidence insufficient for the specific attenuation claim."
+}
 gsk_sentence <- if (isTRUE(gsk_int$significant) || isTRUE(gsk_tau_nlgf$significant)) {
   "Gsk3b has nominal rebuilt kinase support in at least one focal contrast, subject to the bulk-phospho caveats below."
 } else {
@@ -182,12 +205,9 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
 
 ## NF-kB Attenuation
 
-`r nf_sentence` The two primary rows disagree in sign: the NF-kB TF-family score is
-`r fmt_num(nf_tf$score)` (primary-family FDR `r fmt_p(nf_tf$primary_family_fdr)`), while the
-sign-aware NF-kB target-GSEA score is `r fmt_num(nf_gsea$score)` (primary-family FDR
-`r fmt_p(nf_gsea$primary_family_fdr)`). That makes the rebuilt evidence insufficient for the
-specific attenuation claim. Supportive rows, including tau-in-NLGF and substates, remain
-descriptive and cannot override the whole-microglia interaction gate.
+`r nf_sentence` `r nf_detail_sentence` `r nf_conclusion_sentence` Supportive rows, including
+tau-in-NLGF and substates, remain descriptive and cannot override the whole-microglia interaction
+gate.
 
 ```{r}
 #| label: mechanism-nfkb-table

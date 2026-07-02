@@ -22,21 +22,16 @@ Durable findings mined from v1 (the headline to rebuild around):
    compositional DAM-cell synergy: amyloid adds more DAM cells on the mutant-tau
    background than additivity predicts. P2 does NOT detect a supported
    progression-beyond-composition signal along the activation trajectory.
-3. Mechanism converges on Gsk3b / Myc signalling; tau attenuates amyloid-driven NF-kB.
+3. Mechanism rebuild is asymmetric: RNA supports a Myc-linked DAM interaction signal; targeted
+   NF-kB attenuation is discordant / not supported; 24M bulk phospho covers but does NOT recover
+   Gsk3b interaction or tau-in-NLGF support.
 4. Secondary axis: amyloid-linked synaptic suppression + TREM2 / APP clearance.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: P3 Mechanism
-Plan: `.agent/p3_mechanism_plan.md` (opened 2026-07-02 after user confirmed default P3).
-Next `$session-prompt` mode = CLOSE-OUT.
-
-Steps:
-- [x] S1 dependencies + API contracts.
-- [x] S2 RNA pathway + TF + NF-kB targets.
-- [x] S3 minimal phosphosite DE + kinase activity.
-- [x] S4 mechanism report + integration.
+## Active plan: none
+Next `$session-prompt` mode = PLAN. Default next phase = P4 Cross-modality; confirm before opening.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -50,8 +45,9 @@ Steps:
 - P2 Interaction trajectory [DONE 2026-07-02 -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`]:
   activation pseudotime (homeostatic->DAM); amyloid advances the activation axis, but the tau x amyloid
   interaction decomposes to more DAM cells, not supported progression beyond composition.
-- P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase
-  (decoupleR / OmniPath) -> Gsk3b / Myc; NF-kB attenuation check.
+- P3 Mechanism [DONE 2026-07-02 -> `.agent/completed/p3_mechanism_plan_2026-07-02.md`]:
+  focused RNA pathway / TF + targeted NF-kB + minimal 24M bulk-phosphosite kinase. Myc supported;
+  NF-kB attenuation discordant / not supported; Gsk3b not recovered. P4 keeps broader cross-modality.
 - P4 Cross-modality: GeoMx spatial DE (+ light deconvolution if it earns it),
   proteome + phospho DE, CCC for the synaptic/clearance axis, integrated divergence view.
 - P5 Synthesis: ONE lean report - cohesive narrative + compact evidence table (no
@@ -345,6 +341,11 @@ Steps:
   run-index sensitivity, so the bulk hippocampus/not-microglia + genotype-blocked run-order caveats are explicit. Full
   `scripts/check.sh` green (64 render chunks, report ~3.82MB, tar_meta/render-log clean). Self-review accepted/fixed
   2 lows: Myc-specific wording (not Myc-family) + zero-row TF-top selection edge case. Next = CLOSE-OUT.
+- 2026-07-02 P3 CLOSED: close-out review of plan body + shipped mechanism code/prose found no blocker. One low
+  report-prose robustness issue was accepted/fixed: the NF-kB paragraph now branches on the actual gate status instead
+  of hardcoding the current discordant sign pattern. Folded P3 digest -> history.md; archived plan ->
+  `.agent/completed/p3_mechanism_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story finding #3 now states
+  the rebuilt mechanism asymmetry (Myc supported; NF-kB/Gsk3b not recovered), not the v1 mechanism headline.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

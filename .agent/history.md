@@ -136,3 +136,41 @@ code/prose blocker beyond updating the forward spine. Final close-out gate re-ru
 
 Deferred -> P3+: mechanism survey (TF/kinase: Gsk3b/Myc, NF-kB attenuation) is the default next phase; P4 remains
 GeoMx spatial + bulk proteome/phospho cross-modality; P5 lean synthesis.
+
+## P3 Mechanism -- closed 2026-07-02 (-> `.agent/completed/p3_mechanism_plan_2026-07-02.md`)
+
+Tested the v1 mechanism candidates against the rebuilt P1/P2 result: amyloid drives microglial DAM expansion, and
+mutant tau modulates that amyloid response mainly through composition rather than supported further trajectory
+progression. Built direct-mouse CollecTRI/OmniPath priors, RNA TF/pathway targets, a targeted NF-kB gate, minimal
+24M bulk-phosphosite DE for kinase activity, `mechanism_report`, and `_mechanism.qmd`. Live facts -> memory.md
+(P3 sections); wiring -> map.md. Below = decisions + rejected alternatives.
+
+- PRIORS/API: `decoupleR` ULM over direct-mouse CollecTRI and OmniPath KSN, with project-local REST cache and
+  hash/count drift gates. Chosen because current `OmnipathR` postprocessors fail on the live schema (`ncbi_tax_id`
+  absent), while the official REST TSVs remain usable and cacheable. REJECTED: v1 off-lock `nichenetr` mapping,
+  silent prior refresh, and broad topology/SCENIC/CARNIVAL rebuilds.
+- RNA MECHANISM: existing replicate-corrected pseudobulk DE is the inference unit; no cell-level TF/pathway tests.
+  CollecTRI TF activity + bounded native-mouse MSigDB GO fgsea + compact project gene sets. NF-kB attenuation is
+  a targeted gate: only whole-microglia `interaction` can support attenuation, and support requires concordant
+  negative primary rows after small-family correction. `tau_in_nlgf` and substates are supportive-only.
+- KINASE: built a narrow 24M bulk hippocampus phosphosite DE leaf solely to feed kinase-substrate activity.
+  Exactly 16 sample-key runs, no batch term, positive log2 + median normalisation + prevalence filter, duplicate
+  biological sites collapsed before decoupleR. Run-index sensitivity is carried because the 24M acquisition order is
+  genotype-blocked. REJECTED: treating this as the full P4 phosphoproteomics chapter or as microglia-sorted evidence.
+- HEADLINE (rebuilt, qualitative durable): Myc is the strongest whole-microglia tau-amyloid interaction TF signal
+  and is negative in DAM as well, supporting the Myc thread as an RNA regulatory hypothesis. NF-kB attenuation is
+  discordant (target-GSEA negative, TF-family positive), so the attenuation claim is not supported. Gsk3b is covered
+  by the KSN and phosphosite data but is not significant for interaction or tau-in-NLGF; tau-in-NLGF kinase hits
+  weaken under run-index sensitivity. P3 therefore supports a DAM/Myc mechanism hypothesis and downgrades v1's
+  Gsk3b and NF-kB attenuation threads to unresolved/unsupported in the rebuilt data.
+- REPORT/API: `_mechanism.qmd` reads one compact `mechanism_report` target and never heavy Seurat. Prose is
+  inline-computed from target rows; close-out review fixed the remaining low robustness issue by making the NF-kB
+  explanatory sentence branch on the actual gate status rather than hardcoding the current discordant pattern.
+
+Verification (honest): S1-S4 each smoke-tested on live cached data with fresh leaf builds where needed
+(`mechanism_collectri`, `mechanism_gene_sets`, `mechanism_pathway`, `phospho_de_24m`, `kinase_activity`,
+`mechanism_report`), and full `scripts/check.sh` was green through S4. Close-out review found no remaining
+shipped code/prose blocker after the NF-kB wording fix; final close-out gate re-run green on 2026-07-02.
+
+Deferred -> P4+: GeoMx spatial DE, total proteome + broader phospho interpretation, CCC for the synaptic/clearance
+axis if it earns it, and an integrated divergence view. P5 remains the lean synthesis report.
