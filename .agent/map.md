@@ -137,6 +137,16 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (activated NES, repressed -NES); support gate only whole_microglia interaction, requires concordant negative
       primary rows after BH across {tf_family,target_gsea}; discordant signs -> `discordant`; tau_in_nlgf/substates
       supportive-only.
+   + (P3-S3) mechanism.R: phospho/kinase orchestration. match_24m_intensity_columns asserts exactly 16/16
+      sample-key-matched 24M phospho columns, 4/genotype, no duplicate stubs. phospho_feature_frame builds traceable
+      feature ids `row<idx>|<PTM.CollapseKey>` + biological site ids `SYMBOL_AApos`, recording blank/multi-gene/
+      missing-site counts; positive_log2_matrix converts nonpositive intensities to NA + counts them.
+      run_phospho_de_24m -> log2 + median-normalise + prevalence filter (2 samples in all 4 genotypes) ->
+      factorial_design(add_batch=FALSE) -> limma-trend 5 contrasts + additive run-index sensitivity fit.
+      phospho_site_stat_matrix collapses duplicate biological sites per contrast by highest phosphosite probability,
+      then max |t|, then original row. run_kinase_activity loads drift-gated KSN, gates coverage, runs decoupleR ULM
+      for primary + run-index fits; build_kinase_mechanism_summary keeps significant kinases plus Gsk3b on every
+      contrast with run-index support/confounding columns.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -160,12 +170,15 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        trajectory_progression <- run_trajectory_progression(microglia_trajectory)  # S2b: 16-unit pseudotime summaries -> weighted/ols/bounded interaction fits + 3-channel Kitagawa decompose + Freedman-Lane null; primary BH {progression_cf, within_homeostatic}; reads COMPACT S1 target (no 612MB load)
        trajectory_glmm_sensitivity <- glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame)  # S3: per-cell beta GLMM tau:amyloid (degrade -> rank-normal LMM -> method="failed"); supportive, INDEPENDENT of trajectory_progression; ~0.3KB
        trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # S4a: bundles the 3 compact targets -> one ~0.34MB render object (slim cell_frame + interaction table [decomposition channels as rows] + weighted_top + per_unit + lineage_per_unit + sensitivity + glmm row + provenance [incl. decomposition loadings]); two-layer guards (input schema + assembled-bundle postconditions: col-existence-before-finiteness, weighted mean_pt p on all 5 contrasts, glmm/provenance scalars); keeps gate force-render cheap
-  - P3 mechanism (format="qs"; consumes compact P1 pseudobulk DE + S1 prior helpers):
+  - P3 mechanism (format="qs"; consumes compact P1 pseudobulk DE + S1 prior helpers + minimal phospho/sample-key layer):
        mechanism_collectri <- load_collectri_mouse() + assert_mechanism_prior_expectations(collectri)  # cached direct-mouse CollecTRI prior; drift-gated
        mechanism_gene_sets <- build_mechanism_gene_sets(mechanism_collectri)  # GO_BP/GO_CC/GO_MF native mouse MSigDB + project sets incl. signed NF-kB target arms; hash-pinned
        mechanism_tf        <- run_mechanism_tf(pb_de_microglia, pb_de_substate, symbol_map, mechanism_collectri)  # decoupleR ULM TF activity x populations x 5 contrasts; skipped substates carried
        mechanism_pathway   <- run_mechanism_pathway(pb_de_microglia, pb_de_substate, symbol_map, mechanism_gene_sets)  # fgsea NES x populations x {GO/project} x contrasts; GO maxSize=500
        nfkb_attenuation    <- build_nfkb_attenuation(mechanism_tf, mechanism_pathway, mechanism_gene_sets)  # sign-aware primary whole-MG interaction gate + supportive rows
+       phospho_de_24m      <- run_phospho_de_24m(phospho, sample_key)  # minimal 24M bulk phosphosite limma-trend DE; no batch; run-index sensitivity stored
+       kinase_activity     <- run_kinase_activity(phospho_de_24m)  # decoupleR ULM over direct-mouse KSN; KSN coverage gate + primary/run-index activity tables
+       kinase_mechanism_summary <- build_kinase_mechanism_summary(kinase_activity)  # significant kinases + explicit Gsk3b rows with run-index support flags
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -201,7 +214,10 @@ from project root: `Rscript tests/test_<x>.R`.
                     phosphosite ID/drop counts + KSN coverage/Gsk3b assertions + prior drift assertion helper;
                     (P3-S2) RNA rank-matrix population/skipped propagation + gene-set filtering/sign splitting +
                     NF-kB source extraction + TF/pathway FDR/direction conventions + p-floor propagation +
-                    tau_in_nlgf-supportive-only / discordant / supported attenuation rules
+                    tau_in_nlgf-supportive-only / discordant / supported attenuation rules; (P3-S3) 16-column
+                    phospho match + log2 nonpositive guard + site-id/drop counts + add_batch=FALSE design +
+                    run-index sensitivity design + duplicate biological-site collapse + KSN coverage gate +
+                    explicit Gsk3b summary carry-through
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):

@@ -30,12 +30,12 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P3 Mechanism
 Plan: `.agent/p3_mechanism_plan.md` (opened 2026-07-02 after user confirmed default P3).
-Next `$session-prompt` mode = EXECUTE: implement S3.
+Next `$session-prompt` mode = EXECUTE: implement S4.
 
 Steps:
 - [x] S1 dependencies + API contracts.
 - [x] S2 RNA pathway + TF + NF-kB targets.
-- [ ] S3 minimal phosphosite DE + kinase activity.
+- [x] S3 minimal phosphosite DE + kinase activity.
 - [ ] S4 mechanism report + integration.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -328,6 +328,16 @@ Steps:
   propagation, central contrast order. Live outcome: Myc is the top DAM interaction TF (negative, significant);
   NF-kB attenuation is DISCORDANT, not supported (target-GSEA negative, TF-family positive). Full `scripts/check.sh`
   green. Next = S3.
+- 2026-07-02 P3-S3 DONE -> minimal 24M bulk-phosphosite kinase layer: `phospho_de_24m` (16/16 sample-key matched
+  runs, 4/genotype; log2 positive intensities with 1,213 nonpositive -> NA; median-normalised; prevalence >=2 samples
+  in all 4 genotypes; limma-trend no batch + additive run-index sensitivity), `kinase_activity` (direct-mouse KSN
+  drift-gated + coverage-gated; decoupleR ULM primary + run-index), `kinase_mechanism_summary` (significant kinases +
+  explicit Gsk3b rows every contrast). Live target clean: 64,328 raw rows -> 17,707 filtered DE rows -> 12,938
+  filtered unique single-gene site IDs; KSN coverage 1,164 matched sites / 123 kinases minsize>=5 / Gsk3b passes with
+  169 sites. Live qualitative read: Gsk3b is covered but NOT significant for interaction or tau_in_nlgf; several
+  tau_in_nlgf primary kinases (CAMK-family etc.) pass FDR<0.10 but weaken under run-index adjustment -> S4 must carry
+  the bulk/not-microglia + genotype-blocked run-order caveats. Full `scripts/check.sh` green (31 current
+  targets/branches; force-render report clean). Next = S4 report + integration.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

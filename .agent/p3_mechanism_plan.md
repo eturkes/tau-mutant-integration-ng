@@ -197,7 +197,7 @@ BH, pinned the MSigDB/project gene-set hash, propagated p-floor flags, and made 
 concordant negative primary rows. Live NF-kB gate = discordant, not supported; `tau_in_nlgf` remains
 supportive-only. Full `scripts/check.sh` green. Next = S3.
 
-### S3 - Minimal phosphosite DE + kinase activity
+### S3 - Minimal phosphosite DE + kinase activity [DONE 2026-07-02]
 Add targets:
 - `phospho_de_24m` = 16 matched 24M phosphosite limma-trend fit with 5 contrasts, no batch term.
 - `kinase_activity` = decoupleR activity over the mouse OmniPath KSN, per contrast.
@@ -228,6 +228,12 @@ Acceptance:
   multi-gene/blank-symbol dropping, add_batch=FALSE design, run-index sensitivity rank/estimability,
   KSN coverage summariser, explicit Gsk3b carry-through.
 - Live smoke prints interaction/tau_in_nlgf kinase table; `scripts/check.sh` green.
+
+Outcome note: built the three targets. Live clean build: 64,328 raw rows -> 17,707 filtered DE rows
+-> 12,938 filtered unique single-gene site ids; KSN coverage 1,164 matched sites / 123 kinases at
+minsize>=5 / Gsk3b covered with 169 sites. Gsk3b is not significant for interaction or tau_in_nlgf;
+tau_in_nlgf primary kinase hits weaken under run-index adjustment, so S4 must keep the bulk
+hippocampus + genotype-blocked run-order caveats explicit. Full `scripts/check.sh` green.
 
 ### S4 - Mechanism report + integration
 Add:

@@ -132,6 +132,14 @@ list(
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),
 
+  # S3 kinase layer. Minimal 24M bulk-phosphosite DE (16 sample-key-matched runs, no batch
+  # term) feeds decoupleR ULM activity over the fingerprinted direct-mouse OmniPath KSN. The
+  # summary carries significant kinases plus Gsk3b for every contrast, with run-index sensitivity
+  # columns so report prose can downgrade run-order-dependent support.
+  tar_target(phospho_de_24m, run_phospho_de_24m(phospho, sample_key), format = "qs"),
+  tar_target(kinase_activity, run_kinase_activity(phospho_de_24m), format = "qs"),
+  tar_target(kinase_mechanism_summary, build_kinase_mechanism_summary(kinase_activity), format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

@@ -898,3 +898,374 @@ build_nfkb_attenuation <- function(mechanism_tf, mechanism_pathway, mechanism_ge
                       primary_family = c("tf_family", "target_gsea"))
   )
 }
+
+# ---- P3-S3: minimal 24M phosphosite DE + kinase activity ------------------------------
+
+phosphosite_probability_column <- function(phospho_tbl) {
+  candidates <- c("Phosphosite probability", "Phopshosite probability")
+  hit <- intersect(candidates, names(phospho_tbl))
+  if (!length(hit)) {
+    stop("missing phosphosite probability column; expected one of: ",
+         paste(candidates, collapse = ", "), call. = FALSE)
+  }
+  hit[1]
+}
+
+match_24m_intensity_columns <- function(phospho_tbl, sample_key, n_keep = 16L) {
+  stopifnot(is.data.frame(phospho_tbl), is.data.frame(sample_key),
+            all(c("genotype", "col_stub", "label") %in% names(sample_key)))
+  if (nrow(sample_key) != n_keep) {
+    stop("sample_key must contain exactly ", n_keep, " 24M rows", call. = FALSE)
+  }
+  if (anyDuplicated(sample_key$col_stub)) stop("duplicate sample-key stubs", call. = FALSE)
+  hits <- match_intensity_columns(names(phospho_tbl), sample_key)
+  hits <- hits[!is.na(hits$key_idx), , drop = FALSE]
+  if (nrow(hits) != n_keep || anyDuplicated(hits$key_idx) ||
+      !setequal(hits$key_idx, seq_len(n_keep))) {
+    stop("expected exactly ", n_keep, "/", n_keep, " matched 24M intensity columns", call. = FALSE)
+  }
+  if (anyDuplicated(hits$stub)) stop("duplicate matched phospho intensity stubs", call. = FALSE)
+  hits <- hits[order(hits$key_idx), , drop = FALSE]
+  geno <- factor(as.character(hits$genotype), levels = genotype_levels)
+  if (anyNA(geno) || !all(as.integer(table(geno)) == n_keep / 4L)) {
+    stop("24M phospho columns are not balanced 4/genotype", call. = FALSE)
+  }
+  meta <- data.frame(
+    sample_id = hits$stub,
+    column = hits$column,
+    stub = hits$stub,
+    label = hits$label,
+    genotype = geno,
+    run_index = seq_len(nrow(hits)),
+    stringsAsFactors = FALSE
+  )
+  rownames(meta) <- meta$sample_id
+  list(columns = hits$column, meta = meta,
+       matched = hits, n_expected = n_keep, n_matched = nrow(hits))
+}
+
+phospho_feature_frame <- function(phospho_tbl) {
+  stopifnot(is.data.frame(phospho_tbl))
+  need <- c("PG.Genes", "PTM.SiteAA", "PTM.SiteLocation", "PTM.CollapseKey")
+  stopifnot(all(need %in% names(phospho_tbl)))
+  prob_col <- phosphosite_probability_column(phospho_tbl)
+  row_index <- seq_len(nrow(phospho_tbl))
+  collapse_key <- trimws(as.character(phospho_tbl[["PTM.CollapseKey"]]))
+  collapse_blank <- is.na(collapse_key) | collapse_key == ""
+  collapse_trace <- ifelse(collapse_blank, "<blank>", collapse_key)
+  feature <- paste0("row", row_index, "|", collapse_trace)
+  stopifnot(anyDuplicated(feature) == 0L)
+
+  gene <- trimws(as.character(phospho_tbl[["PG.Genes"]]))
+  aa <- trimws(as.character(phospho_tbl[["PTM.SiteAA"]]))
+  loc <- trimws(as.character(phospho_tbl[["PTM.SiteLocation"]]))
+  missing_gene <- is.na(gene) | gene == ""
+  multi_gene <- grepl("[;,]", gene)
+  missing_site <- is.na(aa) | aa == "" | is.na(loc) | loc == "" | tolower(loc) %in% c("na", "nan")
+  site_id <- ifelse(!missing_gene & !multi_gene & !missing_site, paste0(gene, "_", aa, loc), NA_character_)
+  probability <- suppressWarnings(as.numeric(phospho_tbl[[prob_col]]))
+  out <- data.frame(
+    feature = feature,
+    original_row = row_index,
+    collapse_key = collapse_key,
+    collapse_key_blank = collapse_blank,
+    gene = gene,
+    site_aa = aa,
+    site_location = loc,
+    site_id = site_id,
+    phosphosite_probability = probability,
+    stringsAsFactors = FALSE
+  )
+  attr(out, "phospho_feature_counts") <- list(
+    probability_col = prob_col,
+    n_rows = nrow(out),
+    n_blank_collapse_key = sum(collapse_blank),
+    n_duplicate_collapse_key = sum(duplicated(collapse_key[!collapse_blank])),
+    n_missing_gene = sum(missing_gene),
+    n_multi_gene = sum(multi_gene & !missing_gene),
+    n_missing_site = sum(missing_site),
+    n_site_rows = sum(!is.na(site_id)),
+    n_unique_sites = length(unique(site_id[!is.na(site_id)]))
+  )
+  out
+}
+
+positive_log2_matrix <- function(mat) {
+  stopifnot(is.matrix(mat), is.numeric(mat))
+  nonpositive <- !is.na(mat) & mat <= 0
+  out <- mat
+  out[nonpositive] <- NA_real_
+  out <- log2(out)
+  attr(out, "log2_counts") <- list(
+    n_values = length(mat),
+    n_missing_input = sum(is.na(mat)),
+    n_nonpositive_to_na = sum(nonpositive),
+    n_missing_output = sum(is.na(out))
+  )
+  out
+}
+
+prepare_phospho_24m_matrix <- function(phospho_tbl, sample_key,
+                                       min_present = 2L, min_groups = 4L) {
+  match <- match_24m_intensity_columns(phospho_tbl, sample_key)
+  feat <- phospho_feature_frame(phospho_tbl)
+  feature_counts <- attr(feat, "phospho_feature_counts")
+  raw <- as.matrix(phospho_tbl[, match$columns, drop = FALSE])
+  storage.mode(raw) <- "double"
+  rownames(raw) <- feat$feature
+  colnames(raw) <- rownames(match$meta)
+  log_mat <- positive_log2_matrix(raw)
+  norm <- median_normalise(log_mat)
+  filt <- prevalence_filter(norm, match$meta$genotype,
+                            min_present = min_present, min_groups = min_groups)
+  feat <- feat[match(rownames(filt), feat$feature), , drop = FALSE]
+  stopifnot(identical(feat$feature, rownames(filt)),
+            identical(colnames(filt), rownames(match$meta)))
+  list(
+    matrix = filt,
+    meta = match$meta,
+    features = feat,
+    matched = match$matched,
+    counts = c(feature_counts, attr(log_mat, "log2_counts"),
+               list(n_features_raw = nrow(raw),
+                    n_features_filtered = nrow(filt),
+                    n_filtered_site_rows = sum(!is.na(feat$site_id) & feat$site_id != ""),
+                    n_filtered_unique_sites = length(unique(feat$site_id[!is.na(feat$site_id) &
+                                                                          feat$site_id != ""])),
+                    min_present = min_present,
+                    min_groups = min_groups))
+  )
+}
+
+annotate_phospho_top_tables <- function(top, features) {
+  stopifnot(is.list(top), is.data.frame(features), "feature" %in% names(features))
+  lapply(top, function(tbl) {
+    stopifnot(is.data.frame(tbl), "feature" %in% names(tbl))
+    idx <- match(tbl$feature, features$feature)
+    if (anyNA(idx)) stop("top table contains feature absent from annotation", call. = FALSE)
+    cbind(tbl, features[idx, setdiff(names(features), "feature"), drop = FALSE])
+  })
+}
+
+run_index_factorial_design <- function(meta, run_col = "run_index") {
+  stopifnot(is.data.frame(meta), run_col %in% names(meta))
+  fd <- factorial_design(meta, add_batch = FALSE)
+  run <- as.numeric(meta[[run_col]])
+  if (!all(is.finite(run)) || length(unique(run)) < 2L) {
+    return(list(status = "skipped", reason = "run_index is not finite and variable"))
+  }
+  run_z <- as.numeric(scale(run))
+  design <- cbind(fd$design, run_index = run_z)
+  if (qr(design)$rank != ncol(design)) {
+    return(list(status = "skipped", reason = "additive run-index design is rank deficient"))
+  }
+  contrasts <- rbind(fd$contrasts, run_index = rep(0, ncol(fd$contrasts)))
+  stopifnot(identical(rownames(contrasts), colnames(design)),
+            "interaction" %in% colnames(contrasts))
+  list(status = "fit", design = design, contrasts = contrasts,
+       run_col = run_col, scaled_center = mean(run), scaled_scale = stats::sd(run))
+}
+
+run_phospho_de_24m <- function(phospho_tbl, sample_key,
+                               min_present = 2L, min_groups = 4L) {
+  prep <- prepare_phospho_24m_matrix(phospho_tbl, sample_key,
+                                     min_present = min_present, min_groups = min_groups)
+  fd <- factorial_design(prep$meta, add_batch = FALSE)
+  fit <- fit_limma_log(prep$matrix, fd$design, fd$contrasts)
+  top <- annotate_phospho_top_tables(fit$top, prep$features)
+
+  run_index <- run_index_factorial_design(prep$meta)
+  if (identical(run_index$status, "fit")) {
+    fit_ri <- fit_limma_log(prep$matrix, run_index$design, run_index$contrasts)
+    run_index$top <- annotate_phospho_top_tables(fit_ri$top, prep$features)
+  }
+  list(
+    n_samples = ncol(prep$matrix),
+    n_features = nrow(prep$matrix),
+    meta = prep$meta,
+    features = prep$features,
+    top = top,
+    design = list(add_batch = FALSE, design_cols = colnames(fd$design),
+                  contrast_names = colnames(fd$contrasts),
+                  residual_df = nrow(fd$design) - qr(fd$design)$rank),
+    run_index = run_index,
+    filters = prep$counts,
+    provenance = list(
+      transform = "log2 positive intensities; nonpositive values set to NA",
+      normalisation = "sample-wise median shift on log2 scale",
+      prevalence = list(min_present = min_present, min_groups = min_groups),
+      feature_id = "row<original_row>|<PTM.CollapseKey>"
+    )
+  )
+}
+
+phospho_site_stat_matrix <- function(top_list, stat_col = "t") {
+  stopifnot(is.list(top_list), length(top_list) >= 1L)
+  present <- intersect(mechanism_contrasts(), names(top_list))
+  if (!length(present)) stop("no canonical contrasts present in phospho top tables", call. = FALSE)
+  collapsed <- list()
+  count_rows <- list()
+  for (cn in present) {
+    top <- top_list[[cn]]
+    need <- c("feature", "site_id", "phosphosite_probability", "original_row", stat_col)
+    stopifnot(is.data.frame(top), all(need %in% names(top)))
+    stat <- as.numeric(top[[stat_col]])
+    ok <- !is.na(top$site_id) & top$site_id != "" & is.finite(stat)
+    d <- top[ok, , drop = FALSE]
+    d$.stat <- stat[ok]
+    if (!nrow(d)) stop("no finite single-site phospho statistics for contrast: ", cn, call. = FALSE)
+    site_counts <- table(d$site_id)
+    by_site <- split(d, d$site_id)
+    vals <- vapply(by_site, function(x) {
+      prob <- as.numeric(x$phosphosite_probability)
+      prob[!is.finite(prob)] <- -Inf
+      ord <- order(-prob, -abs(x$.stat), as.integer(x$original_row), method = "radix")
+      x$.stat[ord[1]]
+    }, numeric(1))
+    vals <- vals[sort(names(vals), method = "radix")]
+    collapsed[[cn]] <- vals
+    count_rows[[cn]] <- data.frame(
+      contrast = cn,
+      n_rows_input = nrow(top),
+      n_rows_usable = nrow(d),
+      n_sites = length(site_counts),
+      n_duplicate_sites = sum(site_counts > 1L),
+      max_rows_per_site = max(as.integer(site_counts)),
+      median_rows_per_site = stats::median(as.integer(site_counts)),
+      stringsAsFactors = FALSE
+    )
+  }
+  sites <- sort(unique(unlist(lapply(collapsed, names), use.names = FALSE)), method = "radix")
+  mat <- matrix(NA_real_, nrow = length(sites), ncol = length(present),
+                dimnames = list(sites, present))
+  for (cn in present) mat[names(collapsed[[cn]]), cn] <- collapsed[[cn]]
+  stopifnot(anyDuplicated(rownames(mat)) == 0L)
+  attr(mat, "collapse_counts") <- do.call(rbind, count_rows)
+  mat
+}
+
+assert_ksn_activity_coverage <- function(coverage, min_kinases = 50L,
+                                         min_matched_sites = 100L,
+                                         kinase = "Gsk3b",
+                                         require_kinase_minsize = TRUE) {
+  stopifnot(is.list(coverage), is.list(coverage$gsk3b))
+  if (coverage$n_matched_sites < min_matched_sites) {
+    stop("KSN coverage too low: matched_sites=", coverage$n_matched_sites,
+         " < ", min_matched_sites, call. = FALSE)
+  }
+  if (coverage$kinases_passing_minsize < min_kinases) {
+    stop("KSN coverage too low: kinases_passing_minsize=",
+         coverage$kinases_passing_minsize, " < ", min_kinases, call. = FALSE)
+  }
+  if (require_kinase_minsize && !isTRUE(coverage$gsk3b$passes_minsize)) {
+    stop(kinase, " does not pass KSN minsize; matched_sites=",
+         coverage$gsk3b$matched_sites, call. = FALSE)
+  }
+  TRUE
+}
+
+activity_from_site_matrix <- function(site_mat, ksn, minsize = 5L, fit = "primary") {
+  stopifnot(is.matrix(site_mat), anyDuplicated(rownames(site_mat)) == 0L)
+  net <- ksn[ksn$target %in% rownames(site_mat), , drop = FALSE]
+  res <- run_decoupler_matrix(site_mat, net, minsize = minsize)
+  out <- data.frame(
+    fit = fit,
+    statistic = res$statistic,
+    source = res$source,
+    contrast = res$condition,
+    score = as.numeric(res$score),
+    p_value = as.numeric(res$p_value),
+    direction = as.numeric(res$score),
+    method = attr(res, "method") %||% "ulm",
+    stringsAsFactors = FALSE
+  )
+  out$fdr <- ave(out$p_value, out$fit, out$contrast,
+                 FUN = function(p) stats::p.adjust(p, method = "BH"))
+  ord <- order(out$fit, out$contrast, out$fdr, -abs(out$score), out$source,
+               method = "radix", na.last = TRUE)
+  out[ord, , drop = FALSE]
+}
+
+run_kinase_activity <- function(phospho_de_24m, minsize = 5L,
+                                kinase = "Gsk3b",
+                                coverage_min_kinases = 50L,
+                                coverage_min_sites = 100L) {
+  stopifnot(is.list(phospho_de_24m), is.list(phospho_de_24m$top))
+  ksn <- load_omnipath_ksn_mouse()
+  assert_mechanism_prior_expectations(ksn = ksn)
+  primary_mat <- phospho_site_stat_matrix(phospho_de_24m$top)
+  coverage <- ksn_coverage_probe(ksn, rownames(primary_mat), minsize = minsize, kinase = kinase)
+  assert_ksn_activity_coverage(coverage, min_kinases = coverage_min_kinases,
+                               min_matched_sites = coverage_min_sites,
+                               kinase = kinase, require_kinase_minsize = TRUE)
+  primary <- activity_from_site_matrix(primary_mat, ksn, minsize = minsize, fit = "primary")
+  rows <- list(primary)
+  sensitivity <- list(status = phospho_de_24m$run_index$status %||% "absent",
+                      reason = phospho_de_24m$run_index$reason %||% NA_character_)
+  if (identical(phospho_de_24m$run_index$status, "fit") &&
+      is.list(phospho_de_24m$run_index$top)) {
+    run_mat <- phospho_site_stat_matrix(phospho_de_24m$run_index$top)
+    rows[[length(rows) + 1L]] <- activity_from_site_matrix(run_mat, ksn, minsize = minsize,
+                                                           fit = "run_index")
+    sensitivity$collapse_counts <- attr(run_mat, "collapse_counts")
+  }
+  activity <- do.call(rbind, rows)
+  rownames(activity) <- NULL
+  list(
+    activity = activity,
+    coverage = coverage,
+    sensitivity = sensitivity,
+    provenance = list(
+      minsize = minsize,
+      fdr_scope = "BH within fit x contrast",
+      kinase_prior = attr(ksn, "provenance"),
+      primary_collapse_counts = attr(primary_mat, "collapse_counts"),
+      bulk_context = "24M bulk hippocampus phosphoproteomics; not microglia-sorted"
+    )
+  )
+}
+
+build_kinase_mechanism_summary <- function(kinase_activity, kinase = "Gsk3b",
+                                           alpha = 0.10) {
+  activity <- if (is.list(kinase_activity)) kinase_activity$activity else kinase_activity
+  stopifnot(is.data.frame(activity),
+            all(c("fit", "source", "contrast", "score", "p_value", "fdr") %in% names(activity)))
+  primary <- activity[activity$fit == "primary", , drop = FALSE]
+  primary$significant <- is.finite(primary$fdr) & primary$fdr < alpha
+  primary$include_reason <- ifelse(primary$source == kinase & primary$significant,
+                                   "significant+gsk3b_carry",
+                                   ifelse(primary$source == kinase, "gsk3b_carry", "significant"))
+  keep <- primary$significant | primary$source == kinase
+  out <- primary[keep, , drop = FALSE]
+  missing_contrasts <- setdiff(mechanism_contrasts(), out$contrast[out$source == kinase])
+  if (length(missing_contrasts)) {
+    out <- rbind(out, data.frame(
+      fit = "primary", statistic = NA_character_, source = kinase,
+      contrast = missing_contrasts, score = NA_real_, p_value = NA_real_,
+      direction = NA_real_, method = NA_character_, fdr = NA_real_,
+      significant = FALSE, include_reason = "gsk3b_absent",
+      stringsAsFactors = FALSE
+    ))
+  }
+  sens <- activity[activity$fit == "run_index", c("source", "contrast", "score", "fdr"), drop = FALSE]
+  names(sens) <- c("source", "contrast", "run_index_score", "run_index_fdr")
+  out <- merge(out, sens, by = c("source", "contrast"), all.x = TRUE, sort = FALSE)
+  out$run_index_sign_concordant <- is.finite(out$score) & is.finite(out$run_index_score) &
+    sign(out$score) == sign(out$run_index_score)
+  out$run_index_supports <- is.finite(out$run_index_fdr) & out$run_index_fdr < alpha &
+    out$run_index_sign_concordant
+  out$run_order_confounded <- out$source == kinase & out$significant & !out$run_index_supports
+  out$alpha <- alpha
+  ord_contrast <- match(out$contrast, mechanism_contrasts())
+  ord <- order(ord_contrast, out$source != kinase, out$fdr, -abs(out$score),
+               method = "radix", na.last = TRUE)
+  out <- out[ord, , drop = FALSE]
+  rownames(out) <- NULL
+  list(
+    table = out,
+    coverage = if (is.list(kinase_activity)) kinase_activity$coverage else NULL,
+    provenance = list(alpha = alpha,
+                      carry_kinase = kinase,
+                      rule = "primary significant kinases plus explicit Gsk3b row per contrast")
+  )
+}

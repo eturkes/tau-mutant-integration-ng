@@ -3,6 +3,9 @@
 
 source("R/constants.R")
 source("R/utils.R")
+source("R/io.R")
+source("R/design.R")
+source("R/de_pb.R")
 source("R/mechanism.R")
 source("tests/helpers.R")
 
@@ -232,5 +235,105 @@ nf_supported <- build_nfkb_attenuation(fake_tf, fake_path, fake_sets, alpha = 0.
 stopifnot(nf_supported$verdict$supported,
           identical(nf_supported$verdict$status, "supported"),
           nf_supported$verdict$n_primary_supported == 2L)
+
+# --- P3-S3 phospho DE + kinase helpers -----------------------------------------------
+s3_stubs <- paste0("run", sprintf("%02d", 1:16))
+s3_key <- data.frame(
+  file_name = paste0(s3_stubs, ".PTM.Quantity"),
+  label = rep(c("MAPT-KI_24M", "P301S+3_24M", "NLGF-MAPT-KI_24M", "NLGF-P301S+3_24M"), each = 4L),
+  genotype = factor(rep(genotype_levels, each = 4L), levels = genotype_levels),
+  col_stub = s3_stubs,
+  stringsAsFactors = FALSE
+)
+s3_ann <- data.frame(
+  PG.Genes = c("Gsk3b", "Gsk3b", "Mapt", "A;B", "", "Myc"),
+  PTM.SiteAA = c("S", "S", "T", "S", "Y", "S"),
+  PTM.SiteLocation = c(9, 9, 375, 10, 1, 62),
+  PTM.CollapseKey = c("ck1", "ck2", "ck3", "ck4", "", "ck6"),
+  `Phosphosite probability` = c(0.90, 0.95, 0.99, 0.80, 0.70, 0.90),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+s3_int <- as.data.frame(matrix(100 + seq_len(nrow(s3_ann) * 16), nrow = nrow(s3_ann)))
+names(s3_int) <- paste0(s3_stubs, ".PTM.Quantity")
+s3_phospho <- cbind(s3_ann, s3_int)
+
+matched24 <- match_24m_intensity_columns(s3_phospho, s3_key)
+stopifnot(length(matched24$columns) == 16L,
+          identical(as.character(matched24$meta$genotype), rep(genotype_levels, each = 4L)),
+          identical(matched24$columns, names(s3_int)))
+expect_error(match_24m_intensity_columns(s3_phospho[, -ncol(s3_phospho)], s3_key), "expected exactly")
+
+pf <- phospho_feature_frame(s3_phospho)
+pfc <- attr(pf, "phospho_feature_counts")
+stopifnot(anyDuplicated(pf$feature) == 0L,
+          identical(pf$site_id[1:3], c("Gsk3b_S9", "Gsk3b_S9", "Mapt_T375")),
+          is.na(pf$site_id[4]), is.na(pf$site_id[5]),
+          pfc$n_multi_gene == 1L, pfc$n_missing_gene == 1L,
+          pfc$n_blank_collapse_key == 1L)
+
+lg <- positive_log2_matrix(matrix(c(4, 0, -1, NA_real_), nrow = 2))
+lgc <- attr(lg, "log2_counts")
+stopifnot(lg[1, 1] == 2, is.na(lg[2, 1]), is.na(lg[1, 2]), is.na(lg[2, 2]),
+          lgc$n_nonpositive_to_na == 2L, lgc$n_missing_input == 1L)
+
+prep24 <- prepare_phospho_24m_matrix(s3_phospho, s3_key, min_present = 1L, min_groups = 4L)
+stopifnot(ncol(prep24$matrix) == 16L, nrow(prep24$matrix) == nrow(s3_phospho),
+          identical(colnames(prep24$matrix), rownames(prep24$meta)))
+fd24 <- factorial_design(prep24$meta, add_batch = FALSE)
+stopifnot(identical(colnames(fd24$design), c("(Intercept)", "tau", "nlgf", "tau_nlgf")),
+          identical(colnames(fd24$contrasts), canonical))
+
+ri24 <- run_index_factorial_design(prep24$meta)
+stopifnot(identical(ri24$status, "fit"),
+          "run_index" %in% colnames(ri24$design),
+          all(ri24$contrasts["run_index", ] == 0))
+ri_bad <- run_index_factorial_design(transform(prep24$meta, run_index = 1))
+stopifnot(identical(ri_bad$status, "skipped"))
+
+dup_top <- data.frame(
+  feature = pf$feature[c(1, 2, 3, 6)],
+  site_id = pf$site_id[c(1, 2, 3, 6)],
+  phosphosite_probability = c(0.90, 0.95, 0.99, 0.90),
+  original_row = pf$original_row[c(1, 2, 3, 6)],
+  t = c(10, 1, -3, 4),
+  stringsAsFactors = FALSE
+)
+tie_top <- dup_top
+tie_top$phosphosite_probability[1:2] <- 0.95
+tie_top$t[1:2] <- c(-10, 1)
+site_mat <- phospho_site_stat_matrix(list(tau_alone = dup_top, interaction = tie_top))
+scc <- attr(site_mat, "collapse_counts")
+stopifnot(site_mat["Gsk3b_S9", "tau_alone"] == 1,
+          site_mat["Gsk3b_S9", "interaction"] == -10,
+          scc$n_duplicate_sites[scc$contrast == "tau_alone"] == 1L,
+          anyDuplicated(rownames(site_mat)) == 0L)
+
+cov_ok <- list(n_matched_sites = 120L, kinases_passing_minsize = 55L,
+               gsk3b = list(passes_minsize = TRUE, matched_sites = 8L))
+stopifnot(assert_ksn_activity_coverage(cov_ok, min_kinases = 50L, min_matched_sites = 100L))
+cov_bad <- cov_ok; cov_bad$gsk3b$passes_minsize <- FALSE
+expect_error(assert_ksn_activity_coverage(cov_bad), "Gsk3b does not pass")
+
+fake_kin <- list(
+  activity = data.frame(
+    fit = c(rep("primary", 4), rep("run_index", 2)),
+    statistic = "ulm",
+    source = c("Gsk3b", "Other", "Gsk3b", "Other2", "Gsk3b", "Gsk3b"),
+    contrast = c("interaction", "interaction", "tau_in_nlgf", "tau_alone", "interaction", "tau_in_nlgf"),
+    score = c(2, -3, 0.5, 4, 2.5, -0.4),
+    p_value = c(0.20, 0.001, 0.80, 0.002, 0.01, 0.90),
+    direction = c(2, -3, 0.5, 4, 2.5, -0.4),
+    method = "ulm",
+    fdr = c(0.30, 0.01, 0.80, 0.02, 0.02, 0.90),
+    stringsAsFactors = FALSE),
+  coverage = cov_ok
+)
+ksum <- build_kinase_mechanism_summary(fake_kin, alpha = 0.10)
+stopifnot(is.data.frame(ksum$table),
+          all(c("interaction", "tau_in_nlgf", "tau_alone", "nlgf_in_maptki", "nlgf_in_p301s") %in%
+                ksum$table$contrast[ksum$table$source == "Gsk3b"]),
+          any(ksum$table$source == "Other" & ksum$table$include_reason == "significant"),
+          !any(ksum$table$run_order_confounded[ksum$table$source == "Gsk3b"], na.rm = TRUE))
 
 cat("ok - test_mechanism\n")

@@ -474,6 +474,26 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Live qualitative read (drift-prone margins stay in targets): DAM `interaction` top TF includes Myc negative and
   significant; NF-kB is discordant. No hardcoded winners in downstream prose.
 
+## Phosphosite kinase mechanism targets (P3-S3, built) -- `R/mechanism.R` -> `phospho_de_24m` + `kinase_*`
+- `phospho_de_24m`: minimal 24M bulk hippocampus phosphosite DE solely for kinase activity (NOT a P4 phospho
+  chapter, NOT microglia-sorted). Matches exactly 16/16 sample-key runs (4/genotype), log2-transforms positive
+  intensities, converts nonpositive values to NA with counts, median-normalises per sample, filters to sites present
+  in >=2 samples in ALL 4 genotypes, then limma-trend with `factorial_design(add_batch=FALSE)` across the 5 canonical
+  contrasts. Feature ids are traceable `row<original_row>|<PTM.CollapseKey>`; biological KSN ids are
+  `PG.Genes_PTM.SiteAA/PTM.SiteLocation`, dropping blank/multi-gene/missing-site rows with counts.
+- Duplicate biological sites are collapsed ONLY before decoupleR, per contrast: highest `Phosphosite probability`
+  wins, then max |t|, then original row for deterministic ties. decoupleR sees one statistic per site id; raw DE
+  top tables keep row-level traceability. Live build: 64,328 raw rows -> 17,707 filtered DE rows -> 12,938 filtered
+  unique single-gene site ids; 1,213 nonpositive intensities converted to NA. New targets warning-clean in `tar_meta`.
+- `kinase_activity`: loads drift-gated direct-mouse OmniPath KSN, gates coverage on the filtered/collapsed site
+  universe, then decoupleR ULM x contrast. Live S3 coverage: 1,164 matched KSN sites, 123 kinases pass minsize>=5,
+  Gsk3b present and passes with 169 matched sites. `kinase_mechanism_summary` keeps significant primary kinases +
+  explicit Gsk3b rows for EVERY contrast, plus additive run-index sensitivity scores/FDRs.
+- Live qualitative read (drift-prone margins stay in targets): Gsk3b is COVERED but NOT significant for interaction
+  or tau_in_nlgf under primary ULM; no rebuilt Gsk3b support yet. Several tau_in_nlgf primary kinases pass FDR<0.10
+  (e.g. CAMK-family), but run-index adjustment weakens them -> S4 must report run-order sensitivity plainly and avoid
+  mechanism over-claiming from the genotype-blocked 24M bulk phospho order.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
