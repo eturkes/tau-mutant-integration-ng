@@ -31,7 +31,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S2 Bulk proteome + corrected phospho.
+Next `$session-prompt` mode = EXECUTE. Next open step = S3 Spatial composition + clearance-axis CCC-lite.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -359,6 +359,13 @@ Next `$session-prompt` mode = EXECUTE. Next open step = S2 Bulk proteome + corre
   = `defer`: SpatialDecon is pinned-repo available, Q3/background usable, but 42 nuclei sentinels disable absolute
   nuclei rescaling and no compact reference profile is built in S1. Full `scripts/check.sh` green (33 current
   targets/branches). Next = S2.
+- 2026-07-02 P4-S2 DONE -> `proteome_de_24m`, `phospho_corrected_24m`, `bulk_omics_summary`.
+  Proteome = exact 16-run sample-key match, raw positive row-sum to `PG.ProteinGroups`, log2, median normalise,
+  prevalence filter, limma-trend + additive run-index sensitivity. Corrected phospho = P3 raw phosphosite 24M layer
+  minus matched parent-protein log2 intensity, then re-filter/refit; P3 raw `phospho_de_24m` reused. Live build
+  warning-clean/tar_meta clean: proteome 3,379 protein groups; corrected phospho 15,477 sites; 15,647 phosphosite rows
+  had matched filtered parents and 2,059 lacked a filtered parent. Run-index sensitivity is harsh for most primary bulk
+  hits, so downstream support must downgrade run-order-dependent signals. Next = S3.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

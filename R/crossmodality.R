@@ -315,3 +315,472 @@ run_geomx_de <- function(geomx, min_count = 5) {
   )
   de
 }
+
+# ---- P4-S2: bulk proteome + protein-corrected phospho -------------------------------
+
+match_24m_bulk_columns <- function(tbl, sample_key, n_keep = 16L, modality = "bulk") {
+  stopifnot(is.data.frame(tbl), is.data.frame(sample_key),
+            all(c("genotype", "col_stub", "label") %in% names(sample_key)),
+            length(modality) == 1L, nzchar(modality))
+  if (nrow(sample_key) != n_keep) {
+    stop("sample_key must contain exactly ", n_keep, " 24M rows", call. = FALSE)
+  }
+  if (anyDuplicated(sample_key$col_stub)) stop("duplicate sample-key stubs", call. = FALSE)
+  hits <- match_intensity_columns(names(tbl), sample_key)
+  hits <- hits[!is.na(hits$key_idx), , drop = FALSE]
+  if (nrow(hits) != n_keep || anyDuplicated(hits$key_idx) ||
+      !setequal(hits$key_idx, seq_len(n_keep))) {
+    stop("expected exactly ", n_keep, "/", n_keep, " matched 24M ", modality,
+         " intensity columns", call. = FALSE)
+  }
+  if (anyDuplicated(hits$stub)) {
+    stop("duplicate matched ", modality, " intensity stubs", call. = FALSE)
+  }
+  hits <- hits[order(hits$key_idx), , drop = FALSE]
+  geno <- factor(as.character(hits$genotype), levels = genotype_levels)
+  if (anyNA(geno) || !all(as.integer(table(geno)) == n_keep / 4L)) {
+    stop("24M ", modality, " columns are not balanced 4/genotype", call. = FALSE)
+  }
+  meta <- data.frame(
+    sample_id = hits$stub,
+    column = hits$column,
+    stub = hits$stub,
+    label = hits$label,
+    genotype = geno,
+    run_index = seq_len(nrow(hits)),
+    stringsAsFactors = FALSE
+  )
+  rownames(meta) <- meta$sample_id
+  list(columns = hits$column, meta = meta,
+       matched = hits, n_expected = n_keep, n_matched = nrow(hits))
+}
+
+.split_gene_symbols <- function(x) {
+  x <- trimws(as.character(x))
+  x <- x[!is.na(x) & x != ""]
+  if (!length(x)) return(character())
+  out <- unlist(strsplit(x, "[;,]", perl = TRUE), use.names = FALSE)
+  out <- trimws(out)
+  out[!is.na(out) & out != ""]
+}
+
+protein_group_features <- function(proteomics_tbl) {
+  stopifnot(is.data.frame(proteomics_tbl))
+  need <- c("PG.ProteinGroups", "PG.Genes")
+  stopifnot(all(need %in% names(proteomics_tbl)))
+  protein_group <- trimws(as.character(proteomics_tbl[["PG.ProteinGroups"]]))
+  gene_raw <- trimws(as.character(proteomics_tbl[["PG.Genes"]]))
+  missing_group <- is.na(protein_group) | protein_group == ""
+  keep <- !missing_group
+  if (!any(keep)) stop("no non-empty PG.ProteinGroups in proteomics table", call. = FALSE)
+
+  row_info <- data.frame(
+    original_row = seq_len(nrow(proteomics_tbl)),
+    protein_group = protein_group,
+    gene_raw = gene_raw,
+    stringsAsFactors = FALSE
+  )[keep, , drop = FALSE]
+  by_group <- split(row_info, row_info$protein_group)
+  out <- do.call(rbind, lapply(sort(names(by_group), method = "radix"), function(pg) {
+    rows <- by_group[[pg]]
+    syms_all <- .split_gene_symbols(rows$gene_raw)
+    syms <- unique(syms_all[order(syms_all, method = "radix")])
+    data.frame(
+      protein_group = pg,
+      gene_first = if (length(syms_all)) syms_all[1] else NA_character_,
+      gene_symbols = if (length(syms)) paste(syms, collapse = ";") else NA_character_,
+      n_gene_symbols = length(syms),
+      n_raw_rows = nrow(rows),
+      first_original_row = min(rows$original_row),
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(out) <- out$protein_group
+  attr(out, "protein_group_counts") <- list(
+    n_rows = nrow(proteomics_tbl),
+    n_missing_protein_group = sum(missing_group),
+    n_rows_with_protein_group = sum(keep),
+    n_protein_groups = nrow(out),
+    n_duplicate_rows_by_group = sum(duplicated(protein_group[keep]))
+  )
+  out
+}
+
+aggregate_proteome_raw <- function(proteomics_tbl, columns, features) {
+  stopifnot(is.data.frame(proteomics_tbl), is.character(columns), length(columns) >= 1L,
+            all(columns %in% names(proteomics_tbl)), is.data.frame(features),
+            "protein_group" %in% names(features))
+  raw <- as.matrix(proteomics_tbl[, columns, drop = FALSE])
+  storage.mode(raw) <- "double"
+  protein_group <- trimws(as.character(proteomics_tbl[["PG.ProteinGroups"]]))
+  missing_group <- is.na(protein_group) | protein_group == ""
+  raw <- raw[!missing_group, , drop = FALSE]
+  protein_group <- protein_group[!missing_group]
+
+  nonpositive <- !is.na(raw) & raw <= 0
+  raw[nonpositive] <- NA_real_
+  by_group <- split(seq_len(nrow(raw)), protein_group)
+  agg <- vapply(sort(names(by_group), method = "radix"), function(pg) {
+    block <- raw[by_group[[pg]], , drop = FALSE]
+    present <- !is.na(block)
+    vals <- colSums(block, na.rm = TRUE)
+    vals[colSums(present) == 0L] <- NA_real_
+    vals
+  }, numeric(ncol(raw)))
+  agg <- t(agg)
+  colnames(agg) <- columns
+  stopifnot(identical(rownames(agg), features$protein_group))
+  attr(agg, "proteome_aggregate_counts") <- list(
+    n_raw_values = length(raw),
+    n_missing_input = sum(is.na(as.matrix(proteomics_tbl[!missing_group, columns, drop = FALSE]))),
+    n_nonpositive_to_na = sum(nonpositive),
+    n_protein_groups = nrow(agg)
+  )
+  agg
+}
+
+prepare_proteome_24m_matrix <- function(proteomics_tbl, sample_key,
+                                        min_present = 2L, min_groups = 4L) {
+  match <- match_24m_bulk_columns(proteomics_tbl, sample_key, modality = "proteome")
+  features <- protein_group_features(proteomics_tbl)
+  feature_counts <- attr(features, "protein_group_counts")
+  raw_sum <- aggregate_proteome_raw(proteomics_tbl, match$columns, features)
+  colnames(raw_sum) <- rownames(match$meta)
+  log_mat <- log2(raw_sum)
+  attr(log_mat, "log2_counts") <- list(
+    n_values = length(raw_sum),
+    n_missing_input = sum(is.na(raw_sum)),
+    n_missing_output = sum(is.na(log_mat))
+  )
+  norm <- median_normalise(log_mat)
+  filt <- prevalence_filter(norm, match$meta$genotype,
+                            min_present = min_present, min_groups = min_groups)
+  features <- features[match(rownames(filt), features$protein_group), , drop = FALSE]
+  stopifnot(identical(features$protein_group, rownames(filt)),
+            identical(colnames(filt), rownames(match$meta)))
+  list(
+    matrix = filt,
+    meta = match$meta,
+    features = features,
+    matched = match$matched,
+    counts = c(feature_counts,
+               attr(raw_sum, "proteome_aggregate_counts"),
+               attr(log_mat, "log2_counts"),
+               list(n_features_raw = nrow(raw_sum),
+                    n_features_filtered = nrow(filt),
+                    min_present = min_present,
+                    min_groups = min_groups))
+  )
+}
+
+annotate_proteome_top_tables <- function(top, features) {
+  stopifnot(is.list(top), is.data.frame(features), "protein_group" %in% names(features))
+  lapply(top, function(tbl) {
+    stopifnot(is.data.frame(tbl), "feature" %in% names(tbl))
+    idx <- match(tbl$feature, features$protein_group)
+    if (anyNA(idx)) stop("top table contains protein group absent from annotation", call. = FALSE)
+    cbind(tbl, features[idx, setdiff(names(features), "protein_group"), drop = FALSE])
+  })
+}
+
+.limma_log_de_from_matrix <- function(mat, meta) {
+  fd <- factorial_design(meta, add_batch = FALSE)
+  fit <- fit_limma_log(mat, fd$design, fd$contrasts)
+  list(fit = fit, design = list(add_batch = FALSE, design_cols = colnames(fd$design),
+                                contrast_names = colnames(fd$contrasts),
+                                residual_df = nrow(fd$design) - qr(fd$design)$rank))
+}
+
+run_proteome_de_24m <- function(proteomics_tbl, sample_key,
+                                min_present = 2L, min_groups = 4L) {
+  prep <- prepare_proteome_24m_matrix(proteomics_tbl, sample_key,
+                                      min_present = min_present, min_groups = min_groups)
+  de <- .limma_log_de_from_matrix(prep$matrix, prep$meta)
+  top <- annotate_proteome_top_tables(de$fit$top, prep$features)
+
+  run_index <- run_index_factorial_design(prep$meta)
+  if (identical(run_index$status, "fit")) {
+    fit_ri <- fit_limma_log(prep$matrix, run_index$design, run_index$contrasts)
+    run_index$top <- annotate_proteome_top_tables(fit_ri$top, prep$features)
+  }
+  list(
+    n_samples = ncol(prep$matrix),
+    n_features = nrow(prep$matrix),
+    matrix = prep$matrix,
+    meta = prep$meta,
+    features = prep$features,
+    top = top,
+    design = de$design,
+    run_index = run_index,
+    filters = prep$counts,
+    provenance = list(
+      feature_id = "PG.ProteinGroups",
+      aggregation = "sum raw positive peptide/PTM-row intensities by protein group before log2",
+      transform = "log2 summed positive intensities",
+      normalisation = "sample-wise median shift on log2 scale",
+      prevalence = list(min_present = min_present, min_groups = min_groups)
+    )
+  )
+}
+
+prepare_phospho_corrected_24m_matrix <- function(phospho_tbl, sample_key, proteome_de_24m,
+                                                 min_present = 2L, min_groups = 4L) {
+  stopifnot(is.data.frame(phospho_tbl), is.list(proteome_de_24m),
+            is.matrix(proteome_de_24m$matrix), is.data.frame(proteome_de_24m$meta),
+            is.data.frame(proteome_de_24m$features))
+  phospho <- prepare_phospho_24m_matrix(phospho_tbl, sample_key,
+                                        min_present = min_present, min_groups = min_groups)
+  if (!identical(rownames(phospho$meta), rownames(proteome_de_24m$meta)) ||
+      !identical(colnames(phospho$matrix), colnames(proteome_de_24m$matrix))) {
+    stop("phospho and proteome 24M sample order must be identical for protein correction",
+         call. = FALSE)
+  }
+  stopifnot("PG.ProteinGroups" %in% names(phospho_tbl),
+            "original_row" %in% names(phospho$features))
+  parent <- trimws(as.character(phospho_tbl[["PG.ProteinGroups"]][phospho$features$original_row]))
+  missing_parent_id <- is.na(parent) | parent == ""
+  parent_idx <- match(parent, rownames(proteome_de_24m$matrix))
+  matched <- !missing_parent_id & !is.na(parent_idx)
+  if (!any(matched)) stop("no phosphosites have a matched parent protein group", call. = FALSE)
+
+  corrected <- phospho$matrix[matched, , drop = FALSE] -
+    proteome_de_24m$matrix[parent_idx[matched], , drop = FALSE]
+  rownames(corrected) <- rownames(phospho$matrix)[matched]
+  corrected <- prevalence_filter(corrected, phospho$meta$genotype,
+                                 min_present = min_present, min_groups = min_groups)
+
+  features <- phospho$features[match(rownames(corrected), phospho$features$feature), , drop = FALSE]
+  parent_kept <- parent[match(features$feature, phospho$features$feature)]
+  features$parent_protein_group <- parent_kept
+  pfeat <- proteome_de_24m$features[match(parent_kept, proteome_de_24m$features$protein_group), ,
+                                    drop = FALSE]
+  features$parent_gene_symbols <- pfeat$gene_symbols
+  features$parent_n_raw_rows <- pfeat$n_raw_rows
+  stopifnot(identical(features$feature, rownames(corrected)),
+            identical(colnames(corrected), rownames(phospho$meta)),
+            !anyNA(features$parent_protein_group))
+
+  list(
+    matrix = corrected,
+    meta = phospho$meta,
+    features = features,
+    matched = phospho$matched,
+    counts = c(phospho$counts,
+               list(n_phospho_features_for_correction = nrow(phospho$matrix),
+                    n_missing_parent_id = sum(missing_parent_id),
+                    n_parent_not_in_filtered_proteome = sum(!missing_parent_id & is.na(parent_idx)),
+                    n_parent_matched = sum(matched),
+                    n_unique_parent_matched = length(unique(parent[matched])),
+                    n_values_corrected = length(corrected),
+                    n_missing_corrected_output = sum(is.na(corrected)),
+                    n_features_corrected_filtered = nrow(corrected),
+                    correction_min_present = min_present,
+                    correction_min_groups = min_groups))
+  )
+}
+
+run_phospho_corrected_24m <- function(phospho_tbl, sample_key, proteome_de_24m,
+                                      min_present = 2L, min_groups = 4L) {
+  prep <- prepare_phospho_corrected_24m_matrix(phospho_tbl, sample_key, proteome_de_24m,
+                                               min_present = min_present, min_groups = min_groups)
+  de <- .limma_log_de_from_matrix(prep$matrix, prep$meta)
+  top <- annotate_phospho_top_tables(de$fit$top, prep$features)
+
+  run_index <- run_index_factorial_design(prep$meta)
+  if (identical(run_index$status, "fit")) {
+    fit_ri <- fit_limma_log(prep$matrix, run_index$design, run_index$contrasts)
+    run_index$top <- annotate_phospho_top_tables(fit_ri$top, prep$features)
+  }
+  list(
+    n_samples = ncol(prep$matrix),
+    n_features = nrow(prep$matrix),
+    matrix = prep$matrix,
+    meta = prep$meta,
+    features = prep$features,
+    top = top,
+    design = de$design,
+    run_index = run_index,
+    filters = prep$counts,
+    provenance = list(
+      feature_id = "row<original_row>|<PTM.CollapseKey>",
+      correction = "median-normalised phosphosite log2 intensity minus matched parent-protein log2 intensity",
+      parent_match = "exact PG.ProteinGroups match against filtered proteome_de_24m matrix",
+      normalisation = "inherits phosphosite and parent protein sample-wise median shifts before subtraction",
+      prevalence = list(min_present = min_present, min_groups = min_groups)
+    )
+  )
+}
+
+bulk_significant_counts <- function(top, layer) {
+  stopifnot(is.list(top))
+  out <- do.call(rbind, lapply(names(top), function(cn) {
+    tt <- top[[cn]]
+    stopifnot(all(c("adj.P.Val", "logFC") %in% names(tt)))
+    data.frame(
+      layer = layer,
+      contrast = cn,
+      n_features = nrow(tt),
+      n_fdr_0_05 = sum(is.finite(tt$adj.P.Val) & tt$adj.P.Val < 0.05),
+      n_fdr_0_10 = sum(is.finite(tt$adj.P.Val) & tt$adj.P.Val < 0.10),
+      n_up_fdr_0_10 = sum(is.finite(tt$adj.P.Val) & tt$adj.P.Val < 0.10 & tt$logFC > 0),
+      n_down_fdr_0_10 = sum(is.finite(tt$adj.P.Val) & tt$adj.P.Val < 0.10 & tt$logFC < 0),
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(out) <- NULL
+  out
+}
+
+bulk_run_index_summary <- function(primary_top, run_index, layer, alpha = 0.10) {
+  stopifnot(is.list(primary_top), is.list(run_index))
+  if (!identical(run_index$status, "fit") || !is.list(run_index$top)) {
+    return(data.frame(layer = layer, contrast = names(primary_top),
+                      status = run_index$status %||% "skipped",
+                      reason = run_index$reason %||% NA_character_,
+                      n_primary_sig = NA_integer_, n_lost_or_flipped = NA_integer_,
+                      stringsAsFactors = FALSE))
+  }
+  out <- lapply(names(primary_top), function(cn) {
+    p <- primary_top[[cn]]
+    r <- run_index$top[[cn]]
+    stopifnot(all(c("feature", "adj.P.Val", "logFC") %in% names(p)),
+              all(c("feature", "adj.P.Val", "logFC") %in% names(r)))
+    idx <- match(p$feature, r$feature)
+    if (anyNA(idx)) stop("run-index top table missing primary feature(s)", call. = FALSE)
+    p_sig <- is.finite(p$adj.P.Val) & p$adj.P.Val < alpha
+    r_sig <- is.finite(r$adj.P.Val[idx]) & r$adj.P.Val[idx] < alpha
+    flip <- is.finite(p$logFC) & is.finite(r$logFC[idx]) & sign(p$logFC) != sign(r$logFC[idx])
+    data.frame(layer = layer, contrast = cn, status = "fit", reason = NA_character_,
+               n_primary_sig = sum(p_sig),
+               n_lost_or_flipped = sum(p_sig & (!r_sig | flip)),
+               stringsAsFactors = FALSE)
+  })
+  do.call(rbind, out)
+}
+
+bulk_anchor_dictionary <- function() {
+  data.frame(
+    symbol = c("Gsk3b", "Mapt", "App", "Apoe", "Trem2", "Cd74", "Mertk", "Pros1",
+               "C1qa", "C1qb", "C1qc", "C3", "Syn1", "Syp", "Snap25", "Dlg4", "Grin1"),
+    anchor_class = c("gsk3b", "tau", rep("clearance", 6), rep("complement", 4),
+                     rep("synaptic", 5)),
+    stringsAsFactors = FALSE
+  )
+}
+
+.row_symbols <- function(tbl) {
+  if ("gene_symbols" %in% names(tbl)) {
+    vapply(tbl$gene_symbols, function(x) paste(.split_gene_symbols(x), collapse = ";"), character(1))
+  } else if ("gene" %in% names(tbl)) {
+    as.character(tbl$gene)
+  } else {
+    rep(NA_character_, nrow(tbl))
+  }
+}
+
+bulk_anchor_rows <- function(top, layer, anchors = bulk_anchor_dictionary()) {
+  stopifnot(is.list(top), is.data.frame(anchors), all(c("symbol", "anchor_class") %in% names(anchors)))
+  rows <- list()
+  for (cn in names(top)) {
+    tt <- top[[cn]]
+    syms <- .row_symbols(tt)
+    hit <- vapply(syms, function(x) {
+      any(.split_gene_symbols(x) %in% anchors$symbol)
+    }, logical(1))
+    if (!any(hit)) next
+    d <- tt[hit, , drop = FALSE]
+    ds <- syms[hit]
+    hit_symbols <- vapply(ds, function(x) {
+      paste(intersect(.split_gene_symbols(x), anchors$symbol), collapse = ";")
+    }, character(1))
+    hit_class <- vapply(hit_symbols, function(x) {
+      paste(unique(anchors$anchor_class[match(.split_gene_symbols(x), anchors$symbol)]),
+            collapse = ";")
+    }, character(1))
+    feature <- if ("feature" %in% names(d)) d$feature else rep(NA_character_, nrow(d))
+    site <- if ("site_id" %in% names(d)) d$site_id else rep(NA_character_, nrow(d))
+    rows[[length(rows) + 1L]] <- data.frame(
+      layer = layer,
+      contrast = cn,
+      feature = feature,
+      site_id = site,
+      symbols = ds,
+      anchor_symbols = hit_symbols,
+      anchor_class = hit_class,
+      logFC = d$logFC,
+      t = d$t,
+      P.Value = d$P.Value,
+      adj.P.Val = d$adj.P.Val,
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!length(rows)) {
+    return(data.frame(layer = character(), contrast = character(), feature = character(),
+                      site_id = character(), symbols = character(), anchor_symbols = character(),
+                      anchor_class = character(), logFC = numeric(), t = numeric(),
+                      P.Value = numeric(), adj.P.Val = numeric(), stringsAsFactors = FALSE))
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+bulk_omics_summary_data <- function(proteome_de_24m, phospho_de_24m, phospho_corrected_24m,
+                                    alpha = 0.10) {
+  layers <- list(
+    proteome = proteome_de_24m,
+    phospho_raw = phospho_de_24m,
+    phospho_corrected = phospho_corrected_24m
+  )
+  stopifnot(all(vapply(layers, is.list, logical(1))))
+  feature_counts <- do.call(rbind, lapply(names(layers), function(layer) {
+    x <- layers[[layer]]
+    data.frame(
+      layer = layer,
+      n_samples = x$n_samples,
+      n_features = x$n_features,
+      n_missing_output = x$filters$n_missing_corrected_output %||% x$filters$n_missing_output %||% NA_integer_,
+      n_nonpositive_to_na = x$filters$n_nonpositive_to_na %||% NA_integer_,
+      n_parent_matched = x$filters$n_parent_matched %||% NA_integer_,
+      n_parent_not_in_filtered_proteome = x$filters$n_parent_not_in_filtered_proteome %||% NA_integer_,
+      stringsAsFactors = FALSE
+    )
+  }))
+  significant_counts <- do.call(rbind, lapply(names(layers), function(layer) {
+    bulk_significant_counts(layers[[layer]]$top, layer)
+  }))
+  run_index <- do.call(rbind, lapply(names(layers), function(layer) {
+    bulk_run_index_summary(layers[[layer]]$top, layers[[layer]]$run_index, layer, alpha = alpha)
+  }))
+  anchors <- do.call(rbind, lapply(names(layers), function(layer) {
+    bulk_anchor_rows(layers[[layer]]$top, layer)
+  }))
+  anchor_dict <- bulk_anchor_dictionary()
+  anchor_coverage <- do.call(rbind, lapply(seq_len(nrow(anchor_dict)), function(i) {
+    sym <- anchor_dict$symbol[i]
+    data.frame(
+      symbol = sym,
+      anchor_class = anchor_dict$anchor_class[i],
+      n_rows = if (nrow(anchors)) sum(vapply(strsplit(anchors$anchor_symbols, ";", fixed = TRUE),
+                                             function(x) sym %in% x, logical(1))) else 0L,
+      stringsAsFactors = FALSE
+    )
+  }))
+  out <- list(
+    feature_counts = feature_counts,
+    significant_counts = significant_counts,
+    run_index = run_index,
+    anchors = anchors,
+    anchor_coverage = anchor_coverage,
+    provenance = list(
+      alpha = alpha,
+      layers = names(layers),
+      bulk_context = "24M bulk hippocampus proteome/phosphoproteome; not microglia-sorted",
+      summary = "compact S2 report/input summary; margins computed from source targets"
+    )
+  )
+  stopifnot(nrow(out$feature_counts) == 3L,
+            all(out$feature_counts$n_samples == 16L),
+            all(c("Gsk3b", "Mapt") %in% out$anchor_coverage$symbol))
+  out
+}

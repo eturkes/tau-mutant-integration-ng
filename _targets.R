@@ -154,6 +154,18 @@ list(
   # preflight records Q3/background/nuclei/reference/package feasibility for the S3 gate.
   tar_target(geomx_de, run_geomx_de(geomx), format = "qs"),
 
+  # S2 bulk proteome + corrected phospho: 24M 16-run sample-key-matched bulk hippocampus
+  # layers. Proteome aggregates raw positive rows to PG.ProteinGroups before log2/median
+  # normalisation/limma-trend. Corrected phospho subtracts matched parent-protein log2
+  # intensity from the existing phosphosite layer, then refits limma-trend. Summary is compact
+  # and report-oriented; P3's raw phospho target is reused, not duplicated.
+  tar_target(proteome_de_24m, run_proteome_de_24m(proteomics, sample_key), format = "qs"),
+  tar_target(phospho_corrected_24m,
+             run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m), format = "qs"),
+  tar_target(bulk_omics_summary,
+             bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m),
+             format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

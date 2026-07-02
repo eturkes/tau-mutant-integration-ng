@@ -199,7 +199,7 @@ Outcome:
 - Decon preflight = `defer`: `SpatialDecon` is pinned-repo available and Q3/background data are usable,
   but nuclei sentinels disable absolute rescaling and no compact reference profile is built in S1.
 
-### S2 - Bulk proteome + corrected phospho [OPEN]
+### S2 - Bulk proteome + corrected phospho [DONE]
 Add targets: `proteome_de_24m`, `phospho_corrected_24m`, and
 `bulk_omics_summary`.
 
@@ -223,6 +223,17 @@ Acceptance:
 - Live summary reports feature counts, missingness, significant counts, and
   Gsk3b/tau/synaptic anchors without hardcoded margins.
 - `scripts/check.sh` green.
+
+Outcome:
+- Added P4-S2 helpers in `R/crossmodality.R`, targets `proteome_de_24m`,
+  `phospho_corrected_24m`, `bulk_omics_summary`, and S2 coverage in
+  `tests/test_crossmodality.R`.
+- Live fresh build warning-clean with `tar_meta` clean. Feature counts:
+  proteome 3,379 protein groups; raw phospho remains P3's 17,707 phosphosite rows;
+  corrected phospho 15,477 rows after matched-parent subtraction and re-filtering.
+- Parent correction: 15,647 phosphosite rows matched a filtered parent protein;
+  2,059 had no filtered parent. Additive run-index sensitivity fit all three layers
+  and is frequently non-supportive, so S4/S5 must downgrade run-order-dependent bulk hits.
 
 ### S3 - Spatial composition + clearance-axis CCC-lite [PENDING]
 If S1 decon preflight status is `earned`, add `geomx_decon` and

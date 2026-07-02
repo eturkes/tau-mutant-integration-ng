@@ -524,6 +524,29 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (absolute nuclei rescaling disabled) and no compact reference profile was built in S1. S3 may attempt beta/log-
   abundance decon only after building a compact profile and passing the collinearity gate.
 
+## Bulk proteome + corrected phospho (P4-S2, built) -- `R/crossmodality.R` -> `proteome_de_24m` / `phospho_corrected_24m` / `bulk_omics_summary`
+- 24M sample matching is exact 16/16 via `sample_key`, balanced 4/genotype, ordered by key stub. `match_24m_bulk_columns`
+  handles proteome `.raw.PTM.Quantity` vs key/phospho `.PTM.Quantity` through the shared `normalise_ptm_stub`; corrected
+  phospho asserts proteome/phospho sample row order before subtraction.
+- Proteome contract: feature = `PG.ProteinGroups`; raw positive intensities are summed by protein group BEFORE log2.
+  Nonpositive row/sample intensities become NA, and a group/sample with no positive contributing rows stays NA (NO
+  zero-imputation). Then median-normalise, prevalence-filter, limma-trend, plus additive run-index sensitivity. Feature
+  provenance carries first/unique gene symbols + raw-row count per protein group.
+- Corrected phospho contract: reuse P3 `prepare_phospho_24m_matrix` / raw `phospho_de_24m`, then subtract the filtered
+  parent protein's median-normalised log2 matrix by exact `PG.ProteinGroups`; drop no-parent / parent-filtered-out rows
+  with counts, re-apply prevalence filter, limma-trend, and run-index sensitivity. This is parent-protein correction,
+  not a new raw phospho target.
+- Live S2 warning-clean / tar_meta-clean: proteome = 3,379 protein groups (771 nonpositive values -> NA; 8,767 missing
+  log2 outputs); raw phospho remains P3's 17,707 rows; corrected phospho = 15,477 rows with 23,355 missing corrected
+  values after parent subtraction. Parent match: 15,647 phosphosite rows matched a filtered parent protein; 2,059 lacked
+  a filtered parent. `bulk_omics_summary` is compact (~23KB) and
+  reports feature counts, FDR counts, run-index loss/flip counts, and anchor coverage (Gsk3b / tau / synaptic /
+  clearance / complement) without hardcoded margins. Live anchor coverage has Gsk3b and synaptic markers; Mapt/Trem2/
+  Cd74/Pros1 are absent from measured/filtered bulk anchor rows -> report as absence, not failure.
+- Run-index sensitivity is LOAD-BEARING: many nominal bulk hits lose support after additive run-index adjustment
+  (e.g. most proteome/phospho primary FDR<0.10 rows in amyloid contrasts). Downstream P4 claims must privilege
+  signals robust to run-index or explicitly label run-order sensitivity; bulk hippocampus remains NOT microglia-sorted.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
