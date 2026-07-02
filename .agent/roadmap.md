@@ -31,9 +31,11 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none)
-Next `$session-prompt` mode = PLAN. P0-P5 backlog is complete; ask the user before opening any
-new phase or post-report work.
+## Active plan: Figure expansion [OPEN -> `.agent/figure_expansion_plan.md`]
+Goal = add many more final-report figures while preserving the closed P1-P5 claims
+and cheap-render gate. Decision gate is first: user chooses default atlas vs
+alternatives before implementation. Next `$session-prompt` mode = EXECUTE S0
+(record choice / revise plan if needed).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -57,6 +59,10 @@ new phase or post-report work.
 - P5 Synthesis [DONE 2026-07-02 -> `.agent/completed/p5_synthesis_plan_2026-07-02.md`]:
   ONE lean report - cohesive narrative + compact evidence table (no ledger /
   contest machinery).
+- Figure expansion [OPEN 2026-07-02 -> `.agent/figure_expansion_plan.md`]:
+  post-report visual-density pass. Default = compact target-backed evidence atlas
+  adding ~20-26 figures without changing claims; alternatives = inline chapter
+  expansion / prebuilt publication gallery / schematic-first expansion.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -429,6 +435,12 @@ new phase or post-report work.
   blocker. Folded P5 digest -> history.md; archived plan ->
   `.agent/completed/p5_synthesis_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story spine unchanged by
   P5; the upfront synthesis chapter now states it as the final compact answer. Final close-out gate green.
+- 2026-07-02 Figure expansion OPENED -> `.agent/figure_expansion_plan.md`. Research =
+  current qmd/target inventory, compact report-target capacity, v1 figure-form mining, and current Quarto/targets/
+  ggplot2/patchwork docs. Default = add a compact `figure_atlas` target + `_figures.qmd` atlas chapter with ~20-26
+  additional figures; keep existing P1-P5 claims closed and synthesis answer-first. Alternatives recorded for inline
+  chapter expansion, prebuilt publication gallery, or schematic-first expansion. Next = S0 user-choice gate before
+  implementation.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
