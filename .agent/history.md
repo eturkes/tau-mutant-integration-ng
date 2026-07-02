@@ -279,3 +279,31 @@ as figures landed chapter by chapter. S5 full `scripts/check.sh` was green after
 (tests warn=2, forced 140-chunk report render, tar_meta clean across 46 current targets/branches, render-log clean).
 Rendered HTML QA found 42 figure blocks, 42 captions, 42 source `fig-*` labels, expected sections present, embedded
 lightbox markers, 0 external resource refs, and 0 warning/error markers.
+
+## Spatial decon follow-up -- closed 2026-07-02 (-> `.agent/completed/spatial_decon_followup_plan_2026-07-02.md`)
+
+Closed the P4 gap where SpatialDecon abundance was not earned because no compact reference existed. Built and ran a
+GeoMx-native SpatialDecon follow-up, then rewired report/synthesis state to the actual blocked fit. Live facts ->
+memory.md (Spatial decon follow-up sections); wiring -> map.md. Below = decisions + rejected alternatives.
+
+- ROUTE: broad-first SpatialDecon with a separately gated microglia-substate attempt. Added `SpatialDecon`
+  project-locally; built `geomx_reference_profile` from the full snRNAseq RDS plus retained P1 microglia labels.
+  Broad and substate profiles both earned gates; Proliferative was recorded absent rather than fabricated. REJECTED:
+  nuclei-rescaled absolute cell counts while 42/91 nuclei sentinels remain, plaque-niche localisation from whole-tissue
+  ROIs, full CCC, v1 ledger revival, and forcing substate abundance if unstable.
+- FIT OUTCOME: SpatialDecon ran warning-clean on GeoMx RNA/data with Q3-scaled negative-probe background. Broad and
+  substate arms both blocked on the same 4/91 unresolved AOIs with near-zero total beta; 87 AOIs resolved and residual
+  QC remains descriptive fit QC. Because broad abundance did not earn a clean fit, no log-beta abundance DE or
+  microglia-substate tissue-abundance claim is made.
+- INTEGRATION/API: `geomx_abundance_de` returns blocked canonical 5-contrast empty top tables plus residual audit;
+  `spatial_decon_report` is the compact handoff (no beta matrices). `clearance_axis`, `crossmodality_report`, and
+  `synthesis_report` now derive SpatialDecon status from this attempted fit, not the historical P4 preflight. A future
+  earned SpatialDecon/full-CCC state intentionally stops synthesis until the claim is revised.
+- HEADLINE: SpatialDecon is no longer "not attempted" or "missing profile"; it was attempted and abundance is blocked
+  by unresolved AOIs. The final synthesis keeps spatial abundance and full CCC outside the supported claim set while
+  retaining GeoMx DE and measured Apoe-Trem2 CCC-lite support.
+
+Verification (honest): S1-S5 each smoke-tested live with fresh leaf builds where relevant
+(`geomx_reference_profile`, `geomx_decon`, `geomx_abundance_de`, `spatial_decon_report`, `clearance_axis`,
+`crossmodality_report`, `synthesis_report`) and full `scripts/check.sh` was green through S5. Close-out review found
+no accepted shipped code/prose blocker; final close-out gate re-run green on 2026-07-02.

@@ -32,14 +32,9 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
-Next `$session-prompt` mode = CLOSE-OUT.
-Route selected = broad-first SpatialDecon with a gated substate attempt; S1
-reference profile earned broad/substate gates, but S2 SpatialDecon arms both
-blocked on 4 unresolved AOIs (beta_total=0). S3 added the abundance-DE
-pass-through and residual audit; S4 made report/synthesis status target-derived
-from the blocked abundance state. S5 QA fixed stale/ambiguous wording; the plan
-steps are complete and ready for standard close-out.
+## Active plan: none
+Next `$session-prompt` mode = PLAN. Confirm any new post-report roadmap unit with
+the user before planning or implementation.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -66,11 +61,11 @@ steps are complete and ready for standard close-out.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
-- Spatial decon follow-up [ACTIVE 2026-07-02 -> `.agent/spatial_decon_followup_plan.md`]:
+- Spatial decon follow-up [DONE 2026-07-02 -> `.agent/completed/spatial_decon_followup_plan_2026-07-02.md`]:
   gated GeoMx tissue-abundance follow-up to the P4 "SpatialDecon not earned"
   row. S0 chose the default: install/run SpatialDecon only after a compact
   full-reference profile earns it, keep nuclei absolute counts disabled, report
-  broad abundance primary and microglia substates only if stable. S4 status:
+  broad abundance primary and microglia substates only if stable. Final status:
   profile earned, SpatialDecon ran, abundance DE blocked by unresolved AOIs;
   residual audit is report QC; synthesis says blocked, not skipped.
 
@@ -553,6 +548,12 @@ steps are complete and ready for standard close-out.
   blocked, not merely skipped or missing-profile. No new figure section was
   added, so fig-label QA stayed unchanged. Full `scripts/check.sh` green. Next
   mode = CLOSE-OUT.
+- 2026-07-02 Spatial decon follow-up CLOSED: close-out review of plan body +
+  shipped code/prose found no accepted blocker. Folded digest -> history.md;
+  archived plan -> `.agent/completed/spatial_decon_followup_plan_2026-07-02.md`;
+  reset Active plan to none. Cohesive-story spine already carries the final
+  blocked-fit SpatialDecon state. Final close-out gate green. Next = PLAN only
+  after user confirms a new roadmap unit.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
