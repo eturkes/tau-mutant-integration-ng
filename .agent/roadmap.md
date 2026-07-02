@@ -30,8 +30,8 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: none
-Next `$session-prompt` mode = PLAN. Default next phase = P4 Cross-modality; confirm before opening.
+## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
+Next `$session-prompt` mode = EXECUTE. Next open step = S1 GeoMx DE + deconvolution preflight.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -346,6 +346,11 @@ Next `$session-prompt` mode = PLAN. Default next phase = P4 Cross-modality; conf
   of hardcoding the current discordant sign pattern. Folded P3 digest -> history.md; archived plan ->
   `.agent/completed/p3_mechanism_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story finding #3 now states
   the rebuilt mechanism asymmetry (Myc supported; NF-kB/Gsk3b not recovered), not the v1 mechanism headline.
+- 2026-07-02 P4 OPENED -> `.agent/p4_cross_modality_plan.md`. User confirmed default next phase. Research =
+  repo/map/history + v1 archive mining + current-method sweep. Default plan = lean on-lock cross-modality rebuild:
+  replicate-aware GeoMx DE with deconvolution gated, 24M proteome + raw/corrected phospho, targeted clearance-axis
+  CCC-lite, and an integrated gene/pathway divergence view. Explicit alternatives: proteomics-heavy
+  QFeatures/msqrob2PTM, full off-lock CCC stack, or no deconvolution. Next = EXECUTE S1.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
