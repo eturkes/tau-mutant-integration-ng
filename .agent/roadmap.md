@@ -31,8 +31,10 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none)
-Next `$session-prompt` mode = PLAN. Default next backlog phase = P5 Synthesis; confirm before writing the plan.
+## Active plan: P5 Synthesis -> `.agent/p5_synthesis_plan.md`
+Next `$session-prompt` mode = EXECUTE. Next open step = S1 compact synthesis target.
+Acceptance = one compact, read-only synthesis target + upfront synthesis chapter + lean report pass;
+no new biological inference, no v1 ledger / contest machinery, full gate green.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -53,8 +55,9 @@ Next `$session-prompt` mode = PLAN. Default next backlog phase = P5 Synthesis; c
   GeoMx spatial DE, 24M proteome + raw/corrected phospho, targeted clearance-axis CCC-lite, integrated
   divergence view. Strengthens amyloid-response / synaptic-clearance axes; interaction stays mostly
   microglia-composition-specific; SpatialDecon/full CCC not earned; bulk run-index sensitivity load-bearing.
-- P5 Synthesis: ONE lean report - cohesive narrative + compact evidence table (no
-  ledger / contest machinery).
+- P5 Synthesis [OPEN 2026-07-02 -> `.agent/p5_synthesis_plan.md`]:
+  ONE lean report - cohesive narrative + compact evidence table (no ledger /
+  contest machinery).
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -398,6 +401,11 @@ Next `$session-prompt` mode = PLAN. Default next backlog phase = P5 Synthesis; c
   `.agent/completed/p4_cross_modality_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story finding #4 now
   states cross-modality corroboration + measured Apoe-Trem2 support, with SpatialDecon/full CCC not earned. Final
   close-out gate green. Next = PLAN P5 Synthesis.
+- 2026-07-02 P5 OPENED -> `.agent/p5_synthesis_plan.md`. User confirmed default final phase. Research =
+  current report/DAG wiring + history/map + v1 capstone archive + current Quarto/targets/MOFA2 docs. Default plan =
+  compact read-only synthesis target, upfront `_synthesis.qmd`, and final lean report pass. Explicitly OUT:
+  v1 convergence/ledger/contest machinery, MOFA/meta-analysis, human/SCENIC/topology/full CCC/decon side arcs, and
+  new biological inference. Next = EXECUTE S1.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
