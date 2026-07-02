@@ -17,17 +17,18 @@ transcriptomics, and bulk proteomics and phosphoproteomics across four mouse mod
 Alzheimer's disease. It asks how amyloid reshapes microglia under different tau
 backgrounds, reading the tau-amyloid interaction across all four modalities.
 
+The synthesis comes first because the rebuilt answer is compact: amyloid drives a
+homeostatic-to-DAM microglial programme; mutant tau modulates that response mainly as extra
+DAM-cell composition rather than supported further trajectory progression; Myc has focused RNA
+support; NF-kB attenuation, Gsk3b, SpatialDecon abundance and full CCC are not recovered or not
+earned. The remaining chapters are the audit trail. QC checks the modality shapes and the
+single-nucleus genotype-by-batch design, then the microglia, trajectory, mechanism and
+cross-modality chapters show the evidence behind each synthesis row.
+
 The analysis is built on a reproducible spine: a pinned R environment (rv), a pinned Python
-environment (uv), a targets pipeline, and this single self-contained Quarto report. The
-quality-control pass below confirms that every modality loads at its expected shape and that
-the single-nucleus microglia carry a complete genotype-by-batch design. The microglia chapter
-then carries the first phase of the story - how amyloid reshapes the microglial population. The
-trajectory chapter orders those same nuclei along an activation axis and finds the tau-amyloid
-synergy expressed mainly as more disease-associated cells rather than as cells advancing further
-along it. The mechanism chapter then tests targeted RNA TF/pathway and bulk-phosphosite kinase
-signals beneath that compositional response. The cross-modality chapter then asks what the
-GeoMx spatial, total-proteome and broader phosphoproteome layers strengthen, weaken, or leave
-open before the final synthesis.
+environment (uv), a targets pipeline, and this single self-contained Quarto report.
+
+{{< include _synthesis.qmd >}}
 
 {{< include _qc.qmd >}}
 

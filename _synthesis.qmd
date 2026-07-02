@@ -1,0 +1,125 @@
+# Synthesis: the compact answer {#sec-synthesis}
+
+```{r}
+#| label: synthesis-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+})
+options(warn = 2)                                    # warning-fatal render contract
+targets::tar_source()                                # constants + report theme helpers
+targets::tar_load(synthesis_report)                  # ONE compact target, no heavy inputs
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau())
+
+sr <- synthesis_report
+ev <- sr$evidence_table
+ss <- sr$status_summary
+oq <- sr$open_questions
+
+status_labels <- c(
+  core_supported = "core supported",
+  corroborated = "corroborated",
+  focused_support = "focused support",
+  not_supported = "not supported",
+  not_earned = "not earned",
+  open_caveat = "open caveat"
+)
+axis_labels <- c(
+  microglia_state = "microglia state",
+  interaction = "interaction",
+  mechanism = "mechanism",
+  cross_modality = "cross-modality",
+  unearned = "unearned",
+  caveat = "caveat"
+)
+status_colours <- c(
+  core_supported = "#B0344D",
+  corroborated = "#3F5A6B",
+  focused_support = "#6B7A3F",
+  not_supported = "#777777",
+  not_earned = "#B7A06A",
+  open_caveat = "#7C5A86"
+)
+anchor_labels <- c(
+  `#sec-microglia` = "microglia",
+  `#sec-trajectory` = "trajectory",
+  `#sec-mechanism` = "mechanism",
+  `#sec-crossmodality` = "cross-modality"
+)
+
+display_text <- function(x) {
+  x <- gsub("Apoe_Trem2", "Apoe-Trem2", x, fixed = TRUE)
+  x <- gsub("nlgf_in_maptki", "amyloid on MAPTKI", x, fixed = TRUE)
+  x <- gsub("nlgf_in_p301s", "amyloid on P301S", x, fixed = TRUE)
+  x <- gsub("tau_in_nlgf", "tau in NLGF", x, fixed = TRUE)
+  x <- gsub("comp_cf", "composition channel", x, fixed = TRUE)
+  x <- gsub("progression_cf", "progression channel", x, fixed = TRUE)
+  x <- gsub("ccc_called", "full CCC called", x, fixed = TRUE)
+  x <- gsub("value(s)", "values", x, fixed = TRUE)
+  x <- gsub("deconvolution deferred to S3", "deconvolution deferred", x, fixed = TRUE)
+  x
+}
+fmt_int <- function(x) format(as.integer(round(x)), big.mark = ",", trim = TRUE)
+
+answer_sentence <- paste(sr$headline, collapse = " ")
+status_sentence <- paste(
+  sprintf("%s %s", fmt_int(ss$n), status_labels[ss$status]),
+  collapse = "; "
+)
+open_sentence <- paste(
+  sprintf("%s (%s)", display_text(oq$direction), status_labels[oq$status]),
+  collapse = "; "
+)
+
+ev_table <- data.frame(
+  axis = unname(axis_labels[ev$axis]),
+  status = unname(status_labels[ev$status]),
+  claim = display_text(ev$direction),
+  evidence = display_text(ev$evidence),
+  caveat = display_text(ev$caveat),
+  chapter = unname(anchor_labels[ev$report_anchor]),
+  check.names = FALSE,
+  row.names = NULL,
+  stringsAsFactors = FALSE
+)
+stopifnot(!anyNA(ev_table$axis), !anyNA(ev_table$status), !anyNA(ev_table$chapter))
+
+ss_plot <- ss
+ss_plot$status <- factor(ss_plot$status, levels = rev(names(status_labels)),
+                         labels = rev(unname(status_labels)))
+ss_plot$status_key <- factor(ss$status, levels = rev(names(status_labels)))
+```
+
+`r answer_sentence` The synthesis table has `r fmt_int(nrow(ev))` claim rows:
+`r status_sentence`. The supported core is narrow by design, and the negative rows are part of
+the result rather than a supplement.
+
+```{r}
+#| label: synthesis-status
+#| fig-width: 7.2
+#| fig-height: 3.2
+#| fig-cap: "Synthesis status counts. Labels are descriptive categories over the closed P1-P4 analyses; they are not a scored convergence ledger."
+ggplot(ss_plot, aes(status, n, fill = status_key)) +
+  geom_col(width = 0.72) +
+  coord_flip() +
+  scale_fill_manual(values = status_colours, guide = "none") +
+  scale_y_continuous(breaks = seq(0, max(ss_plot$n), by = 1)) +
+  labs(x = NULL, y = "claim rows", title = "Closed synthesis status") +
+  theme(panel.grid.major.y = element_blank())
+```
+
+```{r}
+#| label: synthesis-evidence-table
+knitr::kable(
+  ev_table,
+  row.names = FALSE,
+  caption = "Compact evidence table for the closing synthesis. Each row is derived from the compact P1-P4 report targets and points to the detailed chapter that audits it."
+)
+```
+
+What remains unsupported or unearned is also explicit: `r open_sentence`. These limits keep the
+closed report focused on the rebuilt evidence: DAM activation and DAM-cell composition are the
+central interaction story; Myc is the focused RNA mechanism signal; NF-kB attenuation, Gsk3b,
+progression beyond composition, SpatialDecon abundance, full CCC and run-order-sensitive bulk
+hits stay outside the supported claim set.

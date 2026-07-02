@@ -167,7 +167,7 @@ Result:
 - Manifest/raw dependency check: `synthesis_report_data(microglia_report,
   trajectory_report, mechanism_report, crossmodality_report)`.
 
-### S2 - Synthesis chapter + report wiring [OPEN]
+### S2 - Synthesis chapter + report wiring [DONE 2026-07-02]
 Add `_synthesis.qmd`, include it in `index.qmd` immediately after Overview, and
 rewrite Overview as the entry point to the final report.
 
@@ -188,7 +188,16 @@ Acceptance:
   cheap to force-render.
 - `scripts/check.sh` green.
 
-### S3 - Lean report pass + phase-ready close [TODO]
+Result:
+- Added `_synthesis.qmd` before QC. It loads only `synthesis_report`, then renders an
+  answer-first paragraph, status-count bar plot, compact evidence table, and
+  unsupported/unearned paragraph from that compact target.
+- Rewrote `index.qmd` Overview as final-report entry text and removed the stale
+  "before the final synthesis" pointer.
+- Updated report wiring docs in `map.md` and durable render contract in
+  `memory.md`.
+
+### S3 - Lean report pass + phase-ready close [OPEN]
 Review the full rendered report and source prose for stale pointers, duplicated
 chapter conclusions, and overclaims introduced before P5.
 

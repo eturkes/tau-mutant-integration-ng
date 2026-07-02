@@ -623,6 +623,15 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   nfkb_attenuation, gsk3b_kinase}; not_earned={spatial_decon_full_ccc}; open_caveat={bulk_run_index_sensitivity};
   corroborated={crossmodality_amyloid_axes}. S2 qmd should tar_load only `synthesis_report`.
 
+## Synthesis report chapter (P5-S2, built) -- `_synthesis.qmd`
+- `_synthesis.qmd` is included immediately after `index.qmd` Overview and before QC. It tar_loads ONLY
+  `synthesis_report`, with `options(warn=2)` and `tar_source()` like the other report sections.
+- Chapter shape: answer-first paragraph from `synthesis_report$headline`, status-count bar plot from
+  `status_summary`, compact evidence table from `evidence_table`, and an unsupported/unearned paragraph from
+  `open_questions`. It formats display labels locally (e.g. Apoe-Trem2, amyloid on P301S) without adding target deps.
+- `index.qmd` is now final-report wording: synthesis first, P1-P4 chapters as audit trail; no "final synthesis still
+  open" phrasing.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

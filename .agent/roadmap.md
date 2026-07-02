@@ -32,8 +32,8 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P5 Synthesis -> `.agent/p5_synthesis_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S2 synthesis chapter + report wiring.
-Acceptance = one compact, read-only synthesis target + upfront synthesis chapter + lean report pass;
+Next `$session-prompt` mode = EXECUTE. Next open step = S3 lean report pass + phase-ready close.
+Acceptance = stale-pointer search clean, full gate green, and adversarial synthesis/report prose review fixed;
 no new biological inference, no v1 ledger / contest machinery, full gate green.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -414,6 +414,11 @@ no new biological inference, no v1 ledger / contest machinery, full gate green.
   Gsk3b rows, GeoMx/bulk run-index caveats, SpatialDecon status, and earned-pair empty/not-empty handling. No
   support/contradict/net-score/ledger columns. Synthetic tests + fresh target build green; manifest/raw deps show only
   the four compact report targets + the synthesis function. Next = S2 synthesis chapter + report wiring.
+- 2026-07-02 P5-S2 DONE -> `_synthesis.qmd` + `index.qmd` report wiring. The synthesis chapter is included
+  immediately after Overview and tar_loads ONLY `synthesis_report`; it renders an answer-first paragraph, status-count
+  bar plot, compact evidence table, and unsupported/unearned paragraph from the compact target. Overview now states
+  the final answer up front and treats P1-P4 chapters as audit trail (no "final synthesis still open" wording).
+  Docs: map.md include chain + memory.md render contract. Next = S3 lean report pass.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
