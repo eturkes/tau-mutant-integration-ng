@@ -184,10 +184,18 @@ Work:
   happens in `crossmodality_figure_data`, not in the qmd.
 
 Acceptance:
-- GeoMx repeated-AOI/blocking, SpatialDecon defer, no full CCC, bulk-not-
-  microglia-sorted, and run-index sensitivity are visually or caption-explicit.
-- Cross-modality counts use `modality_class`, not layer-level `modality_group`.
-- Render stays warning-clean.
+- DONE 2026-07-02: `_crossmodality.qmd` adds the 8 planned cross-modality
+  figures from `crossmodality_figures`: GeoMx volcanoes, GeoMx
+  sensitivity/loss, bulk run-index, raw-vs-corrected phospho, bulk anchor
+  heatmap, clearance-pair grid, symbol-modality matrix, and pathway-axis
+  heatmap.
+- DONE 2026-07-02: captions/visual encodings carry GeoMx blocked-AOI vs
+  sensitivity, SpatialDecon defer/no full CCC, bulk-not-microglia-sorted, and
+  run-index sensitivity caveats.
+- DONE 2026-07-02: symbol/pathway counts use broad `n_modalities_sig`
+  (`modality_class` semantics), not layer-level `modality_group`.
+- DONE 2026-07-02: full `scripts/check.sh` green: tests warn=2, forced
+  140-chunk report render, tar_meta clean, render-log clean.
 
 ### S5 - UX, Visual QA, Close-Out
 

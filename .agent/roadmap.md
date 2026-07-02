@@ -36,7 +36,7 @@ Goal = add many more final-report figures while preserving the closed P1-P5 clai
 and cheap-render gate. Route = inline chapter expansion: add compact per-chapter
 figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
 `_trajectory.qmd`, `_mechanism.qmd`, and `_crossmodality.qmd`. Next
-`$session-prompt` mode = EXECUTE S4 (cross-modality inline figures).
+`$session-prompt` mode = EXECUTE S5 (UX, visual QA, close-out prep).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -471,6 +471,18 @@ figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
   DAM composition, no supported progression beyond composition; Myc supported;
   NF-kB attenuation discordant/not supported; Gsk3b covered but not recovered.
   Next = S4 cross-modality inline figures.
+- 2026-07-02 Figure expansion S4 DONE -> `_crossmodality.qmd` inline
+  visual-density pass. Added 8 labelled `fig-*` chunks: GeoMx volcanoes,
+  GeoMx sensitivity/loss, bulk run-index, raw-vs-corrected phospho, bulk anchor
+  heatmap, clearance-pair grid, symbol-modality matrix, and pathway-axis
+  heatmap. Full `scripts/check.sh` green: tests warn=2, forced 140-chunk
+  report render, tar_meta clean across 46 current targets/branches, render-log
+  clean; report 8.24MB.
+  Claim guards unchanged: GeoMx AOIs are blocked/repeated observations;
+  SpatialDecon remains deferred; no full CCC is called; bulk layers are 24M
+  hippocampus, not microglia-sorted; run-index sensitivity is load-bearing;
+  symbol/pathway modality counts use broad modality classes. Next = S5 UX,
+  visual QA, and close-out.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

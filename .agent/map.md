@@ -245,7 +245,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_table <- crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m, phospho_corrected_24m, mechanism_tf, kinase_mechanism_summary)  # S4 harmonised symbol evidence table (~10MB; 337k rows live), broad modality_class + layer-level modality_group
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
-       crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads only this
+       crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m)  # Figure expansion S1: GeoMx/phospho heavy tables reduced to binned/top-row plot data; 0.514MB live
   - P5 synthesis:
        synthesis_report <- synthesis_report_data(microglia_report, trajectory_report, mechanism_report, crossmodality_report)  # S1 compact read-only synthesis (~4.8KB live); no crossmodality_divergence/heavy targets; descriptive status rows only
@@ -282,9 +282,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
                (P4 cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`; tar_load
-                crossmodality_report [ONE compact target] -> GeoMx spatial DE, 24M bulk proteome/phospho +
-                run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/symbol divergence, and
-                final-synthesis audit text. Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
+                crossmodality_report + crossmodality_figures [compact targets] -> GeoMx spatial DE, 24M bulk
+                proteome/phospho + run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/
+                symbol divergence, and S4 inline figures {GeoMx volcanoes, sensitivity/loss, bulk run-index,
+                raw-vs-corrected phospho, anchor heatmap, clearance grid, symbol matrix, pathway heatmap}.
+                Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
                 SpatialDecon skipped/defer, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 

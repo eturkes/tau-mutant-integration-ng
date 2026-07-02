@@ -588,10 +588,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   bundle, not the 10MB table directly.
 
 ## Cross-modality report (P4-S5, built) -- `_crossmodality.qmd` + `R/crossmodality.R::crossmodality_report_data` -> `crossmodality_report`
-- CHEAP-RENDER INVARIANT: `_crossmodality.qmd` tar_loads only `crossmodality_report` (~23KB qs live). The bundle selects
-  GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
-  symbol/pathway highlights, and axis-level pathway summaries. It never loads the GeoMx object, proteome/phospho raw
-  targets, or the ~10MB harmonised evidence table during the force-rendered report.
+- CHEAP-RENDER INVARIANT: baseline P4 bundle = `crossmodality_report` (~23KB qs live). After Figure expansion S4,
+  `_crossmodality.qmd` tar_loads `crossmodality_report` + compact `crossmodality_figures` (~59KB qs live). Those
+  bundles select GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon
+  verdicts, divergence symbol/pathway highlights, axis-level pathway summaries, and pre-binned/top-row figure data.
+  The qmd still never loads the GeoMx object, proteome/phospho raw targets, or the ~10MB harmonised evidence table
+  during the force-rendered report.
 - Guard layer validates every qmd-read field: GeoMx top columns/finite effects, bulk feature/significance/run-index
   schemas, clearance pair/decon schemas, divergence contrast/symbol schemas, pathway axis summaries, and finite
   plot-critical counts. A schema drift fails in `crossmodality_report_data`, not halfway through Quarto.
@@ -689,6 +691,21 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.
 - Full gate after S3 was green: tests warn=2, forced 124-chunk report render, tar_meta/render-log clean; 9 new S3
   `fig-*` chunks visible.
+
+## Figure expansion report figures (S4, built) -- `_crossmodality.qmd`
+- S4 is render-layer wiring only: no new inference/targets. `_crossmodality.qmd` now tar_loads compact
+  `crossmodality_report` + `crossmodality_figures`; the cheap-render invariant still excludes raw GeoMx/proteome/
+  phospho targets and the large harmonised evidence table from the qmd.
+- Added 8 labelled chunks: `fig-crossmodality-geomx-volcano`, `fig-crossmodality-geomx-sensitivity`,
+  `fig-crossmodality-bulk-run-index`, `fig-crossmodality-phospho-correction`,
+  `fig-crossmodality-anchor-heatmap`, `fig-crossmodality-clearance-grid`,
+  `fig-crossmodality-symbol-matrix`, `fig-crossmodality-pathway-heatmap`.
+- Claim guard: captions/encodings keep GeoMx AOIs as repeated/block-adjusted observations; SpatialDecon deferred;
+  no full CCC; only Apoe-Trem2 in amyloid-on-P301S earns measured pair support; bulk layers remain 24M hippocampus,
+  not microglia-sorted; run-index sensitivity downgrades bulk hits. Symbol/pathway figures use broad
+  `n_modalities_sig` counts, not layer-level modality groups.
+- Full gate after S4 was green: tests warn=2, forced 140-chunk report render, tar_meta clean across 46 current
+  targets/branches, render-log clean; report ~8.24MB.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

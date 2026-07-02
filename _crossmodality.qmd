@@ -17,11 +17,12 @@ suppressPackageStartupMessages({
 })
 options(warn = 2)
 targets::tar_source()
-targets::tar_load(crossmodality_report)              # ONE compact target, no heavy modality objects
+targets::tar_load(c(crossmodality_report, crossmodality_figures)) # compact targets only, no heavy modality objects
 knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
 cmr <- crossmodality_report
+cmf <- crossmodality_figures
 alpha <- cmr$provenance$alpha
 focus <- cmr$provenance$focus_contrasts
 contrast_labels <- c(
@@ -47,6 +48,7 @@ axis_labels <- c(
   IFN = "IFN",
   NFkB = "NF-kB",
   Myc = "Myc",
+  Proliferative = "proliferative",
   other = "other"
 )
 fmt_p <- function(p) {
@@ -64,6 +66,24 @@ short_label <- function(x, n = 46L) {
   x <- gsub("_", " ", x)
   ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 3L), "..."), x)
 }
+wrap_label <- function(x, width = 22L) {
+  vapply(as.character(x), function(s) {
+    z <- strwrap(s, width = width)
+    if (length(z)) paste(z, collapse = "\n") else s
+  }, character(1), USE.NAMES = FALSE)
+}
+plot_contrast <- function(x, levels = focus, reverse = FALSE) {
+  lv <- if (reverse) rev(levels) else levels
+  factor(x, levels = lv, labels = unname(contrast_labels[lv]))
+}
+fmt_axis <- function(x) {
+  vapply(strsplit(as.character(x), ";", fixed = TRUE), function(parts) {
+    lab <- axis_labels[parts]
+    lab[is.na(lab)] <- parts[is.na(lab)]
+    paste(unname(lab), collapse = " / ")
+  }, character(1), USE.NAMES = FALSE)
+}
+fmt_pair <- function(x) gsub("_", "-", x, fixed = TRUE)
 one_row <- function(d, idx, label) {
   out <- d[idx, , drop = FALSE]
   stopifnot(nrow(out) >= 1L)
@@ -78,6 +98,109 @@ decon <- cmr$clearance$spatial_decon
 pairs <- cmr$clearance$pair_support
 contrast_summary <- cmr$divergence$contrast_summary
 path_axis <- cmr$pathway$axis_summary
+
+geo_volc_bins <- cmf$geomx_volcano$bins
+geo_volc_bins$contrast <- plot_contrast(geo_volc_bins$contrast)
+geo_volc_bins$log_n <- log10(geo_volc_bins$n + 1)
+geo_volc_lab <- cmf$geomx_volcano$labels
+geo_volc_lab$contrast <- plot_contrast(geo_volc_lab$contrast)
+
+geo_sens <- cmf$geomx_sensitivity
+geo_sens <- geo_sens[geo_sens$contrast %in% focus, , drop = FALSE]
+geo_sens$contrast <- plot_contrast(geo_sens$contrast)
+geo_sens$fit_label <- c(unblocked = "unblocked AOI",
+                        collapsed_bio_unit = "bio-unit collapsed")[geo_sens$fit]
+geo_sens$fit_label[is.na(geo_sens$fit_label)] <- geo_sens$fit[is.na(geo_sens$fit_label)]
+geo_sens$fit_label <- factor(geo_sens$fit_label,
+                             levels = c("unblocked AOI", "bio-unit collapsed"))
+geo_sens_long <- rbind(
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             metric = "lost from primary", n = -geo_sens$n_lost,
+             stringsAsFactors = FALSE),
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             metric = "gained in sensitivity", n = geo_sens$n_gained,
+             stringsAsFactors = FALSE)
+)
+geo_sens_long$metric <- factor(geo_sens_long$metric,
+                               levels = c("lost from primary", "gained in sensitivity"))
+
+bulk_run_plot <- cmf$bulk_run_index
+bulk_run_plot$contrast <- plot_contrast(bulk_run_plot$contrast, levels = names(contrast_labels))
+bulk_run_plot$layer_label <- factor(layer_labels[bulk_run_plot$layer],
+                                    levels = unname(layer_labels))
+bulk_run_plot$cell_label <- ifelse(bulk_run_plot$n_primary_sig > 0,
+                                   paste0(bulk_run_plot$n_lost_or_flipped, "/",
+                                          bulk_run_plot$n_primary_sig),
+                                   "0/0")
+
+pc_bins <- cmf$phospho_raw_corrected$bins
+pc_bins$contrast <- plot_contrast(pc_bins$contrast)
+pc_bins$log_n <- log10(pc_bins$n + 1)
+pc_lab <- cmf$phospho_raw_corrected$labels
+pc_lab$best_fdr <- pmin(pc_lab$raw_fdr, pc_lab$corrected_fdr)
+pc_lab <- do.call(rbind, lapply(split(pc_lab, pc_lab$contrast, drop = TRUE), function(d) {
+  d <- d[order(d$best_fdr, -abs(d$raw_logFC) - abs(d$corrected_logFC),
+               d$site_id, method = "radix", na.last = TRUE), , drop = FALSE]
+  head(d, 6L)
+}))
+pc_lab$contrast <- plot_contrast(pc_lab$contrast)
+pc_lab$site_label <- wrap_label(gsub("_", " ", pc_lab$site_id, fixed = TRUE), 14L)
+
+anchor_plot <- cmf$anchor_effect_heatmap
+anchor_plot <- anchor_plot[anchor_plot$contrast %in% names(contrast_labels), , drop = FALSE]
+anchor_plot$key <- paste(anchor_plot$layer, anchor_plot$contrast, anchor_plot$anchor_symbols,
+                         sep = "\r")
+anchor_plot <- anchor_plot[order(anchor_plot$key, anchor_plot$adj.P.Val, -abs(anchor_plot$t),
+                                 anchor_plot$feature, method = "radix", na.last = TRUE),
+                           , drop = FALSE]
+anchor_plot <- anchor_plot[!duplicated(anchor_plot$key), , drop = FALSE]
+anchor_plot$contrast <- plot_contrast(anchor_plot$contrast, levels = names(contrast_labels))
+anchor_plot$layer_label <- factor(layer_labels[anchor_plot$layer],
+                                  levels = unname(layer_labels))
+anchor_plot$anchor_label <- factor(anchor_plot$anchor_symbols,
+                                   levels = rev(sort(unique(anchor_plot$anchor_symbols),
+                                                     method = "radix")))
+anchor_plot$supported <- anchor_plot$adj.P.Val < alpha
+
+clear_plot <- cmf$clearance_pair_grid
+clear_plot <- clear_plot[clear_plot$contrast %in% focus, , drop = FALSE]
+clear_plot$contrast <- plot_contrast(clear_plot$contrast)
+clear_plot$pair_label <- factor(fmt_pair(clear_plot$pair),
+                                levels = rev(unique(fmt_pair(clear_plot$pair))))
+clear_plot$status_label <- factor(ifelse(clear_plot$status == "earned", "earned", "not earned"),
+                                  levels = c("not earned", "earned"))
+clear_plot$support_label <- ifelse(clear_plot$n_coherent_supported_modalities > 0,
+                                   clear_plot$n_coherent_supported_modalities, "")
+
+sym_all <- cmf$symbol_modality_matrix
+sym_all <- sym_all[sym_all$contrast %in% focus, , drop = FALSE]
+sym_rank <- do.call(rbind, lapply(split(sym_all, sym_all$symbol, drop = TRUE), function(d) {
+  data.frame(symbol = d$symbol[1L],
+             max_sig = max(d$n_modalities_sig, na.rm = TRUE),
+             max_present = max(d$n_modalities_present, na.rm = TRUE),
+             min_fdr = min(d$min_fdr, na.rm = TRUE),
+             max_rank = max(d$rank_score, na.rm = TRUE),
+             stringsAsFactors = FALSE)
+}))
+sym_rank <- sym_rank[order(-sym_rank$max_sig, sym_rank$min_fdr, -sym_rank$max_present,
+                           sym_rank$symbol, method = "radix", na.last = TRUE), , drop = FALSE]
+sym_keep <- head(sym_rank$symbol, 18L)
+sym_plot <- sym_all[sym_all$symbol %in% sym_keep, , drop = FALSE]
+sym_plot$contrast <- plot_contrast(sym_plot$contrast)
+sym_plot$symbol <- factor(sym_plot$symbol, levels = rev(sym_keep))
+sym_plot$dir_label <- ifelse(sym_plot$n_modalities_sig == 0, "0",
+                             ifelse(sym_plot$direction_call == "mixed", "mix",
+                                    ifelse(sym_plot$direction_call == "positive", "+", "-")))
+
+path_fig <- cmf$pathway_axis_heatmap
+path_fig <- path_fig[path_fig$contrast %in% focus, , drop = FALSE]
+path_fig$contrast <- plot_contrast(path_fig$contrast)
+path_fig$axis_label <- fmt_axis(path_fig$axis)
+path_fig$set_label <- short_label(path_fig$set, 34L)
+path_fig$set_label <- factor(path_fig$set_label, levels = rev(unique(path_fig$set_label)))
+path_fig$direction_label <- ifelse(path_fig$mixed_sign, "mix",
+                                   ifelse(path_fig$consistent_direction == "positive", "+",
+                                          ifelse(path_fig$consistent_direction == "negative", "-", "0")))
 
 geo_int <- one_row(geom_counts, geom_counts$contrast == "interaction", "GeoMx interaction counts")
 geo_amy_k <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_maptki", "GeoMx amyloid MAPTKI counts")
@@ -96,7 +219,6 @@ earned_sentence <- if (nrow(earned_pairs)) {
 } else {
   "no pair"
 }
-fmt_pair <- function(x) gsub("_", "-", x, fixed = TRUE)
 fmt_modalities <- function(x) {
   z <- unlist(strsplit(x, ";", fixed = TRUE), use.names = FALSE)
   z <- z[nzchar(z)]
@@ -168,6 +290,33 @@ ggplot(geo_long, aes(contrast, n, fill = direction)) +
 ```
 
 ```{r}
+#| label: fig-crossmodality-geomx-volcano
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "GeoMx primary-model volcanoes across the P4 focus contrasts. Points are pre-binned from the blocked AOI model, and labels mark the strongest rows per contrast. The amyloid contrasts have dense high-significance structure; the interaction is visibly smaller."
+ggplot(geo_volc_bins) +
+  geom_rect(aes(xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max,
+                fill = log_n),
+            colour = NA) +
+  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.3) +
+  ggrepel::geom_text_repel(
+    data = geo_volc_lab,
+    aes(effect, neg_log10_p, label = label),
+    inherit.aes = FALSE,
+    size = 2.25,
+    seed = 42L,
+    max.overlaps = Inf,
+    min.segment.length = 0,
+    box.padding = 0.12
+  ) +
+  facet_wrap(~ contrast, ncol = 2) +
+  scale_fill_gradient(low = "grey94", high = "#B0344D", name = "log10(n + 1)") +
+  labs(x = "GeoMx log2 fold-change", y = "-log10 p-value",
+       title = "GeoMx primary spatial DE by contrast") +
+  theme(panel.grid = element_blank())
+```
+
+```{r}
 #| label: crossmodality-geomx-top
 gt <- cmr$geomx$top
 gt <- gt[gt$contrast %in% focus, , drop = FALSE]
@@ -184,6 +333,25 @@ gtab <- data.frame(
 )
 knitr::kable(gtab, row.names = FALSE,
              caption = "Top GeoMx primary rows across the P4 focus contrasts. These are tissue/AOI DE rows, not cell-type-specific microglia effects.")
+```
+
+```{r}
+#| label: fig-crossmodality-geomx-sensitivity
+#| fig-width: 9.2
+#| fig-height: 4.8
+#| fig-cap: "GeoMx primary blocked-AOI calls against the two sensitivity fits. Positive bars are rows gained by a sensitivity fit, negative bars are primary rows lost. The collapsed biological-unit fit loses many primary rows, so the chapter privileges the duplicate-correlation blocked primary model rather than reading AOIs as independent animals."
+ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
+  geom_hline(yintercept = 0, colour = "grey65") +
+  geom_col(width = 0.68) +
+  facet_wrap(~ fit_label, nrow = 1) +
+  scale_fill_manual(values = c(`lost from primary` = "#3F5A6B",
+                               `gained in sensitivity` = "#B0344D"),
+                    name = NULL) +
+  scale_y_continuous(labels = function(x) abs(x)) +
+  labs(x = NULL, y = "GeoMx rows changed at FDR < 0.10",
+       title = "Spatial DE support depends on the replicate treatment") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        legend.position = "bottom")
 ```
 
 ## Bulk Proteome And Phospho
@@ -218,6 +386,21 @@ ggplot(bp, aes(contrast, n_fdr_0_10, fill = layer)) +
 ```
 
 ```{r}
+#| label: fig-crossmodality-bulk-run-index
+#| fig-width: 9.2
+#| fig-height: 4.8
+#| fig-cap: "Run-index sensitivity across the 24-month bulk hippocampus layers. Tile fill is the fraction of primary FDR < 0.10 rows that lose support or flip sign after additive run-index adjustment; text is lost or flipped over primary hits. Most bulk signal is run-order-sensitive, so it is corroborative rather than a stand-alone microglial mechanism claim."
+ggplot(bulk_run_plot, aes(contrast, layer_label, fill = loss_fraction)) +
+  geom_tile(colour = "white", linewidth = 0.45) +
+  geom_text(aes(label = cell_label), size = 3) +
+  scale_fill_gradient(low = "#EEF1F2", high = "#B0344D", limits = c(0, 1),
+                      name = "loss fraction") +
+  labs(x = NULL, y = NULL, title = "Bulk run-index sensitivity is load-bearing") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank())
+```
+
+```{r}
 #| label: crossmodality-run-index-table
 ri <- run_index[run_index$contrast %in% focus, , drop = FALSE]
 ri <- ri[order(match(ri$contrast, focus), ri$layer, method = "radix", na.last = TRUE), , drop = FALSE]
@@ -231,6 +414,53 @@ ritab <- data.frame(
 )
 knitr::kable(ritab, row.names = FALSE,
              caption = "Run-index sensitivity for bulk layers. Rows losing support or flipping sign are downgraded in the synthesis.")
+```
+
+```{r}
+#| label: fig-crossmodality-phospho-correction
+#| fig-width: 10
+#| fig-height: 7
+#| fig-cap: "Raw versus parent-protein-corrected phosphosite effects in the 24-month bulk hippocampus layer. Points are pre-binned by site-level log2 fold-change, with selected top sites labelled. Parent correction changes effect geometry but does not turn this bulk phospho layer into a microglia-sorted mechanism assay."
+ggplot(pc_bins) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey65", linewidth = 0.35) +
+  geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
+  geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
+  geom_rect(aes(xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max,
+                fill = log_n),
+            colour = NA) +
+  ggrepel::geom_text_repel(
+    data = pc_lab,
+    aes(raw_logFC, corrected_logFC, label = site_label),
+    inherit.aes = FALSE,
+    size = 2.1,
+    seed = 42L,
+    max.overlaps = Inf,
+    min.segment.length = 0,
+    box.padding = 0.12
+  ) +
+  facet_wrap(~ contrast, ncol = 2) +
+  scale_fill_gradient(low = "grey94", high = "#3F5A6B", name = "log10(n + 1)") +
+  labs(x = "raw phosphosite log2 fold-change",
+       y = "parent-corrected phosphosite log2 fold-change",
+       title = "Parent correction changes phosphosite effect geometry") +
+  theme(panel.grid = element_blank())
+```
+
+```{r}
+#| label: fig-crossmodality-anchor-heatmap
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "Bulk anchor coverage and effects for clearance, synaptic, complement and Gsk3b-related rows. Each tile is the best available row per anchor symbol, layer and contrast, selected by FDR then absolute t-statistic; outlined points mark FDR < 0.10. Blank cells are unmeasured or filtered in that bulk layer."
+ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
+  geom_tile(colour = "white", linewidth = 0.35) +
+  geom_point(data = anchor_plot[anchor_plot$supported, , drop = FALSE],
+             shape = 21, size = 1.9, stroke = 0.35, fill = "white", colour = "grey20") +
+  facet_wrap(~ layer_label, nrow = 1) +
+  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
+                       midpoint = 0, name = "logFC") +
+  labs(x = NULL, y = NULL, title = "Bulk anchor rows are sparse and layer-dependent") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank())
 ```
 
 ## Spatial Composition And Clearance Axis
@@ -260,6 +490,24 @@ ptab <- data.frame(
 )
 knitr::kable(ptab, row.names = FALSE,
              caption = "Clearance-axis CCC-lite verdicts. This is measured pair support only; full cell-cell communication was not run.")
+```
+
+```{r}
+#| label: fig-crossmodality-clearance-grid
+#| fig-width: 8.4
+#| fig-height: 3.8
+#| fig-cap: "Clearance-pair CCC-lite support across the focus contrasts. Tile fill marks the conservative earned/not-earned verdict; text is the number of coherent supported broad modality classes, and the point marks a strong whole-microglia anchor. Only Apoe-Trem2 in amyloid on P301S earns measured pair support; no full CCC model is called."
+ggplot(clear_plot, aes(contrast, pair_label, fill = status_label)) +
+  geom_tile(colour = "white", linewidth = 0.5) +
+  geom_text(aes(label = support_label), size = 3.2) +
+  geom_point(data = clear_plot[clear_plot$microglia_strong, , drop = FALSE],
+             shape = 21, fill = "white", colour = "grey20", size = 2.1, stroke = 0.35) +
+  scale_fill_manual(values = c(`not earned` = "#D8D8D8", earned = "#B0344D"),
+                    name = NULL) +
+  labs(x = NULL, y = NULL, title = "Measured clearance-pair support is focused") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank(),
+        legend.position = "bottom")
 ```
 
 ## Integrated Divergence
@@ -295,6 +543,22 @@ ggplot(pa, aes(contrast, axis_label, fill = n_modalities_sig)) +
 ```
 
 ```{r}
+#| label: fig-crossmodality-symbol-matrix
+#| fig-width: 9.4
+#| fig-height: 7
+#| fig-cap: "Top named-axis symbols across the focus contrasts. Fill counts broad modality classes with FDR-level support, not layer-level evidence groups; text gives the dominant direction, mixed sign, or 0 when no broad modality class clears FDR. Interaction rows are mostly 0, reinforcing that cross-modality interaction support is limited outside microglia composition."
+ggplot(sym_plot, aes(contrast, symbol, fill = n_modalities_sig)) +
+  geom_tile(colour = "white", linewidth = 0.35) +
+  geom_text(aes(label = dir_label), size = 2.8) +
+  scale_fill_gradient(low = "#EEF1F2", high = "#B0344D",
+                      breaks = 0:max(sym_plot$n_modalities_sig),
+                      name = "sig broad\nmodalities") +
+  labs(x = NULL, y = NULL, title = "Symbol-level evidence uses broad modality classes") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank())
+```
+
+```{r}
 #| label: crossmodality-axis-symbols
 sx <- cmr$divergence$axis_symbols
 sx <- sx[sx$contrast %in% focus & (sx$n_modalities_sig > 0 | sx$contrast == "interaction"),
@@ -316,6 +580,23 @@ sxtab <- data.frame(
 )
 knitr::kable(sxtab, row.names = FALSE,
              caption = "Named-axis symbol highlights. Interaction anchors are carried even when no modality clears FDR, so nulls stay visible.")
+```
+
+```{r}
+#| label: fig-crossmodality-pathway-heatmap
+#| fig-width: 10
+#| fig-height: 7.2
+#| fig-cap: "Selected pathway-axis rows by contrast. Fill counts broad modality classes with FDR-level support; text reports the sign call, including mixed signs. These rows are descriptive integration summaries, not a formal meta-analysis or a v1-style convergence score."
+ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
+  geom_tile(colour = "white", linewidth = 0.35) +
+  geom_text(aes(label = direction_label), size = 2.7) +
+  facet_wrap(~ axis_label, scales = "free_y", ncol = 2) +
+  scale_fill_gradient(low = "#EEF1F2", high = "#B0344D",
+                      breaks = 0:max(path_fig$n_modalities_sig),
+                      name = "sig broad\nmodalities") +
+  labs(x = NULL, y = NULL, title = "Pathway-axis support is strongest in amyloid contrasts") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank())
 ```
 
 ```{r}
