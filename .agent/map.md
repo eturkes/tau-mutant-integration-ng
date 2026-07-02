@@ -166,7 +166,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       full-library-normalise selected cells, sparse-average expression over GeoMx-overlap genes, and return only
       broad/substate profile matrices + QC.
       Helpers: spatialdecon_package_info (warn/message capture), reference_label_sets, reference_gene_map,
-      reference_select_cells, reference_profile_from_counts, profile_condition_number. No decon fit yet.
+      reference_select_cells, reference_profile_from_counts, profile_condition_number.
+   + (Spatial decon follow-up S2) crossmodality.R: run_geomx_decon -> geomx_decon. Reads GeoMx RNA/data
+      (Q3-normalised linear expression) via geomx_norm_matrix, broadcasts geomx_background_matrix
+      (NegGeoMean / q_norm_qFactors) over genes, and calls SpatialDecon::spatialdecon under .capture_spatialdecon
+      for independent broad + substate arms. normalise_spatialdecon_result stores beta, beta-derived proportions,
+      unresolved AOI counts, and residual QC; unresolved beta totals block the arm but retain diagnostics.
+      assemble_microglia_substate_abundance anchors substate fractions to broad Microglia beta only if both arms fit.
+      Live S2 target is warning-clean but blocked: both arms have 4 unresolved AOIs, so no abundance claim yet.
    + (P4-S2) crossmodality.R: bulk proteome + corrected phospho. match_24m_bulk_columns asserts exact 16-run
       sample-key matching for proteome/phospho-style exports. protein_group_features + aggregate_proteome_raw +
       prepare_proteome_24m_matrix sum raw positive intensities to `PG.ProteinGroups` (NO zero-imputation),
@@ -177,11 +184,13 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       trend + run-index. bulk_omics_summary_data compacts feature/significance/run-index/anchor coverage for S4/S5.
    + (P4-S3) crossmodality.R: spatial-composition gate + clearance-axis CCC-lite. geomx_q3_scaled_background
       divides negative-probe background by Q3 factor; profile_collinearity records max abs profile correlation;
-      fit_geomx_abundance_de is the un-wired future SpatialDecon beta/log-abundance DE path (slide fixed +
-      duplicateCorrelation bio-unit block, unblocked sensitivity). clearance_axis_data -> clearance_axis target:
-      fails loud if geomx_de$decon_preflight becomes `earned` before decon targets exist; otherwise records the
-      intentional decon skip and harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk, complement, and synaptic
-      anchors across microglia RNA, GeoMx, and bulk layers with a conservative pair-support verdict.
+      geomx_decon now carries blocked/fit beta + residual diagnostics; fit_geomx_abundance_de is the S3
+      log-beta abundance DE path (slide fixed + duplicateCorrelation bio-unit block, unblocked sensitivity).
+      clearance_axis_data -> clearance_axis target still reads the historical P4 decon skip and fails loud if
+      geomx_de$decon_preflight becomes `earned` before S4 revises it to accept geomx_decon/geomx_abundance_de;
+      otherwise records the intentional decon skip and harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk,
+      complement, and synaptic anchors across microglia RNA, GeoMx, and bulk layers with a conservative
+      pair-support verdict.
    + (P4-S4) crossmodality.R: integration helpers. crossmodality_table_data -> crossmodality_table harmonises
       snRNAseq whole/substate RNA, GeoMx, proteome, raw/corrected phospho, TF activity, and kinase summary rows to
       one symbol x contrast x modality_group x feature_type table, collapsing duplicate RNA/protein/phosphosite
@@ -246,6 +255,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   - P4 cross-modality:
        geomx_de <- run_geomx_de(geomx)  # S1: GeoMx RNA/counts DE; slide fixed + duplicateCorrelation bio-unit block primary; unblocked/collapsed sensitivities; decon preflight status/reasons, no SpatialDecon run
        geomx_reference_profile <- geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)  # spatial-decon follow-up S1: full-snRNAseq compact broad/substate reference profile + QC; serialized 1.88MB live
+       geomx_decon <- run_geomx_decon(geomx, geomx_reference_profile)  # spatial-decon follow-up S2: SpatialDecon broad/substate beta + proportions + residual QC; live blocked by 4 unresolved AOIs, no abundance claim
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
@@ -310,7 +320,9 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
   - test_crossmodality.R : (P4-S1) GeoMx RNA/count extraction + meta alignment + slide rank guard +
                     duplicateCorrelation primary + unblocked/collapsed sensitivity status +
-                    malformed metadata + decon preflight defer/block/earned reasons; (P4-S2) 16-run bulk matching +
+                    malformed metadata + decon preflight defer/block/earned reasons; (spatial-decon S2)
+                    background broadcast + SpatialDecon-result normalisation + unresolved-AOI blocked diagnostics +
+                    warning/message capture + two-stage assembly; (P4-S2) 16-run bulk matching +
                     protein aggregation/no-imputation + parent-protein correction/sample-order guard +
                     missing-parent counts + run-index summary + duplicate/multi-gene provenance; (P4-S3) Q3
                     background scaling + profile-collinearity + abundance-DE design shape + clearance-axis

@@ -695,6 +695,368 @@ run_geomx_de <- function(geomx, min_count = 5) {
   de
 }
 
+# ---- Spatial-decon follow-up S2: SpatialDecon fit + two-stage assembly ----------------
+
+geomx_norm_matrix <- function(geomx, assay = "RNA", layer = "data") {
+  stopifnot(inherits(geomx, "Seurat"), assay %in% names(geomx@assays), nzchar(layer))
+  norm <- SeuratObject::GetAssayData(geomx, assay = assay, layer = layer)
+  norm <- as.matrix(norm)
+  stopifnot(!is.null(rownames(norm)), !is.null(colnames(norm)),
+            !anyDuplicated(rownames(norm)), !anyDuplicated(colnames(norm)),
+            all(is.finite(norm)), all(norm >= 0))
+  keep <- Matrix::rowSums(norm) > 0
+  if (!any(keep)) stop("GeoMx normalised expression has no nonzero genes", call. = FALSE)
+  norm <- norm[keep, , drop = FALSE]
+  storage.mode(norm) <- "double"
+  attr(norm, "geomx_norm_provenance") <- list(
+    assay = assay,
+    layer = layer,
+    n_genes_input = length(keep),
+    n_genes_dropped_empty = sum(!keep),
+    n_genes = nrow(norm),
+    n_aoi = ncol(norm),
+    scale = "GeoMx RNA/data layer, treated as linear Q3-normalised expression"
+  )
+  norm
+}
+
+geomx_background_matrix <- function(meta, genes) {
+  stopifnot(is.data.frame(meta), is.character(genes), length(genes) >= 1L,
+            !is.null(rownames(meta)), !anyDuplicated(rownames(meta)))
+  bg <- geomx_q3_scaled_background(meta)
+  out <- matrix(rep(bg, each = length(genes)), nrow = length(genes),
+                dimnames = list(genes, rownames(meta)))
+  storage.mode(out) <- "double"
+  stopifnot(all(is.finite(out)), all(out > 0))
+  attr(out, "geomx_background_provenance") <- list(
+    n_genes = nrow(out),
+    n_aoi = ncol(out),
+    range = range(out),
+    scale = attr(bg, "scale")
+  )
+  out
+}
+
+.capture_spatialdecon <- function(expr) {
+  warns <- character(0)
+  msgs <- character(0)
+  value <- withCallingHandlers(
+    tryCatch(expr, error = function(e) {
+      msgs <<- c(msgs, paste0("error: ", conditionMessage(e)))
+      NULL
+    }),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  list(value = value, warnings = unique(warns), messages = unique(msgs))
+}
+
+spatialdecon_residual_qc <- function(resids) {
+  stopifnot(is.matrix(resids), !is.null(rownames(resids)), !is.null(colnames(resids)))
+  finite <- is.finite(resids)
+  if (any(colSums(finite) == 0L)) {
+    stop("SpatialDecon residuals have AOIs with no finite genes", call. = FALSE)
+  }
+  mean_abs <- colMeans(abs(resids), na.rm = TRUE)
+  rms <- sqrt(colMeans(resids^2, na.rm = TRUE))
+  frac_abs_gt_1 <- colMeans(abs(resids) > 1, na.rm = TRUE)
+  per_aoi <- data.frame(
+    aoi = colnames(resids),
+    n_genes = nrow(resids),
+    n_finite = colSums(finite),
+    n_missing = colSums(!finite),
+    mean_abs_log2_resid = unname(mean_abs),
+    rms_log2_resid = unname(rms),
+    frac_abs_gt_1 = unname(frac_abs_gt_1),
+    row.names = NULL,
+    stringsAsFactors = FALSE
+  )
+  stopifnot(all(is.finite(per_aoi$mean_abs_log2_resid)),
+            all(is.finite(per_aoi$rms_log2_resid)),
+            all(is.finite(per_aoi$frac_abs_gt_1)),
+            all(per_aoi$frac_abs_gt_1 >= 0 & per_aoi$frac_abs_gt_1 <= 1))
+  list(
+    per_aoi = per_aoi,
+    summary = list(
+      n_genes = nrow(resids),
+      n_aoi = ncol(resids),
+      n_missing = sum(!finite),
+      missing_fraction = sum(!finite) / length(resids),
+      median_rms_log2_resid = unname(stats::median(per_aoi$rms_log2_resid)),
+      max_rms_log2_resid = max(per_aoi$rms_log2_resid),
+      median_frac_abs_gt_1 = unname(stats::median(per_aoi$frac_abs_gt_1))
+    )
+  )
+}
+
+normalise_spatialdecon_result <- function(result, aoi_names, beta_floor = 1e-8) {
+  stopifnot(is.list(result), is.character(aoi_names), length(aoi_names) >= 1L,
+            is.numeric(beta_floor), length(beta_floor) == 1L,
+            is.finite(beta_floor), beta_floor >= 0)
+  if (!is.matrix(result$beta)) stop("SpatialDecon result missing beta matrix", call. = FALSE)
+  beta <- as.matrix(result$beta)
+  stopifnot(!is.null(rownames(beta)), !is.null(colnames(beta)),
+            identical(colnames(beta), aoi_names),
+            all(is.finite(beta)), all(beta >= 0))
+  beta_total <- colSums(beta)
+  unresolved <- beta_total <= beta_floor
+  prop <- beta * 0
+  resolved <- !unresolved
+  if (any(resolved)) {
+    prop[, resolved] <- sweep(beta[, resolved, drop = FALSE], 2L,
+                              beta_total[resolved], "/")
+  }
+  stopifnot(all(is.finite(prop)), all(prop >= -1e-10), all(prop <= 1 + 1e-10))
+  prop <- pmin(pmax(prop, 0), 1)
+  prop_delta <- NA_real_
+  if (is.matrix(result$prop_of_all) && identical(dim(result$prop_of_all), dim(prop)) &&
+      identical(dimnames(result$prop_of_all), dimnames(prop))) {
+    delta <- abs(result$prop_of_all - prop)
+    prop_delta <- if (any(is.finite(delta))) max(delta[is.finite(delta)]) else NA_real_
+  }
+  residual_qc <- if (is.matrix(result$resids)) spatialdecon_residual_qc(result$resids) else NULL
+  list(
+    beta = beta,
+    proportion = prop,
+    beta_total = beta_total,
+    resolved_aoi_count = sum(resolved),
+    unresolved_aoi = data.frame(
+      aoi = aoi_names,
+      beta_total = unname(beta_total),
+      unresolved = unname(unresolved),
+      stringsAsFactors = FALSE
+    ),
+    unresolved_aoi_count = sum(unresolved),
+    residual_qc = residual_qc,
+    package_prop_delta_max = prop_delta
+  )
+}
+
+fit_spatialdecon_arm <- function(norm, background, profile, profile_qc,
+                                 arm = c("broad", "substate"),
+                                 profile_corr_threshold = 0.95,
+                                 min_shared_genes = 100L,
+                                 maxit = 1000L,
+                                 fit_fun = NULL) {
+  arm <- match.arg(arm)
+  stopifnot(is.matrix(norm), is.matrix(background), is.matrix(profile),
+            identical(dim(background), dim(norm)),
+            identical(dimnames(background), dimnames(norm)),
+            !is.null(rownames(profile)), !is.null(colnames(profile)),
+            is.list(profile_qc), is.numeric(profile_corr_threshold),
+            is.numeric(min_shared_genes), min_shared_genes >= 1L,
+            is.numeric(maxit), maxit >= 1L)
+  if (!identical(profile_qc$status, "earned")) {
+    return(list(status = "blocked", arm = arm,
+                reasons = c("reference profile did not earn deconvolution",
+                            as.character(profile_qc$reasons %||% character())),
+                warnings = character(), messages = character(),
+                profile_gate = profile_qc))
+  }
+  pc <- profile_collinearity(profile)
+  shared <- intersect(rownames(norm), rownames(profile))
+  reasons <- character()
+  if (length(shared) < min_shared_genes) {
+    reasons <- c(reasons, sprintf("only %d shared GeoMx/profile genes, below threshold %d",
+                                  length(shared), min_shared_genes))
+  }
+  if (!is.finite(pc$max_abs_correlation) || pc$max_abs_correlation >= profile_corr_threshold) {
+    reasons <- c(reasons, sprintf("profile max correlation %.3f exceeds threshold %.3f",
+                                  pc$max_abs_correlation, profile_corr_threshold))
+  }
+  if (length(reasons)) {
+    return(list(status = "blocked", arm = arm, reasons = reasons,
+                warnings = character(), messages = character(),
+                profile_gate = c(profile_qc, list(profile_collinearity = pc,
+                                                  n_shared_genes = length(shared)))))
+  }
+  if (is.null(fit_fun)) fit_fun <- SpatialDecon::spatialdecon
+  norm_sub <- norm[shared, , drop = FALSE]
+  bg_sub <- background[shared, , drop = FALSE]
+  prof_sub <- profile[shared, , drop = FALSE]
+  cap <- .capture_spatialdecon(
+    fit_fun(norm = norm_sub, bg = bg_sub, X = prof_sub, maxit = maxit)
+  )
+  if (is.null(cap$value)) {
+    return(list(status = "blocked", arm = arm,
+                reasons = c("SpatialDecon fit failed", cap$messages),
+                warnings = cap$warnings, messages = cap$messages,
+                profile_gate = c(profile_qc, list(profile_collinearity = pc,
+                                                  n_shared_genes = length(shared)))))
+  }
+  parsed <- tryCatch(
+    normalise_spatialdecon_result(cap$value, colnames(norm_sub)),
+    error = function(e) e
+  )
+  if (inherits(parsed, "error")) {
+    return(list(status = "blocked", arm = arm,
+                reasons = paste("SpatialDecon result failed postconditions:",
+                                conditionMessage(parsed)),
+                warnings = cap$warnings, messages = cap$messages,
+                profile_gate = c(profile_qc, list(profile_collinearity = pc,
+                                                  n_shared_genes = length(shared)))))
+  }
+  if (parsed$unresolved_aoi_count > 0L) {
+    return(c(list(status = "blocked", arm = arm,
+                  reasons = sprintf("SpatialDecon beta has %d unresolved AOI(s) with near-zero total abundance",
+                                    parsed$unresolved_aoi_count),
+                  warnings = cap$warnings, messages = cap$messages,
+                  n_shared_genes = length(shared), n_profiles = ncol(prof_sub),
+                  n_aoi = ncol(norm_sub), profile_labels = colnames(prof_sub),
+                  profile_gate = c(profile_qc, list(profile_collinearity = pc,
+                                                    n_shared_genes = length(shared)))),
+             parsed))
+  }
+  c(list(status = "fit", arm = arm, reasons = character(),
+         warnings = cap$warnings, messages = cap$messages,
+         n_shared_genes = length(shared), n_profiles = ncol(prof_sub),
+         n_aoi = ncol(norm_sub), profile_labels = colnames(prof_sub),
+         profile_gate = c(profile_qc, list(profile_collinearity = pc,
+                                           n_shared_genes = length(shared)))),
+    parsed)
+}
+
+assemble_microglia_substate_abundance <- function(broad_arm, substate_arm,
+                                                  microglia_label = "Microglia",
+                                                  substate_prefix = "Microglia_",
+                                                  beta_floor = 1e-8) {
+  stopifnot(is.list(broad_arm), is.list(substate_arm), nzchar(microglia_label),
+            nzchar(substate_prefix), is.numeric(beta_floor), beta_floor >= 0)
+  if (!identical(broad_arm$status, "fit") || !identical(substate_arm$status, "fit")) {
+    return(list(status = "blocked",
+                reasons = "broad and substate fits are both required for two-stage assembly",
+                unresolved_aoi_count = NA_integer_))
+  }
+  if (!(microglia_label %in% rownames(broad_arm$beta))) {
+    return(list(status = "blocked",
+                reasons = paste("broad fit lacks", microglia_label, "profile"),
+                unresolved_aoi_count = NA_integer_))
+  }
+  sub_rows <- grep(paste0("^", substate_prefix), rownames(substate_arm$beta), value = TRUE)
+  if (!length(sub_rows)) {
+    return(list(status = "blocked",
+                reasons = "substate fit has no microglia substate profiles",
+                unresolved_aoi_count = NA_integer_))
+  }
+  raw <- substate_arm$beta[sub_rows, , drop = FALSE]
+  denom <- colSums(raw)
+  unresolved <- denom <= beta_floor
+  if (any(unresolved)) {
+    return(list(status = "blocked",
+                reasons = "substate fit has AOIs with near-zero total microglia-substate abundance",
+                unresolved_aoi_count = sum(unresolved),
+                unresolved_aoi = data.frame(aoi = colnames(raw), beta_total = unname(denom),
+                                            unresolved = unname(unresolved),
+                                            stringsAsFactors = FALSE)))
+  }
+  fraction <- sweep(raw, 2L, denom, "/")
+  anchored_beta <- sweep(fraction, 2L, broad_arm$beta[microglia_label, ], "*")
+  anchored_prop <- sweep(fraction, 2L, broad_arm$proportion[microglia_label, ], "*")
+  stopifnot(all(is.finite(fraction)), all(fraction >= -1e-10), all(fraction <= 1 + 1e-10),
+            all(is.finite(anchored_beta)), all(anchored_beta >= 0),
+            all(is.finite(anchored_prop)), all(anchored_prop >= -1e-10),
+            all(anchored_prop <= 1 + 1e-10))
+  fraction <- pmin(pmax(fraction, 0), 1)
+  anchored_prop <- pmin(pmax(anchored_prop, 0), 1)
+  list(
+    status = "fit",
+    reasons = character(),
+    anchor_profile = microglia_label,
+    substate_profiles = sub_rows,
+    fraction_within_microglia = fraction,
+    anchored_beta = anchored_beta,
+    anchored_proportion = anchored_prop,
+    unresolved_aoi_count = sum(unresolved),
+    unresolved_aoi = data.frame(aoi = colnames(raw), beta_total = unname(denom),
+                                unresolved = unname(unresolved), stringsAsFactors = FALSE)
+  )
+}
+
+run_geomx_decon <- function(geomx, geomx_reference_profile,
+                            profile_corr_threshold = 0.95,
+                            min_shared_genes = 100L,
+                            maxit = 1000L) {
+  stopifnot(inherits(geomx, "Seurat"), is.list(geomx_reference_profile),
+            is.list(geomx_reference_profile$broad), is.list(geomx_reference_profile$substate))
+  norm <- geomx_norm_matrix(geomx)
+  meta <- geomx_meta(geomx)
+  stopifnot(identical(colnames(norm), rownames(meta)))
+  background <- geomx_background_matrix(meta, rownames(norm))
+  pkg <- spatialdecon_package_info()
+  spatialdecon <- list(package = "SpatialDecon",
+                       available = isTRUE(pkg$installed),
+                       installed = isTRUE(pkg$installed),
+                       version = pkg$version,
+                       repos = "installed project library",
+                       error = pkg$error,
+                       warnings = pkg$warnings,
+                       messages = pkg$messages)
+  preflight <- geomx_decon_preflight(meta, norm,
+                                     profile = geomx_reference_profile$broad$profile,
+                                     profile_corr_threshold = profile_corr_threshold,
+                                     spatialdecon = spatialdecon)
+  nuclei <- list(n_sentinel = sum(meta$nuclei < 0),
+                 absolute_rescaling_enabled = FALSE,
+                 reason = "nuclei contains sentinel values; beta/log-abundance scale is retained")
+  if (!isTRUE(pkg$installed)) {
+    return(list(status = "blocked",
+                reasons = c("SpatialDecon is not installed in the project library", pkg$error),
+                broad = list(status = "blocked", arm = "broad",
+                             reasons = "SpatialDecon is not installed in the project library"),
+                substate = list(status = "blocked", arm = "substate",
+                                reasons = "SpatialDecon is not installed in the project library"),
+                two_stage = list(status = "blocked",
+                                 reasons = "SpatialDecon is not installed in the project library"),
+                preflight = preflight, nuclei = nuclei,
+                provenance = list(norm = attr(norm, "geomx_norm_provenance"),
+                                  background = attr(background, "geomx_background_provenance"),
+                                  package = spatialdecon)))
+  }
+  broad <- fit_spatialdecon_arm(norm, background, geomx_reference_profile$broad$profile,
+                                geomx_reference_profile$broad$qc, arm = "broad",
+                                profile_corr_threshold = profile_corr_threshold,
+                                min_shared_genes = min_shared_genes, maxit = maxit)
+  substate <- fit_spatialdecon_arm(norm, background, geomx_reference_profile$substate$profile,
+                                   geomx_reference_profile$substate$qc, arm = "substate",
+                                   profile_corr_threshold = profile_corr_threshold,
+                                   min_shared_genes = min_shared_genes, maxit = maxit)
+  two_stage <- assemble_microglia_substate_abundance(broad, substate)
+  status <- if (identical(broad$status, "fit")) "fit" else "blocked"
+  reasons <- if (identical(status, "fit")) character() else broad$reasons
+  out <- list(
+    status = status,
+    reasons = reasons,
+    broad = broad,
+    substate = substate,
+    two_stage = two_stage,
+    preflight = preflight,
+    nuclei = nuclei,
+    provenance = list(
+      norm = attr(norm, "geomx_norm_provenance"),
+      background = attr(background, "geomx_background_provenance"),
+      package = spatialdecon,
+      thresholds = list(profile_corr_threshold = profile_corr_threshold,
+                        min_shared_genes = min_shared_genes,
+                        maxit = maxit),
+      reference_status = list(broad = geomx_reference_profile$broad$qc$status,
+                              substate = geomx_reference_profile$substate$qc$status),
+      output_contract = "SpatialDecon beta/proportions on GeoMx Q3-normalised scale; nuclei count conversion disabled"
+    )
+  )
+  stopifnot(out$status %in% c("fit", "blocked"),
+            out$broad$status %in% c("fit", "blocked"),
+            out$substate$status %in% c("fit", "blocked"),
+            out$two_stage$status %in% c("fit", "blocked"),
+            identical(out$nuclei$absolute_rescaling_enabled, FALSE))
+  out
+}
+
 .geomx_abundance_top_tables <- function(fit, contrasts) {
   out <- lapply(colnames(contrasts), function(cn) {
     tt <- tibble::rownames_to_column(

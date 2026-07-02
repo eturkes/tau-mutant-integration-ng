@@ -524,14 +524,14 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   SpatialDecon was pinned-repo available and Q3/background fields were usable, but nuclei had 42 `-1` sentinels
   (absolute nuclei rescaling disabled) and no compact reference profile existed yet. Spatial-decon follow-up S1
   now builds `geomx_reference_profile`; existing `geomx_de$decon_preflight` remains the historical P4 preflight
-  until S2 wires actual decon targets.
+  until the follow-up integration steps rewire clearance/report targets to the actual S2 `geomx_decon`.
 
 ## Spatial decon reference profile (follow-up S1, built) -- `R/crossmodality.R` -> `geomx_reference_profile`
 - Dependency: `SpatialDecon` 1.22.0 installed via project-local rv/BioCsoft; `requireNamespace` under
   `options(warn=2)` is clean (0 warnings/messages). S1 uses the installed API surface/provenance but builds the
   profile with local sparse averaging instead of `SpatialDecon::create_profile_matrix()` because that helper
   coerces the capped matrix through dense `as.matrix()`. Semantics match its documented average-expression profile;
-  S2 will call SpatialDecon proper.
+  S2 calls SpatialDecon proper through `geomx_decon`.
 - Target contract: `geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)` loads the
   full snRNAseq RDS once, reads RNA/counts with ENSMUSG rownames, maps via `symbol_map`, intersects GeoMx RNA/data
   symbols, overlays retained microglia substates by barcode, normalises selected cells by full RNA library size
@@ -549,6 +549,23 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   classes + Homeostatic/DAM/IFN); Proliferative absent. QC: broad max |cor| 0.674 / condition 4.34; substate max
   |cor| 0.902 / condition 9.89. S2 may try both broad and substate decon; if SpatialDecon fit fails, report the
   precise fit/status reason, not the old "no compact profile" negative.
+
+## Spatial decon fit (follow-up S2, built) -- `R/crossmodality.R` -> `geomx_decon`
+- `run_geomx_decon` reads GeoMx RNA `data` as linear Q3-normalised expression, aligns AOIs to `geomx_meta`, broadcasts
+  Q3-scaled negative-probe background (`NegGeoMean / q_norm_qFactors`) to gene x AOI, and calls
+  `SpatialDecon::spatialdecon(norm, bg, X=profile)` under warning/message capture. Captured warnings/messages are stored;
+  none leak to tar_meta/render logs. Nuclei-based absolute count conversion remains DISABLED while 42/91 nuclei values
+  are sentinels.
+- Output contract: independent `broad` and `substate` arms store status, reasons, beta, beta-derived proportions,
+  unresolved AOI table, residual QC summaries, profile gates, and package provenance. Unresolved beta totals do NOT
+  erase diagnostics: the arm becomes `status="blocked"` but beta/residual QC stay available. Two-stage assembly anchors
+  substate fractions back to broad Microglia beta ONLY when both arms fit; otherwise it is blocked.
+- Live S2 (warning-clean, tar_meta clean, target ~0.145MB): preflight earned except the recorded nuclei sentinel caveat;
+  broad arm used 15,919 genes x 6 profiles and substate arm used 16,079 genes x 8 profiles. BOTH arms are BLOCKED by
+  the same 4/91 unresolved AOIs with beta_total=0 (`DSP-1001660019825-A-E03/E04/E05/G12.dcc`); 87 AOIs resolve.
+  Residual QC is still stored (broad median RMS log2 residual ~0.82; missing residual fraction ~0.4%). S3 should pass
+  through the blocked abundance state and may surface residual diagnostics, but MUST NOT fit/claim log-beta abundance
+  unless broad status becomes `fit`.
 
 ## Bulk proteome + corrected phospho (P4-S2, built) -- `R/crossmodality.R` -> `proteome_de_24m` / `phospho_corrected_24m` / `bulk_omics_summary`
 - 24M sample matching is exact 16/16 via `sample_key`, balanced 4/genotype, ordered by key stub. `match_24m_bulk_columns`
@@ -576,13 +593,14 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 ## Spatial composition + clearance-axis CCC-lite (P4-S3, built) -- `R/crossmodality.R` -> `clearance_axis`
 - SpatialDecon NOT run in P4-S3 because the P4 preflight remained `defer`: Q3/background were usable, but nuclei had
   42 `-1` sentinels (absolute rescaling disabled) and no compact reference profile existed yet. Follow-up S1 now
-  builds that profile; `clearance_axis_data()`
-  intentionally `stop()`s if a future `geomx_de$decon_preflight$status=="earned"` before `geomx_decon` +
-  `geomx_abundance_de` targets are added -> no silent skip once preconditions are clean.
-- Decon helper contracts are present/tested but un-wired: `geomx_q3_scaled_background` = negative-probe background /
-  `q_norm_qFactors`; `profile_collinearity` gates max absolute profile correlation; `fit_geomx_abundance_de` fits
-  log(beta+offset) abundance with slide fixed effect + bio-unit duplicateCorrelation and an unblocked sensitivity.
-  These helpers are for a future earned SpatialDecon branch; current S3 target records the skipped action.
+  builds that profile and S2 adds `geomx_decon`; `clearance_axis_data()` still intentionally `stop()`s if a future
+  `geomx_de$decon_preflight$status=="earned"` before it is revised to accept `geomx_decon` + `geomx_abundance_de` ->
+  no silent skip once preconditions are clean.
+- Decon helper contracts are present/tested: `geomx_q3_scaled_background` = negative-probe background /
+  `q_norm_qFactors`; `profile_collinearity` gates max absolute profile correlation; S2 `geomx_decon` stores
+  blocked/fit beta + residual diagnostics; `fit_geomx_abundance_de` fits log(beta+offset) abundance with slide fixed
+  effect + bio-unit duplicateCorrelation and an unblocked sensitivity when a future broad fit is earned. Current P4
+  clearance target still records the historical skipped action until the follow-up report-integration step rewires it.
 - `clearance_axis` harmonises measured anchor rows across whole/substate microglia RNA, GeoMx primary DE, and 24M bulk
   anchors. Dictionary = clearance pairs {Apoe_Trem2, App_Cd74, Pros1_Mertk}, complement {C1qa/b/c,C3}, synaptic
   {Syn1,Syp,Snap25,Dlg4,Grin1}; also carries synaptic GO-set availability from `mechanism_gene_sets`. Live target =
@@ -627,11 +645,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (earned pair/contrast/modalities + P5 support phrase) instead of hardcoding the current Apoe-Trem2 result; a future
   target drift renders honest prose rather than a stale claim.
 - Live interpretation (qualitative, margins inline-computed): GeoMx and bulk layers have strongest signal in amyloid
-  contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. SpatialDecon remains
-  skipped/defer (nuclei sentinels + no compact profile), so no spatial abundance/cell-count claim. CCC-lite earns only
-  Apoe_Trem2 in `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity remains severe,
-  so the final synthesis uses P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2
-  clearance, not as a stand-alone microglial kinase or spatial-abundance claim.
+  contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. The current report
+  bundle still carries the P4 skipped/defer state; follow-up S2 now replaces the missing-profile reason with a real
+  SpatialDecon blocked-fit reason (4 unresolved AOIs), but no spatial abundance/cell-count claim is earned. CCC-lite
+  earns only Apoe_Trem2 in `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity
+  remains severe, so the final synthesis uses P4 as corroboration for DAM activation, synaptic suppression, and
+  measured Apoe-Trem2 clearance, not as a stand-alone microglial kinase or spatial-abundance claim.
 
 ## Synthesis target (P5-S1, built) -- `R/synthesis.R::synthesis_report_data` -> `synthesis_report`
 - S1 is read-only synthesis, not new inference. `synthesis_report_data` reads ONLY the compact report bundles

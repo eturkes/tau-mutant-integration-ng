@@ -169,6 +169,14 @@ list(
              geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx),
              format = "qs"),
 
+  # Spatial decon follow-up S2: run SpatialDecon on GeoMx RNA/data Q3-normalised
+  # expression with Q3-scaled negative-probe background. Broad profile is primary;
+  # substate fit is gated separately and assembled back onto broad Microglia beta.
+  # Nuclei-based absolute count conversion stays disabled while nuclei sentinels remain.
+  tar_target(geomx_decon,
+             run_geomx_decon(geomx, geomx_reference_profile),
+             format = "qs"),
+
   # S2 bulk proteome + corrected phospho: 24M 16-run sample-key-matched bulk hippocampus
   # layers. Proteome aggregates raw positive rows to PG.ProteinGroups before log2/median
   # normalisation/limma-trend. Corrected phospho subtracts matched parent-protein log2

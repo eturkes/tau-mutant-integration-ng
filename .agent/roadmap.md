@@ -32,9 +32,11 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
-Next `$session-prompt` mode = EXECUTE S2 SpatialDecon fit + two-stage assembly.
+Next `$session-prompt` mode = EXECUTE S3 abundance DE + spatial residual audit.
 Route selected = broad-first SpatialDecon with a gated substate attempt; S1
-reference profile earned broad and substate gates.
+reference profile earned broad/substate gates, but S2 SpatialDecon arms both
+blocked on 4 unresolved AOIs (beta_total=0), so S3 should pass through the
+blocked abundance state and surface residual diagnostics.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -508,6 +510,16 @@ reference profile earned broad and substate gates.
   compact target warning-clean/tar_meta clean: broad 15,919 genes x 6 profiles
   earned, substate 16,079 genes x 8 profiles earned, Proliferative absent
   recorded, serialized 1.88 MB. Next = S2 decon fit.
+- 2026-07-02 Spatial decon follow-up S2 DONE -> `geomx_decon`. Added
+  SpatialDecon fit adapter around GeoMx RNA/data + Q3-scaled background,
+  warning/message capture, beta/proportion/residual-QC normalisation, independent
+  broad/substate arms, and two-stage microglia-substate assembly. Live target
+  warning-clean/tar_meta clean but NOT earned: broad and substate arms both
+  blocked by the same 4/91 unresolved AOIs with beta_total=0
+  (E03/E04/E05/G12 on DSP-1001660019825-A); 87 AOIs resolved, residual QC stored,
+  nuclei absolute rescaling disabled (42 sentinels), no abundance claim. Full
+  `scripts/check.sh` green across 48 current targets/branches. Next = S3
+  blocked-abundance passthrough + residual audit.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

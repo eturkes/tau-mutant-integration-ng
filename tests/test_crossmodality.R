@@ -226,6 +226,109 @@ stopifnot(all.equal(unname(norm_prof$profile["Sym1", "A"]), 6),
           all.equal(unname(norm_prof$profile["Sym1", "B"]), 30),
           !is.finite(norm_prof$qc$condition_number))
 
+# --- spatial-decon S2 fit adapter, result normalisation, two-stage assembly ------------
+bg_mat <- geomx_background_matrix(meta, paste0("Gene", seq_len(5L)))
+stopifnot(identical(dim(bg_mat), c(5L, nrow(meta))),
+          identical(colnames(bg_mat), rownames(meta)),
+          all.equal(unname(bg_mat[1, ]), meta$neg_background / meta$q3_factor,
+                    tolerance = 1e-12))
+
+aoi3 <- paste0("AOI", 1:3)
+beta3 <- rbind(Microglia = c(3, 4, 5), Astrocyte = c(1, 2, 1))
+colnames(beta3) <- aoi3
+resid3 <- matrix(c(0.1, -0.2, NA, 0.4, 0.2, -0.1, 0.3, -0.5, 0.7),
+                 nrow = 3, dimnames = list(paste0("G", 1:3), aoi3))
+normed <- normalise_spatialdecon_result(
+  list(beta = beta3, prop_of_all = sweep(beta3, 2, colSums(beta3), "/"),
+       resids = resid3),
+  aoi3)
+stopifnot(all.equal(unname(colSums(normed$proportion)), rep(1, 3), tolerance = 1e-12),
+          normed$unresolved_aoi_count == 0L,
+          normed$residual_qc$summary$n_missing == 1L,
+          nrow(normed$residual_qc$per_aoi) == 3L)
+zero_beta <- beta3
+zero_beta[, 2] <- 0
+zero_normed <- normalise_spatialdecon_result(list(beta = zero_beta), aoi3)
+stopifnot(zero_normed$unresolved_aoi_count == 1L,
+          identical(zero_normed$unresolved_aoi$unresolved, c(FALSE, TRUE, FALSE)),
+          all.equal(unname(colSums(zero_normed$proportion)), c(1, 0, 1),
+                    tolerance = 1e-12))
+
+sd_genes <- paste0("SDG", seq_len(130L))
+sd_aoi <- paste0("SDA", seq_len(4L))
+sd_norm <- matrix(5 + outer(seq_along(sd_genes), seq_along(sd_aoi),
+                            function(i, j) (i * 3 + j * 5) %% 17),
+                  nrow = length(sd_genes), dimnames = list(sd_genes, sd_aoi))
+sd_bg <- matrix(0.2, nrow = nrow(sd_norm), ncol = ncol(sd_norm),
+                dimnames = dimnames(sd_norm))
+sd_profile <- cbind(
+  Microglia = 2 + sin(seq_along(sd_genes) / 7),
+  Astrocyte = 2 + cos(seq_along(sd_genes) / 9),
+  Neuronal = 1 + ((seq_along(sd_genes) * 3) %% 11) / 10
+)
+rownames(sd_profile) <- sd_genes
+earned_qc <- list(status = "earned", reasons = character())
+fake_spatialdecon <- function(norm, bg, X, maxit) {
+  warning("captured fit warning")
+  message("captured fit message")
+  b <- rbind(Microglia = c(3, 4, 5, 6),
+             Astrocyte = c(2, 1, 2, 1),
+             Neuronal = c(1, 2, 1, 2))
+  colnames(b) <- colnames(norm)
+  list(beta = b,
+       prop_of_all = sweep(b, 2, colSums(b), "/"),
+       resids = matrix(0, nrow = nrow(norm), ncol = ncol(norm),
+                       dimnames = dimnames(norm)))
+}
+fit_arm <- fit_spatialdecon_arm(sd_norm, sd_bg, sd_profile, earned_qc,
+                                arm = "broad", fit_fun = fake_spatialdecon)
+stopifnot(fit_arm$status == "fit",
+          fit_arm$n_shared_genes == length(sd_genes),
+          fit_arm$unresolved_aoi_count == 0L,
+          identical(fit_arm$warnings, "captured fit warning"),
+          any(grepl("captured fit message", fit_arm$messages, fixed = TRUE)),
+          all.equal(unname(colSums(fit_arm$proportion)), rep(1, ncol(sd_norm)),
+                    tolerance = 1e-12))
+
+blocked_arm <- fit_spatialdecon_arm(sd_norm, sd_bg, sd_profile,
+                                    list(status = "blocked", reasons = "synthetic collinearity"),
+                                    arm = "broad", fit_fun = fake_spatialdecon)
+stopifnot(blocked_arm$status == "blocked",
+          any(grepl("synthetic collinearity", blocked_arm$reasons, fixed = TRUE)))
+
+bad_spatialdecon <- function(norm, bg, X, maxit) {
+  b <- rbind(Microglia = c(0, 4, 5, 6), Astrocyte = c(0, 1, 2, 1))
+  colnames(b) <- colnames(norm)
+  list(beta = b, resids = matrix(0, nrow = nrow(norm), ncol = ncol(norm),
+                                 dimnames = dimnames(norm)))
+}
+bad_arm <- fit_spatialdecon_arm(sd_norm, sd_bg, sd_profile, earned_qc,
+                                arm = "broad", fit_fun = bad_spatialdecon)
+stopifnot(bad_arm$status == "blocked",
+          bad_arm$unresolved_aoi_count == 1L,
+          any(grepl("unresolved AOI", bad_arm$reasons, fixed = TRUE)))
+
+sub_beta <- rbind(Microglia_Homeostatic = c(2, 2, 1, 3),
+                  Microglia_DAM = c(1, 3, 4, 3),
+                  Astrocyte = c(2, 1, 2, 1))
+colnames(sub_beta) <- sd_aoi
+sub_arm <- fit_arm
+sub_arm$arm <- "substate"
+sub_arm$beta <- sub_beta
+sub_arm$proportion <- sweep(sub_beta, 2, colSums(sub_beta), "/")
+two <- assemble_microglia_substate_abundance(fit_arm, sub_arm)
+stopifnot(two$status == "fit",
+          two$unresolved_aoi_count == 0L,
+          all.equal(unname(colSums(two$fraction_within_microglia)), rep(1, ncol(sub_beta)),
+                    tolerance = 1e-12),
+          all.equal(unname(colSums(two$anchored_beta)), unname(fit_arm$beta["Microglia", ]),
+                    tolerance = 1e-12))
+sub_zero <- sub_arm
+sub_zero$beta[grep("^Microglia_", rownames(sub_zero$beta)), 2] <- 0
+two_zero <- assemble_microglia_substate_abundance(fit_arm, sub_zero)
+stopifnot(two_zero$status == "blocked",
+          two_zero$unresolved_aoi_count == 1L)
+
 # --- abundance DE design: log beta + slide fixed effect + bio-unit blocking ------------
 abund <- rbind(
   microglia = 0.20 + rep(c(0.01, 0.02, 0.04, 0.06), each = 3L * 2L),

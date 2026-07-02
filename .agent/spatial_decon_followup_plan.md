@@ -183,9 +183,20 @@ Acceptance:
   is not retained.
 - `scripts/check.sh` green.
 
-### S2 - SpatialDecon fit + two-stage assembly
-Add `geomx_decon` target. It may return `status = "fit"` or a reportable
-`status = "blocked"`; it must never silently skip after S1 earns a profile.
+### S2 - SpatialDecon fit + two-stage assembly [DONE 2026-07-02]
+Added `geomx_decon` target. It returns the reportable blocked state instead of
+silently skipping after S1 earned the profile.
+
+Result:
+- GeoMx RNA `data` and Q3-scaled background were aligned and SpatialDecon ran
+  warning-clean for both broad and substate profiles.
+- Broad arm: blocked because 4/91 AOIs have beta_total=0 after the fit
+  (the same unresolved AOIs recur in the substate arm).
+- Substate arm: independently attempted and blocked for the same 4 unresolved
+  AOIs; two-stage substate assembly is therefore blocked.
+- Nuclei absolute rescaling remains disabled (42 sentinels). No abundance claim
+  is earned at S2; S3 should pass through the blocked state and surface residual
+  diagnostics rather than fitting log-beta DE.
 
 Contracts:
 - Use GeoMx RNA `data` layer as linear Q3-normalised `norm`; verify same AOI
