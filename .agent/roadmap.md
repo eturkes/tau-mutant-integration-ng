@@ -25,13 +25,14 @@ Durable findings mined from v1 (the headline to rebuild around):
 3. Mechanism rebuild is asymmetric: RNA supports a Myc-linked DAM interaction signal; targeted
    NF-kB attenuation is discordant / not supported; 24M bulk phospho covers but does NOT recover
    Gsk3b interaction or tau-in-NLGF support.
-4. Secondary axis: amyloid-linked synaptic suppression + TREM2 / APP clearance.
+4. Cross-modality corroborates the amyloid-response spine and secondary synaptic/clearance axis;
+   measured Apoe-Trem2 support is focused, while SpatialDecon abundance and full CCC are not earned.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
-Next `$session-prompt` mode = CLOSE-OUT. All P4 steps are done; plan needs adversarial close-out review.
+## Active plan: (none)
+Next `$session-prompt` mode = PLAN. Default next backlog phase = P5 Synthesis; confirm before writing the plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -47,9 +48,11 @@ Next `$session-prompt` mode = CLOSE-OUT. All P4 steps are done; plan needs adver
   interaction decomposes to more DAM cells, not supported progression beyond composition.
 - P3 Mechanism [DONE 2026-07-02 -> `.agent/completed/p3_mechanism_plan_2026-07-02.md`]:
   focused RNA pathway / TF + targeted NF-kB + minimal 24M bulk-phosphosite kinase. Myc supported;
-  NF-kB attenuation discordant / not supported; Gsk3b not recovered. P4 keeps broader cross-modality.
-- P4 Cross-modality: GeoMx spatial DE (+ light deconvolution if it earns it),
-  proteome + phospho DE, CCC for the synaptic/clearance axis, integrated divergence view.
+  NF-kB attenuation discordant / not supported; Gsk3b not recovered.
+- P4 Cross-modality [DONE 2026-07-02 -> `.agent/completed/p4_cross_modality_plan_2026-07-02.md`]:
+  GeoMx spatial DE, 24M proteome + raw/corrected phospho, targeted clearance-axis CCC-lite, integrated
+  divergence view. Strengthens amyloid-response / synaptic-clearance axes; interaction stays mostly
+  microglia-composition-specific; SpatialDecon/full CCC not earned; bulk run-index sensitivity load-bearing.
 - P5 Synthesis: ONE lean report - cohesive narrative + compact evidence table (no
   ledger / contest machinery).
 
@@ -389,6 +392,12 @@ Next `$session-prompt` mode = CLOSE-OUT. All P4 steps are done; plan needs adver
   SpatialDecon remains skipped/defer; CCC-lite earns only Apoe_Trem2 in `nlgf_in_p301s`; no full CCC. Full
   `scripts/check.sh` green (tests warn=2, forced 82-chunk report render, tar_meta clean across 41 targets/branches,
   render-log clean). Next mode = CLOSE-OUT.
+- 2026-07-02 P4 CLOSED: close-out review of plan body + shipped cross-modality code/prose found one low report-prose
+  robustness issue; accepted/fixed by deriving earned clearance-pair prose from `crossmodality_report` instead of
+  hardcoding the current Apoe-Trem2 row. Folded P4 digest -> history.md; archived plan ->
+  `.agent/completed/p4_cross_modality_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story finding #4 now
+  states cross-modality corroboration + measured Apoe-Trem2 support, with SpatialDecon/full CCC not earned. Final
+  close-out gate green. Next = PLAN P5 Synthesis.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

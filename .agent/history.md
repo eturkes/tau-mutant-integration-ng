@@ -174,3 +174,49 @@ shipped code/prose blocker after the NF-kB wording fix; final close-out gate re-
 
 Deferred -> P4+: GeoMx spatial DE, total proteome + broader phospho interpretation, CCC for the synaptic/clearance
 axis if it earns it, and an integrated divergence view. P5 remains the lean synthesis report.
+
+## P4 Cross-modality -- closed 2026-07-02 (-> `.agent/completed/p4_cross_modality_plan_2026-07-02.md`)
+
+Built the non-snRNAseq evidence layer around the P1-P3 spine: replicate-aware GeoMx spatial DE, 24M total-proteome
+DE, raw and parent-protein-corrected phosphosite DE, targeted clearance-axis CCC-lite, harmonised symbol/pathway
+integration, `crossmodality_report`, and `_crossmodality.qmd`. Live facts -> memory.md (P4 sections); wiring ->
+map.md. Below = decisions + rejected alternatives.
+
+- GEOMX: primary = edgeR TMM + limma-voom with slide fixed effects and `duplicateCorrelation(block=genotype:bio_rep)`;
+  unblocked AOI and collapsed-bio-unit fits are sensitivities. GeoMx object default assay is SCT, so counts are read
+  explicitly from RNA/counts; live counts are count-like but not fully integer, so residues are recorded and values are
+  not rounded. SpatialDecon stayed gated: preflight is `defer` because Q3/background are usable but nuclei sentinels
+  disable absolute rescaling and no compact reference profile exists. REJECTED: treating repeated AOIs as independent
+  animals, silent decon skip once preconditions become earned.
+- BULK OMICS: 24M sample-key matched 16/16 runs. Proteome sums raw positive intensities to `PG.ProteinGroups` before
+  log2/median-normalisation/prevalence filtering/limma-trend. Corrected phospho subtracts matched filtered parent
+  protein log2 intensity, then re-filters/refits; raw P3 phosphosite DE is reused. Additive run-index sensitivity is
+  load-bearing because genotype-blocked run order weakens many primary bulk hits. REJECTED: imputation, treating bulk
+  hippocampus as microglia-sorted, and a proteomics-methods benchmark (`QFeatures`/`msqrob2PTM`) for this phase.
+- CLEARANCE / CCC-LITE: no CellChat/LIANA/MultiNicheNet model is run. The measured-axis table covers Apoe/Trem2,
+  App/Cd74, Pros1/Mertk, complement and synaptic anchors across microglia RNA, GeoMx and bulk layers. A pair earns
+  support only with coherent supported evidence in >=2 modalities, or one non-microglia modality plus a strong
+  whole-microglia anchor. Live qualitative call: Apoe-Trem2 earns focused measured support in amyloid-on-P301S;
+  App-Cd74 and Pros1-Mertk remain measured but unearned. REJECTED: full off-lock CCC stack and v1-style LR ledger.
+- INTEGRATION: `crossmodality_table` harmonises symbols across snRNAseq whole/substate RNA, GeoMx, proteome,
+  raw/corrected phospho, TF activity and kinase activity. Duplicate features collapse by best FDR then absolute
+  statistic with provenance retained. Count-honesty distinction is load-bearing: `modality_class` drives broad
+  modality counts; `modality_group` is layer-level evidence. Pathway rows are descriptive ranked-statistic summaries,
+  not formal meta-analysis or contest margins.
+- HEADLINE: P4 strengthens the amyloid-response spine across tissue/spatial and bulk layers, especially antigen
+  presentation / phagocytic-clearance / synaptic axes. It narrows the claims: the tau-amyloid interaction is not
+  broadly spatial or bulk-omics significant, SpatialDecon abundance is not earned, full CCC is not called, and bulk
+  run-order sensitivity downgrades standalone proteome/phosphosite claims.
+- REPORT/API: `_crossmodality.qmd` reads one compact `crossmodality_report` target (~23KB live), not GeoMx/proteome/
+  phospho or the ~10MB evidence table. Prose is target-derived; close-out review fixed the remaining stale-claim risk
+  by making the earned clearance-pair text branch on the current `pair_support` rows instead of hardcoding Apoe-Trem2.
+
+Verification (honest): S1-S5 each smoke-tested live with fresh leaf builds where relevant (`geomx_de`,
+`proteome_de_24m`, `phospho_corrected_24m`, `bulk_omics_summary`, `clearance_axis`, `crossmodality_table`,
+`crossmodality_pathway`, `crossmodality_divergence`, `crossmodality_report`), and full `scripts/check.sh` was green
+through S5. Close-out review found one low report-prose robustness issue; it was accepted/fixed before the final
+close-out gate. Final close-out gate re-run green on 2026-07-02.
+
+Deferred -> P5: one lean synthesis report with a compact evidence table. Keep P4 as corroboration for DAM activation,
+synaptic suppression, and measured Apoe-Trem2 clearance support; keep progression-beyond-composition, NF-kB
+attenuation, Gsk3b, full CCC, and spatial abundance unresolved/unsupported unless P5 adds new evidence.

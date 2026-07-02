@@ -351,3 +351,26 @@ Outcome:
   during render.
 - Full `scripts/check.sh` green: tests warn=2, forced 82-chunk report render,
   `tar_meta` clean across 41 current targets/branches, render-log clean.
+
+## Close-Out
+Adversarial review checked the plan outcomes against shipped `R/crossmodality.R`,
+`tests/test_crossmodality.R`, `_crossmodality.qmd`, target wiring, roadmap, memory,
+map, and history surfaces.
+
+Accepted finding:
+- Low report-prose drift risk: `_crossmodality.qmd` computed `earned_sentence`
+  from `crossmodality_report`, then hardcoded the current Apoe-Trem2 row in the
+  following prose. Fixed by deriving the earned pair/contrast/modalities and P5
+  support phrase from `crossmodality_report$clearance$pair_support`.
+
+Rejected / no-action findings:
+- SpatialDecon skip is intentional while preflight remains `defer`; helper paths
+  are present but unwired until a compact reference/profile gate earns them.
+- Bulk run-index sensitivity is not a blocker; it is surfaced as a load-bearing
+  caveat and prevents standalone bulk claims.
+
+Close actions:
+- Fold P4 digest into `.agent/history.md`.
+- Archive this plan to `.agent/completed/p4_cross_modality_plan_2026-07-02.md`.
+- Reset roadmap Active plan to none; next phase = PLAN P5 Synthesis.
+- Final close-out `scripts/check.sh` green on 2026-07-02 after the prose hardening.

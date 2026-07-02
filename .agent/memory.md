@@ -594,6 +594,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Guard layer validates every qmd-read field: GeoMx top columns/finite effects, bulk feature/significance/run-index
   schemas, clearance pair/decon schemas, divergence contrast/symbol schemas, pathway axis summaries, and finite
   plot-critical counts. A schema drift fails in `crossmodality_report_data`, not halfway through Quarto.
+- Close-out hardening: clearance-axis prose now branches from `crossmodality_report$clearance$pair_support`
+  (earned pair/contrast/modalities + P5 support phrase) instead of hardcoding the current Apoe-Trem2 result; a future
+  target drift renders honest prose rather than a stale claim.
 - Live interpretation (qualitative, margins inline-computed): GeoMx and bulk layers have strongest signal in amyloid
   contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. SpatialDecon remains
   skipped/defer (nuclei sentinels + no compact profile), so no spatial abundance/cell-count claim. CCC-lite earns only

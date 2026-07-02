@@ -96,6 +96,42 @@ earned_sentence <- if (nrow(earned_pairs)) {
 } else {
   "no pair"
 }
+fmt_pair <- function(x) gsub("_", "-", x, fixed = TRUE)
+fmt_modalities <- function(x) {
+  z <- unlist(strsplit(x, ";", fixed = TRUE), use.names = FALSE)
+  z <- z[nzchar(z)]
+  z <- gsub("_", " ", z, fixed = TRUE)
+  paste(z, collapse = ", ")
+}
+earned_details <- if (nrow(earned_pairs)) {
+  vapply(seq_len(nrow(earned_pairs)), function(i) {
+    ep <- earned_pairs[i, , drop = FALSE]
+    mods <- fmt_modalities(ep$coherent_supported_modalities)
+    paste0(fmt_pair(ep$pair), " in ", contrast_labels[ep$contrast],
+           if (nzchar(mods)) paste0(" (supported by ", mods, ")") else "")
+  }, character(1))
+} else {
+  character()
+}
+earned_detail_sentence <- if (length(earned_details)) {
+  paste0(if (length(earned_details) == 1L) "The earned row is " else "The earned rows are ",
+         paste(earned_details, collapse = "; "), ".")
+} else {
+  "No measured pair earns a communication claim under the CCC-lite rule."
+}
+earned_pair_names <- unique(earned_pairs$pair)
+clearance_synthesis_phrase <- if (length(earned_pair_names)) {
+  paste0(paste(fmt_pair(earned_pair_names), collapse = ", "),
+         if (length(earned_pair_names) == 1L) " earns" else " earn",
+         " focused measured clearance support")
+} else {
+  "no clearance pair earns focused measured clearance support"
+}
+p5_support_phrase <- if (length(earned_pair_names)) {
+  "DAM activation, synaptic suppression and the earned clearance-axis support"
+} else {
+  "DAM activation and synaptic suppression, with clearance kept descriptive"
+}
 ```
 
 ## GeoMx Spatial DE
@@ -206,9 +242,8 @@ It reports only GeoMx DE plus the measured clearance-axis evidence.
 
 The targeted CCC-lite rule earns `r earned_sentence`; `ccc_called` stays
 `r cmr$clearance$verdict$ccc_called`, because no CellChat, LIANA or MultiNicheNet model is run.
-The earned Apoe-Trem2 row comes from coherent supported GeoMx and snRNAseq microglia evidence in
-the amyloid-on-P301S contrast. App-Cd74 and Pros1-Mertk are measured but do not earn a
-communication claim.
+`r earned_detail_sentence` Pairs that remain measured but unearned are not promoted to
+communication claims.
 
 ```{r}
 #| label: crossmodality-clearance-table
@@ -308,10 +343,10 @@ knitr::kable(phtab, row.names = FALSE,
 
 Cross-modality evidence strengthens the amyloid-response spine. GeoMx and bulk layers both
 show their largest effects in amyloid contrasts, pathway rows reproduce antigen-presentation,
-phagocytic/clearance and synaptic axes, and Apoe-Trem2 earns focused measured support in the
-amyloid-on-P301S contrast. The same evidence narrows the claims: the tau-amyloid interaction is
+phagocytic/clearance and synaptic axes, and `r clearance_synthesis_phrase`. The same evidence
+narrows the claims: the tau-amyloid interaction is
 not broadly spatial or bulk-omics significant, SpatialDecon abundance is not earned, full CCC is
 not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. P5
-should therefore use P4 as corroboration for DAM activation, synaptic suppression and the
-measured Apoe-Trem2 clearance axis, while keeping progression, NF-kB attenuation, Gsk3b and
+should therefore use P4 as corroboration for `r p5_support_phrase`, while keeping progression,
+NF-kB attenuation, Gsk3b and
 spatial abundance as unresolved or unsupported in the rebuilt data.
