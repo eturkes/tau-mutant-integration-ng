@@ -31,9 +31,11 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none)
-Fresh rebuild + figure-density pass are closed. Next `$session-prompt` mode =
-PLAN: confirm any new phase with user before writing a plan.
+## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
+Next `$session-prompt` mode = EXECUTE S0 route gate. Default = broad-first
+SpatialDecon with a gated substate attempt; alternatives = broad-only,
+full two-stage primary, or RCTD/cell2location side branch. Await user route
+choice before adding dependencies or invalidating targets.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -60,6 +62,11 @@ PLAN: confirm any new phase with user before writing a plan.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
+- Spatial decon follow-up [ACTIVE 2026-07-02 -> `.agent/spatial_decon_followup_plan.md`]:
+  gated GeoMx tissue-abundance follow-up to the P4 "SpatialDecon not earned"
+  row. S0 route gate is open; default = install/run SpatialDecon only after a
+  compact full-reference profile earns it, keep nuclei absolute counts disabled,
+  report broad abundance primary and microglia substates only if stable.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -488,6 +495,13 @@ PLAN: confirm any new phase with user before writing a plan.
   resource refs, 0 warning/error markers. Folded digest -> history.md; archived
   plan -> `.agent/completed/figure_expansion_plan_2026-07-02.md`; reset Active
   plan to none.
+- 2026-07-02 Spatial decon follow-up OPENED -> `.agent/spatial_decon_followup_plan.md`.
+  User requested roadmap units. Research = current P4 decon seams + v1 Arc L
+  mining + current SpatialDecon/RCTD docs. Default plan = broad-first SpatialDecon
+  with a compact full-snRNAseq reference profile, Q3-scaled background, no nuclei
+  absolute counts while 42/91 sentinels remain, abundance DE/spatial residual
+  audit, and report/synthesis rewiring only if earned. Active S0 route gate awaits
+  user choice; no implementation yet.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

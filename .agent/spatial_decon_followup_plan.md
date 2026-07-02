@@ -1,0 +1,265 @@
+# Spatial decon follow-up - plan
+
+## Scope
+Follow up the closed P4 negative: SpatialDecon abundance was not earned because
+no compact reference profile existed. This phase asks one narrow question:
+
+Can the rebuilt project earn a GeoMx tissue-abundance readout, and if so does it
+change the final synthesis?
+
+Default route = gated SpatialDecon, broad-first and two-stage-aware:
+- build a compact snRNAseq-derived profile from the full reference, not from the
+  report bundles;
+- run SpatialDecon on GeoMx Q3-normalised expression with Q3-scaled negative
+  background;
+- keep nuclei-rescaled absolute counts disabled while 42/91 ROIs carry `-1`;
+- test log-beta abundance across the same 5 canonical contrasts;
+- integrate the result into clearance/cross-modality/synthesis only if the
+  profile and fit pass predeclared quality gates.
+
+Out by default: new CCC model, v1 ledger revival, absolute cell counting,
+claiming plaque-niche localisation from geometric whole-tissue ROIs, or forcing
+microglial substate abundance if the reference profile is collinear.
+
+## Research Digest
+Local current state:
+- P4 already added the right seams: `geomx_q3_scaled_background`,
+  `profile_collinearity`, `geomx_decon_preflight`, and
+  `fit_geomx_abundance_de` in `R/crossmodality.R`, with synthetic tests.
+- Live `geomx_de$decon_preflight` = `defer`: `SpatialDecon` is available from
+  pinned repos as 1.22.0, Q3/background are usable, nuclei has 42 sentinels, and
+  no compact profile was built.
+- `SpatialDecon` is not installed in the current project library. S1 must add it
+  to `rproject.toml` / `rv.lock`, smoke-load it warning-clean, and capture any
+  package messages like the optimiser-heavy targets do.
+- Current full `snrnaseq.rds` RNA rownames are ENSMUSG; symbols live in
+  `@misc$geneids` / `symbol_map`. v1's direct-MGI-rowname shortcut is invalid
+  for this fresh rebuild.
+- Current microglia annotation has coherent Homeostatic, DAM, and IFN clusters;
+  Proliferative has no coherent cluster. Do not fabricate a proliferative
+  profile from noisy per-cell secondary labels.
+
+v1 archive mining:
+- v1 Arc L used SpatialDecon in a two-stage shape: broad profile for total
+  microglia, then substate fractions anchored to total microglia. Useful.
+- Durable gotchas: Q3-scale negative-probe background, disable nuclei count
+  conversion, quantify profile collinearity, residualise spatial autocorrelation
+  by genotype/slide, and interpret substate abundance as model-estimated tissue
+  composition, not proof.
+- Rejected v1 carry-over: ledger rows, full prose chapter shape, hardcoded
+  common-gene counts, direct symbol rownames, and treating collinear substate
+  output as if it were equally stable as broad-cell output.
+
+Current docs / method sweep:
+- SpatialDecon is still the GeoMx-native route: its README states minimal inputs
+  as normalised expression, same-scale background, and cell-profile matrix, and
+  the package includes custom-profile and GeoMx-background helpers.
+  Sources: https://github.com/Nanostring-Biostats/SpatialDecon,
+  https://rdrr.io/bioc/SpatialDecon/man/spatialdecon.html,
+  https://rdrr.io/bioc/SpatialDecon/man/derive_GeoMx_background.html
+- Danaher/Kim 2022 frames SpatialDecon as log-normal regression with background
+  modelling for spatial expression deconvolution, designed for region-level
+  abundance estimates rather than single-cell placement.
+  Source: https://www.nature.com/articles/s41467-022-28020-5
+- SpatialDecon's cell-count conversion accepts nuclei counts, but the local
+  sentinel pattern makes this inappropriate here. Keep beta/log-abundance scale.
+  Source: https://rdrr.io/bioc/SpatialDecon/man/convertCellScoresToCounts.html
+- RCTD/spacexr and cell2location are credible spatial decon alternatives, but
+  they target spot/pixel count data and heavier platform-effect/Bayesian
+  workflows. They are alternatives, not the default for GeoMx WTA.
+  Sources: https://github.com/dmcable/spacexr,
+  https://bioc.r-universe.dev/spacexr,
+  https://www.nature.com/articles/s41587-021-01139-4
+
+## Default Design
+Broad-first SpatialDecon with substate attempt guarded separately.
+
+1. Reference profile is the key deliverable.
+   Build a compact `geomx_reference_profile` target from the full snRNAseq RDS,
+   `microglia_annotated`, `symbol_map`, and `geomx`. It loads the heavy full
+   object once, maps ENSMUSG -> symbols, caps cells per class before any dense
+   profile build, then stores only profile matrices and QC.
+
+2. Profile levels are explicit.
+   Broad profile = non-microglia broad annotations plus pooled retained
+   microglia. Substate profile = non-microglia broad annotations plus coherent
+   microglia substates that pass min-cell gates. Proliferative is recorded as
+   absent unless the current annotation actually contains a coherent cluster.
+
+3. Earning rules are predeclared.
+   Broad abundance can be earned if common-gene coverage, per-class cell counts,
+   profile collinearity, SpatialDecon fit, finite beta, and warning capture pass.
+   Substate abundance is optional and earns only if its own profile/stability
+   gates pass; a collinear substate profile becomes a reported negative, not a
+   tuning prompt.
+
+4. Deconvolution uses local GeoMx scale correctly.
+   Use RNA `data` / Q3-normalised linear expression for `norm`. Build background
+   as `NegGeoMean / q_norm_qFactors` broadcast over genes. Do not call
+   `convertCellScoresToCounts()` while nuclei sentinels remain.
+
+5. Abundance inference mirrors P4.
+   Fit `log(beta + offset)` by slide fixed effect plus
+   `duplicateCorrelation(block = bio_unit)` through existing
+   `fit_geomx_abundance_de`, with unblocked sensitivity. Add a compact
+   residualised spatial-autocorrelation check only as descriptive QC.
+
+6. Report/synthesis become honest to the new state.
+   If SpatialDecon remains blocked/not-earned, update the report from
+   "no compact profile" to the actual reason. If earned, update
+   `clearance_axis`, `crossmodality_report`, `synthesis_report`, and report
+   prose so the final answer reflects the abundance layer without reviving full
+   CCC.
+
+## Alternatives
+Alternative A - broad-only SpatialDecon.
+Pros: strongest estimability, smallest profile surface, likely cleanest tissue
+composition readout. Cons: cannot test DAM tissue substate abundance; only total
+microglia and other broad classes.
+
+Alternative B - full two-stage SpatialDecon as primary.
+Pros: closest to v1 Arc L and directly asks whether DAM abundance in tissue
+corroborates snRNAseq composition. Cons: microglia substates are transcriptionally
+close; current Proliferative is absent; high risk of collinear, unstable output.
+
+Alternative C - RCTD/spacexr or cell2location side branch.
+Pros: modern spatial decon families with platform-effect or Bayesian modelling.
+Cons: less GeoMx-native, heavier dependency/object surface, likely a new phase
+rather than a follow-up; not needed until SpatialDecon fails in an informative
+way.
+
+Default choice: broad-first SpatialDecon with a gated substate attempt. It gives a
+real chance to earn spatial abundance while making "substate not estimable" a
+valid outcome.
+
+## Steps
+Each step is one closing unit. Run `scripts/check.sh` unless the step is
+explicitly docs-only and a lighter check is justified.
+
+### S0 - Route gate [OPEN]
+Present the default and alternatives above. Wait for user route choice before
+adding dependencies or invalidating targets.
+
+Acceptance:
+- User chooses default / alternative A / alternative B / alternative C / another
+  route.
+- If the user chooses away from default, revise this plan and roadmap before
+  implementation.
+
+### S1 - Dependency + compact reference profile
+Add `SpatialDecon` to the project-local R lock and build the compact reference
+profile target.
+
+Contracts:
+- Add package via `rproject.toml` (`repository = "BioCsoft"`) + `rv sync`; no
+  global library reliance.
+- Smoke-load `SpatialDecon` under `warn=2`; capture or fix any startup messages.
+- `geomx_reference_profile` loads full `snrnaseq_file` once, maps RNA ENSMUSG
+  rows to unique symbols, caps cells per class with a fixed seed, and stores only
+  compact profile/QC matrices.
+- Reference labels combine full-object `broad_annotations` with
+  `microglia_annotated` retained-cell substates by cell barcode.
+- QC records common genes, cells per class, absent/under-min classes, max profile
+  correlation, condition number, memory estimate, package version, and seed.
+- Heavy target uses transient memory/garbage-collection settings and drops the
+  full Seurat object before returning.
+
+Acceptance:
+- Synthetic tests cover symbol mapping, cap determinism, missing-class handling,
+  Proliferative-absent handling, and profile-collinearity gating.
+- Fresh `geomx_reference_profile` build warning-clean with `tar_meta` clean.
+- Output is compact enough for downstream targets; the heavy full Seurat object
+  is not retained.
+- `scripts/check.sh` green.
+
+### S2 - SpatialDecon fit + two-stage assembly
+Add `geomx_decon` target. It may return `status = "fit"` or a reportable
+`status = "blocked"`; it must never silently skip after S1 earns a profile.
+
+Contracts:
+- Use GeoMx RNA `data` layer as linear Q3-normalised `norm`; verify same AOI
+  order as metadata and background.
+- Background = `geomx_q3_scaled_background(meta)` broadcast to gene x AOI.
+- Run broad profile first. Run substate profile only as its own gated arm.
+- Capture SpatialDecon warnings/messages; no leaked warning can reach tar_meta or
+  the render log.
+- Store beta, proportions derived from beta, fit residual/QC, profile gate
+  status, unresolved AOI counts, and finite/bounds postconditions.
+- Nuclei absolute rescaling remains disabled and recorded.
+
+Acceptance:
+- Tests cover SpatialDecon-result normalisation from synthetic beta, two-stage
+  assembly with unresolved AOIs, finite/bounds guards, blocked-profile output,
+  and warning/message capture.
+- Fresh target build warning-clean. If blocked, reasons are precise and flow to
+  report prose.
+- Broad fit is required before claiming any abundance result; substate failure
+  does not invalidate a clean broad result.
+- `scripts/check.sh` green.
+
+### S3 - Abundance DE + spatial residual audit
+Add `geomx_abundance_de` and a small spatial audit table from `geomx_decon`.
+
+Contracts:
+- Fit log-beta abundance by the existing GeoMx design:
+  `~0 + genotype + slide`, `duplicateCorrelation(block = bio_unit)`, 5 canonical
+  contrasts, unblocked sensitivity.
+- Broad abundance is primary. Substate contrasts are shown only when substate
+  decon status is earned.
+- Spatial audit = per-slide Moran's I or nearest-neighbour residual summary,
+  genotype-residualised where estimable; descriptive only, not a new claim axis.
+- Report all broad cell types and all attempted substates, not only microglia.
+
+Acceptance:
+- Tests cover abundance-DE structure, canonical contrast coverage, blocked
+  decon passthrough, broad/substate gating, and residualised spatial-audit shape.
+- Fresh target build warning-clean with `tar_meta` clean.
+- Output states whether amyloid/interactions affect total microglia or DAM-like
+  abundance, or whether the profile made that unearned.
+- `scripts/check.sh` green.
+
+### S4 - Report + synthesis integration
+Wire a compact report bundle and update the closed synthesis surfaces to the new
+abundance state.
+
+Contracts:
+- Add `spatial_decon_report` target; qmds read only compact report bundles.
+- Add `_spatial_decon.qmd` after `_crossmodality.qmd`, or fold a short section
+  into `_crossmodality.qmd` if the result is blocked/not-earned.
+- Revise `clearance_axis_data` to accept earned decon targets instead of failing
+  when preflight becomes earned.
+- Revise `crossmodality_report_data` and `synthesis_report_data` so
+  SpatialDecon earned/not-earned status is target-derived, not hardcoded.
+- Keep full CCC absent unless a later explicit phase opens it.
+
+Acceptance:
+- Report prose is inline-computed from compact targets; no v1 numbers.
+- Synthesis evidence table updates the SpatialDecon row to earned / blocked /
+  not-earned with the real reason.
+- Forced report render warning-clean.
+- `scripts/check.sh` green.
+
+### S5 - Follow-up QA pass
+Adversarially review the spatial-decon follow-up against the closed P1-P5 story.
+
+Contracts:
+- Check claim scope: model-estimated tissue abundance, not cell counts; GeoMx
+  whole-tissue ROIs, not plaque niches; broad/substate distinction clear.
+- Check stale negatives: no remaining "no compact profile" phrasing if S1 built
+  one.
+- Check figure/caption labels if a new section adds figures.
+- Update `.agent/memory.md`, `.agent/map.md`, `.agent/history.md`, and the
+  cohesive story only for durable outcomes.
+
+Acceptance:
+- Accepted findings fixed before close-out.
+- Full `scripts/check.sh` green.
+- Plan ready for CLOSE-OUT mode.
+
+## Close-Out
+After S5, run the standard close-out:
+- adversarially review plan body + shipped code/prose;
+- fold durable decisions into `.agent/history.md`;
+- archive this plan to `.agent/completed/`;
+- reset roadmap Active plan;
+- commit `<scope> (spatial decon close): ...`.
