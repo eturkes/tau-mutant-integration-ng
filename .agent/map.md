@@ -184,6 +184,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       and summarises n_modalities_present/sig + n_evidence_groups_present/sig + sign consistency. crossmodality_divergence_data
       focuses {interaction,nlgf_in_maptki,nlgf_in_p301s,tau_in_nlgf}, keeps mixed signs explicit, and outputs compact
       symbol/pathway/clearance highlights for S5.
+   + (P4-S5) crossmodality.R: crossmodality_report_data -> crossmodality_report compact chapter bundle. Selects
+      GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
+      symbol/pathway highlights, and axis-level pathway summaries. Guard layer validates every field _crossmodality.qmd
+      reads; render target stays small and does not load GeoMx/proteome/phospho or the 10MB evidence table.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -226,6 +230,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_table <- crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m, phospho_corrected_24m, mechanism_tf, kinase_mechanism_summary)  # S4 harmonised symbol evidence table (~10MB; 337k rows live), broad modality_class + layer-level modality_group
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
+       crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads only this
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -246,6 +251,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 compact target] -> pathway survey + TF activity + NF-kB attenuation gate + Gsk3b/kinase support +
                 synthesis/caveats. Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered;
                 kinase caveat = 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
+                                                          --{{< include >}}--> `_crossmodality.qmd`
+               (P4 cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`; tar_load
+                crossmodality_report [ONE compact target] -> GeoMx spatial DE, 24M bulk proteome/phospho +
+                run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/symbol divergence, and
+                P4 synthesis for P5. Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
+                SpatialDecon skipped/defer, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)
@@ -263,7 +274,8 @@ from project root: `Rscript tests/test_<x>.R`.
                     background scaling + profile-collinearity + abundance-DE design shape + clearance-axis
                     earned/not-earned classification + fail-loud decon-earned guard; (P4-S4) duplicate RNA/protein/
                     phosphosite collapse + missingness + canonical-contrast guard + pathway modality-score invariants
-                    + divergence mixed-sign / clearance-highlight checks
+                    + divergence mixed-sign / clearance-highlight checks; (P4-S5) compact crossmodality_report_data
+                    bundle structure + malformed-input schema guards
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
@@ -294,7 +306,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh | AGENTS.md .agents/skills/** .codex/prompts/*.md
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + read-economy skip);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

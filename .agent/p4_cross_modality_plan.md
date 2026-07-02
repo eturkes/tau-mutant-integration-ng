@@ -311,7 +311,7 @@ Outcome:
 - Live targets warning-clean / `tar_meta` clean: table ~337k rows / ~10MB, selected
   pathway summary ~108KB, divergence summary ~1.9MB. Full `scripts/check.sh` green.
 
-### S5 - Cross-modality report chapter [PENDING]
+### S5 - Cross-modality report chapter [DONE]
 Add `crossmodality_report` target and `_crossmodality.qmd`; include the chapter
 after `_mechanism.qmd` in `index.qmd`.
 
@@ -338,3 +338,16 @@ Acceptance:
 - `crossmodality_report_data()` guards every field the qmd reads.
 - Full report renders with 0 warnings under `options(warn=2)`.
 - `scripts/check.sh` green.
+
+Outcome:
+- Added `crossmodality_report_data()` in `R/crossmodality.R`, target
+  `crossmodality_report`, `_crossmodality.qmd`, index include wiring, and S5
+  synthetic report-bundle tests.
+- Report chapter covers GeoMx spatial DE, 24M bulk proteome/raw+corrected
+  phospho with run-index caveats, decon skip + clearance-axis CCC-lite, integrated
+  pathway/symbol divergence, and P4 synthesis for P5.
+- Live target is compact (~23KB qs). `_crossmodality.qmd` loads only
+  `crossmodality_report`; no heavy GeoMx/proteome/phospho or 10MB evidence table
+  during render.
+- Full `scripts/check.sh` green: tests warn=2, forced 82-chunk report render,
+  `tar_meta` clean across 41 current targets/branches, render-log clean.

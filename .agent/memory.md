@@ -586,6 +586,21 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   clearance pairs from `clearance_axis`. Live target warning-clean (~1.9MB). S5 report should load a compact report
   bundle, not the 10MB table directly.
 
+## Cross-modality report (P4-S5, built) -- `_crossmodality.qmd` + `R/crossmodality.R::crossmodality_report_data` -> `crossmodality_report`
+- CHEAP-RENDER INVARIANT: `_crossmodality.qmd` tar_loads only `crossmodality_report` (~23KB qs live). The bundle selects
+  GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
+  symbol/pathway highlights, and axis-level pathway summaries. It never loads the GeoMx object, proteome/phospho raw
+  targets, or the ~10MB harmonised evidence table during the force-rendered report.
+- Guard layer validates every qmd-read field: GeoMx top columns/finite effects, bulk feature/significance/run-index
+  schemas, clearance pair/decon schemas, divergence contrast/symbol schemas, pathway axis summaries, and finite
+  plot-critical counts. A schema drift fails in `crossmodality_report_data`, not halfway through Quarto.
+- Live interpretation (qualitative, margins inline-computed): GeoMx and bulk layers have strongest signal in amyloid
+  contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. SpatialDecon remains
+  skipped/defer (nuclei sentinels + no compact profile), so no spatial abundance/cell-count claim. CCC-lite earns only
+  Apoe_Trem2 in `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity remains severe,
+  so P5 should use P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance, not
+  as a stand-alone microglial kinase or spatial-abundance claim.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

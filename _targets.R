@@ -194,6 +194,14 @@ list(
                                            clearance_axis),
              format = "qs"),
 
+  # S5 compact report bundle. Selects GeoMx, bulk, clearance, pathway, and divergence
+  # slices for the chapter so _crossmodality.qmd loads one small object, never the full
+  # GeoMx/proteome/phospho targets or the 10MB harmonised evidence table.
+  tar_target(crossmodality_report,
+             crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis,
+                                       crossmodality_divergence, crossmodality_pathway),
+             format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

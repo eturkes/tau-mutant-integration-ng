@@ -31,7 +31,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S5 Cross-modality report chapter.
+Next `$session-prompt` mode = CLOSE-OUT. All P4 steps are done; plan needs adversarial close-out review.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -381,6 +381,14 @@ Next `$session-prompt` mode = EXECUTE. Next open step = S5 Cross-modality report
   Count-honesty hardening: `modality_class` drives `n_modalities_present/sig`; `modality_group` is layer-level evidence
   only. Live fresh targets warning-clean/tar_meta clean (~10MB table, ~108KB pathway, ~1.9MB divergence). Full
   `scripts/check.sh` green. Next = S5 report chapter.
+- 2026-07-02 P4-S5 DONE -> P4 STEPS COMPLETE. Added compact `crossmodality_report` (~23KB qs live) via
+  `crossmodality_report_data`, `_crossmodality.qmd` include after mechanism, index overview wording, and S5 tests.
+  Chapter reads only the compact target and covers GeoMx spatial DE, 24M bulk proteome/raw+corrected phospho with
+  run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/symbol divergence, and P4 synthesis.
+  Live read: GeoMx/bulk strongest in amyloid contrasts; interaction is smaller outside microglia composition/trajectory;
+  SpatialDecon remains skipped/defer; CCC-lite earns only Apoe_Trem2 in `nlgf_in_p301s`; no full CCC. Full
+  `scripts/check.sh` green (tests warn=2, forced 82-chunk report render, tar_meta clean across 41 targets/branches,
+  render-log clean). Next mode = CLOSE-OUT.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

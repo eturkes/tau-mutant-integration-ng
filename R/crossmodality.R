@@ -1976,3 +1976,300 @@ crossmodality_divergence_data <- function(crossmodality_table, crossmodality_pat
                       bulk_context = "24M bulk hippocampus; not microglia-sorted")
   )
 }
+
+# ---- P4-S5: compact report-data extraction ---------------------------------------------
+
+.top_crossmodality_rows <- function(x, group_col, n, fdr_col = "fdr",
+                                    stat_col = "statistic", label_col = "symbol") {
+  stopifnot(is.data.frame(x), group_col %in% names(x), n >= 1L,
+            fdr_col %in% names(x), stat_col %in% names(x), label_col %in% names(x))
+  if (!nrow(x)) return(x)
+  pieces <- lapply(split(x, x[[group_col]]), function(d) {
+    fdr <- d[[fdr_col]]; fdr[!is.finite(fdr)] <- Inf
+    stat <- abs(d[[stat_col]]); stat[!is.finite(stat)] <- -Inf
+    d[head(order(fdr, -stat, d[[label_col]], method = "radix", na.last = TRUE), n),
+      , drop = FALSE]
+  })
+  out <- do.call(rbind, pieces)
+  rownames(out) <- NULL
+  out
+}
+
+crossmodality_report_data <- function(geomx_de, bulk_omics_summary, clearance_axis,
+                                      crossmodality_divergence, crossmodality_pathway,
+                                      geomx_top_n = 8L, symbol_top_n = 36L,
+                                      pathway_top_n = 40L, alpha = 0.10) {
+  stopifnot(is.list(geomx_de), is.list(bulk_omics_summary), is.list(clearance_axis),
+            is.list(crossmodality_divergence), is.list(crossmodality_pathway),
+            geomx_top_n >= 1L, symbol_top_n >= 1L, pathway_top_n >= 1L,
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
+  contrasts <- mechanism_contrasts()
+  focus <- crossmodality_focus_contrasts()
+
+  stopifnot(is.list(geomx_de$primary), is.list(geomx_de$primary$top))
+  .crossmodality_assert_top_contrasts(geomx_de$primary$top, "geomx_de$primary$top", contrasts)
+  geomx_counts <- do.call(rbind, lapply(contrasts, function(cn) {
+    tt <- geomx_de$primary$top[[cn]]
+    .crossmodality_require_cols(tt, c("symbol", "contrast", "logFC", "P.Value",
+                                      "adj.P.Val", "t", "CI.L", "CI.R"),
+                                paste0("geomx_de$primary$top$", cn))
+    sig <- is.finite(tt$adj.P.Val) & tt$adj.P.Val < alpha
+    data.frame(
+      contrast = cn,
+      n_features = nrow(tt),
+      n_fdr_0_05 = sum(is.finite(tt$adj.P.Val) & tt$adj.P.Val < 0.05),
+      n_fdr_0_10 = sum(sig),
+      n_up_fdr_0_10 = sum(sig & tt$logFC > 0, na.rm = TRUE),
+      n_down_fdr_0_10 = sum(sig & tt$logFC < 0, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }))
+  geomx_top <- do.call(rbind, lapply(focus, function(cn) {
+    tt <- geomx_de$primary$top[[cn]]
+    rows <- data.frame(
+      symbol = tt$symbol,
+      contrast = cn,
+      effect = tt$logFC,
+      statistic = tt$t,
+      p_value = tt$P.Value,
+      fdr = tt$adj.P.Val,
+      ci_l = tt$CI.L,
+      ci_r = tt$CI.R,
+      significant = is.finite(tt$adj.P.Val) & tt$adj.P.Val < alpha,
+      stringsAsFactors = FALSE
+    )
+    rows <- rows[!is.na(rows$symbol) & rows$symbol != "", , drop = FALSE]
+    .top_crossmodality_rows(rows, "contrast", geomx_top_n)
+  }))
+  rownames(geomx_top) <- NULL
+  primary_dc <- geomx_de$primary$duplicate_correlation %||% list()
+  geomx_n_aoi <- geomx_de$n_aoi %||% NA_integer_
+  geomx_n_bio_units <- geomx_de$n_bio_units %||% NA_integer_
+  geomx_sensitivity <- data.frame(
+    fit = c("primary_bio_unit_blocked", "unblocked_aoi", "collapsed_bio_unit"),
+    status = c(geomx_de$primary$status %||% "fit",
+               geomx_de$sensitivity$unblocked$status %||% NA_character_,
+               geomx_de$sensitivity$collapsed_bio_unit$status %||% NA_character_),
+    duplicate_correlation_used = c(isTRUE(primary_dc$used), FALSE, FALSE),
+    reason = c(NA_character_,
+               geomx_de$sensitivity$unblocked$reason %||% NA_character_,
+               geomx_de$sensitivity$collapsed_bio_unit$reason %||% NA_character_),
+    stringsAsFactors = FALSE
+  )
+
+  .crossmodality_require_cols(bulk_omics_summary$feature_counts,
+                              c("layer", "n_samples", "n_features", "n_missing_output",
+                                "n_nonpositive_to_na"),
+                              "bulk_omics_summary$feature_counts")
+  .crossmodality_require_cols(bulk_omics_summary$significant_counts,
+                              c("layer", "contrast", "n_features", "n_fdr_0_05",
+                                "n_fdr_0_10", "n_up_fdr_0_10", "n_down_fdr_0_10"),
+                              "bulk_omics_summary$significant_counts")
+  .crossmodality_require_cols(bulk_omics_summary$run_index,
+                              c("layer", "contrast", "status", "n_primary_sig",
+                                "n_lost_or_flipped"),
+                              "bulk_omics_summary$run_index")
+  .crossmodality_require_cols(bulk_omics_summary$anchor_coverage,
+                              c("symbol", "anchor_class", "n_rows"),
+                              "bulk_omics_summary$anchor_coverage")
+  .crossmodality_require_cols(bulk_omics_summary$anchors,
+                              c("layer", "contrast", "feature", "symbols", "anchor_symbols",
+                                "anchor_class", "logFC", "t", "P.Value", "adj.P.Val"),
+                              "bulk_omics_summary$anchors")
+  anchor_rows <- bulk_omics_summary$anchors[
+    bulk_omics_summary$anchors$contrast %in% focus &
+      bulk_omics_summary$anchors$anchor_class %in%
+      c("gsk3b", "tau", "clearance", "synaptic", "complement"),
+    , drop = FALSE]
+  anchor_rows <- .top_crossmodality_rows(anchor_rows, "contrast", symbol_top_n,
+                                         fdr_col = "adj.P.Val", stat_col = "t",
+                                         label_col = "anchor_symbols")
+
+  stopifnot(is.list(clearance_axis$spatial_decon), is.list(clearance_axis$verdict),
+            all(c("status", "action", "reasons") %in% names(clearance_axis$spatial_decon)),
+            "ccc_called" %in% names(clearance_axis$verdict),
+            is.data.frame(clearance_axis$pair_support),
+            is.data.frame(clearance_axis$coverage))
+  .crossmodality_require_cols(clearance_axis$pair_support,
+                              c("pair", "contrast", "n_sides_measured",
+                                "modalities_measured", "coherent_supported_modalities",
+                                "n_coherent_supported_modalities", "microglia_strong",
+                                "status"),
+                              "clearance_axis$pair_support")
+  .crossmodality_require_cols(clearance_axis$coverage,
+                              c("symbol", "axis", "measured", "n_modalities"),
+                              "clearance_axis$coverage")
+  pair_support <- clearance_axis$pair_support[
+    clearance_axis$pair_support$contrast %in% focus, , drop = FALSE]
+  pair_support <- pair_support[order(pair_support$pair,
+                                     match(pair_support$contrast, focus),
+                                     method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(pair_support) <- NULL
+
+  stopifnot(is.data.frame(crossmodality_divergence$contrast_summary),
+            is.data.frame(crossmodality_divergence$symbol_summary),
+            is.data.frame(crossmodality_divergence$highlights),
+            is.data.frame(crossmodality_divergence$mixed_sign),
+            is.data.frame(crossmodality_divergence$pathway_highlights))
+  .crossmodality_require_cols(crossmodality_divergence$contrast_summary,
+                              c("contrast", "n_symbols", "n_multimodality",
+                                "n_any_significant", "n_mixed_sign", "n_axis_symbols"),
+                              "crossmodality_divergence$contrast_summary")
+  .crossmodality_require_cols(crossmodality_divergence$symbol_summary,
+                              c("symbol", "contrast", "axis", "axis_member",
+                                "n_modalities_present", "n_modalities_sig",
+                                "n_evidence_groups_present", "n_evidence_groups_sig",
+                                "mixed_sign", "direction_call", "min_fdr",
+                                "max_abs_statistic", "modalities_sig", "rank_score"),
+                              "crossmodality_divergence$symbol_summary")
+  .crossmodality_require_cols(crossmodality_divergence$pathway_highlights,
+                              c("collection", "set", "axis", "contrast",
+                                "n_modalities_present", "n_modalities_sig",
+                                "mixed_sign", "consistent_direction", "rank_score"),
+                              "crossmodality_divergence$pathway_highlights")
+  symbol_highlights <- crossmodality_divergence$highlights
+  symbol_highlights <- head(symbol_highlights, symbol_top_n)
+  axis_symbols <- crossmodality_divergence$symbol_summary[
+    crossmodality_divergence$symbol_summary$axis_member &
+      crossmodality_divergence$symbol_summary$contrast %in% focus, , drop = FALSE]
+  axis_symbols <- axis_symbols[order(match(axis_symbols$contrast, focus),
+                                     -axis_symbols$n_modalities_sig,
+                                     -axis_symbols$n_modalities_present,
+                                     axis_symbols$min_fdr,
+                                     axis_symbols$symbol,
+                                     method = "radix", na.last = TRUE), , drop = FALSE]
+  axis_symbols <- .top_crossmodality_rows(axis_symbols, "contrast", symbol_top_n,
+                                          fdr_col = "min_fdr",
+                                          stat_col = "max_abs_statistic")
+  mixed_sign <- head(crossmodality_divergence$mixed_sign, symbol_top_n)
+
+  stopifnot(is.data.frame(crossmodality_pathway$summary))
+  .crossmodality_require_cols(crossmodality_pathway$summary,
+                              c("collection", "set", "axis", "contrast",
+                                "n_modalities_present", "n_modalities_sig",
+                                "n_evidence_groups_present", "n_evidence_groups_sig",
+                                "n_consistent_sign", "n_positive_modalities",
+                                "n_negative_modalities", "mixed_sign",
+                                "consistent_direction", "axis_member", "rank_score"),
+                              "crossmodality_pathway$summary")
+  axis_keep <- c("DAM", "homeostatic", "synaptic", "clearance", "complement",
+                 "antigen_presentation", "MHC_APC", "IFN", "NFkB", "Myc")
+  pathway_axis <- crossmodality_pathway$summary[
+    crossmodality_pathway$summary$contrast %in% focus &
+      crossmodality_pathway$summary$axis %in% axis_keep, , drop = FALSE]
+  if (!nrow(pathway_axis)) {
+    pathway_axis <- crossmodality_pathway$summary[
+      crossmodality_pathway$summary$contrast %in% focus, , drop = FALSE]
+  }
+  key <- interaction(pathway_axis$axis, pathway_axis$contrast, drop = TRUE, lex.order = TRUE)
+  pathway_axis <- do.call(rbind, lapply(split(pathway_axis, key), function(d) {
+    d[order(-d$rank_score, -d$n_modalities_sig, -d$n_modalities_present,
+            d$collection, d$set, method = "radix", na.last = TRUE)[1L], , drop = FALSE]
+  }))
+  pathway_axis <- pathway_axis[order(match(pathway_axis$contrast, focus),
+                                     pathway_axis$axis, method = "radix", na.last = TRUE),
+                               , drop = FALSE]
+  rownames(pathway_axis) <- NULL
+  pathway_highlights <- head(crossmodality_divergence$pathway_highlights, pathway_top_n)
+
+  out <- list(
+    geomx = list(
+      counts = geomx_counts,
+      top = geomx_top,
+      sensitivity = geomx_sensitivity,
+      provenance = list(
+        n_aoi = geomx_n_aoi,
+        n_bio_units = geomx_n_bio_units,
+        duplicate_correlation = primary_dc$consensus_correlation %||% NA_real_,
+        alpha = alpha
+      )
+    ),
+    bulk = list(
+      feature_counts = bulk_omics_summary$feature_counts,
+      significant_counts = bulk_omics_summary$significant_counts,
+      run_index = bulk_omics_summary$run_index,
+      anchor_coverage = bulk_omics_summary$anchor_coverage,
+      anchor_rows = anchor_rows,
+      provenance = bulk_omics_summary$provenance
+    ),
+    clearance = list(
+      spatial_decon = clearance_axis$spatial_decon,
+      verdict = clearance_axis$verdict,
+      pair_support = pair_support,
+      coverage = clearance_axis$coverage,
+      synaptic_gene_sets = clearance_axis$synaptic_gene_sets
+    ),
+    divergence = list(
+      contrast_summary = crossmodality_divergence$contrast_summary,
+      symbol_highlights = symbol_highlights,
+      axis_symbols = axis_symbols,
+      mixed_sign = mixed_sign,
+      earned_clearance_pairs = crossmodality_divergence$earned_clearance_pairs
+    ),
+    pathway = list(
+      axis_summary = pathway_axis,
+      highlights = pathway_highlights
+    ),
+    provenance = list(
+      alpha = alpha,
+      contrasts = contrasts,
+      focus_contrasts = focus,
+      geomx_top_n = geomx_top_n,
+      symbol_top_n = symbol_top_n,
+      pathway_top_n = pathway_top_n,
+      report_contract = paste(
+        "compact S5 bundle; _crossmodality.qmd loads only crossmodality_report,",
+        "not the GeoMx, proteome, phospho, or harmonised 10MB evidence targets"
+      )
+    )
+  )
+
+  stopifnot(
+    nrow(out$geomx$counts) == length(contrasts),
+    all(contrasts %in% out$geomx$counts$contrast),
+    nrow(out$geomx$top) >= length(focus),
+    all(is.finite(out$geomx$counts$n_features)),
+    all(is.finite(out$geomx$counts$n_fdr_0_10)),
+    all(is.finite(out$geomx$top$effect)),
+    all(is.finite(out$geomx$top$statistic)),
+    all(is.finite(out$geomx$top$fdr)),
+    is.finite(out$geomx$provenance$n_aoi),
+    is.finite(out$geomx$provenance$n_bio_units),
+    nrow(out$bulk$feature_counts) == 3L,
+    all(out$bulk$feature_counts$layer %in% c("proteome", "phospho_raw", "phospho_corrected")),
+    all(is.finite(out$bulk$feature_counts$n_features)),
+    all(focus %in% out$bulk$significant_counts$contrast),
+    all(is.finite(out$bulk$significant_counts$n_fdr_0_10)),
+    all(is.finite(out$bulk$run_index$n_primary_sig)),
+    all(is.finite(out$bulk$run_index$n_lost_or_flipped)),
+    out$clearance$spatial_decon$status %in% c("earned", "defer", "blocked"),
+    is.character(out$clearance$spatial_decon$action),
+    length(out$clearance$spatial_decon$action) == 1L,
+    !is.na(out$clearance$spatial_decon$action),
+    is.character(out$clearance$spatial_decon$reasons),
+    !anyNA(out$clearance$spatial_decon$reasons),
+    out$clearance$verdict$status %in% c("earned", "not_earned"),
+    is.logical(out$clearance$verdict$ccc_called),
+    length(out$clearance$verdict$ccc_called) == 1L,
+    !is.na(out$clearance$verdict$ccc_called),
+    all(focus %in% out$clearance$pair_support$contrast),
+    all(focus %in% out$divergence$contrast_summary$contrast),
+    all(is.finite(out$divergence$contrast_summary$n_multimodality)),
+    all(is.finite(out$divergence$contrast_summary$n_any_significant)),
+    all(is.finite(out$divergence$contrast_summary$n_mixed_sign)),
+    nrow(out$divergence$symbol_highlights) >= 1L,
+    nrow(out$divergence$axis_symbols) >= 1L,
+    all(is.finite(out$divergence$axis_symbols$n_modalities_present)),
+    all(is.finite(out$divergence$axis_symbols$n_modalities_sig)),
+    all(is.finite(out$divergence$axis_symbols$min_fdr)),
+    all(is.finite(out$divergence$axis_symbols$max_abs_statistic)),
+    nrow(out$pathway$axis_summary) >= 1L,
+    all(is.finite(out$pathway$axis_summary$n_modalities_sig)),
+    all(is.finite(out$pathway$axis_summary$rank_score)),
+    nrow(out$pathway$highlights) >= 1L,
+    all(is.finite(out$pathway$highlights$n_modalities_present)),
+    all(is.finite(out$pathway$highlights$n_modalities_sig)),
+    all(is.finite(out$pathway$highlights$rank_score))
+  )
+  out
+}

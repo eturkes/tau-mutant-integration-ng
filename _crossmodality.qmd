@@ -1,0 +1,317 @@
+# Cross-modality: spatial, bulk, and divergence checks {#sec-crossmodality}
+
+P4 asks what the non-snRNAseq modalities add to the rebuilt microglia story. The
+spatial and bulk layers are not treated as independent winners: GeoMx AOIs are repeated
+tissue observations, and the 24-month proteome and phosphoproteome are bulk hippocampus,
+not microglia-sorted. The chapter therefore reads them as concordance, caveat and
+divergence checks around the P1-P3 spine: amyloid-to-DAM activation, a DAM-composition
+tau-amyloid interaction, Myc-linked RNA support, and unsupported NF-kB/Gsk3b mechanism
+claims.
+
+```{r}
+#| label: crossmodality-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(patchwork)
+})
+options(warn = 2)
+targets::tar_source()
+targets::tar_load(crossmodality_report)              # ONE compact target, no heavy modality objects
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau())
+
+cmr <- crossmodality_report
+alpha <- cmr$provenance$alpha
+focus <- cmr$provenance$focus_contrasts
+contrast_labels <- c(
+  tau_alone = "tau alone",
+  nlgf_in_maptki = "amyloid on MAPTKI",
+  nlgf_in_p301s = "amyloid on P301S",
+  tau_in_nlgf = "tau in NLGF",
+  interaction = "interaction"
+)
+layer_labels <- c(
+  proteome = "proteome",
+  phospho_raw = "raw phospho",
+  phospho_corrected = "corrected phospho"
+)
+axis_labels <- c(
+  DAM = "DAM",
+  homeostatic = "homeostatic",
+  synaptic = "synaptic",
+  clearance = "clearance",
+  complement = "complement",
+  antigen_presentation = "antigen presentation",
+  MHC_APC = "MHC/APC",
+  IFN = "IFN",
+  NFkB = "NF-kB",
+  Myc = "Myc",
+  other = "other"
+)
+fmt_p <- function(p) {
+  out <- rep("-", length(p))
+  ok <- is.finite(p)
+  out[ok] <- ifelse(p[ok] < 0.001,
+                    formatC(p[ok], format = "e", digits = 2),
+                    formatC(p[ok], format = "f", digits = 3))
+  out
+}
+fmt_num <- function(x, digits = 2) ifelse(is.finite(x), formatC(x, format = "f", digits = digits), "-")
+fmt_int <- function(x) format(as.integer(round(x)), big.mark = ",", trim = TRUE)
+short_label <- function(x, n = 46L) {
+  x <- gsub("^GO[A-Z]*_", "", x)
+  x <- gsub("_", " ", x)
+  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 3L), "..."), x)
+}
+one_row <- function(d, idx, label) {
+  out <- d[idx, , drop = FALSE]
+  stopifnot(nrow(out) >= 1L)
+  out[1L, , drop = FALSE]
+}
+
+geom_counts <- cmr$geomx$counts
+bulk_counts <- cmr$bulk$significant_counts
+bulk_features <- cmr$bulk$feature_counts
+run_index <- cmr$bulk$run_index
+decon <- cmr$clearance$spatial_decon
+pairs <- cmr$clearance$pair_support
+contrast_summary <- cmr$divergence$contrast_summary
+path_axis <- cmr$pathway$axis_summary
+
+geo_int <- one_row(geom_counts, geom_counts$contrast == "interaction", "GeoMx interaction counts")
+geo_amy_k <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_maptki", "GeoMx amyloid MAPTKI counts")
+geo_amy_p <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_p301s", "GeoMx amyloid P301S counts")
+bulk_primary_sig <- sum(run_index$n_primary_sig, na.rm = TRUE)
+bulk_lost <- sum(run_index$n_lost_or_flipped, na.rm = TRUE)
+bulk_loss_pct <- if (bulk_primary_sig > 0) round(100 * bulk_lost / bulk_primary_sig, 1) else 0
+worst_run <- run_index[order(-run_index$n_lost_or_flipped, run_index$layer,
+                             match(run_index$contrast, names(contrast_labels)),
+                             method = "radix", na.last = TRUE), , drop = FALSE][1L, ]
+decon_reasons <- if (length(decon$reasons)) paste(decon$reasons, collapse = "; ") else "no blocking reason recorded"
+earned_pairs <- pairs[pairs$status == "earned", , drop = FALSE]
+earned_sentence <- if (nrow(earned_pairs)) {
+  paste0(paste(unique(earned_pairs$pair), collapse = ", "), " in ",
+         paste(contrast_labels[earned_pairs$contrast], collapse = ", "))
+} else {
+  "no pair"
+}
+```
+
+## GeoMx Spatial DE
+
+The GeoMx layer contributes a tissue-spatial transcriptomic readout over
+`r fmt_int(cmr$geomx$provenance$n_aoi)` AOIs and
+`r fmt_int(cmr$geomx$provenance$n_bio_units)` biological units. Its primary model uses
+slide fixed effects plus duplicate-correlation blocking by biological unit, so the AOIs are not
+read as independent animals. Amyloid produces large spatial DE counts in both backgrounds
+(`r fmt_int(geo_amy_k$n_fdr_0_10)` rows at FDR < `r alpha` on MAPTKI,
+`r fmt_int(geo_amy_p$n_fdr_0_10)` on P301S), while the tau-amyloid interaction is much
+smaller (`r fmt_int(geo_int$n_fdr_0_10)` rows). That fits the broader story: GeoMx strongly
+corroborates the amyloid tissue response, but interaction claims still lean on the microglia
+composition and trajectory layers.
+
+```{r}
+#| label: crossmodality-geomx-counts
+#| fig-width: 8.8
+#| fig-height: 4.2
+#| fig-cap: "GeoMx spatial DE counts under the blocked AOI model. Bars count primary GeoMx rows with FDR < 0.10, split by logFC direction. The amyloid contrasts dominate; the interaction has far fewer spatial transcriptomic hits."
+geo_plot <- geom_counts[geom_counts$contrast %in% focus, , drop = FALSE]
+geo_long <- rbind(
+  data.frame(contrast = geo_plot$contrast, direction = "up", n = geo_plot$n_up_fdr_0_10),
+  data.frame(contrast = geo_plot$contrast, direction = "down", n = geo_plot$n_down_fdr_0_10)
+)
+geo_long$contrast <- factor(geo_long$contrast, levels = focus, labels = contrast_labels[focus])
+geo_long$direction <- factor(geo_long$direction, levels = c("up", "down"))
+
+ggplot(geo_long, aes(contrast, n, fill = direction)) +
+  geom_col(width = 0.72) +
+  scale_fill_manual(values = c(up = "#B0344D", down = "#3F5A6B"), name = "direction") +
+  labs(x = NULL, y = "GeoMx rows at FDR < 0.10", title = "Spatial DE is strongest for amyloid") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+
+```{r}
+#| label: crossmodality-geomx-top
+gt <- cmr$geomx$top
+gt <- gt[gt$contrast %in% focus, , drop = FALSE]
+gt <- gt[order(match(gt$contrast, focus), gt$fdr, -abs(gt$statistic), gt$symbol,
+               method = "radix", na.last = TRUE), , drop = FALSE]
+gt <- head(gt, 12L)
+gtab <- data.frame(
+  contrast = contrast_labels[gt$contrast],
+  symbol = gt$symbol,
+  logFC = fmt_num(gt$effect),
+  t = fmt_num(gt$statistic),
+  FDR = fmt_p(gt$fdr),
+  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
+)
+knitr::kable(gtab, row.names = FALSE,
+             caption = "Top GeoMx primary rows across the P4 focus contrasts. These are tissue/AOI DE rows, not cell-type-specific microglia effects.")
+```
+
+## Bulk Proteome And Phospho
+
+The bulk layers use the same 16-run, 24-month hippocampus sample set: total protein, raw
+phosphosite and parent-protein-corrected phosphosite. The feature universes are compact enough
+to report directly (`r paste(paste(layer_labels[bulk_features$layer], fmt_int(bulk_features$n_features), sep = ": "), collapse = "; ")`).
+The run-index sensitivity is load-bearing. Across bulk layers,
+`r fmt_int(bulk_primary_sig)` primary FDR < `r alpha` rows are checked, and
+`r fmt_int(bulk_lost)` (`r bulk_loss_pct`%) lose support or flip under the additive run-index
+sensitivity. The most affected cell is `r layer_labels[worst_run$layer]` in
+`r contrast_labels[worst_run$contrast]` (`r fmt_int(worst_run$n_lost_or_flipped)` rows), so
+bulk signals below are treated as support only when they survive that caveat.
+
+```{r}
+#| label: crossmodality-bulk-counts
+#| fig-width: 9
+#| fig-height: 4.4
+#| fig-cap: "Bulk omics feature counts at FDR < 0.10. Proteome, raw phosphosite and parent-protein-corrected phosphosite layers are 24-month bulk hippocampus, not microglia-sorted. Many primary hits are sensitive to genotype-blocked run order."
+bp <- bulk_counts[bulk_counts$contrast %in% focus, , drop = FALSE]
+bp$contrast <- factor(bp$contrast, levels = focus, labels = contrast_labels[focus])
+bp$layer <- factor(bp$layer, levels = names(layer_labels), labels = unname(layer_labels))
+
+ggplot(bp, aes(contrast, n_fdr_0_10, fill = layer)) +
+  geom_col(position = position_dodge(width = 0.78), width = 0.68) +
+  scale_fill_manual(values = c("proteome" = "#3F5A6B",
+                               "raw phospho" = "#B0344D",
+                               "corrected phospho" = "#6B7A3F"),
+                    name = NULL) +
+  labs(x = NULL, y = "features at FDR < 0.10", title = "Bulk significance is largest in amyloid contrasts") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+
+```{r}
+#| label: crossmodality-run-index-table
+ri <- run_index[run_index$contrast %in% focus, , drop = FALSE]
+ri <- ri[order(match(ri$contrast, focus), ri$layer, method = "radix", na.last = TRUE), , drop = FALSE]
+ritab <- data.frame(
+  layer = layer_labels[ri$layer],
+  contrast = contrast_labels[ri$contrast],
+  status = ri$status,
+  `primary FDR<0.10` = fmt_int(ri$n_primary_sig),
+  `lost or flipped` = fmt_int(ri$n_lost_or_flipped),
+  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
+)
+knitr::kable(ritab, row.names = FALSE,
+             caption = "Run-index sensitivity for bulk layers. Rows losing support or flipping sign are downgraded in the synthesis.")
+```
+
+## Spatial Composition And Clearance Axis
+
+SpatialDecon remains intentionally skipped here: the live preflight status is
+`r decon$status`, with action `r decon$action`. The blocking reasons are:
+`r decon_reasons`. This means P4 does not claim spatial abundance or cell counting from GeoMx.
+It reports only GeoMx DE plus the measured clearance-axis evidence.
+
+The targeted CCC-lite rule earns `r earned_sentence`; `ccc_called` stays
+`r cmr$clearance$verdict$ccc_called`, because no CellChat, LIANA or MultiNicheNet model is run.
+The earned Apoe-Trem2 row comes from coherent supported GeoMx and snRNAseq microglia evidence in
+the amyloid-on-P301S contrast. App-Cd74 and Pros1-Mertk are measured but do not earn a
+communication claim.
+
+```{r}
+#| label: crossmodality-clearance-table
+pt <- pairs[pairs$contrast %in% focus, , drop = FALSE]
+pt <- pt[order(pt$pair, match(pt$contrast, focus), method = "radix", na.last = TRUE), , drop = FALSE]
+ptab <- data.frame(
+  pair = pt$pair,
+  contrast = contrast_labels[pt$contrast],
+  status = pt$status,
+  `supported modalities` = ifelse(pt$coherent_supported_modalities == "",
+                                  "-", pt$coherent_supported_modalities),
+  `microglia strong` = pt$microglia_strong,
+  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
+)
+knitr::kable(ptab, row.names = FALSE,
+             caption = "Clearance-axis CCC-lite verdicts. This is measured pair support only; full cell-cell communication was not run.")
+```
+
+## Integrated Divergence
+
+The integration target keeps nulls and mixed signs rather than compressing them into a v1-style
+claims ledger. Across the four focus contrasts it carries
+`r fmt_int(sum(contrast_summary$n_multimodality))` symbol-contrast rows observed in at least two
+broad modality classes, `r fmt_int(sum(contrast_summary$n_any_significant))` rows with any
+significant modality, and `r fmt_int(sum(contrast_summary$n_mixed_sign))` mixed-sign rows. Mixed
+signs are expected in this design because microglia RNA, spatial tissue RNA, total protein and
+phosphosite statistics answer related but non-identical questions.
+
+```{r}
+#| label: crossmodality-axis-heatmap
+#| fig-width: 9.2
+#| fig-height: 5.2
+#| fig-cap: "Axis-level pathway integration. Each tile is the best selected pathway row for an axis and contrast; fill counts broad modality classes with FDR-level support, while text gives the dominant direction or mixed-sign call. Rank score is descriptive only."
+pa <- path_axis
+pa$contrast <- factor(pa$contrast, levels = focus, labels = contrast_labels[focus])
+pa$axis_label <- axis_labels[pa$axis]
+pa$axis_label[is.na(pa$axis_label)] <- pa$axis[is.na(pa$axis_label)]
+pa$axis_label <- factor(pa$axis_label, levels = rev(unique(pa$axis_label)))
+pa$direction_label <- ifelse(pa$mixed_sign, "mix",
+                             ifelse(pa$consistent_direction == "positive", "+",
+                                    ifelse(pa$consistent_direction == "negative", "-", "0")))
+
+ggplot(pa, aes(contrast, axis_label, fill = n_modalities_sig)) +
+  geom_tile(colour = "white", linewidth = 0.4) +
+  geom_text(aes(label = direction_label), size = 3) +
+  scale_fill_gradient(low = "#EEF1F2", high = "#B0344D", name = "sig modalities") +
+  labs(x = NULL, y = NULL, title = "Cross-modality axis support") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+
+```{r}
+#| label: crossmodality-axis-symbols
+sx <- cmr$divergence$axis_symbols
+sx <- sx[sx$contrast %in% focus & (sx$n_modalities_sig > 0 | sx$contrast == "interaction"),
+         , drop = FALSE]
+sx <- sx[order(match(sx$contrast, focus), -sx$n_modalities_sig,
+               -sx$n_modalities_present, sx$min_fdr, sx$symbol,
+               method = "radix", na.last = TRUE), , drop = FALSE]
+sx <- head(sx, 18L)
+sxtab <- data.frame(
+  symbol = sx$symbol,
+  contrast = contrast_labels[sx$contrast],
+  axis = sx$axis,
+  `modalities present` = sx$n_modalities_present,
+  `modalities significant` = sx$n_modalities_sig,
+  direction = sx$direction_call,
+  `minimum FDR` = fmt_p(sx$min_fdr),
+  `significant modalities` = ifelse(sx$modalities_sig == "", "-", sx$modalities_sig),
+  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
+)
+knitr::kable(sxtab, row.names = FALSE,
+             caption = "Named-axis symbol highlights. Interaction anchors are carried even when no modality clears FDR, so nulls stay visible.")
+```
+
+```{r}
+#| label: crossmodality-pathway-table
+ph <- cmr$pathway$highlights
+ph <- ph[order(match(ph$contrast, focus), -ph$rank_score, -ph$n_modalities_sig,
+               ph$axis, ph$collection, ph$set,
+               method = "radix", na.last = TRUE), , drop = FALSE]
+ph <- head(ph, 12L)
+phtab <- data.frame(
+  contrast = contrast_labels[ph$contrast],
+  axis = ph$axis,
+  set = short_label(ph$set),
+  direction = ph$consistent_direction,
+  `modalities present` = ph$n_modalities_present,
+  `modalities significant` = ph$n_modalities_sig,
+  `mixed sign` = ph$mixed_sign,
+  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
+)
+knitr::kable(phtab, row.names = FALSE,
+             caption = "Top pathway rows feeding the integrated view. These rows are descriptive summaries of ranked modality statistics, not a formal meta-analysis.")
+```
+
+## P4 Synthesis
+
+Cross-modality evidence strengthens the amyloid-response spine. GeoMx and bulk layers both
+show their largest effects in amyloid contrasts, pathway rows reproduce antigen-presentation,
+phagocytic/clearance and synaptic axes, and Apoe-Trem2 earns focused measured support in the
+amyloid-on-P301S contrast. The same evidence narrows the claims: the tau-amyloid interaction is
+not broadly spatial or bulk-omics significant, SpatialDecon abundance is not earned, full CCC is
+not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. P5
+should therefore use P4 as corroboration for DAM activation, synaptic suppression and the
+measured Apoe-Trem2 clearance axis, while keeping progression, NF-kB attenuation, Gsk3b and
+spatial abundance as unresolved or unsupported in the rebuilt data.

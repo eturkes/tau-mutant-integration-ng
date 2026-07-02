@@ -25,8 +25,9 @@ then carries the first phase of the story - how amyloid reshapes the microglial 
 trajectory chapter orders those same nuclei along an activation axis and finds the tau-amyloid
 synergy expressed mainly as more disease-associated cells rather than as cells advancing further
 along it. The mechanism chapter then tests targeted RNA TF/pathway and bulk-phosphosite kinase
-signals beneath that compositional response, with the spatial, proteomic and broader
-phosphoproteomic modalities to follow.
+signals beneath that compositional response. The cross-modality chapter then asks what the
+GeoMx spatial, total-proteome and broader phosphoproteome layers strengthen, weaken, or leave
+open before the final synthesis.
 
 {{< include _qc.qmd >}}
 
@@ -35,3 +36,5 @@ phosphoproteomic modalities to follow.
 {{< include _trajectory.qmd >}}
 
 {{< include _mechanism.qmd >}}
+
+{{< include _crossmodality.qmd >}}

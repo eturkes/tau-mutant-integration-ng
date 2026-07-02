@@ -462,4 +462,32 @@ stopifnot(all(crossmodality_focus_contrasts() %in% div$contrast_summary$contrast
           any(div$symbol_summary$mixed_sign),
           any(div$earned_clearance_pairs$pair == "Apoe_Trem2"))
 
+# --- P4-S5 compact report bundle ------------------------------------------------------
+de_report <- de
+de_report$n_aoi <- ncol(cnt)
+de_report$n_bio_units <- nlevels(meta$bio_unit)
+cmr <- crossmodality_report_data(de_report, summary, ca, div, cmp,
+                                 geomx_top_n = 2L, symbol_top_n = 8L,
+                                 pathway_top_n = 8L)
+stopifnot(all(c("geomx", "bulk", "clearance", "divergence", "pathway", "provenance") %in%
+                names(cmr)),
+          nrow(cmr$geomx$counts) == length(canonical),
+          nrow(cmr$geomx$top) >= length(crossmodality_focus_contrasts()),
+          nrow(cmr$bulk$feature_counts) == 3L,
+          all(crossmodality_focus_contrasts() %in% cmr$bulk$run_index$contrast),
+          identical(cmr$clearance$spatial_decon$status, "defer"),
+          any(cmr$clearance$pair_support$status == "earned"),
+          nrow(cmr$divergence$axis_symbols) >= 1L,
+          nrow(cmr$pathway$axis_summary) >= 1L,
+          grepl("loads only crossmodality_report", cmr$provenance$report_contract,
+                fixed = TRUE))
+bad_div <- div
+bad_div$contrast_summary$n_symbols <- NULL
+expect_error(crossmodality_report_data(de_report, summary, ca, bad_div, cmp),
+             "contrast_summary")
+bad_ca <- ca
+bad_ca$coverage$n_modalities <- NULL
+expect_error(crossmodality_report_data(de_report, summary, bad_ca, div, cmp),
+             "clearance_axis$coverage")
+
 cat("ok - test_crossmodality\n")
