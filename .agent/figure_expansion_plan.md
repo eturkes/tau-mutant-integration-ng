@@ -161,12 +161,20 @@ Work:
   explicit.
 
 Acceptance:
-- Figure captions derive status from `trajectory_figures`, `mechanism_figures`, or
-  existing compact report targets, not hardcoded current margins.
-- No new claim says "rate", "acceleration", "absence", or "progression synergy"
-  beyond the closed P2 wording.
-- NF-kB and Gsk3b plots cannot be visually mistaken for positive support.
-- Render stays warning-clean.
+- DONE 2026-07-02: `_trajectory.qmd` adds the 4 planned trajectory figures from
+  `trajectory_figures` plus guarded `trajectory_report` interaction rows:
+  pseudotime density, unit mean-pseudotime vs DAM fraction, channel/decomposition
+  forest, and robustness/omission audit.
+- DONE 2026-07-02: `_mechanism.qmd` adds the 5 planned mechanism figures from
+  `mechanism_figures`: all-population project pathway heatmap, compact GO dot
+  plot, Myc/NF-kB-family TF lollipop, NF-kB discordance tile, and kinase/run-index
+  heatmap with Gsk3b carried as unsupported unless significant.
+- Full `scripts/check.sh` green: tests warn=2, forced 124-chunk report render,
+  tar_meta clean, render-log clean; report chunks include the 9 S3 `fig-*` labels.
+- Captions preserve closed wording: trajectory interaction = composition/not
+  supported progression beyond composition; Myc supported; NF-kB attenuation
+  discordant/not supported; Gsk3b covered but not recovered; bulk kinase caveats
+  explicit.
 
 ### S4 - Cross-Modality Inline Figures
 

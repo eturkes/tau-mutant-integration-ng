@@ -17,11 +17,12 @@ suppressPackageStartupMessages({
 })
 options(warn = 2)
 targets::tar_source()
-targets::tar_load(mechanism_report)                 # ONE compact target, no heavy Seurat object
+targets::tar_load(c(mechanism_report, mechanism_figures)) # compact targets only, no heavy Seurat object
 knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
 mrd <- mechanism_report
+mfg <- mechanism_figures
 pp  <- mrd$pathway_project
 go  <- mrd$pathway_go_top
 tf  <- mrd$tf_highlights
@@ -120,6 +121,81 @@ project_labels <- c(DAM = "DAM",
                     NFkB_Activated_Targets = "NF-kB activated targets",
                     NFkB_CollecTRI_Targets = "NF-kB target union",
                     NFkB_Repressed_Targets = "NF-kB repressed targets")
+population_labels <- c(whole_microglia = "whole microglia",
+                       DAM = "DAM",
+                       Homeostatic = "homeostatic")
+fmt_contrast <- function(x, rev = FALSE) {
+  lv <- if (rev) rev(names(contrast_labels)) else names(contrast_labels)
+  factor(x, levels = lv, labels = unname(contrast_labels[lv]))
+}
+fmt_population <- function(x) {
+  out <- population_labels[x]
+  out[is.na(out)] <- x[is.na(out)]
+  unname(out)
+}
+short_pathway <- function(x, max_chars = 42L) {
+  out <- gsub("^GO[A-Z]*_", "", x)
+  out <- gsub("_", " ", out)
+  out <- tolower(out)
+  too_long <- nchar(out) > max_chars
+  out[too_long] <- paste0(substr(out[too_long], 1L, max_chars - 3L), "...")
+  out
+}
+
+m_project <- mfg$project_pathway_heatmap
+m_project$contrast <- fmt_contrast(m_project$contrast)
+m_project$population_label <- factor(fmt_population(m_project$population),
+                                     levels = unname(population_labels))
+m_project$pathway_label <- project_labels[m_project$pathway]
+m_project$pathway_label[is.na(m_project$pathway_label)] <-
+  m_project$pathway[is.na(m_project$pathway_label)]
+m_project$pathway_label <- factor(m_project$pathway_label,
+                                  levels = rev(unname(project_labels)))
+
+go_select <- mfg$go_top_dotplot
+go_select <- go_select[go_select$contrast %in% names(contrast_labels), , drop = FALSE]
+go_select <- go_select[order(go_select$population, go_select$contrast, go_select$fdr,
+                             -abs(go_select$NES), go_select$pathway,
+                             method = "radix", na.last = TRUE), , drop = FALSE]
+go_select <- do.call(rbind, lapply(split(go_select, list(go_select$population, go_select$contrast),
+                                         drop = TRUE), head, n = 2L))
+go_select$contrast <- fmt_contrast(go_select$contrast)
+go_select$population_label <- factor(fmt_population(go_select$population),
+                                     levels = unname(population_labels))
+go_select$pathway_label <- paste(short_pathway(go_select$pathway), go_select$collection, sep = " / ")
+go_select$pathway_label <- factor(go_select$pathway_label,
+                                  levels = rev(unique(go_select$pathway_label)))
+go_select$supported <- go_select$fdr < alpha
+
+tf_focus <- mfg$tf_lollipop
+tf_focus <- tf_focus[tf_focus$source %in% c("Myc", "Nfkb1", "Nfkb2", "Rela", "Relb") &
+                       tf_focus$contrast %in% c("interaction", "tau_in_nlgf"), , drop = FALSE]
+tf_focus$contrast <- fmt_contrast(tf_focus$contrast)
+tf_focus$population_label <- factor(fmt_population(tf_focus$population),
+                                    levels = unname(population_labels))
+tf_focus$source <- factor(tf_focus$source, levels = rev(c("Myc", "Nfkb1", "Nfkb2", "Rela", "Relb")))
+tf_focus$class <- ifelse(tf_focus$source == "Myc", "Myc", "NF-kB family")
+tf_focus$supported <- tf_focus$fdr < alpha
+
+nf_plot <- mfg$nfkb_discordance$table
+nf_plot <- nf_plot[nf_plot$population == "whole_microglia" &
+                     nf_plot$contrast %in% c("interaction", "tau_in_nlgf"), , drop = FALSE]
+nf_plot$contrast <- fmt_contrast(nf_plot$contrast)
+nf_plot$test_label <- factor(nf_plot$test,
+                             levels = c("tf_family", "target_gsea"),
+                             labels = c("TF-family", "target GSEA"))
+nf_plot$role <- ifelse(nf_plot$primary_test, "primary", "supportive")
+nf_plot$tile_label <- paste0(nf_plot$role, "\n", fmt_num(nf_plot$score),
+                             "\nFDR ", fmt_p(nf_plot$primary_family_fdr))
+
+kin_plot <- mfg$kinase_heatmap
+kin_plot$contrast <- fmt_contrast(kin_plot$contrast)
+kin_plot$primary_sig <- kin_plot$significant %in% TRUE
+kin_plot$run_supported <- kin_plot$run_index_supports %in% TRUE
+kin_order <- kin_plot[order(kin_plot$source != "Gsk3b", kin_plot$fdr,
+                            -abs(kin_plot$score), kin_plot$source,
+                            method = "radix", na.last = TRUE), "source"]
+kin_plot$source <- factor(kin_plot$source, levels = rev(unique(kin_order)))
 ```
 
 ## Pathway Survey
@@ -155,6 +231,23 @@ ggplot(proj_plot, aes(contrast, pathway_label, fill = NES)) +
 ```
 
 ```{r}
+#| label: fig-mechanism-project-pathway
+#| fig-width: 10
+#| fig-height: 6.2
+#| fig-cap: "Project gene-set survey across populations. Tile colour is fgsea NES; outlined points mark FDR < 0.10 within population and contrast. The interaction pattern is read against the closed P1/P2 result: DAM-cell expansion, not supported progression beyond composition."
+ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
+  geom_tile(colour = "white", linewidth = 0.35) +
+  geom_point(data = m_project[m_project$fdr < alpha, , drop = FALSE],
+             shape = 21, size = 1.8, stroke = 0.3, fill = "white", colour = "grey20") +
+  facet_wrap(~ population_label, nrow = 1) +
+  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
+                       midpoint = 0, name = "NES") +
+  labs(x = NULL, y = NULL, title = "Project gene sets across RNA populations") +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        panel.grid = element_blank())
+```
+
+```{r}
 #| label: mechanism-go-table
 go_whole_int <- go[go$population == "whole_microglia" & go$contrast == "interaction", , drop = FALSE]
 go_whole_int <- go_whole_int[order(go_whole_int$padj, -abs(go_whole_int$NES), go_whole_int$pathway,
@@ -170,6 +263,23 @@ go_tab <- data.frame(
 )
 knitr::kable(go_tab, row.names = FALSE,
              caption = "Top GO rows for the whole-microglia tau-amyloid interaction. These are survey rows from the bounded fgsea layer, not a separate mechanism claim.")
+```
+
+```{r}
+#| label: fig-mechanism-go-dotplot
+#| fig-width: 10
+#| fig-height: 7
+#| fig-cap: "Compact GO survey from the bounded fgsea layer. Each population-contrast panel contributes its top two GO rows; colour is NES, size is gene-set size, and filled points mark FDR < 0.10. These rows are exploratory context, not a new mechanism call."
+ggplot(go_select, aes(contrast, pathway_label)) +
+  geom_point(aes(size = size, colour = NES, alpha = supported)) +
+  facet_wrap(~ population_label, nrow = 1, scales = "free_y") +
+  scale_colour_gradient2(low = "#3F5A6B", mid = "grey88", high = "#B0344D",
+                         midpoint = 0, name = "NES") +
+  scale_alpha_manual(values = c(`FALSE` = 0.45, `TRUE` = 1), guide = "none") +
+  scale_size_continuous(range = c(1.4, 4.2), name = "set size") +
+  labs(x = NULL, y = NULL, title = "Top GO rows by population and contrast") +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        panel.grid.major.y = element_blank())
 ```
 
 ## TF Activity
@@ -203,6 +313,24 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
   labs(x = "ULM activity score", y = NULL, title = "Interaction TF activity")
 ```
 
+```{r}
+#| label: fig-mechanism-tf-lollipop
+#| fig-width: 10
+#| fig-height: 5.8
+#| fig-cap: "Focused TF candidates across the interaction and tau-in-NLGF contrasts. Myc is consistently negative and supported, while NF-kB-family members do not form a concordant negative attenuation pattern. Filled points mark FDR < 0.10 within population and contrast."
+ggplot(tf_focus, aes(score, source, colour = class)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_segment(aes(x = 0, xend = score, yend = source), linewidth = 0.45) +
+  geom_point(aes(shape = supported), size = 2.2) +
+  facet_grid(population_label ~ contrast) +
+  scale_colour_manual(values = c(Myc = "#B0344D", `NF-kB family` = "#3F5A6B"),
+                      name = NULL) +
+  scale_shape_manual(values = c(`FALSE` = 1, `TRUE` = 16), name = "FDR < 0.10") +
+  labs(x = "ULM activity score", y = NULL,
+       title = "Myc and NF-kB-family TF activities") +
+  theme(legend.position = "bottom")
+```
+
 ## NF-kB Attenuation
 
 `r nf_sentence` `r nf_detail_sentence` `r nf_conclusion_sentence` Supportive rows, including
@@ -220,6 +348,23 @@ names(nf_tab) <- c("population", "contrast", "test", "score", "p", "primary FDR"
                    "detail", "primary", "supportive only")
 knitr::kable(nf_tab, row.names = FALSE,
              caption = "NF-kB attenuation gate. Only the two whole-microglia interaction rows are primary; all other rows are supportive-only.")
+```
+
+```{r}
+#| label: fig-mechanism-nfkb-discordance
+#| fig-width: 7.2
+#| fig-height: 4.2
+#| fig-cap: "NF-kB attenuation verdict from the guarded mechanism target. The two whole-microglia interaction rows are primary, and the plot title prints the current target status. Tau-in-NLGF rows are supportive-only and cannot override the primary gate."
+ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
+  geom_tile(colour = "white", linewidth = 0.5) +
+  geom_tile(data = nf_plot[nf_plot$primary_test, , drop = FALSE],
+            fill = NA, colour = "#B0344D", linewidth = 1) +
+  geom_text(aes(label = tile_label), size = 2.7, lineheight = 0.9) +
+  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
+                       midpoint = 0, name = "score") +
+  labs(x = NULL, y = NULL,
+       title = paste("NF-kB attenuation gate:", nf_status)) +
+  theme(panel.grid = element_blank())
 ```
 
 ## Gsk3b And Kinase Activity
@@ -259,6 +404,25 @@ kin_tab <- data.frame(
 )
 knitr::kable(kin_tab, row.names = FALSE,
              caption = "Focal kinase rows. Gsk3b is carried whether significant or not; other rows are primary FDR < 0.10. Run-index columns are an additive sensitivity for genotype-blocked acquisition order.")
+```
+
+```{r}
+#| label: fig-mechanism-kinase-heatmap
+#| fig-width: 9.5
+#| fig-height: 6.2
+#| fig-cap: "Kinase activity rows from the 24-month bulk hippocampus phosphosite layer. Gsk3b is carried in every contrast whether significant or not; other kinases appear because they pass primary FDR < 0.10. White circles mark primary support and crosses mark additive run-index support when present."
+ggplot(kin_plot, aes(contrast, source, fill = score)) +
+  geom_tile(colour = "white", linewidth = 0.35) +
+  geom_point(data = kin_plot[kin_plot$primary_sig, , drop = FALSE],
+             shape = 21, size = 2.1, stroke = 0.35, fill = "white", colour = "grey20") +
+  geom_point(data = kin_plot[kin_plot$run_supported, , drop = FALSE],
+             shape = 4, size = 2.6, stroke = 0.8, colour = "black") +
+  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
+                       midpoint = 0, name = "ULM score") +
+  labs(x = NULL, y = NULL,
+       title = "Kinase activity and run-index sensitivity") +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        panel.grid = element_blank())
 ```
 
 ## Synthesis

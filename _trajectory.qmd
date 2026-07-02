@@ -23,11 +23,12 @@ suppressPackageStartupMessages({
 })
 options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 targets::tar_source()                                # constants, plot theme + genotype scales
-targets::tar_load(trajectory_report)                 # ONE compact target (no 612MB Seurat) -> render stays cheap
+targets::tar_load(c(trajectory_report, trajectory_figures)) # compact targets only (no 612MB Seurat)
 knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
 trd   <- trajectory_report
+trf   <- trajectory_figures
 cf    <- trd$cell_frame
 on    <- cf[cf$on_lineage, , drop = FALSE]            # on-lineage cells (finite pseudotime)
 inter <- trd$interaction
@@ -37,6 +38,20 @@ glmm  <- trd$glmm
 fmt_p  <- function(p) formatC(p, format = "e", digits = 2)
 irow   <- function(m) inter[match(m, inter$measure), ]            # one interaction row by measure
 mp_ctr <- function(cn) { r <- trd$weighted_top[[cn]]; r[r$measure == "mean_pt", ] }
+ctr_levels <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
+ctr_labels <- c(
+  tau_alone = "tau alone",
+  nlgf_in_maptki = "amyloid on MAPTKI",
+  nlgf_in_p301s = "amyloid on P301S",
+  tau_in_nlgf = "tau in NLGF",
+  interaction = "tau x amyloid"
+)
+fmt_contrast <- function(x, rev = FALSE) {
+  lv <- if (rev) rev(ctr_levels) else ctr_levels
+  factor(x, levels = lv, labels = unname(ctr_labels[lv]))
+}
+tr_sub_cols <- c(Homeostatic = "#7FA8C1", DAM = "#B0344D", IFN = "#E08754",
+                 Proliferative = "#6BAF7F")
 
 # ALL headline numbers inline-computed from the loaded target -> they track the actual cached build
 # (R4.6 re-baseline; the per-channel p-values and loadings are drift-prone), never hardcoded.
@@ -73,6 +88,31 @@ cond <- aggregate(cbind(n_cells, n_on_lineage) ~ genotype, data = lpu, FUN = sum
 cond$genotype <- factor(cond$genotype, levels = genotype_levels)
 cond <- cond[order(cond$genotype), ]
 cond$`omitted %` <- round(100 * (1 - cond$n_on_lineage / cond$n_cells), 1)
+
+tr_pt <- trf$pt_density
+tr_pt$genotype <- factor(as.character(tr_pt$genotype), levels = genotype_levels)
+tr_pt$substate <- factor(as.character(tr_pt$substate),
+                         levels = intersect(names(tr_sub_cols), as.character(unique(tr_pt$substate))))
+tr_unit <- trf$unit_pt_vs_dam
+tr_unit$genotype <- factor(as.character(tr_unit$genotype), levels = genotype_levels)
+tr_unit$batch <- factor(as.character(tr_unit$batch), levels = sort(unique(tr_unit$batch), method = "radix"))
+tr_unit$dam_pct <- 100 * tr_unit$dam_fraction
+tr_forest <- trf$kitagawa_forest
+tr_forest$contrast_label <- fmt_contrast(tr_forest$contrast, rev = TRUE)
+tr_forest$measure_label <- c(mean_pt = "mean position",
+                             within_homeostatic = "within-homeostatic",
+                             within_dam = "within-DAM")[tr_forest$measure]
+tr_forest$measure_label <- factor(tr_forest$measure_label,
+                                  levels = rev(c("mean position", "within-homeostatic", "within-DAM")))
+tr_sens <- trf$trajectory_audit$sensitivity
+tr_sens$variant_label <- c(dims_10 = "10 dims", dims_20 = "20 dims",
+                           all_retained = "all retained")[tr_sens$variant]
+tr_sens$variant_label[is.na(tr_sens$variant_label)] <- tr_sens$variant[is.na(tr_sens$variant_label)]
+tr_sens$variant_label <- factor(tr_sens$variant_label,
+                                levels = c("10 dims", "20 dims", "all retained"))
+tr_lineage <- trf$trajectory_audit$lineage_per_unit
+tr_lineage$genotype <- factor(as.character(tr_lineage$genotype), levels = genotype_levels)
+tr_lineage$omitted_pct <- 100 * tr_lineage$omitted_frac
 ```
 
 ## Amyloid drives a large shift along the activation axis
@@ -118,6 +158,21 @@ p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
        title = "Genotype effects on position")
 
 (p_dist | p_ctr)
+```
+
+```{r}
+#| label: fig-trajectory-pt-density
+#| fig-width: 9.6
+#| fig-height: 5.6
+#| fig-cap: "Pseudotime distributions separated by genotype and substate. The amyloid-bearing genotypes carry much more DAM-state density at high pseudotime, while the homeostatic density remains concentrated nearer the root. The plot shows position along the activation ordering, not a rate."
+ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
+  geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
+  facet_grid(substate ~ genotype, scales = "free_y") +
+  scale_fill_manual(values = tr_sub_cols, guide = "none") +
+  labs(x = "activation pseudotime", y = "nuclei per bin",
+       title = "Pseudotime density by genotype and substate") +
+  theme(panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ## The interaction is composition, not progression
@@ -201,6 +256,47 @@ knitr::kable(itab, row.names = FALSE,
   caption = "Tau-amyloid interaction on every trajectory endpoint (ordinary t at 9 residual degrees of freedom; Freedman-Lane permutation p where run). The additive channels (progression, composition, cross, mean/median/percentile position, within-state) are in pseudotime units; the fraction-past-onset rows are on the logit and arcsine bridges. BH FDR is computed within the pre-registered primary family and within the exploratory family separately.")
 ```
 
+```{r}
+#| label: fig-trajectory-unit-pt-dam
+#| fig-width: 7.8
+#| fig-height: 5.2
+#| fig-cap: "Replicate-level mean pseudotime tracks the DAM fraction. Each point is one genotype-by-batch unit; batch labels show that the high-position units are also high-DAM units. This is why the decomposition is load-bearing: a position interaction can be created by changing compartment size."
+ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
+  geom_point(size = 2.6) +
+  geom_text(aes(label = batch), size = 2.4, nudge_y = 0.35, check_overlap = TRUE) +
+  scale_colour_genotype(name = "genotype") +
+  scale_x_continuous(labels = function(x) paste0(round(x), "%")) +
+  labs(x = "DAM fraction in unit", y = "mean pseudotime",
+       title = "Unit position is coupled to DAM composition") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: fig-trajectory-kitagawa-forest
+#| fig-width: 10
+#| fig-height: 5.6
+#| fig-cap: "Channel audit for the trajectory inference. Left: prepared overall and within-state rows across the five contrasts; amyloid moves mean position, but the interaction's within-state rows do not clear zero. Right: the explicit interaction decomposition rows; composition is positive, progression is negative and not supported."
+decomp_rows <- inter[match(c("comp_cf", "progression_cf", "cross"), inter$measure), , drop = FALSE]
+decomp_rows$channel <- factor(c("composition", "progression", "cross"),
+                              levels = rev(c("composition", "progression", "cross")))
+decomp_rows$sig <- decomp_rows$ci_l > 0 | decomp_rows$ci_r < 0
+
+p_all_channels <- ggplot(tr_forest, aes(coef, contrast_label, colour = significant)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.35) +
+  facet_wrap(~ measure_label, nrow = 1) +
+  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#B0344D"), guide = "none") +
+  labs(x = "effect on pseudotime position", y = NULL, title = "Overall and within-state rows")
+
+p_decomp <- ggplot(decomp_rows, aes(coef, channel, colour = sig)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.45) +
+  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#B0344D"), guide = "none") +
+  labs(x = "interaction effect", y = NULL, title = "Interaction decomposition")
+
+p_all_channels | p_decomp
+```
+
 ## A per-cell model corroborates the position shift
 
 The summary-level test aggregates each of the `r glmm$n_units` genotype-by-batch units to one
@@ -239,6 +335,28 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
   scale_fill_gradient(low = "grey88", high = "#3F5A6B", name = "nuclei", transform = "log10") +
   labs(x = "activation pseudotime", y = "marker score-axis (DAM - homeostatic)",
        title = sprintf("Pseudotime vs marker score-axis (rho = %.2f)", prov$concordance_rho))
+```
+
+```{r}
+#| label: fig-trajectory-audit
+#| fig-width: 9.6
+#| fig-height: 4.2
+#| fig-cap: "Trajectory robustness and lineage-conditioning audit. Left: refits using fewer or more harmony dimensions, and all retained nuclei, remain strongly concordant with the primary pseudotime. Right: the off-lineage omitted fraction is low within every genotype, so conditioning on the homeostatic-to-DAM lineage does not drive the interaction."
+p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
+  geom_col(fill = "#3F5A6B", width = 0.66) +
+  geom_text(aes(label = sprintf("%.3f", spearman_vs_primary)), vjust = -0.35, size = 3) +
+  coord_cartesian(ylim = c(0.95, 1.01)) +
+  labs(x = NULL, y = "Spearman vs primary", title = "Pseudotime refit concordance") +
+  theme(panel.grid.major.x = element_blank())
+
+p_omit <- ggplot(tr_lineage, aes(genotype, omitted_pct, colour = genotype, group = genotype_batch)) +
+  geom_point(size = 2.2, position = position_dodge(width = 0.45)) +
+  scale_colour_genotype(guide = "none") +
+  scale_y_continuous(labels = function(x) paste0(round(x, 1), "%")) +
+  labs(x = NULL, y = "off-lineage nuclei", title = "Omitted fraction by unit") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+p_sens | p_omit
 ```
 
 ## Caveats and provenance

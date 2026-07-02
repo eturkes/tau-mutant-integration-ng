@@ -266,16 +266,20 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 fit audit, within-substate DE counts}, under-powered interaction + @sec-trajectory pointer, Thrupp
                 + dropout caveats)
                                                           --{{< include >}}--> `_trajectory.qmd`
-               (P2 trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_report [ONE
-                compact target] -> pseudotime-shift + composition-not-progression 3-channel decomposition + per-cell
-                glmmTMB supportive + score-axis concordance + 5 caveats/provenance; headline = synergy adds DAM
-                cells, no supported further-advance; inference numbers inline-computed from trajectory_report, never
-                hardcoded [fixed design constants -- resid df, sensitivity dims -- stated as text])
+               (P2 trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_report +
+                trajectory_figures [compact targets] -> pseudotime-shift + composition-not-progression 3-channel
+                decomposition + per-cell glmmTMB supportive + score-axis concordance + S3 inline figures
+                {pseudotime density, unit DAM-fraction/mean-pt scatter, channel/decomposition forest,
+                robustness/omission audit} + 5 caveats/provenance; headline = synergy adds DAM cells, no
+                supported further-advance; inference numbers inline-computed from trajectory_report, never hardcoded
+                [fixed design constants -- resid df, sensitivity dims -- stated as text])
                                                           --{{< include >}}--> `_mechanism.qmd`
-               (P3 mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load mechanism_report [ONE
-                compact target] -> pathway survey + TF activity + NF-kB attenuation gate + Gsk3b/kinase support +
-                synthesis/caveats. Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered;
-                kinase caveat = 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
+               (P3 mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load mechanism_report +
+                mechanism_figures [compact targets] -> pathway survey + TF activity + NF-kB attenuation gate +
+                Gsk3b/kinase support + S3 inline figures {all-population project pathway heatmap, GO dot plot,
+                Myc/NF-kB-family TF lollipop, NF-kB discordance tile, kinase/run-index heatmap} + synthesis/caveats.
+                Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
+                24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
                (P4 cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`; tar_load
                 crossmodality_report [ONE compact target] -> GeoMx spatial DE, 24M bulk proteome/phospho +

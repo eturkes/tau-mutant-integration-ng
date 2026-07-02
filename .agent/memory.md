@@ -671,6 +671,25 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Forced report render after S2 was warning-clean: 106 chunks, 9 new `fig-*` chunks visible. Full gate status lives in
   the S2 commit/roadmap ledger.
 
+## Figure expansion report figures (S3, built) -- `_trajectory.qmd` + `_mechanism.qmd`
+- S3 is render-layer wiring only: no new inference/targets. `_trajectory.qmd` now tar_loads compact
+  `trajectory_report` + `trajectory_figures`; `_mechanism.qmd` now tar_loads compact
+  `mechanism_report` + `mechanism_figures`. The cheap-render invariant still excludes `microglia_annotated`,
+  raw modality tables, and large harmonised evidence tables from these qmds.
+- `_trajectory.qmd` adds `fig-trajectory-pt-density`, `fig-trajectory-unit-pt-dam`,
+  `fig-trajectory-kitagawa-forest`, `fig-trajectory-audit`. Claim guard: captions keep pseudotime as position/order,
+  not rate; channel/decomposition figure shows the interaction as DAM composition with no supported progression
+  beyond composition. The prepared `trajectory_figures$kitagawa_forest` slot carries overall + within-state rows
+  across all contrasts; the explicit composition/progression/cross rows still come from guarded
+  `trajectory_report$interaction`.
+- `_mechanism.qmd` adds `fig-mechanism-project-pathway`, `fig-mechanism-go-dotplot`,
+  `fig-mechanism-tf-lollipop`, `fig-mechanism-nfkb-discordance`, `fig-mechanism-kinase-heatmap`. Claim guard:
+  Myc is visibly supported; NF-kB attenuation is a discordant/not-supported tile; Gsk3b is carried in the kinase
+  heatmap without a primary-support marker unless the target actually makes it significant; kinase caveats remain
+  24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.
+- Full gate after S3 was green: tests warn=2, forced 124-chunk report render, tar_meta/render-log clean; 9 new S3
+  `fig-*` chunks visible.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
