@@ -31,10 +31,9 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: P5 Synthesis -> `.agent/p5_synthesis_plan.md`
-Next `$session-prompt` mode = CLOSE-OUT. Steps complete; plan unreviewed for close-out.
-Acceptance = fold durable P5 decisions into history, archive the plan, reset Active plan, and run the
-close-out gate; no new biological inference, no v1 ledger / contest machinery.
+## Active plan: (none)
+Next `$session-prompt` mode = PLAN. P0-P5 backlog is complete; ask the user before opening any
+new phase or post-report work.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -55,7 +54,7 @@ close-out gate; no new biological inference, no v1 ledger / contest machinery.
   GeoMx spatial DE, 24M proteome + raw/corrected phospho, targeted clearance-axis CCC-lite, integrated
   divergence view. Strengthens amyloid-response / synaptic-clearance axes; interaction stays mostly
   microglia-composition-specific; SpatialDecon/full CCC not earned; bulk run-index sensitivity load-bearing.
-- P5 Synthesis [OPEN 2026-07-02 -> `.agent/p5_synthesis_plan.md`]:
+- P5 Synthesis [DONE 2026-07-02 -> `.agent/completed/p5_synthesis_plan_2026-07-02.md`]:
   ONE lean report - cohesive narrative + compact evidence table (no ledger /
   contest machinery).
 
@@ -400,7 +399,7 @@ close-out gate; no new biological inference, no v1 ledger / contest machinery.
   hardcoding the current Apoe-Trem2 row. Folded P4 digest -> history.md; archived plan ->
   `.agent/completed/p4_cross_modality_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story finding #4 now
   states cross-modality corroboration + measured Apoe-Trem2 support, with SpatialDecon/full CCC not earned. Final
-  close-out gate green. Next = PLAN P5 Synthesis.
+  close-out gate green. Then = PLAN P5 Synthesis, now closed.
 - 2026-07-02 P5 OPENED -> `.agent/p5_synthesis_plan.md`. User confirmed default final phase. Research =
   current report/DAG wiring + history/map + v1 capstone archive + current Quarto/targets/MOFA2 docs. Default plan =
   compact read-only synthesis target, upfront `_synthesis.qmd`, and final lean report pass. Explicitly OUT:
@@ -426,6 +425,10 @@ close-out gate; no new biological inference, no v1 ledger / contest machinery.
   `deconvolution deferred to S3`. Adversarial review accepted/fixed the raw-caveat leak + acceleration-wording
   caveat. Full gate GREEN after final fixes (tests warn=2, forced 88-chunk report render, tar_meta clean across
   42 current targets/branches, render-log clean). Next mode = CLOSE-OUT.
+- 2026-07-02 P5 CLOSED: close-out review of plan body + shipped synthesis/report code/prose found no remaining
+  blocker. Folded P5 digest -> history.md; archived plan ->
+  `.agent/completed/p5_synthesis_plan_2026-07-02.md`; reset Active plan to none. Cohesive-story spine unchanged by
+  P5; the upfront synthesis chapter now states it as the final compact answer. Final close-out gate green.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

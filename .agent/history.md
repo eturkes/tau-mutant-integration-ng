@@ -172,8 +172,8 @@ Verification (honest): S1-S4 each smoke-tested on live cached data with fresh le
 `mechanism_report`), and full `scripts/check.sh` was green through S4. Close-out review found no remaining
 shipped code/prose blocker after the NF-kB wording fix; final close-out gate re-run green on 2026-07-02.
 
-Deferred -> P4+: GeoMx spatial DE, total proteome + broader phospho interpretation, CCC for the synaptic/clearance
-axis if it earns it, and an integrated divergence view. P5 remains the lean synthesis report.
+Deferred -> P4/P5: GeoMx spatial DE, total proteome + broader phospho interpretation, CCC for the synaptic/clearance
+axis if it earns it, an integrated divergence view, and the lean synthesis report. These later closed in P4/P5.
 
 ## P4 Cross-modality -- closed 2026-07-02 (-> `.agent/completed/p4_cross_modality_plan_2026-07-02.md`)
 
@@ -217,6 +217,35 @@ Verification (honest): S1-S5 each smoke-tested live with fresh leaf builds where
 through S5. Close-out review found one low report-prose robustness issue; it was accepted/fixed before the final
 close-out gate. Final close-out gate re-run green on 2026-07-02.
 
-Deferred -> P5: one lean synthesis report with a compact evidence table. Keep P4 as corroboration for DAM activation,
-synaptic suppression, and measured Apoe-Trem2 clearance support; keep progression-beyond-composition, NF-kB
-attenuation, Gsk3b, full CCC, and spatial abundance unresolved/unsupported unless P5 adds new evidence.
+Closed by P5: one lean synthesis report with a compact evidence table. P4 is used as corroboration for DAM
+activation, synaptic suppression, and measured Apoe-Trem2 clearance support; progression-beyond-composition, NF-kB
+attenuation, Gsk3b, full CCC, and spatial abundance remain unresolved/unsupported.
+
+## P5 Synthesis -- closed 2026-07-02 (-> `.agent/completed/p5_synthesis_plan_2026-07-02.md`)
+
+Closed the fresh rebuild with a read-only synthesis layer and final lean report pass. Built `synthesis_report`,
+`_synthesis.qmd`, report-front Overview wording, and source-prose cleanup. Live facts -> memory.md (P5 sections);
+wiring -> map.md. Below = decisions + rejected alternatives.
+
+- SYNTHESIS SHAPE: one compact target over existing compact P1-P4 report bundles only (`microglia_report`,
+  `trajectory_report`, `mechanism_report`, `crossmodality_report`). `crossmodality_divergence` was not needed.
+  The target returns headline strings, 10 descriptive evidence rows, status counts, unsupported/open rows, tiny source
+  highlights, and provenance. Guarded anchors fail loud if the closed story drifts. REJECTED: new inference, MOFA/meta-
+  analysis, human/SCENIC/topology/full CCC/decon side arcs, and v1 convergence/ledger/contest machinery.
+- STATUS CONTRACT: rows use descriptive labels (`core_supported`, `corroborated`, `focused_support`,
+  `not_supported`, `not_earned`, `open_caveat`), not scores. Negative rows are first-class: no supported
+  progression-beyond-composition signal, NF-kB attenuation not supported, Gsk3b not recovered, SpatialDecon/full CCC
+  not earned, and bulk run-index sensitivity. Regression tests reject ledger-like columns and missing anchors.
+- REPORT/API: `_synthesis.qmd` is included immediately after Overview and tar_loads only `synthesis_report`; P1-P4
+  chapters remain the audit trail. Final lean pass removed stale forward pointers, tightened progression/rate wording,
+  and moved raw caveat cleanup into `synthesis_report_data` so the compact table itself does not carry stale phase-step
+  strings.
+- HEADLINE: amyloid drives a microglial homeostatic-to-DAM activation programme; mutant tau modulates that amyloid
+  response mainly through extra DAM-cell composition rather than supported further activation-axis progression; Myc is
+  the focused RNA mechanism signal; NF-kB attenuation and Gsk3b are not recovered; cross-modality corroborates the
+  amyloid-response and synaptic-clearance axes while SpatialDecon/full CCC remain unearned.
+
+Verification (honest): S1-S3 each smoke-tested or rebuilt live where relevant (`synthesis_report`, forced report);
+final `scripts/check.sh` was green after the lean-pass fixes (tests warn=2, forced 88-chunk report render,
+tar_meta clean across 42 current targets/branches, render-log clean). Close-out review found no remaining plan,
+target, or report-source blocker.

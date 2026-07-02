@@ -601,8 +601,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. SpatialDecon remains
   skipped/defer (nuclei sentinels + no compact profile), so no spatial abundance/cell-count claim. CCC-lite earns only
   Apoe_Trem2 in `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity remains severe,
-  so P5 should use P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance, not
-  as a stand-alone microglial kinase or spatial-abundance claim.
+  so the final synthesis uses P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2
+  clearance, not as a stand-alone microglial kinase or spatial-abundance claim.
 
 ## Synthesis target (P5-S1, built) -- `R/synthesis.R::synthesis_report_data` -> `synthesis_report`
 - S1 is read-only synthesis, not new inference. `synthesis_report_data` reads ONLY the compact report bundles
@@ -617,7 +617,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `comp_cf` / `progression_cf` / `within_homeostatic`, whole-microglia Myc interaction, NF-kB verdict + 2 primary
   rows, Gsk3b all canonical contrasts, GeoMx sensitivity, bulk run-index summary, SpatialDecon status, CCC verdict,
   and clearance pair-support rows including the empty/no-earned case. If a future target drift breaks the closed
-  story, P5 should stop and revise the synthesis rather than silently table a stale claim.
+  story, the synthesis target should stop and be revised rather than silently table a stale claim.
 - Current live synthesis statuses: core_supported={amyloid_dam_activation, tau_amyloid_dam_composition};
   focused_support={myc_rna_interaction, clearance_axis}; not_supported={progression_beyond_composition,
   nfkb_attenuation, gsk3b_kinase}; not_earned={spatial_decon_full_ccc}; open_caveat={bulk_run_index_sensitivity};
