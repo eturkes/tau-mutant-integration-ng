@@ -24,7 +24,7 @@ modalities, a QC-sanity report, 2x2 factorial + 5-contrast machinery, a concrete
   via TWO equivalent parameterisations (factorial `~tau+nlgf+tau_nlgf[+batch]` AND cell-means `~0+genotype`),
   proven equal by a property test. de_pb = limma-voom/log only; edgeR-QLF/DESeq2/dream deferred (KISS). S3 =
   machinery only (no DE results).
-- QUALITY GATE: `scripts/check.sh` -- concrete, fail-loud, zero-fault; review-hardened (codex-review, P0 close).
+- QUALITY GATE: `scripts/check.sh` -- concrete, fail-loud, zero-fault; review-hardened (P0 close).
   tar_make's exit is insufficient (0 even on CAPTURED warnings, and blind to the report's SEPARATE render
   process), so enforcement is layered: qmd (`options(warn=2)` -> any R chunk warning fails the render), target
   (`tar_quarto(quiet=FALSE)` -> Quarto/Pandoc warnings reach the log), script (FORCE-render the report each run
@@ -36,7 +36,7 @@ Verification (honest): each module smoke-tested vs LIVE data at its step (S2 sha
 one-shot FRESH-CLONE rebuild is the design contract, verified incrementally across S1-S5, NOT re-run at S5
 (the heavy 8G load_snrnaseq BUILD, not the cheap report re-render). The gate FORCE-renders the report each run
 -> the warn=2 + render-log checks always exercise (no cached-clean blind spot); residual = out-of-band edits to
-`_report/` outputs, moot since it re-renders from source. Gate review-hardened post-close (codex-review).
+`_report/` outputs, moot since it re-renders from source. Gate review-hardened post-close.
 
 Deferred -> P1+: microglia reprocess (SCT/Harmony/cluster-prune), substate assignment, single-cell DE
 (NEBULA/glmmTMB), pseudobulk DE RESULTS, edgeR-QLF/DESeq2/dream, BPCells (8G RAM relief), col-map DAG
@@ -77,7 +77,7 @@ Below = decisions + rejected alternatives.
   position/extent effect (progression-rate reading only under the age-matched-snapshot assumption). Thrupp 2020 caveat carried throughout (snRNA under-detects ~18% DAM genes -> SCORE
   not threshold; DE on RAW counts).
 - REPORT: `_microglia.qmd` reads a COMPACT `microglia_report` target (not the 612MB Seurat) -> the gate's force-
-  render stays cheap. Prose INLINE-COMPUTED from targets (never hardcoded). Two codex reviews hardened S3
+  render stays cheap. Prose INLINE-COMPUTED from targets (never hardcoded). Two reviews hardened S3
   (concordance false-green, sccomp diagnostics + a fresh-build gate hole) + S4 (null/power over-claim, crossing/
   marker guards).
 

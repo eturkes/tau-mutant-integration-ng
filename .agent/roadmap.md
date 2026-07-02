@@ -68,7 +68,7 @@ Steps:
   0 external loads, 0 error/0 warning (`tar_meta` all-NA), QC bounds pass (16x16 genotype-batch bijection).
   9 woff2 COMMITTED (assets/fonts/, avoid direct reads per AGENTS read economy), listed in
   `tar_quarto(extra_files=)`. Added `R/plot.R` + device-free `tests/test_plot.R`; de-staled map.md
-  (book -> standalone report wiring) + S1 plan refs. Reasoning reversal (codex-reviewed): the earlier
+  (book -> standalone report wiring) + S1 plan refs. Reasoning reversal (reviewed): the earlier
   "IBM Plex can't work via theme.scss" was a MEASUREMENT artifact -- once `@font-face url()` is present
   the whole theme CSS URL-encodes, so raw greps for `IBM Plex`/colours read ~0; match encoded tokens.
 - 2026-06-29 S5 DONE -> P0 CLOSED: concrete quality gate `scripts/check.sh` (fail-loud, zero-fault) =
@@ -78,7 +78,7 @@ Steps:
   tar_meta). Negative-tested (grep pattern + `stopifnot(FALSE)` -> exit 1); full gate green end-to-end.
   Locked memory.md gate (provisional -> concrete); finalised map.md wiring; folded P0 digest -> history.md;
   archived plan -> `.agent/completed/`. P0 foundation complete; next = P1.
-- 2026-06-29 P0-S5 gate review-hardened (codex-review, post-close): the pre-review render-log grep was BLIND to
+- 2026-06-29 P0-S5 gate review-hardened (post-close): the pre-review render-log grep was BLIND to
   render warnings -- `tar_quarto` defaults quiet=TRUE (suppresses Quarto/Pandoc warnings from the log) and
   knitr renders R chunk warnings INTO the HTML (never to log or tar_meta). Fixes: `_qc.qmd` setup
   `options(warn=2)` (chunk warning -> render error -> tar_make fails); `_targets.R` `tar_quarto(quiet=FALSE)`
@@ -118,7 +118,7 @@ Steps:
   19 targets). Folded P1 digest -> history.md; updated memory (P1-S5 + cheap-render + warn=2-per-section) + map
   (microglia_report target + _microglia.qmd include + microglia_report_data fn); archived plan ->
   `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`; reset Active plan to (none). Next = PLAN P2.
-- 2026-06-30 P1-S5 codex review PARKED (context-overflow remediation): Codex review of the S5 close raised 14
+- 2026-06-30 P1-S5 review PARKED (context-overflow remediation): Review of the S5 close raised 14
   findings, ALL accepted (interaction "small-effect" over-claim -> "sub-threshold-per-contrast"; concordance /
   pruning / MDE prose accuracy; extractor finite+consistency guards + 4 negative tests; stale ~2MB figure). The
   fix set was applied + live-cache-verified except 2 small doc edits, but the run overflowed one window before
@@ -162,7 +162,7 @@ Steps:
   trajectory_progression target + FL tests + live smoke + gate (the live-integration half). Banked the expensive
   verification insights into each step spec (OLS-vs-manual needs a NON-additive term or sigma=0; NO
   full-orchestrator fixture test -- the exact-pure fixture has sigma=0 -> t=Inf). Next open = S2a.
-- 2026-06-30 P2-S2a/S2b plan codex-reviewed (PRE-implementation, no code): 11 findings, ALL accepted -> contracts
+- 2026-06-30 P2-S2a/S2b plan reviewed (PRE-implementation, no code): 11 findings, ALL accepted -> contracts
   HARDENED (within_<lc> col naming pinned S2a<->S2b; run_trajectory_progression meta now feeds
   assert_complete_crossing + factorial_design correctly; decompose weight-matrix dimnames set; fit_trajectory_contrasts
   top = named-list-by-contrast; pivot-free FL chol2inv(chol(crossprod)); per-endpoint FL weights specified; structural
@@ -227,7 +227,7 @@ Steps:
   REWROTE S4a into a MECHANICAL restore (git checkout the 3 files + gate + map.md + commit -- no re-derivation, no
   large-file reads, no fixture debugging). S4b's qmd stays on wip-p2s4-report (restore ONLY _trajectory.qmd there;
   its pre-hardening extractor is superseded). Next open = S4a (mechanical).
-- 2026-07-01 P2-S4a codex review (parked code + handoff): review found guard-vs-use gaps -- `interaction$perm_p`
+- 2026-07-01 P2-S4a review (parked code + handoff): review found guard-vs-use gaps -- `interaction$perm_p`
   (qmd table + inlined prose) + each canonical `weighted_top` mean_pt row (feeds the p_ctr geom_pointrange -> a
   dropped/NaN row warns under warn=2, red gate) were unguarded, a finite-fdr postcondition overclaim, and a stale
   restore-from-wip-p2s4-report sentence. Hardened the parked extractor (guard perm_p existence + inlined-row
@@ -251,7 +251,7 @@ Steps:
   composition not progression), rewrote the 2 _microglia.qmd forward-pointers (P2 built; synergy is compositional
   -- more DAM cells, no supported further-advance; cross-ref @sec-trajectory). Chapter (title "the tau-amyloid
   synergy adds DAM cells rather than advancing them", {#sec-trajectory}) reads the COMPACT trajectory_report,
-  prose ALL inline-computed. RESOLVED the S4a codex low:955 (trd$decomposition dead output): DROPPED it -- the qmd
+  prose ALL inline-computed. RESOLVED the S4a review low:955 (trd$decomposition dead output): DROPPED it -- the qmd
   draws loadings from prov$*_loading (guarded finite) + per-channel coefs from the interaction comp_cf/
   progression_cf/cross rows, so a decomposition field only duplicated two live sources (figure-shaped dead output);
   updated R/trajectory.R extractor (guard-names + postconditions) + test to match. RENDER gotcha -> memory.md:
@@ -262,7 +262,7 @@ Steps:
   include chain + @sec-trajectory pointer. Both wip branches (wip-p2s4a-hardened, wip-p2s4-report) DELETED. Next
   mode = CLOSE-OUT (adversarial plan review; fold P2 digest -> history.md; archive plan; reset Active plan; revise
   Cohesive-story finding #2 wording per the R4.6 re-baseline).
-- 2026-07-01 P2-S4b codex review (of d5c4ccb): 8 findings (0 high / 3 med / 5 low), ALL accepted, gate stays green.
+- 2026-07-01 P2-S4b review (of d5c4ccb): 8 findings (0 high / 3 med / 5 low), ALL accepted, gate stays green.
   HONESTY (med): intro's bare "the answer is no" overclaimed proven absence -> "does not detectably / no
   statistically supported evidence of further advance"; dropped "faster advance" rate wording (chapter disavows
   rate) across _trajectory.qmd + _microglia.qmd; index Overview += "mainly". MED2: the provenance cat printed
@@ -275,20 +275,19 @@ Steps:
   lineage_per_unit value/bounds postconditions (finite positive n_cells, on-lineage in [0,n_cells], known genotype)
   + folded v1_progression_loading/fdr into the finite provenance guard; dropped the un-surfaced/un-guarded
   "replicate-balanced re-anchoring is carried alongside" caveat clause (computed upstream, never surfaced here);
-  test now asserts !("decomposition" %in% names(trd)) to lock the S4a-955 drop. Codex CHECKED CLEAN: no qmd reads
+  test now asserts !("decomposition" %in% names(trd)) to lock the S4a-955 drop. Review CHECKED CLEAN: no qmd reads
   trd$decomposition, comp_cf/progression_cf/cross labels align across extractor/test/qmd, include placement +
   #sec-trajectory unique, no residual ggplot trans=. Rebuilt trajectory_report fresh on real data (new postconds
   pass, no false-red) + re-render 0-warning + tests warn=2. Commit `trajectory (p2 s4b review): ... (codex)`.
 - 2026-07-02 infra Codex-only adaptation: retired tracked `CLAUDE.md`, `.claude/`, and `.serena/` project config;
-  made `AGENTS.md` the sole canonical agent instruction surface; added `.codex/prompts/{session,review,reviewer}.md`
-  plus `scripts/codex-review.sh` read-only `codex exec` review wrapper; rewired `.agent/context.sh` to
-  Codex JSONL sessions; updated live memory/map/history wording from Claude deny-Read to Codex read-economy.
-- 2026-07-02 infra Codex skill wrappers: added repo-scoped `.agents/skills/{session-prompt,codex-review,
-  codex-reviewer}` per Codex docs (`.agents/skills` repo discovery; explicit `$...` invocation). `$session-prompt`
-  reads `.codex/prompts/session.md`; `$codex-review` is the `/codex-review` replacement and reads review.md +
-  reviewer.md before running `scripts/codex-review.sh`; `$codex-reviewer` loads the read-only rubric directly.
-  Fresh `codex exec` smoke checks confirmed `$session-prompt` + `$codex-review` appear in initial skill context and
-  explicit `$codex-reviewer` loads.
+  made `AGENTS.md` the sole canonical agent instruction surface; added `.codex/prompts/session.md`; rewired
+  `.agent/context.sh` to Codex JSONL sessions; updated live memory/map/history wording from Claude deny-Read to
+  Codex read-economy.
+- 2026-07-02 infra Codex skill wrapper: added repo-scoped `.agents/skills/session-prompt` per Codex docs
+  (`.agents/skills` repo discovery; explicit `$...` invocation). `$session-prompt` reads
+  `.codex/prompts/session.md`; fresh `codex exec` smoke checks confirmed it appears in initial skill context.
+- 2026-07-02 infra review wrapper retired: removed redundant review skills/prompts/script; session prompt now
+  uses direct self-checks plus `.agent/context.sh` headroom tracking.
 - 2026-07-02 P2 CLOSED: close-out review of plan body + shipped trajectory code/prose found no remaining blocker
   after the S4b review fixes; the only forward-state correction was the spine wording. Folded P2 digest ->
   history.md; archived plan -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`; reset Active plan to none.
@@ -345,8 +344,8 @@ ctx (final)      date   work unit  (session step [+ review]; commits chronologic
 51% 103K/200K    06-29  git init + upstream-config merge; seed v1 -> archive (82130a5, archive branch)
 95% 191K/200K    06-29  scaffold rebuild: fresh main + reset .agent/config (586f691)
 30% 60K/200K     06-29  memory: storage/data symlink provenance (222a3ab)
-46% 92K/200K     06-29  P0 plan + codex-review hardening (f765085, f612ede)
-20% 39K/200K     06-29  infra: codex-review rollout-path fix (d0e870b)
+46% 92K/200K     06-29  P0 plan + review hardening (f765085, f612ede)
+20% 39K/200K     06-29  infra: review rollout-path fix (d0e870b)
 59% 117K/200K    06-29  P0-S1 spine: env + targets/quarto scaffold +review (37216a8, 39bb692)
 62% 123K/200K    06-29  P0-S2 data: io loaders + 4 modality targets +review (a8312b9, 66aa492)
 88% 176K/200K    06-29  P0-S3 design: 5-contrast + pseudobulk/bulk DE +review (e6b183f, 466c65f)

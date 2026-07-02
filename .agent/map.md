@@ -217,6 +217,6 @@ negative tests) -> memory.md Quality gate.
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
           _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
-          rv/.gitignore | scripts/install-*.sh scripts/codex-review.sh | AGENTS.md .agents/skills/** .codex/prompts/*.md
+          rv/.gitignore | scripts/install-*.sh | AGENTS.md .agents/skills/** .codex/prompts/*.md
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + read-economy skip);
-          sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored) | .codex/runs/
+          sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

@@ -247,7 +247,7 @@ Acceptance:
 - `_mechanism.qmd` renders 0-warning under `options(warn=2)`.
 - `mechanism_report` is compact (<5MB expected) and qmd never loads `microglia_annotated`.
 - Full `scripts/check.sh` green.
-- Codex review run on uncommitted P3 work; accepted findings fixed before S4 commit.
+- Adversarial review run on uncommitted P3 work; accepted findings fixed before S4 commit.
 
 ## Close-Out
 After S4:

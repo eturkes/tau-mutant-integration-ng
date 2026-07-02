@@ -4,10 +4,8 @@
   the repo root; canonical instruction file = this `AGENTS.md`. Keep `CLAUDE.md`, `.claude/`,
   and non-Codex agent project configs absent from git.
 - Codex session entry = `$session-prompt` (repo skill) backed by
-  `.codex/prompts/session.md`. Codex review entry = `$codex-review` (repo skill)
-  backed by `.codex/prompts/review.md` + `.codex/prompts/reviewer.md` +
-  `scripts/codex-review.sh`. Update paired skill/prompt files together; they
-  replace slash-command files.
+  `.codex/prompts/session.md`. Update the paired skill/prompt files together;
+  they replace slash-command files.
 - Read economy: skip generated/heavy trees unless the task needs them: `.git/`, `.venv/`,
   `rv/library/`, `tools/`, `_targets/`, `_report/`, `_freeze/`, `.quarto/`, `.tokensave/`,
   `storage/data/`, `storage/cache/`, `storage/logs/`, `.agent/completed/`, `*.html`,

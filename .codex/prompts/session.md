@@ -36,8 +36,8 @@ CLOSE-OUT:
 - Reset roadmap Active plan; update spine wording if the phase changed it.
 - Commit `<scope> (<topic> close): ...`.
 
-Review loop:
-- Use `$codex-review [focus...]` for a read-only Codex review of uncommitted work.
+Self-check:
+- Adversarially review uncommitted work directly before final response/commit.
 - Accept/reject findings explicitly; fix accepted ones before final response.
 - Track headroom via `.agent/context.sh`; near 80%, drive to a clean checkpoint.
 

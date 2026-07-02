@@ -2,8 +2,7 @@
 
 Durable facts / decisions / gotchas surviving all plans. Codex-only repo:
 `AGENTS.md` is the canonical instruction file; repo-scoped `$` skills live under
-`.agents/skills/`; prompt source templates live under `.codex/prompts/`; per-run
-Codex review output lives under ignored `.codex/runs/`.
+`.agents/skills/`; prompt source templates live under `.codex/prompts/`.
 Companions: `roadmap.md`
 (direction), `map.md` (wiring), `history.md` (new decision digests),
 `archive_digest.md` (v1 reference). This is a FRESH streamlined rebuild; v1 lives
@@ -76,7 +75,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   signal. SCTransform also trips future's 500MiB globals cap on 26k cells -> set options(future.globals.maxSize).
   Check each new pkg (UCell/sccomp) for the same patterns. harmony 2.0 dropped the v1 `assay.use` arg (assay
   implicit in reduction.use) -> v1 recipe args can be stale under the P3M-2026 pkg versions; verify signatures.
-- P1-S1 codex-review hardening (durable): reprocess_microglia ends with BUILD-TIME postconditions (3 reductions
+- P1-S1 review hardening (durable): reprocess_microglia ends with BUILD-TIME postconditions (3 reductions
   + microglia_clusters factor + Idents match + no reduction shadows + only fresh *_snn_res.* + provenance) -> a
   silent recipe regression fails tar_make (the warn=2 unit tests skip the heavy body); the marker-SEPARATION
   argmax assertion is deferred to S2 QC (needs its curated ensembl sets). load_snrnaseq also clears
@@ -561,8 +560,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   run. Heavy seurat target: `memory="transient"` + `garbage_collection=TRUE` release the load.
 - Codex-only project config: keep `CLAUDE.md`, `.claude/`, and `.serena/` untracked/ignored.
   Repo-specific skills belong in `.agents/skills/` (Codex-discoverable `$...` surface);
-  reusable prompt source belongs in `.codex/prompts/`; run outputs belong in `.codex/runs/`
-  (ignored).
+  reusable prompt source belongs in `.codex/prompts/`.
 
 ## Reports (Quarto; built P0-S4)
 - Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
@@ -593,12 +591,8 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or
   manually follow that prompt's load order.
-- Review: invoke `$codex-review`; it is the old `/codex-review` equivalent. It reads
-  `.codex/prompts/review.md` (human workflow note), uses `.codex/prompts/reviewer.md`
-  (runtime rubric), and runs `scripts/codex-review.sh [focus]`. The script uses read-only
-  generic `codex exec` because Codex CLI 0.142.5 rejects custom stdin prompts with
-  `review --uncommitted`; accept/reject findings explicitly, fix accepted ones, then commit
-  one scoped unit.
+- Self-review: inspect uncommitted work directly; accept/reject concrete findings explicitly,
+  fix accepted ones, then commit one scoped unit.
 - Headroom: `.agent/context.sh` scans newest Codex JSONL session for this cwd and parses
   latest `token_count` (`last_token_usage.input_tokens`, `model_context_window`); override
   the window with `CODEX_CONTEXT_WINDOW`.

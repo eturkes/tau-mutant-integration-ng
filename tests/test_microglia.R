@@ -160,7 +160,7 @@ expect_error(microglia_report_data(obj_nou), "umap")
 expect_error(microglia_report_data(obj_r, z_cols = "NOPE_UCell_z"), "z_cols")
 expect_error(microglia_report_data(obj_r, substate_col = "nope"), "substate_col")
 
-# S5-hardening guards (codex review): non-finite coords/z and provenance-vs-per-cell drift fail loud
+# S5-hardening guards (review): non-finite coords/z and provenance-vs-per-cell drift fail loud
 emb_inf <- emb; emb_inf[1, 1] <- Inf
 obj_inf <- obj_r
 obj_inf[["umap"]] <- SeuratObject::CreateDimReducObject(embeddings = emb_inf, key = "UMAP_", assay = "RNA")

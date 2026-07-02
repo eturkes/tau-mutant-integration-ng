@@ -39,6 +39,3 @@ Rplots.pdf
 /CLAUDE.md
 /.claude/
 /.serena/
-
-# Codex project scratch; prompt templates stay tracked under .codex/prompts/
-/.codex/runs/
