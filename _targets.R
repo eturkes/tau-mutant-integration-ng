@@ -177,6 +177,13 @@ list(
              run_geomx_decon(geomx, geomx_reference_profile),
              format = "qs"),
 
+  # Spatial decon follow-up S3: if SpatialDecon earns finite beta, fit log-beta abundance
+  # DE on the same GeoMx slide + bio-unit design; otherwise pass through the blocked state
+  # while retaining residual spatial diagnostics from the attempted fit.
+  tar_target(geomx_abundance_de,
+             run_geomx_abundance_de(geomx_decon, geomx),
+             format = "qs"),
+
   # S2 bulk proteome + corrected phospho: 24M 16-run sample-key-matched bulk hippocampus
   # layers. Proteome aggregates raw positive rows to PG.ProteinGroups before log2/median
   # normalisation/limma-trend. Corrected phospho subtracts matched parent-protein log2
@@ -189,11 +196,9 @@ list(
              bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
-  # S3 spatial-composition gate + clearance-axis CCC-lite. Since the S1 GeoMx decon preflight is
-  # currently defer/blocked rather than earned, no SpatialDecon target is run; this compact target
-  # records that skip and harmonises measured APP/TREM2/APOE/CD74/MERTK/complement/synaptic anchors
-  # across microglia RNA, GeoMx, and 24M bulk layers. If the preflight later becomes earned, the
-  # function fails loud until geomx_decon + geomx_abundance_de are added.
+  # Historical P4 spatial-composition gate + clearance-axis CCC-lite. This still records the
+  # pre-profile decon defer from geomx_de; spatial-decon S4 will rewire the report/synthesis
+  # surfaces to consume geomx_decon + geomx_abundance_de's target-derived blocked state.
   tar_target(clearance_axis,
              clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
                                  bulk_omics_summary, mechanism_gene_sets),

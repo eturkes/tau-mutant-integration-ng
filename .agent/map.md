@@ -174,6 +174,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       unresolved AOI counts, and residual QC; unresolved beta totals block the arm but retain diagnostics.
       assemble_microglia_substate_abundance anchors substate fractions to broad Microglia beta only if both arms fit.
       Live S2 target is warning-clean but blocked: both arms have 4 unresolved AOIs, so no abundance claim yet.
+   + (Spatial decon follow-up S3) crossmodality.R: run_geomx_abundance_de -> geomx_abundance_de. Fits
+      fit_geomx_abundance_de (log beta + slide fixed + duplicateCorrelation bio-unit block + unblocked sensitivity)
+      only for decon arms with status fit; blocked arms return canonical empty 5-contrast top tables plus reasons.
+      geomx_spatial_residual_audit joins SpatialDecon residual QC to GeoMx coordinates and emits per-slide
+      nearest-neighbour summaries of genotype-residualised AOI RMS residuals (descriptive QC only). Live S3 target
+      is warning-clean but abundance-blocked by the same 4 unresolved AOIs; broad/substate residual audit stored.
    + (P4-S2) crossmodality.R: bulk proteome + corrected phospho. match_24m_bulk_columns asserts exact 16-run
       sample-key matching for proteome/phospho-style exports. protein_group_features + aggregate_proteome_raw +
       prepare_proteome_24m_matrix sum raw positive intensities to `PG.ProteinGroups` (NO zero-imputation),
@@ -256,10 +262,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        geomx_de <- run_geomx_de(geomx)  # S1: GeoMx RNA/counts DE; slide fixed + duplicateCorrelation bio-unit block primary; unblocked/collapsed sensitivities; decon preflight status/reasons, no SpatialDecon run
        geomx_reference_profile <- geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)  # spatial-decon follow-up S1: full-snRNAseq compact broad/substate reference profile + QC; serialized 1.88MB live
        geomx_decon <- run_geomx_decon(geomx, geomx_reference_profile)  # spatial-decon follow-up S2: SpatialDecon broad/substate beta + proportions + residual QC; live blocked by 4 unresolved AOIs, no abundance claim
+       geomx_abundance_de <- run_geomx_abundance_de(geomx_decon, geomx)  # spatial-decon follow-up S3: abundance-DE pass-through + residual audit; live blocked, 5.93KB compact target
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
-       clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets)  # S3 compact measured-axis table (~37KB); decon skipped/defer recorded; Apoe_Trem2 currently the only earned CCC-lite pair
+       clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets)  # historical P4 compact measured-axis table (~37KB); still records pre-profile decon defer until spatial-decon S4 rewires it to geomx_decon/geomx_abundance_de
        crossmodality_table <- crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m, phospho_corrected_24m, mechanism_tf, kinase_mechanism_summary)  # S4 harmonised symbol evidence table (~10MB; 337k rows live), broad modality_class + layer-level modality_group
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
@@ -320,9 +327,10 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
   - test_crossmodality.R : (P4-S1) GeoMx RNA/count extraction + meta alignment + slide rank guard +
                     duplicateCorrelation primary + unblocked/collapsed sensitivity status +
-                    malformed metadata + decon preflight defer/block/earned reasons; (spatial-decon S2)
+                    malformed metadata + decon preflight defer/block/earned reasons; (spatial-decon S2/S3)
                     background broadcast + SpatialDecon-result normalisation + unresolved-AOI blocked diagnostics +
-                    warning/message capture + two-stage assembly; (P4-S2) 16-run bulk matching +
+                    warning/message capture + two-stage assembly + abundance-DE earned/blocked orchestration +
+                    canonical empty top tables + residualised nearest-neighbour spatial audit; (P4-S2) 16-run bulk matching +
                     protein aggregation/no-imputation + parent-protein correction/sample-order guard +
                     missing-parent counts + run-index summary + duplicate/multi-gene provenance; (P4-S3) Q3
                     background scaling + profile-collinearity + abundance-DE design shape + clearance-axis

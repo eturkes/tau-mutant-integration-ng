@@ -219,8 +219,21 @@ Acceptance:
   does not invalidate a clean broad result.
 - `scripts/check.sh` green.
 
-### S3 - Abundance DE + spatial residual audit
+### S3 - Abundance DE + spatial residual audit [DONE 2026-07-02]
 Add `geomx_abundance_de` and a small spatial audit table from `geomx_decon`.
+
+Result:
+- Added `geomx_abundance_de`. It fits log-beta abundance only for earned
+  deconvolution arms and otherwise returns canonical blocked outputs with empty
+  5-contrast top tables.
+- Live target warning-clean/tar_meta clean, 5.93 KB serialized. Broad,
+  substate, and microglia-substate abundance DE are all blocked because the
+  SpatialDecon fit still has 4 unresolved AOIs with beta_total=0.
+- Residual audit is available despite blocked abundance: broad and substate
+  arms each cover 91 AOIs across 4 slides, using nearest-neighbour summaries of
+  genotype-residualised per-AOI RMS residuals. Median RMS residual is ~0.821 for
+  broad and substate; descriptive only, no new claim axis.
+- `scripts/check.sh` green across 49 current targets/branches.
 
 Contracts:
 - Fit log-beta abundance by the existing GeoMx design:

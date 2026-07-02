@@ -347,6 +347,69 @@ stopifnot(ab_de$status == "fit",
           identical(ab_de$sensitivity$unblocked$status, "fit"))
 expect_error(fit_geomx_abundance_de(abund[, -1, drop = FALSE], meta), "identical")
 
+resid_mat <- matrix(sin(seq_len(8L * nrow(meta)) / 5), nrow = 8L,
+                    dimnames = list(paste0("G", seq_len(8L)), rownames(meta)))
+resid_qc <- spatialdecon_residual_qc(resid_mat)
+g_eff <- unname(c(MAPTKI = 0.00, P301S = 0.01, NLGF_MAPTKI = 0.03,
+                  NLGF_P301S = 0.07)[as.character(meta$genotype)])
+sub_abund <- rbind(
+  Microglia_Homeostatic = 0.12 + g_eff + (seq_len(nrow(meta)) %% 4L) / 1000,
+  Microglia_DAM = 0.04 + 2 * g_eff + (seq_len(nrow(meta)) %% 5L) / 1000,
+  Microglia_IFN = 0.015 + (seq_len(nrow(meta)) %% 6L) / 1000,
+  Astrocyte = 0.25 + g_eff / 2,
+  Neuronal = 0.35 - g_eff / 3
+)
+colnames(sub_abund) <- rownames(meta)
+decon_fit <- list(
+  status = "fit",
+  broad = list(status = "fit", beta = abund, residual_qc = resid_qc,
+               profile_labels = rownames(abund), unresolved_aoi_count = 0L,
+               reasons = character()),
+  substate = list(status = "fit", beta = sub_abund, residual_qc = resid_qc,
+                  profile_labels = rownames(sub_abund), unresolved_aoi_count = 0L,
+                  reasons = character()),
+  two_stage = list(status = "fit",
+                   anchored_beta = sub_abund[grep("^Microglia_", rownames(sub_abund)), , drop = FALSE],
+                   unresolved_aoi_count = 0L, reasons = character())
+)
+ab_target <- run_geomx_abundance_de(decon_fit, gx)
+stopifnot(ab_target$status == "fit",
+          ab_target$broad$status == "fit",
+          ab_target$substate$status == "fit",
+          ab_target$microglia_substate$status == "fit",
+          identical(names(ab_target$broad$top), canonical),
+          identical(names(ab_target$substate$top), canonical),
+          nrow(ab_target$broad$top$interaction) == nrow(abund),
+          nrow(ab_target$substate$top$interaction) == nrow(sub_abund),
+          setequal(ab_target$broad$attempted_profiles, rownames(abund)),
+          setequal(ab_target$substate$attempted_profiles, rownames(sub_abund)),
+          ab_target$spatial_audit$status == "fit",
+          all(c("broad", "substate") %in% ab_target$spatial_audit$summary$arm),
+          nrow(ab_target$spatial_audit$per_slide) == nlevels(meta$slide) * 2L,
+          all(ab_target$spatial_audit$summary$genotype_residual_status == "fit"))
+
+decon_blocked <- decon_fit
+decon_blocked$status <- "blocked"
+decon_blocked$broad$status <- "blocked"
+decon_blocked$broad$reasons <- "synthetic unresolved beta totals"
+decon_blocked$broad$unresolved_aoi_count <- 2L
+decon_blocked$substate$status <- "blocked"
+decon_blocked$substate$reasons <- "synthetic unresolved beta totals"
+decon_blocked$substate$unresolved_aoi_count <- 2L
+decon_blocked$two_stage <- list(status = "blocked",
+                                reasons = "broad and substate fits are both required",
+                                unresolved_aoi_count = 2L)
+ab_blocked <- run_geomx_abundance_de(decon_blocked, gx)
+stopifnot(ab_blocked$status == "blocked",
+          ab_blocked$broad$status == "blocked",
+          ab_blocked$substate$status == "blocked",
+          ab_blocked$microglia_substate$status == "blocked",
+          identical(names(ab_blocked$broad$top), canonical),
+          nrow(ab_blocked$broad$top$interaction) == 0L,
+          ab_blocked$broad$unresolved_aoi_count == 2L,
+          ab_blocked$spatial_audit$status == "fit",
+          nrow(ab_blocked$spatial_audit$per_aoi) == nrow(meta) * 2L)
+
 # --- P4-S2 bulk proteome + corrected phospho ------------------------------------------
 bulk_stubs <- paste0("run", sprintf("%02d", 1:16))
 bulk_key <- data.frame(

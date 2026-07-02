@@ -567,6 +567,22 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   through the blocked abundance state and may surface residual diagnostics, but MUST NOT fit/claim log-beta abundance
   unless broad status becomes `fit`.
 
+## Spatial decon abundance + residual audit (follow-up S3, built) -- `R/crossmodality.R` -> `geomx_abundance_de`
+- `run_geomx_abundance_de` is the gatekeeper between deconvolution and abundance inference. Broad beta is primary;
+  substate and microglia-substate contrasts are emitted only from decon arms with `status=="fit"`. Blocked arms return
+  canonical empty top tables for all 5 contrasts plus source status/reasons/unresolved counts, preserving downstream
+  shape without implying a test ran.
+- `fit_geomx_abundance_de` remains the inference core for earned beta: log(beta+offset), GeoMx `~0+genotype+slide`,
+  `duplicateCorrelation(block=bio_unit)`, robust eBayes, canonical contrasts, and unblocked sensitivity. It is NOT
+  called when the arm is blocked.
+- `geomx_spatial_residual_audit` joins stored SpatialDecon residual QC to AOI metadata and returns per-AOI + per-slide
+  nearest-neighbour summaries of genotype-residualised RMS residuals. Scope = descriptive fit QC only; not Moran's-I
+  inference, not a new biological claim axis.
+- Live S3 (warning-clean/tar_meta clean, target 5.93KB; full `scripts/check.sh` green): broad/substate/
+  microglia-substate abundance DE all blocked by the same 4 unresolved AOIs from S2; residual audit is available for
+  broad and substate arms over 91 AOIs x 4 slides (median RMS residual ~0.821 for both). S4 report/synthesis must
+  replace "no compact profile" with this actual blocked-fit state, while still making no abundance claim.
+
 ## Bulk proteome + corrected phospho (P4-S2, built) -- `R/crossmodality.R` -> `proteome_de_24m` / `phospho_corrected_24m` / `bulk_omics_summary`
 - 24M sample matching is exact 16/16 via `sample_key`, balanced 4/genotype, ordered by key stub. `match_24m_bulk_columns`
   handles proteome `.raw.PTM.Quantity` vs key/phospho `.PTM.Quantity` through the shared `normalise_ptm_stub`; corrected
@@ -592,10 +608,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 
 ## Spatial composition + clearance-axis CCC-lite (P4-S3, built) -- `R/crossmodality.R` -> `clearance_axis`
 - SpatialDecon NOT run in P4-S3 because the P4 preflight remained `defer`: Q3/background were usable, but nuclei had
-  42 `-1` sentinels (absolute rescaling disabled) and no compact reference profile existed yet. Follow-up S1 now
-  builds that profile and S2 adds `geomx_decon`; `clearance_axis_data()` still intentionally `stop()`s if a future
-  `geomx_de$decon_preflight$status=="earned"` before it is revised to accept `geomx_decon` + `geomx_abundance_de` ->
-  no silent skip once preconditions are clean.
+  42 `-1` sentinels (absolute rescaling disabled) and no compact reference profile existed yet. Follow-up S1-S3 now
+  build the profile, run SpatialDecon, and add `geomx_abundance_de`; `clearance_axis_data()` still intentionally
+  records the historical pre-profile status until S4 revises it to accept `geomx_decon` + `geomx_abundance_de`.
 - Decon helper contracts are present/tested: `geomx_q3_scaled_background` = negative-probe background /
   `q_norm_qFactors`; `profile_collinearity` gates max absolute profile correlation; S2 `geomx_decon` stores
   blocked/fit beta + residual diagnostics; `fit_geomx_abundance_de` fits log(beta+offset) abundance with slide fixed

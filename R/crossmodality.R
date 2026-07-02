@@ -1110,6 +1110,249 @@ fit_geomx_abundance_de <- function(abundance, meta, offset = 1e-4) {
   )
 }
 
+geomx_abundance_empty_top <- function(contrast_names) {
+  stopifnot(is.character(contrast_names), length(contrast_names) >= 1L, !anyNA(contrast_names))
+  out <- lapply(contrast_names, function(cn) {
+    data.frame(feature = character(), contrast = character(), logFC = numeric(),
+               P.Value = numeric(), adj.P.Val = numeric(), t = numeric(),
+               CI.L = numeric(), CI.R = numeric(), stringsAsFactors = FALSE)
+  })
+  names(out) <- contrast_names
+  out
+}
+
+geomx_abundance_blocked <- function(arm, reasons, contrast_names,
+                                    attempted_profiles = character(),
+                                    source_status = NA_character_,
+                                    unresolved_aoi_count = NA_integer_) {
+  stopifnot(length(arm) == 1L, nzchar(arm), is.character(contrast_names),
+            length(contrast_names) >= 1L)
+  reasons <- as.character(reasons %||% character())
+  reasons <- reasons[!is.na(reasons) & reasons != ""]
+  if (!length(reasons)) reasons <- "deconvolution arm did not earn abundance testing"
+  attempted_profiles <- as.character(attempted_profiles %||% character())
+  list(
+    status = "blocked",
+    arm = arm,
+    source_status = source_status,
+    reasons = reasons,
+    attempted_profiles = attempted_profiles,
+    unresolved_aoi_count = unresolved_aoi_count,
+    top = geomx_abundance_empty_top(contrast_names),
+    sensitivity = list(
+      unblocked = list(status = "blocked", reasons = reasons,
+                       top = geomx_abundance_empty_top(contrast_names))
+    )
+  )
+}
+
+.geomx_decon_profiles <- function(arm_obj) {
+  as.character(arm_obj$profile_labels %||% rownames(arm_obj$beta) %||% character())
+}
+
+.fit_geomx_decon_abundance_arm <- function(arm_obj, meta, arm, contrast_names,
+                                           abundance = NULL, offset = 1e-4) {
+  stopifnot(is.list(arm_obj), is.data.frame(meta), length(arm) == 1L, nzchar(arm))
+  attempted <- .geomx_decon_profiles(arm_obj)
+  source_status <- as.character(arm_obj$status %||% NA_character_)
+  unresolved <- arm_obj$unresolved_aoi_count %||% NA_integer_
+  if (!identical(arm_obj$status, "fit")) {
+    return(geomx_abundance_blocked(arm, arm_obj$reasons, contrast_names,
+                                   attempted_profiles = attempted,
+                                   source_status = source_status,
+                                   unresolved_aoi_count = unresolved))
+  }
+  if (is.null(abundance)) abundance <- arm_obj$beta
+  fit <- fit_geomx_abundance_de(abundance, meta, offset = offset)
+  fit$arm <- arm
+  fit$source_status <- source_status
+  fit$attempted_profiles <- attempted
+  fit$unresolved_aoi_count <- unresolved
+  fit
+}
+
+.residualize_by_genotype <- function(x, genotype) {
+  stopifnot(is.numeric(x), all(is.finite(x)), length(x) == length(genotype))
+  geno <- droplevels(factor(as.character(genotype), levels = genotype_levels))
+  design <- stats::model.matrix(~ genotype, data = data.frame(genotype = geno))
+  if (nrow(design) > qr(design)$rank && qr(design)$rank == ncol(design)) {
+    return(list(values = stats::lm.fit(design, x)$residuals, status = "fit"))
+  }
+  list(values = x - mean(x), status = "skipped_no_residual_df")
+}
+
+.nearest_neighbour_slide_summary <- function(df, metric_col, resid_col) {
+  stopifnot(is.data.frame(df), all(c("arm", "slide", "x", "y", metric_col, resid_col) %in% names(df)))
+  by_slide <- split(df, df$slide, drop = TRUE)
+  out <- lapply(names(by_slide), function(sl) {
+    d <- by_slide[[sl]]
+    if (nrow(d) < 2L) {
+      return(data.frame(arm = d$arm[1], slide = sl, n_aoi = nrow(d), n_pairs = 0L,
+                        median_nn_distance = NA_real_,
+                        median_abs_metric_diff = NA_real_,
+                        median_abs_genotype_resid_diff = NA_real_,
+                        max_abs_genotype_resid_diff = NA_real_,
+                        stringsAsFactors = FALSE))
+    }
+    xy <- as.matrix(d[, c("x", "y"), drop = FALSE])
+    dst <- as.matrix(stats::dist(xy))
+    diag(dst) <- Inf
+    nn <- max.col(-dst, ties.method = "first")
+    data.frame(
+      arm = d$arm[1],
+      slide = sl,
+      n_aoi = nrow(d),
+      n_pairs = nrow(d),
+      median_nn_distance = stats::median(dst[cbind(seq_len(nrow(d)), nn)]),
+      median_abs_metric_diff = stats::median(abs(d[[metric_col]] - d[[metric_col]][nn])),
+      median_abs_genotype_resid_diff = stats::median(abs(d[[resid_col]] - d[[resid_col]][nn])),
+      max_abs_genotype_resid_diff = max(abs(d[[resid_col]] - d[[resid_col]][nn])),
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, out)
+}
+
+geomx_spatial_residual_audit <- function(geomx_decon, meta,
+                                         arms = c("broad", "substate"),
+                                         metric = "rms_log2_resid") {
+  stopifnot(is.list(geomx_decon), is.data.frame(meta), !is.null(rownames(meta)),
+            all(c("genotype", "slide", "x", "y") %in% names(meta)),
+            is.character(arms), length(arms) >= 1L, length(metric) == 1L, nzchar(metric))
+  per_aoi <- list()
+  per_slide <- list()
+  summary <- list()
+  for (arm in arms) {
+    obj <- geomx_decon[[arm]]
+    qc <- obj$residual_qc %||% NULL
+    if (is.null(qc) || !is.data.frame(qc$per_aoi)) {
+      summary[[arm]] <- data.frame(
+        arm = arm,
+        status = "blocked",
+        reason = "no SpatialDecon residual QC available",
+        n_aoi = 0L,
+        n_slides = 0L,
+        genotype_residual_status = NA_character_,
+        median_metric = NA_real_,
+        median_abs_genotype_resid = NA_real_,
+        median_nn_abs_genotype_resid_diff = NA_real_,
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    pa <- qc$per_aoi
+    stopifnot(all(c("aoi", metric) %in% names(pa)), all(is.finite(pa[[metric]])))
+    idx <- match(pa$aoi, rownames(meta))
+    if (anyNA(idx)) stop("SpatialDecon residual QC AOIs do not align to GeoMx metadata", call. = FALSE)
+    md <- meta[idx, c("genotype", "slide", "bio_unit", "x", "y"), drop = FALSE]
+    resid <- .residualize_by_genotype(pa[[metric]], md$genotype)
+    arm_aoi <- data.frame(
+      arm = arm,
+      aoi = pa$aoi,
+      genotype = md$genotype,
+      slide = md$slide,
+      bio_unit = md$bio_unit,
+      x = md$x,
+      y = md$y,
+      metric = pa[[metric]],
+      genotype_residual = unname(resid$values),
+      genotype_residual_status = resid$status,
+      stringsAsFactors = FALSE
+    )
+    arm_slide <- .nearest_neighbour_slide_summary(arm_aoi, "metric", "genotype_residual")
+    arm_slide$genotype_residual_status <- resid$status
+    per_aoi[[arm]] <- arm_aoi
+    per_slide[[arm]] <- arm_slide
+    nn_med <- if (any(arm_slide$n_pairs > 0L)) {
+      stats::median(arm_slide$median_abs_genotype_resid_diff[arm_slide$n_pairs > 0L])
+    } else {
+      NA_real_
+    }
+    summary[[arm]] <- data.frame(
+      arm = arm,
+      status = "fit",
+      reason = NA_character_,
+      n_aoi = nrow(arm_aoi),
+      n_slides = length(unique(arm_aoi$slide)),
+      genotype_residual_status = resid$status,
+      median_metric = stats::median(arm_aoi$metric),
+      median_abs_genotype_resid = stats::median(abs(arm_aoi$genotype_residual)),
+      median_nn_abs_genotype_resid_diff = nn_med,
+      stringsAsFactors = FALSE
+    )
+  }
+  per_aoi <- if (length(per_aoi)) do.call(rbind, per_aoi) else data.frame()
+  per_slide <- if (length(per_slide)) do.call(rbind, per_slide) else data.frame()
+  summary <- do.call(rbind, summary)
+  rownames(per_aoi) <- NULL
+  rownames(per_slide) <- NULL
+  rownames(summary) <- NULL
+  list(
+    status = if (any(summary$status == "fit")) "fit" else "blocked",
+    metric = metric,
+    per_aoi = per_aoi,
+    per_slide = per_slide,
+    summary = summary,
+    provenance = list(
+      method = "nearest-neighbour residual audit on per-AOI SpatialDecon RMS residuals",
+      residualisation = "metric residualised against genotype when the design has residual degrees of freedom",
+      claim_scope = "descriptive QC only"
+    )
+  )
+}
+
+run_geomx_abundance_de <- function(geomx_decon, geomx, offset = 1e-4) {
+  stopifnot(is.list(geomx_decon), inherits(geomx, "Seurat"),
+            is.numeric(offset), length(offset) == 1L, is.finite(offset), offset > 0)
+  meta <- geomx_meta(geomx)
+  contrast_names <- colnames(geomx_slide_design(meta, include_slide = TRUE)$contrasts)
+  broad <- .fit_geomx_decon_abundance_arm(geomx_decon$broad, meta, "broad",
+                                          contrast_names, offset = offset)
+  substate <- .fit_geomx_decon_abundance_arm(geomx_decon$substate, meta, "substate",
+                                             contrast_names, offset = offset)
+  two_stage <- geomx_decon$two_stage %||% list(status = "blocked",
+                                               reasons = "two-stage abundance unavailable")
+  if (identical(two_stage$status, "fit")) {
+    two_stage_arm <- c(two_stage, list(beta = two_stage$anchored_beta,
+                                       profile_labels = rownames(two_stage$anchored_beta),
+                                       unresolved_aoi_count = two_stage$unresolved_aoi_count %||% 0L))
+    microglia_substate <- .fit_geomx_decon_abundance_arm(two_stage_arm, meta,
+                                                         "microglia_substate",
+                                                         contrast_names,
+                                                         abundance = two_stage$anchored_beta,
+                                                         offset = offset)
+  } else {
+    microglia_substate <- geomx_abundance_blocked(
+      "microglia_substate", two_stage$reasons, contrast_names,
+      attempted_profiles = rownames(two_stage$anchored_beta) %||% character(),
+      source_status = as.character(two_stage$status %||% NA_character_),
+      unresolved_aoi_count = two_stage$unresolved_aoi_count %||% NA_integer_
+    )
+  }
+  audit <- geomx_spatial_residual_audit(geomx_decon, meta)
+  out <- list(
+    status = if (identical(broad$status, "fit")) "fit" else "blocked",
+    reasons = if (identical(broad$status, "fit")) character() else broad$reasons,
+    broad = broad,
+    substate = substate,
+    microglia_substate = microglia_substate,
+    spatial_audit = audit,
+    provenance = list(
+      n_aoi = nrow(meta),
+      n_bio_units = nlevels(meta$bio_unit),
+      contrast_names = contrast_names,
+      offset = offset,
+      primary = "broad",
+      substate_policy = "substate and microglia-substate contrasts emitted only from earned deconvolution arms"
+    )
+  )
+  stopifnot(out$status %in% c("fit", "blocked"),
+            all(vapply(list(out$broad, out$substate, out$microglia_substate),
+                       function(x) identical(names(x$top), contrast_names), logical(1))),
+            out$spatial_audit$status %in% c("fit", "blocked"))
+  out
+}
+
 # ---- P4-S2: bulk proteome + protein-corrected phospho -------------------------------
 
 match_24m_bulk_columns <- function(tbl, sample_key, n_keep = 16L, modality = "bulk") {

@@ -32,11 +32,12 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
-Next `$session-prompt` mode = EXECUTE S3 abundance DE + spatial residual audit.
+Next `$session-prompt` mode = EXECUTE S4 report + synthesis integration.
 Route selected = broad-first SpatialDecon with a gated substate attempt; S1
 reference profile earned broad/substate gates, but S2 SpatialDecon arms both
-blocked on 4 unresolved AOIs (beta_total=0), so S3 should pass through the
-blocked abundance state and surface residual diagnostics.
+blocked on 4 unresolved AOIs (beta_total=0). S3 added the abundance-DE
+pass-through and residual audit; S4 should make report/synthesis status
+target-derived from the blocked abundance state.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -67,7 +68,9 @@ blocked abundance state and surface residual diagnostics.
   gated GeoMx tissue-abundance follow-up to the P4 "SpatialDecon not earned"
   row. S0 chose the default: install/run SpatialDecon only after a compact
   full-reference profile earns it, keep nuclei absolute counts disabled, report
-  broad abundance primary and microglia substates only if stable.
+  broad abundance primary and microglia substates only if stable. S3 status:
+  profile earned, SpatialDecon ran, abundance DE blocked by unresolved AOIs;
+  residual audit stored for S4 prose.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -520,6 +523,14 @@ blocked abundance state and surface residual diagnostics.
   nuclei absolute rescaling disabled (42 sentinels), no abundance claim. Full
   `scripts/check.sh` green across 48 current targets/branches. Next = S3
   blocked-abundance passthrough + residual audit.
+- 2026-07-02 Spatial decon follow-up S3 DONE -> `geomx_abundance_de`. Added the
+  abundance-DE orchestrator and nearest-neighbour residual audit. Live target
+  warning-clean/tar_meta clean, 5.93 KB: broad/substate/microglia-substate DE all
+  blocked by the same 4 unresolved SpatialDecon AOIs; canonical 5-contrast empty
+  top tables preserve downstream shape. Residual audit earned descriptively for
+  broad and substate arms (91 AOIs x 4 slides; genotype-residualised RMS
+  nearest-neighbour summaries), no abundance claim. Full `scripts/check.sh` green
+  across 49 current targets/branches. Next = S4 report/synthesis integration.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
