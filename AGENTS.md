@@ -3,9 +3,10 @@
 - Codex is the sole development agent for this repo. Canonical runtime = Codex CLI/API from
   the repo root; canonical instruction file = this `AGENTS.md`. Keep `CLAUDE.md`, `.claude/`,
   and non-Codex agent project configs absent from git.
-- Codex session entry = `.codex/prompts/session.md`; review workflow note =
-  `.codex/prompts/review.md`; runtime reviewer prompt = `.codex/prompts/reviewer.md`
-  via `scripts/codex-review.sh`. Update these prompt files with the project; they
+- Codex session entry = `$session-prompt` (repo skill) backed by
+  `.codex/prompts/session.md`. Codex review entry = `$codex-review` (repo skill)
+  backed by `.codex/prompts/review.md` + `.codex/prompts/reviewer.md` +
+  `scripts/codex-review.sh`. Update paired skill/prompt files together; they
   replace slash-command files.
 - Read economy: skip generated/heavy trees unless the task needs them: `.git/`, `.venv/`,
   `rv/library/`, `tools/`, `_targets/`, `_report/`, `_freeze/`, `.quarto/`, `.tokensave/`,

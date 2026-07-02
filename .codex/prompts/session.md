@@ -1,5 +1,7 @@
 # Codex Session Prompt
 
+Skill wrapper: `$session-prompt` (`.agents/skills/session-prompt/SKILL.md`).
+
 Continue this project from repo root. Non-empty task below = sole task. Empty task =
 run the mode implied by `.agent/roadmap.md`.
 
@@ -35,7 +37,7 @@ CLOSE-OUT:
 - Commit `<scope> (<topic> close): ...`.
 
 Review loop:
-- Use `scripts/codex-review.sh [focus...]` for a read-only Codex review of uncommitted work.
+- Use `$codex-review [focus...]` for a read-only Codex review of uncommitted work.
 - Accept/reject findings explicitly; fix accepted ones before final response.
 - Track headroom via `.agent/context.sh`; near 80%, drive to a clean checkpoint.
 

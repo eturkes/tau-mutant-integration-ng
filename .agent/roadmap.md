@@ -292,6 +292,12 @@ wip-p2s4-report) DELETED at S4b close.
   made `AGENTS.md` the sole canonical agent instruction surface; added `.codex/prompts/{session,review,reviewer}.md`
   plus `scripts/codex-review.sh` read-only `codex exec` review wrapper; rewired `.agent/context.sh` to
   Codex JSONL sessions; updated live memory/map/history wording from Claude deny-Read to Codex read-economy.
+- 2026-07-02 infra Codex skill wrappers: added repo-scoped `.agents/skills/{session-prompt,codex-review,
+  codex-reviewer}` per Codex docs (`.agents/skills` repo discovery; explicit `$...` invocation). `$session-prompt`
+  reads `.codex/prompts/session.md`; `$codex-review` is the `/codex-review` replacement and reads review.md +
+  reviewer.md before running `scripts/codex-review.sh`; `$codex-reviewer` loads the read-only rubric directly.
+  Fresh `codex exec` smoke checks confirmed `$session-prompt` + `$codex-review` appear in initial skill context and
+  explicit `$codex-reviewer` loads.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

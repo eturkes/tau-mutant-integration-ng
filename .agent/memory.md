@@ -1,8 +1,9 @@
 # Memory - standing contract (read every session)
 
 Durable facts / decisions / gotchas surviving all plans. Codex-only repo:
-`AGENTS.md` is the canonical instruction file; prompt templates live under
-`.codex/prompts/`; per-run Codex review output lives under ignored `.codex/runs/`.
+`AGENTS.md` is the canonical instruction file; repo-scoped `$` skills live under
+`.agents/skills/`; prompt source templates live under `.codex/prompts/`; per-run
+Codex review output lives under ignored `.codex/runs/`.
 Companions: `roadmap.md`
 (direction), `map.md` (wiring), `history.md` (new decision digests),
 `archive_digest.md` (v1 reference). This is a FRESH streamlined rebuild; v1 lives
@@ -502,8 +503,9 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   `_targets.R`) so the 8G snrnaseq input is change-detected by mtime/size, not re-hashed each
   run. Heavy seurat target: `memory="transient"` + `garbage_collection=TRUE` release the load.
 - Codex-only project config: keep `CLAUDE.md`, `.claude/`, and `.serena/` untracked/ignored.
-  Session/review reusable prompts belong in `.codex/prompts/`; run outputs belong in
-  `.codex/runs/` (ignored).
+  Repo-specific skills belong in `.agents/skills/` (Codex-discoverable `$...` surface);
+  reusable prompt source belongs in `.codex/prompts/`; run outputs belong in `.codex/runs/`
+  (ignored).
 
 ## Reports (Quarto; built P0-S4)
 - Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
@@ -532,11 +534,14 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
 
 ## Codex workflow
-- Fresh session: start from `.codex/prompts/session.md` or manually follow its load order.
-- Review: `scripts/codex-review.sh [focus]` runs read-only generic `codex exec` with
-  `.codex/prompts/reviewer.md` because Codex CLI 0.142.5 rejects custom stdin prompts
-  with `review --uncommitted`; accept/reject findings explicitly, fix accepted ones, then
-  commit one scoped unit.
+- Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or
+  manually follow that prompt's load order.
+- Review: invoke `$codex-review`; it is the old `/codex-review` equivalent. It reads
+  `.codex/prompts/review.md` (human workflow note), uses `.codex/prompts/reviewer.md`
+  (runtime rubric), and runs `scripts/codex-review.sh [focus]`. The script uses read-only
+  generic `codex exec` because Codex CLI 0.142.5 rejects custom stdin prompts with
+  `review --uncommitted`; accept/reject findings explicitly, fix accepted ones, then commit
+  one scoped unit.
 - Headroom: `.agent/context.sh` scans newest Codex JSONL session for this cwd and parses
   latest `token_count` (`last_token_usage.input_tokens`, `model_context_window`); override
   the window with `CODEX_CONTEXT_WINDOW`.

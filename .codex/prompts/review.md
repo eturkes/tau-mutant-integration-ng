@@ -1,5 +1,7 @@
 # Codex Review Workflow
 
+Skill wrapper: `$codex-review` (`.agents/skills/codex-review/SKILL.md`).
+
 Run a read-only Codex review of this session's cohesive change and act on it.
 This is the human workflow note; `scripts/codex-review.sh` sends
 `.codex/prompts/reviewer.md` as the runtime reviewer prompt.
