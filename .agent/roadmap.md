@@ -28,10 +28,15 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: none
-P2 closed 2026-07-02 -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`.
-Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the user
-(default = P3 Mechanism unless they intentionally reorder P4 Cross-modality first).
+## Active plan: P3 Mechanism
+Plan: `.agent/p3_mechanism_plan.md` (opened 2026-07-02 after user confirmed default P3).
+Next `$session-prompt` mode = EXECUTE: implement S1.
+
+Steps:
+- [ ] S1 dependencies + API contracts.
+- [ ] S2 RNA pathway + TF + NF-kB targets.
+- [ ] S3 minimal phosphosite DE + kinase activity.
+- [ ] S4 mechanism report + integration.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -290,6 +295,17 @@ Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the user
   Cohesive-story finding #2 now says mutant tau's amyloid-response modulation is DAM-cell COMPOSITION, not
   supported progression/acceleration. Full `scripts/check.sh` rerun green (tests warn=2, force-render 52 chunks,
   tar_meta clean across 23 targets, render-log clean). Next = PLAN P3 by default, with user confirmation.
+- 2026-07-02 P3 OPENED -> `.agent/p3_mechanism_plan.md`. User confirmed default P3 (vs P4 reorder). Research =
+  repo/map/history + v1 archive mining + 2026 web/API sweep. Default plan = lean mechanism rebuild: RNA pathway/TF
+  + targeted NF-kB from existing pseudobulk targets, minimal 24M phosphosite DE solely for OmniPath kinase activity,
+  compact mechanism report. Explicitly OUT vs v1: CCC/topology/SCENIC/human/ledger bloat; P4 keeps full
+  cross-modality interpretation. Key S1 precondition = add/smoke-test `decoupleR`, `OmnipathR`, `fgsea`, `msigdbr`
+  under the repo lock; prefer direct mouse `OmnipathR::enzyme_substrate(organism=10090)` over v1's off-lock
+  `nichenetr` mapping, but fail loud on KSN coverage before analysis. CODEX-REVIEWED before commit (6 findings,
+  all accepted): project-local prior cache + prior hashes/counts; explicit KSN gene-symbol validation; live S1
+  KSN coverage against current phospho IDs; duplicate phosphosite collapse before decoupleR; run-order sensitivity
+  for genotype-blocked 24M phospho samples; NF-kB attenuation primary = negative `interaction`, with
+  `tau_in_nlgf` supportive only. Next = EXECUTE S1.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
