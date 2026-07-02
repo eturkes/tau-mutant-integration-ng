@@ -8,9 +8,9 @@ Increase visual evidence density without changing biological claims or breaking 
 
 Current source count = ~16 rendered figure chunks:
 `_synthesis` 1, `_qc` 3, `_microglia` 4, `_trajectory` 3, `_mechanism` 2,
-`_crossmodality` 3. Target = +20 to +26 additional figures, mostly atlas-style
-multi-panel plots, so final report lands near 36-42 figure chunks while the synthesis
-chapter stays answer-first.
+`_crossmodality` 3. Target = +20 to +26 additional figures, mostly inline
+multi-panel plots inside existing result chapters, so final report lands near 36-42
+figure chunks while the synthesis chapter stays answer-first.
 
 ## Research Digest
 
@@ -19,9 +19,9 @@ chapter stays answer-first.
   targets are small enough to support more plotting: `microglia_report` ~1.1MB,
   `trajectory_report` ~0.7MB, `mechanism_report` ~0.13MB, `crossmodality_report`
   ~0.16MB, `synthesis_report` ~45KB.
-- Data constraint: qmds must not load heavy Seurat/raw modality targets beyond the
-  existing QC exception. Any extra data extraction happens in targets, then qmd loads
-  compact atlas data only.
+- Data constraint: qmds load compact report/figure targets only, beyond the existing
+  QC exception. Any extra data extraction happens in targets, then qmds load compact
+  per-chapter figure data.
 - v1 mining: reuse visual idioms, not v1 claims. Good forms: DAM composition bars,
   interaction/null volcanoes, method/cross-modality concordance heatmaps, raw-vs-
   corrected phospho scatter, kinase/NF-kB signed heatmaps, clearance-pair lollipop/
@@ -29,8 +29,8 @@ chapter stays answer-first.
   NF-kB attenuation, progression/rate synergy, full CCC, SpatialDecon abundance.
 - Web/API check: Quarto supports figure cross-references with `fig` labels and warns
   against underscores in labels; Quarto HTML lightbox can improve large-figure reading;
-  `targets` dynamic branching exists, but a single compact atlas target is simpler for
-  this report; current `ggplot2` + `patchwork` is still the right local stack.
+  `targets` dynamic branching exists, but compact ordinary targets fit this report
+  better; current `ggplot2` + `patchwork` is still the right local stack.
 
 Sources consulted:
 - Quarto figures/crossrefs/lightbox:
@@ -43,27 +43,34 @@ Sources consulted:
   `https://ggplot2.tidyverse.org/news/index.html`,
   `https://patchwork.data-imaginist.com/articles/guides/layout.html`
 
-## Default Plan: Compact Figure Atlas
+## Selected Plan: Inline Chapter Expansion
 
-Add one new target-backed atlas chapter plus small helper infrastructure:
+S0 decision: user selected inline expansion on 2026-07-02. Add figures directly
+inside the existing report chapters, backed by compact per-chapter figure targets:
 
-- `R/figures.R`: pure figure-atlas data builders + small plotting helpers only where
+- `R/figures.R`: pure figure-data builders + small plotting helpers only where
   repeated grammar warrants it.
-- `_targets.R`: `figure_atlas` target, fed by compact/current analysis targets plus
-  selected moderate tables (`pb_de_*`, `mechanism_*`, `crossmodality_*`) as needed.
-  Output stays compact and qmd-safe; expected size target <5MB unless justified.
-- `_figures.qmd`: new included chapter, probably after `_synthesis.qmd` and before
-  `_qc.qmd`, titled "Evidence figure atlas". Minimal prose; captions carry the
-  interpretation. Existing P1-P4 chapters remain the audit trail.
-- `index.qmd`: include `_figures.qmd`; optionally enable Quarto `lightbox: auto` if
+- `_targets.R`: compact targets `microglia_figures`, `trajectory_figures`,
+  `mechanism_figures`, and `crossmodality_figures`; `synthesis_report` can feed the
+  synthesis evidence map directly unless a tiny `synthesis_figures` target proves
+  cleaner. Targets read compact report bundles and selected moderate summary tables
+  (`pb_de_*`, `mechanism_*`, `crossmodality_*`) as needed. Each target stays qmd-safe;
+  expected size <5MB unless justified.
+- `_synthesis.qmd`, `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`,
+  `_crossmodality.qmd`: add figure chunks close to their local interpretation.
+  Keep prose minimal; captions carry the added interpretation.
+- `index.qmd`: no new atlas include. Optionally enable Quarto `lightbox: auto` if
   the rendered offline HTML remains clean and usable.
-- `tests/test_figures.R`: schema/finite guards for every atlas data frame that feeds
-  a geom; reject missing anchors and figure-count drift.
+- `tests/test_figures.R`: schema/finite guards for every inline figure data frame
+  that feeds a geom; reject missing anchors and figure-count drift.
 
-Expected figures (+22 baseline, expandable):
+Expected figures (+25 baseline, expandable):
 
-1. Synthesis evidence map: claim x source-status tile from `synthesis_report`.
-2. Microglia genotype-faceted UMAP by substate.
+Synthesis:
+1. Evidence map: claim x source-status tile from `synthesis_report`.
+
+Microglia:
+2. Genotype-faceted UMAP by substate.
 3. UMAP score triptych: homeostatic / DAM / MHC-APC z.
 4. 16-unit substate composition bars by genotype_batch.
 5. Substate score distributions by genotype and substate.
@@ -71,15 +78,21 @@ Expected figures (+22 baseline, expandable):
 7. Whole-microglia volcano small multiples across all 5 contrasts.
 8. Substate DE fit/skip and min-cell audit figure.
 9. DAM/Homeostatic within-substate DE paired volcano or effect grid.
+
+Trajectory:
 10. Pseudotime density by genotype x substate.
 11. Unit-level mean pseudotime vs DAM fraction scatter, batch-labelled.
 12. Kitagawa channel forest across all 5 contrasts.
 13. Trajectory sensitivity/omitted-fraction audit.
+
+Mechanism:
 14. Project pathway heatmap by population x contrast.
 15. GO top-pathway dot plot by population/contrast.
 16. TF activity lollipop matrix, Myc and NF-kB family highlighted.
 17. NF-kB two-primary-row discordance tile, explicitly "not supported".
 18. Kinase activity/run-index heatmap, Gsk3b present-but-not-supported highlighted.
+
+Cross-modality:
 19. GeoMx volcano small multiples for focus contrasts.
 20. GeoMx blocked vs sensitivity support/loss figure.
 21. Bulk run-index loss/flip heatmap.
@@ -94,57 +107,66 @@ Expected figures (+22 baseline, expandable):
 ### S0 - Decision Gate
 
 Acceptance:
-- User chooses default atlas, inline expansion, publication-gallery, or a hybrid.
-- Plan revised if choice changes scope or figure budget.
+- DONE 2026-07-02: user chose inline expansion.
+- Plan revised from one atlas chapter to per-chapter inline figure targets; figure
+  budget remains +20 to +26.
 
-### S1 - Atlas Data Contract
+### S1 - Inline Figure Data Contract
 
 Work:
-- Add `R/figures.R::figure_atlas_data(...)` with compact, named slots:
-  `synthesis`, `microglia`, `trajectory`, `mechanism`, `crossmodality`.
-- Wire target `figure_atlas` after current report bundles and selected non-heavy
-  summary targets. Avoid raw modality / 612MB Seurat reads in qmd.
-- Add `tests/test_figures.R` with finite/geoms guards and explicit expected slots.
+- Add `R/figures.R` with compact builders:
+  `microglia_figure_data`, `trajectory_figure_data`, `mechanism_figure_data`,
+  `crossmodality_figure_data`; add `synthesis_figure_data` only if the direct
+  `synthesis_report` load becomes awkward.
+- Wire compact figure targets after current report bundles and selected non-heavy
+  summary targets. Qmds load these compact targets, never raw modality data or the
+  612MB Seurat object.
+- Add `tests/test_figures.R` with finite/geoms guards, expected slot names, and the
+  planned figure manifest by chapter.
 
 Acceptance:
-- Fresh `tar_make(figure_atlas)` warning-clean.
-- `figure_atlas` object size recorded and justified if >5MB.
-- Test proves no required figure slot is empty; geom-fed numeric columns finite or
-  intentionally handled with `na.rm` plus explicit prose.
+- Fresh `tar_make()` of the new figure targets warning-clean.
+- Each figure target object size recorded and justified if >5MB.
+- Test proves no required inline figure slot is empty; geom-fed numeric columns are
+  finite or intentionally handled with `na.rm` plus explicit caption/prose.
 
-### S2 - Microglia + Trajectory Atlas
+### S2 - Synthesis + Microglia Inline Figures
 
 Work:
-- Implement figures 2-13 in `_figures.qmd` or a `_figures_microglia.qmd` include.
-- Captions emphasise composition, under-powered interaction DE, and no supported
-  progression beyond composition.
+- Implement figures 1-9 in `_synthesis.qmd` and `_microglia.qmd`.
+- Captions emphasise composition, under-powered interaction DE, and P1/P5 claim
+  wording without changing the synthesis answer.
 
 Acceptance:
 - All figures render under `options(warn=2)`.
-- No new claim says "rate", "acceleration", "absence", or "progression synergy"
-  beyond the closed P2 wording.
-- At least 10 new figures visible in rendered report.
+- At least 8 new inline figures visible in rendered report.
+- Microglia captions keep the closed P1/P5 wording: robust amyloid-to-DAM activation,
+  DAM composition interaction, and under-powered interaction DE.
 
-### S3 - Mechanism Atlas
+### S3 - Trajectory + Mechanism Inline Figures
 
 Work:
-- Implement figures 14-18.
+- Implement figures 10-18 in `_trajectory.qmd` and `_mechanism.qmd`.
+- Captions state the trajectory result as composition, not supported progression
+  beyond composition.
 - Make unsupported mechanism evidence visible: Myc supported; NF-kB attenuation
   discordant/not supported; Gsk3b covered but not recovered; bulk kinase caveats
   explicit.
 
 Acceptance:
-- Figure captions derive status from `mechanism_report` / `figure_atlas`, not
-  hardcoded current margins.
+- Figure captions derive status from `trajectory_figures`, `mechanism_figures`, or
+  existing compact report targets, not hardcoded current margins.
+- No new claim says "rate", "acceleration", "absence", or "progression synergy"
+  beyond the closed P2 wording.
 - NF-kB and Gsk3b plots cannot be visually mistaken for positive support.
 - Render stays warning-clean.
 
-### S4 - Cross-Modality Atlas
+### S4 - Cross-Modality Inline Figures
 
 Work:
-- Implement figures 19-26.
+- Implement figures 19-26 in `_crossmodality.qmd`.
 - Pull only compact/prepared data into qmd; any raw/corrected phospho scatter prep
-  happens in `figure_atlas_data`, not in the qmd.
+  happens in `crossmodality_figure_data`, not in the qmd.
 
 Acceptance:
 - GeoMx repeated-AOI/blocking, SpatialDecon defer, no full CCC, bulk-not-
@@ -166,22 +188,19 @@ Work:
 Acceptance:
 - `scripts/check.sh` green.
 - Final report has +20 or more new figure chunks and no stale "figure atlas open"
-  wording.
+  or "atlas chapter" wording.
 - Close-out review accepts/fixes correctness, claim-honesty, and render-risk issues.
 
-## Alternatives
+## Alternatives Not Selected
 
-### Alternative A - Inline Chapter Expansion
+### Alternative A - Compact Figure Atlas
 
-Add figures directly inside `_microglia`, `_trajectory`, `_mechanism`, and
-`_crossmodality`.
+Add one target-backed `_figures.qmd` chapter after synthesis and before QC.
 
-Pros: each figure appears next to its local interpretation; fewer section jumps.
-Cons: chapters become long and harder to scan; more chances to disturb polished
-P1-P5 prose; repeated setup code unless helper discipline is strict.
+Pros: easiest to keep P1-P5 prose untouched; concentrated visual appendix.
+Cons: more section jumping; less local context for each figure.
 
-Choose if the report should read like a full results manuscript rather than a lean
-answer plus atlas.
+Choose later only if inline chapters become unwieldy during S2-S4.
 
 ### Alternative B - Prebuilt Publication Gallery
 

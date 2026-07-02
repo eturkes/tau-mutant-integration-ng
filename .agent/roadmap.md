@@ -33,9 +33,10 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Figure expansion [OPEN -> `.agent/figure_expansion_plan.md`]
 Goal = add many more final-report figures while preserving the closed P1-P5 claims
-and cheap-render gate. Decision gate is first: user chooses default atlas vs
-alternatives before implementation. Next `$session-prompt` mode = EXECUTE S0
-(record choice / revise plan if needed).
+and cheap-render gate. Route = inline chapter expansion: add compact per-chapter
+figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
+`_trajectory.qmd`, `_mechanism.qmd`, and `_crossmodality.qmd`. Next
+`$session-prompt` mode = EXECUTE S1 (inline figure data contract).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -441,6 +442,9 @@ alternatives before implementation. Next `$session-prompt` mode = EXECUTE S0
   additional figures; keep existing P1-P5 claims closed and synthesis answer-first. Alternatives recorded for inline
   chapter expansion, prebuilt publication gallery, or schematic-first expansion. Next = S0 user-choice gate before
   implementation.
+- 2026-07-02 Figure expansion S0 DONE: user chose inline chapter expansion. Revised
+  plan away from a standalone atlas chapter toward compact per-chapter figure targets
+  plus inline qmd additions; figure budget stays +20-26. Next = S1 data contract.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
