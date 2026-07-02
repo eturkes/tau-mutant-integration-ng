@@ -140,6 +140,13 @@ list(
   tar_target(kinase_activity, run_kinase_activity(phospho_de_24m), format = "qs"),
   tar_target(kinase_mechanism_summary, build_kinase_mechanism_summary(kinase_activity), format = "qs"),
 
+  # S4 report bundle. Selects compact TF/pathway/NF-kB/kinase highlights plus P1/P2
+  # anchors for synthesis. No heavy Seurat object is read or stored.
+  tar_target(mechanism_report, mechanism_report_data(mechanism_tf, mechanism_pathway,
+                                                     nfkb_attenuation, kinase_mechanism_summary,
+                                                     composition_results, trajectory_report),
+             format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

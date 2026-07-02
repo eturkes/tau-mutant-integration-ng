@@ -1269,3 +1269,190 @@ build_kinase_mechanism_summary <- function(kinase_activity, kinase = "Gsk3b",
                       rule = "primary significant kinases plus explicit Gsk3b row per contrast")
   )
 }
+
+# ---- P3-S4: compact mechanism report data ---------------------------------------------
+
+.require_cols <- function(x, cols, label) {
+  stopifnot(is.data.frame(x))
+  missing <- setdiff(cols, names(x))
+  if (length(missing)) {
+    stop(label, " missing columns: ", paste(missing, collapse = ", "), call. = FALSE)
+  }
+  TRUE
+}
+
+.top_n_by_group <- function(x, keys, n = 8L, score_col = "score",
+                            fdr_col = "fdr", label_col = NULL) {
+  stopifnot(is.data.frame(x), all(keys %in% names(x)), score_col %in% names(x),
+            fdr_col %in% names(x), n >= 1L)
+  if (!nrow(x)) return(x)
+  key <- interaction(x[keys], drop = TRUE, lex.order = TRUE)
+  rows <- lapply(split(x, key), function(d) {
+    tie <- if (!is.null(label_col) && label_col %in% names(d)) d[[label_col]] else seq_len(nrow(d))
+    ord <- order(d[[fdr_col]], -abs(d[[score_col]]), tie,
+                 method = "radix", na.last = TRUE)
+    d[head(ord, n), , drop = FALSE]
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+.dedupe_report_rows <- function(x, keys) {
+  stopifnot(is.data.frame(x), all(keys %in% names(x)))
+  x[!duplicated(x[keys]), , drop = FALSE]
+}
+
+mechanism_report_data <- function(mechanism_tf, mechanism_pathway, nfkb_attenuation,
+                                  kinase_mechanism_summary, composition_results,
+                                  trajectory_report, tf_top_n = 10L, go_top_n = 6L,
+                                  alpha = 0.10) {
+  stopifnot(is.list(mechanism_tf), is.list(mechanism_pathway), is.list(nfkb_attenuation),
+            is.list(kinase_mechanism_summary), is.list(composition_results),
+            is.list(trajectory_report))
+  tf <- mechanism_tf$activity
+  pathway <- mechanism_pathway$pathway
+  nfkb <- nfkb_attenuation$table
+  kinase <- kinase_mechanism_summary$table
+  comp <- composition_results$propeller_logit
+  traj <- trajectory_report$interaction
+
+  .require_cols(tf, c("population", "population_type", "source", "contrast", "score",
+                      "p_value", "fdr"), "mechanism_tf$activity")
+  .require_cols(pathway, c("population", "population_type", "collection", "pathway",
+                           "contrast", "NES", "pval", "padj", "size",
+                           "p_floor_warning", "fdr"), "mechanism_pathway$pathway")
+  .require_cols(nfkb, c("population", "population_type", "contrast", "test", "score",
+                        "p_value", "detail", "primary_test", "supportive_only",
+                        "primary_family_fdr"), "nfkb_attenuation$table")
+  .require_cols(kinase, c("source", "contrast", "score", "p_value", "fdr",
+                          "significant", "include_reason", "run_index_score",
+                          "run_index_fdr", "run_index_supports",
+                          "run_order_confounded"), "kinase_mechanism_summary$table")
+  .require_cols(comp, c("method", "contrast", "substate", "prop_ratio", "t",
+                        "p_value", "fdr_global"), "composition_results$propeller_logit")
+  .require_cols(traj, c("family", "measure", "coef", "p_value", "ci_l", "ci_r",
+                        "perm_p", "fdr"), "trajectory_report$interaction")
+
+  contrasts <- mechanism_contrasts()
+  populations <- intersect(c("whole_microglia", "DAM", "Homeostatic"), unique(tf$population))
+  stopifnot(length(populations) >= 1L)
+
+  project_pathway <- pathway[pathway$collection == "project" &
+                               pathway$population %in% populations &
+                               pathway$contrast %in% contrasts, , drop = FALSE]
+  project_pathway <- project_pathway[order(match(project_pathway$population, populations),
+                                           match(project_pathway$contrast, contrasts),
+                                           project_pathway$pathway,
+                                           method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(project_pathway) <- NULL
+
+  go_pool <- pathway[pathway$collection != "project" &
+                       pathway$population %in% populations &
+                       pathway$contrast %in% contrasts, , drop = FALSE]
+  go_top <- .top_n_by_group(go_pool, c("population", "contrast", "collection"),
+                            n = go_top_n, score_col = "NES",
+                            fdr_col = "padj", label_col = "pathway")
+
+  tf_pool <- tf[tf$population %in% populations & tf$contrast %in% contrasts, , drop = FALSE]
+  tf_top <- .top_n_by_group(tf_pool, c("population", "contrast"),
+                            n = tf_top_n, score_col = "score",
+                            fdr_col = "fdr", label_col = "source")
+  tf_top$selection <- if (nrow(tf_top)) "top" else character()
+  nfkb_sources <- as.character(nfkb_attenuation$provenance$nfkb_sources %||% character())
+  key_sources <- sort(unique(c("Myc", "Mycn", "Mycl", "Creb1", "Jun", "Junb", "Jund",
+                               "Fos", "Fosb", "Spi1", "NFKB", "Nfkb1", "Nfkb2",
+                               "Rel", "Rela", "Relb", nfkb_sources)), method = "radix")
+  tf_key <- tf_pool[tf_pool$source %in% key_sources, , drop = FALSE]
+  tf_key$selection <- if (nrow(tf_key)) "key" else character()
+  tf_highlights <- .dedupe_report_rows(rbind(tf_top, tf_key),
+                                       c("population", "contrast", "source"))
+  tf_highlights <- tf_highlights[order(match(tf_highlights$population, populations),
+                                       match(tf_highlights$contrast, contrasts),
+                                       tf_highlights$fdr, -abs(tf_highlights$score),
+                                       tf_highlights$source,
+                                       method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(tf_highlights) <- NULL
+
+  composition_anchor <- comp[comp$contrast %in% contrasts &
+                               comp$substate %in% c("Homeostatic", "DAM"), , drop = FALSE]
+  composition_anchor <- composition_anchor[order(match(composition_anchor$contrast, contrasts),
+                                                 composition_anchor$substate,
+                                                 method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(composition_anchor) <- NULL
+
+  trajectory_anchor <- traj[traj$measure %in% c("mean_pt", "comp_cf", "progression_cf",
+                                                "within_homeostatic", "within_dam"), , drop = FALSE]
+  trajectory_anchor <- trajectory_anchor[order(match(trajectory_anchor$measure,
+                                                     c("mean_pt", "comp_cf", "progression_cf",
+                                                       "within_homeostatic", "within_dam")),
+                                               method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(trajectory_anchor) <- NULL
+
+  coverage <- kinase_mechanism_summary$coverage
+  stopifnot(is.list(coverage), is.list(coverage$gsk3b))
+  kinase_coverage <- list(
+    n_phospho_sites = coverage$n_phospho_sites,
+    n_matched_sites = coverage$n_matched_sites,
+    n_matched_edges = coverage$n_matched_edges,
+    kinases_passing_minsize = coverage$kinases_passing_minsize,
+    minsize = coverage$minsize,
+    gsk3b = coverage$gsk3b,
+    top_matched = coverage$top_matched
+  )
+
+  out <- list(
+    pathway_project = project_pathway,
+    pathway_go_top = go_top,
+    tf_highlights = tf_highlights,
+    nfkb = list(table = nfkb, verdict = nfkb_attenuation$verdict,
+                provenance = nfkb_attenuation$provenance),
+    kinase = list(table = kinase, coverage = kinase_coverage,
+                  provenance = kinase_mechanism_summary$provenance),
+    composition_anchor = composition_anchor,
+    trajectory_anchor = trajectory_anchor,
+    trajectory_provenance = trajectory_report$provenance[c("composition_loading",
+                                                           "progression_loading",
+                                                           "cross_loading")],
+    skipped = list(tf = mechanism_tf$skipped,
+                   pathway = mechanism_pathway$skipped,
+                   nfkb = nfkb_attenuation$skipped),
+    provenance = list(
+      alpha = alpha,
+      populations = populations,
+      contrasts = contrasts,
+      tf_top_n = tf_top_n,
+      go_top_n = go_top_n,
+      pathway_warning_calls = nrow(mechanism_pathway$warnings %||% .empty_df("warning")),
+      report_contract = paste(
+        "compact highlights only; no microglia_annotated or heavy Seurat object",
+        "is bundled"
+      )
+    )
+  )
+
+  stopifnot(nrow(out$pathway_project) > 0L,
+            nrow(out$pathway_go_top) > 0L,
+            nrow(out$tf_highlights) > 0L,
+            any(out$tf_highlights$source == "Myc" &
+                  out$tf_highlights$population == "whole_microglia" &
+                  out$tf_highlights$contrast == "interaction"),
+            nrow(out$nfkb$table[out$nfkb$table$primary_test %in% TRUE, , drop = FALSE]) == 2L,
+            all(contrasts %in% out$kinase$table$contrast[out$kinase$table$source == "Gsk3b"]),
+            any(out$composition_anchor$contrast == "interaction" &
+                  out$composition_anchor$substate == "DAM"),
+            all(c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic") %in%
+                  out$trajectory_anchor$measure),
+            is.finite(out$kinase$coverage$n_matched_sites),
+            isTRUE(out$kinase$coverage$gsk3b$source_present),
+            isTRUE(out$kinase$coverage$gsk3b$passes_minsize))
+  stopifnot(all(is.finite(out$tf_highlights$score)),
+            all(is.finite(out$tf_highlights$p_value)),
+            all(is.finite(out$tf_highlights$fdr)),
+            all(is.finite(out$pathway_project$NES)),
+            all(is.finite(out$pathway_project$padj)),
+            all(is.finite(out$trajectory_anchor$coef)),
+            all(is.finite(out$trajectory_anchor$p_value)),
+            all(is.finite(out$trajectory_anchor$fdr)))
+  out
+}

@@ -147,6 +147,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       then max |t|, then original row. run_kinase_activity loads drift-gated KSN, gates coverage, runs decoupleR ULM
       for primary + run-index fits; build_kinase_mechanism_summary keeps significant kinases plus Gsk3b on every
       contrast with run-index support/confounding columns.
+   + (P3-S4) mechanism.R: mechanism_report_data (-> mechanism_report target) -- bundles compact S2/S3 mechanism
+      results + P1/P2 anchors into one ~26KB report object: project gene-set rows + top GO survey rows + TF
+      highlights (top rows plus key Myc/NF-kB/v1 candidates) + NF-kB gate table/verdict + kinase summary/coverage
+      + DAM composition interaction + trajectory composition/progression anchors. Guard layer checks required cols
+      and build-fatal chapter anchors (Myc whole interaction, 2 NF-kB primary rows, Gsk3b all contrasts, DAM
+      composition interaction, trajectory anchors). No heavy Seurat object.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -179,6 +185,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        phospho_de_24m      <- run_phospho_de_24m(phospho, sample_key)  # minimal 24M bulk phosphosite limma-trend DE; no batch; run-index sensitivity stored
        kinase_activity     <- run_kinase_activity(phospho_de_24m)  # decoupleR ULM over direct-mouse KSN; KSN coverage gate + primary/run-index activity tables
        kinase_mechanism_summary <- build_kinase_mechanism_summary(kinase_activity)  # significant kinases + explicit Gsk3b rows with run-index support flags
+       mechanism_report    <- mechanism_report_data(mechanism_tf, mechanism_pathway, nfkb_attenuation, kinase_mechanism_summary, composition_results, trajectory_report)  # S4: one compact report object (~26KB) for _mechanism.qmd; no heavy Seurat
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -194,6 +201,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 glmmTMB supportive + score-axis concordance + 5 caveats/provenance; headline = synergy adds DAM
                 cells, no supported further-advance; inference numbers inline-computed from trajectory_report, never
                 hardcoded [fixed design constants -- resid df, sensitivity dims -- stated as text])
+                                                          --{{< include >}}--> `_mechanism.qmd`
+               (P3 mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load mechanism_report [ONE
+                compact target] -> pathway survey + TF activity + NF-kB attenuation gate + Gsk3b/kinase support +
+                synthesis/caveats. Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered;
+                kinase caveat = 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 
 ### Tests (S3; gate-wired at S5)
@@ -217,13 +229,14 @@ from project root: `Rscript tests/test_<x>.R`.
                     tau_in_nlgf-supportive-only / discordant / supported attenuation rules; (P3-S3) 16-column
                     phospho match + log2 nonpositive guard + site-id/drop counts + add_batch=FALSE design +
                     run-index sensitivity design + duplicate biological-site collapse + KSN coverage gate +
-                    explicit Gsk3b summary carry-through
+                    explicit Gsk3b summary carry-through; (P3-S4) mechanism_report_data compact bundle shape +
+                    top-row capping + no heavy cell_frame + fail-loud dropped Myc/Gsk3b/trajectory anchors
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
   1. `rv sync` + `uv sync`  2. loop `tests/test_*.R` (each `options(warn=2)` -> stray warnings = errors)
   3. FORCE-render report (`tar_invalidate(any_of("report")); tar_make()`, tee'd to a log, `if !`-wrapped) ->
-     two render-time catches in the SOURCES: every section qmd (`_qc.qmd`, `_microglia.qmd`) setup `options(warn=2)`
+     two render-time catches in the SOURCES: every included `_*.qmd` setup `options(warn=2)`
      (R chunk warning -> render error) + `_targets.R` `tar_quarto(quiet=FALSE)` (Quarto/Pandoc `[WARNING]` -> log)
   4. enforce zero-fault: (a) `tar_meta(error,warnings)` all-NA scoped to manifest names + dynamic branches;
      (b) anchored render-log grep (`^[WARNING]`/`^Warning:`/...), exit 0=fault / 1=clean / >=2=infra.
@@ -232,7 +245,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh | AGENTS.md .agents/skills/** .codex/prompts/*.md
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + read-economy skip);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

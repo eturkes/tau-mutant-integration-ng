@@ -235,7 +235,7 @@ minsize>=5 / Gsk3b covered with 169 sites. Gsk3b is not significant for interact
 tau_in_nlgf primary kinase hits weaken under run-index adjustment, so S4 must keep the bulk
 hippocampus + genotype-blocked run-order caveats explicit. Full `scripts/check.sh` green.
 
-### S4 - Mechanism report + integration
+### S4 - Mechanism report + integration [DONE 2026-07-02]
 Add:
 - `mechanism_report_data(tf, pathway, nfkb, kinase, composition_results, trajectory_report)` -> compact
   target `mechanism_report`.
@@ -254,6 +254,15 @@ Acceptance:
 - `mechanism_report` is compact (<5MB expected) and qmd never loads `microglia_annotated`.
 - Full `scripts/check.sh` green.
 - Adversarial review run on uncommitted P3 work; accepted findings fixed before S4 commit.
+
+Outcome note: built `mechanism_report_data`, target `mechanism_report`, and `_mechanism.qmd`
+included after `_trajectory.qmd`. The report target is compact (~26KB) and guards the rows the
+chapter consumes (Myc, NF-kB primary rows, Gsk3b all contrasts, composition/trajectory anchors).
+Live interpretation: Myc is the strongest rebuilt interaction TF signal; the NF-kB attenuation
+gate is discordant/not supported; Gsk3b is covered but not significant for interaction or
+tau_in_nlgf; tau_in_nlgf kinase hits remain hypothesis-generating because run-index sensitivity
+weakens them. Full `scripts/check.sh` green (64 render chunks, ~3.82MB, tar_meta/render-log
+clean).
 
 ## Close-Out
 After S4:

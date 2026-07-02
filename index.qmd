@@ -24,10 +24,14 @@ the single-nucleus microglia carry a complete genotype-by-batch design. The micr
 then carries the first phase of the story - how amyloid reshapes the microglial population. The
 trajectory chapter orders those same nuclei along an activation axis and finds the tau-amyloid
 synergy expressed mainly as more disease-associated cells rather than as cells advancing further
-along it, with the spatial, proteomic and phosphoproteomic modalities to follow.
+along it. The mechanism chapter then tests targeted RNA TF/pathway and bulk-phosphosite kinase
+signals beneath that compositional response, with the spatial, proteomic and broader
+phosphoproteomic modalities to follow.
 
 {{< include _qc.qmd >}}
 
 {{< include _microglia.qmd >}}
 
 {{< include _trajectory.qmd >}}
+
+{{< include _mechanism.qmd >}}

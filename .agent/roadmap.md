@@ -30,13 +30,13 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P3 Mechanism
 Plan: `.agent/p3_mechanism_plan.md` (opened 2026-07-02 after user confirmed default P3).
-Next `$session-prompt` mode = EXECUTE: implement S4.
+Next `$session-prompt` mode = CLOSE-OUT.
 
 Steps:
 - [x] S1 dependencies + API contracts.
 - [x] S2 RNA pathway + TF + NF-kB targets.
 - [x] S3 minimal phosphosite DE + kinase activity.
-- [ ] S4 mechanism report + integration.
+- [x] S4 mechanism report + integration.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -338,6 +338,13 @@ Steps:
   tau_in_nlgf primary kinases (CAMK-family etc.) pass FDR<0.10 but weaken under run-index adjustment -> S4 must carry
   the bulk/not-microglia + genotype-blocked run-order caveats. Full `scripts/check.sh` green (31 current
   targets/branches; force-render report clean). Next = S4 report + integration.
+- 2026-07-02 P3-S4 DONE -> mechanism report + integration: `mechanism_report_data` bundles compact pathway/TF/NF-kB/
+  kinase highlights plus P1/P2 anchors into `mechanism_report` (~26KB; no heavy Seurat), `_mechanism.qmd` included after
+  trajectory. Live report read: Myc is the strongest rebuilt interaction TF signal; NF-kB attenuation gate is discordant
+  and unsupported; Gsk3b is covered but not significant in interaction/tau_in_nlgf; tau_in_nlgf kinase hits weaken under
+  run-index sensitivity, so the bulk hippocampus/not-microglia + genotype-blocked run-order caveats are explicit. Full
+  `scripts/check.sh` green (64 render chunks, report ~3.82MB, tar_meta/render-log clean). Self-review accepted/fixed
+  2 lows: Myc-specific wording (not Myc-family) + zero-row TF-top selection edge case. Next = CLOSE-OUT.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

@@ -494,6 +494,20 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (e.g. CAMK-family), but run-index adjustment weakens them -> S4 must report run-order sensitivity plainly and avoid
   mechanism over-claiming from the genotype-blocked 24M bulk phospho order.
 
+## Mechanism report (P3-S4, built) -- `_mechanism.qmd` + `R/mechanism.R::mechanism_report_data` -> `mechanism_report`
+- CHEAP-RENDER INVARIANT: `_mechanism.qmd` tar_loads only `mechanism_report` (~26KB), which selects compact
+  pathway/TF/NF-kB/kinase highlights plus P1/P2 anchors. It never bundles `microglia_annotated` or any heavy Seurat
+  object; full gate = 64 render chunks, report ~3.82MB, tar_meta/render-log clean.
+- Extractor guard-bar mirrors earlier report targets: required columns checked up front; build-fatal anchors =
+  Myc whole-microglia interaction TF row, exactly two NF-kB primary rows, Gsk3b rows for all canonical contrasts,
+  DAM composition interaction, and trajectory {mean_pt, comp_cf, progression_cf, within_homeostatic}. A dropped
+  anchor fails in `mechanism_report_data`, not later as malformed prose/plotting.
+- Live interpretation (qualitative, keep margins inline-computed from target): Myc is the strongest rebuilt
+  tau-amyloid interaction TF signal; the NF-kB attenuation gate is discordant/not supported; Gsk3b is covered by KSN
+  and phosphosite data but not significant for interaction or tau_in_nlgf; tau_in_nlgf kinase hits are
+  hypothesis-generating because additive run-index sensitivity weakens them. Kinase prose MUST keep "24M bulk
+  hippocampus, not microglia-sorted" + genotype-blocked run-order caveats.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

@@ -336,4 +336,146 @@ stopifnot(is.data.frame(ksum$table),
           any(ksum$table$source == "Other" & ksum$table$include_reason == "significant"),
           !any(ksum$table$run_order_confounded[ksum$table$source == "Gsk3b"], na.rm = TRUE))
 
+# --- P3-S4 compact mechanism report bundle ---------------------------------------------
+s4_pops <- c("whole_microglia", "DAM", "Homeostatic")
+s4_sources <- c("Myc", "Nfkb1", "Rela", "Tbp", paste0("Other", 1:6))
+s4_tf_grid <- expand.grid(population = s4_pops, contrast = canonical, source = s4_sources,
+                          stringsAsFactors = FALSE)
+s4_tf_grid$population_type <- ifelse(s4_tf_grid$population == "whole_microglia", "whole", "substate")
+s4_tf_grid$statistic <- "ulm"
+s4_tf_grid$score <- seq(-2, 2, length.out = nrow(s4_tf_grid))
+s4_tf_grid$p_value <- seq(0.001, 0.2, length.out = nrow(s4_tf_grid))
+s4_tf_grid$direction <- s4_tf_grid$score
+s4_tf_grid$method <- "ulm"
+s4_tf_grid$has_consensus <- FALSE
+s4_tf_grid$fdr <- pmin(1, s4_tf_grid$p_value * 2)
+s4_tf_grid$score[s4_tf_grid$population == "whole_microglia" &
+                   s4_tf_grid$contrast == "interaction" &
+                   s4_tf_grid$source == "Myc"] <- -6
+s4_tf_grid$p_value[s4_tf_grid$population == "whole_microglia" &
+                     s4_tf_grid$contrast == "interaction" &
+                     s4_tf_grid$source == "Myc"] <- 1e-8
+s4_tf_grid$fdr[s4_tf_grid$population == "whole_microglia" &
+                 s4_tf_grid$contrast == "interaction" &
+                 s4_tf_grid$source == "Myc"] <- 1e-6
+s4_tf <- list(activity = s4_tf_grid,
+              skipped = .empty_df(c("population", "population_type", "status", "n_cells", "reason")),
+              provenance = list(minsize = 5L))
+
+s4_sets <- c("DAM", "Homeostatic", "NFkB_Activated_Targets", "NFkB_Repressed_Targets")
+s4_project <- expand.grid(population = s4_pops, contrast = canonical, pathway = s4_sets,
+                          stringsAsFactors = FALSE)
+s4_project$population_type <- ifelse(s4_project$population == "whole_microglia", "whole", "substate")
+s4_project$collection <- "project"
+s4_project$NES <- seq(-1.5, 2.5, length.out = nrow(s4_project))
+s4_project$pval <- seq(0.001, 0.05, length.out = nrow(s4_project))
+s4_project$padj <- pmin(1, s4_project$pval * 2)
+s4_project$log2err <- 0.1
+s4_project$ES <- s4_project$NES / 2
+s4_project$size <- 10L
+s4_project$p_floor_warning <- FALSE
+s4_project$direction <- s4_project$NES
+s4_project$p_value <- s4_project$pval
+s4_project$fdr <- s4_project$padj
+s4_go <- expand.grid(population = s4_pops, contrast = canonical,
+                     collection = c("GO_BP", "GO_CC"),
+                     pathway = paste0("GO_SET_", 1:8), stringsAsFactors = FALSE)
+s4_go$population_type <- ifelse(s4_go$population == "whole_microglia", "whole", "substate")
+s4_go$NES <- seq(-3, 3, length.out = nrow(s4_go))
+s4_go$pval <- seq(0.001, 0.2, length.out = nrow(s4_go))
+s4_go$padj <- pmin(1, s4_go$pval * 2)
+s4_go$log2err <- 0.1
+s4_go$ES <- s4_go$NES / 2
+s4_go$size <- 30L
+s4_go$p_floor_warning <- FALSE
+s4_go$direction <- s4_go$NES
+s4_go$p_value <- s4_go$pval
+s4_go$fdr <- s4_go$padj
+s4_pathway <- list(pathway = rbind(s4_project[names(s4_go)], s4_go),
+                   skipped = s4_tf$skipped,
+                   warnings = .empty_df(c("population", "collection", "contrast", "warning")),
+                   provenance = list(go_max_size = 500L))
+
+s4_nfkb_table <- data.frame(
+  population = c("whole_microglia", "whole_microglia", "DAM", "DAM"),
+  population_type = c("whole", "whole", "substate", "substate"),
+  contrast = c("interaction", "interaction", "tau_in_nlgf", "tau_in_nlgf"),
+  test = c("tf_family", "target_gsea", "tf_family", "target_gsea"),
+  score = c(2, -2, -1, -1),
+  p_value = c(0.02, 0.03, 0.2, 0.2),
+  raw_p_value = c(0.02, 0.03, 0.2, 0.2),
+  direction = c(2, -2, -1, -1),
+  n_sources = c(2L, NA_integer_, 2L, NA_integer_),
+  detail = c("Nfkb1", "NFkB_Activated_Targets", "Nfkb1", "NFkB_Activated_Targets"),
+  family_members = "Nfkb1;Rela",
+  pathway_fdr = c(NA, 0.03, NA, 0.2),
+  size = c(NA_integer_, 10L, NA_integer_, 10L),
+  p_floor_warning = FALSE,
+  primary_test = c(TRUE, TRUE, FALSE, FALSE),
+  supportive_only = c(FALSE, FALSE, TRUE, TRUE),
+  primary_family_fdr = c(0.03, 0.03, NA, NA),
+  stringsAsFactors = FALSE
+)
+s4_nfkb <- list(table = s4_nfkb_table,
+                verdict = list(alpha = 0.10, status = "discordant", supported = FALSE),
+                skipped = s4_tf$skipped,
+                provenance = list(nfkb_sources = c("Nfkb1", "Rela"), alpha = 0.10))
+
+s4_cov <- list(n_phospho_sites = 1000L, n_matched_edges = 300L, n_matched_sites = 200L,
+               kinases_passing_minsize = 60L, minsize = 5L,
+               gsk3b = list(source_present = TRUE, matched_sites = 8L, passes_minsize = TRUE),
+               top_matched = data.frame(source = "Gsk3b", n_sites = 8L, stringsAsFactors = FALSE))
+s4_ksum <- ksum
+s4_ksum$coverage <- s4_cov
+
+s4_comp <- list(propeller_logit = expand.grid(method = "propeller_logit",
+                                              contrast = canonical,
+                                              substate = c("Homeostatic", "DAM"),
+                                              stringsAsFactors = FALSE))
+s4_comp$propeller_logit$prop_ratio <- 1.2
+s4_comp$propeller_logit$t <- 2
+s4_comp$propeller_logit$p_value <- 0.02
+s4_comp$propeller_logit$fdr_global <- 0.05
+
+s4_traj <- list(
+  interaction = data.frame(
+    family = c("exploratory", "exploratory", "primary", "primary", "exploratory"),
+    measure = c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic", "within_dam"),
+    coef = c(2, 2.5, -1, -1.5, 0.2),
+    se = 1, t = c(2, 2.5, -1, -1.5, 0.2), df = 9,
+    p_value = c(0.04, 0.01, 0.2, 0.3, 0.8),
+    ci_l = c(0.1, 0.5, -3, -4, -1),
+    ci_r = c(4, 4.5, 1, 1, 1.4),
+    perm_p = c(0.04, NA, 0.2, 0.3, NA),
+    fdr = c(0.10, 0.03, 0.4, 0.4, 0.8),
+    stringsAsFactors = FALSE),
+  provenance = list(composition_loading = 1.2, progression_loading = -0.4, cross_loading = 0.2)
+)
+
+s4_report <- mechanism_report_data(s4_tf, s4_pathway, s4_nfkb, s4_ksum, s4_comp, s4_traj,
+                                   tf_top_n = 3L, go_top_n = 2L)
+stopifnot(is.list(s4_report),
+          all(c("pathway_project", "pathway_go_top", "tf_highlights", "nfkb",
+                "kinase", "composition_anchor", "trajectory_anchor") %in% names(s4_report)),
+          nrow(s4_report$pathway_go_top) <= length(s4_pops) * length(canonical) * 2L * 2L,
+          any(s4_report$tf_highlights$source == "Myc" &
+                s4_report$tf_highlights$population == "whole_microglia" &
+                s4_report$tf_highlights$contrast == "interaction"),
+          all(canonical %in% s4_report$kinase$table$contrast[s4_report$kinase$table$source == "Gsk3b"]),
+          !("cell_frame" %in% names(s4_report)),
+          s4_report$kinase$coverage$gsk3b$matched_sites == 8L)
+
+s4_tf_bad <- s4_tf
+s4_tf_bad$activity <- s4_tf_bad$activity[!(s4_tf_bad$activity$population == "whole_microglia" &
+                                             s4_tf_bad$activity$contrast == "interaction" &
+                                             s4_tf_bad$activity$source == "Myc"), , drop = FALSE]
+expect_error(mechanism_report_data(s4_tf_bad, s4_pathway, s4_nfkb, s4_ksum, s4_comp, s4_traj), "Myc")
+s4_ksum_bad <- s4_ksum
+s4_ksum_bad$table <- s4_ksum_bad$table[!(s4_ksum_bad$table$source == "Gsk3b" &
+                                           s4_ksum_bad$table$contrast == "interaction"), , drop = FALSE]
+expect_error(mechanism_report_data(s4_tf, s4_pathway, s4_nfkb, s4_ksum_bad, s4_comp, s4_traj), "contrasts")
+s4_traj_bad <- s4_traj
+s4_traj_bad$interaction <- s4_traj_bad$interaction[s4_traj_bad$interaction$measure != "comp_cf", , drop = FALSE]
+expect_error(mechanism_report_data(s4_tf, s4_pathway, s4_nfkb, s4_ksum, s4_comp, s4_traj_bad), "comp_cf")
+
 cat("ok - test_mechanism\n")
