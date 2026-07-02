@@ -141,10 +141,14 @@ Work:
   wording without changing the synthesis answer.
 
 Acceptance:
-- All figures render under `options(warn=2)`.
-- At least 8 new inline figures visible in rendered report.
-- Microglia captions keep the closed P1/P5 wording: robust amyloid-to-DAM activation,
-  DAM composition interaction, and under-powered interaction DE.
+- DONE 2026-07-02: `_synthesis.qmd` adds the evidence-map figure from
+  `synthesis_report`; `_microglia.qmd` adds the 8 planned microglia figures from
+  `microglia_figures`.
+- Forced report render warning-clean under `options(warn=2)`; report chunks now
+  include the 9 S2 `fig-*` labels.
+- Captions preserve closed wording: robust amyloid-to-DAM activation, DAM
+  composition interaction, under-powered interaction DE, and composition not
+  progression beyond composition.
 
 ### S3 - Trajectory + Mechanism Inline Figures
 

@@ -36,7 +36,7 @@ Goal = add many more final-report figures while preserving the closed P1-P5 clai
 and cheap-render gate. Route = inline chapter expansion: add compact per-chapter
 figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
 `_trajectory.qmd`, `_mechanism.qmd`, and `_crossmodality.qmd`. Next
-`$session-prompt` mode = EXECUTE S2 (synthesis + microglia inline figures).
+`$session-prompt` mode = EXECUTE S3 (trajectory + mechanism inline figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -452,6 +452,15 @@ figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
   crossmodality 0.514MB). Heavy plot shapes are pre-binned/top-row compressed
   (volcanoes, GeoMx, raw-vs-corrected phospho) so qmds can stay compact. Next = S2
   synthesis + microglia inline figures.
+- 2026-07-02 Figure expansion S2 DONE -> `_synthesis.qmd` + `_microglia.qmd`
+  inline visual-density pass. Added 9 labelled `fig-*` chunks: synthesis
+  claim-source evidence map plus 8 microglia figures (genotype-faceted UMAP,
+  score triptych/distributions, 16-unit composition, composition concordance,
+  all-contrast whole-MG volcanoes, substate fit audit, within-substate DE counts).
+  Forced report render warning-clean (106 chunks). Claims unchanged: robust
+  amyloid-to-DAM activation, DAM composition interaction, under-powered
+  interaction DE, and no supported progression beyond composition. Next = S3
+  trajectory + mechanism inline figures.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

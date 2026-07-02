@@ -253,15 +253,18 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_synthesis.qmd`
                (P5 synthesis chapter, {#sec-synthesis}: setup `options(warn=2)`; tar_load synthesis_report [ONE
-                compact target] -> answer-first paragraph + status-count figure + compact evidence table +
-                unsupported/unearned paragraph; no heavy target reads, no ledger scoring)
+                compact target] -> answer-first paragraph + status-count figure + S2 claim-source evidence map +
+                compact evidence table + unsupported/unearned paragraph; no heavy target reads, no ledger scoring)
                                                           --{{< include >}}--> `_qc.qmd`
                (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
                 modalities + sample_key -> dims, 16x16 design bijection, bounds)
                                                           --{{< include >}}--> `_microglia.qmd`
                (P1 microglia chapter: setup `options(warn=2)`; tar_load microglia_report + composition_results +
-                pb_de_microglia + pb_de_substate + symbol_map -> substate UMAP, composition forest/table,
-                amyloid->DAM volcano + DE counts, under-powered interaction + @sec-trajectory pointer, Thrupp + dropout caveats)
+                pb_de_microglia + pb_de_substate + symbol_map + microglia_figures -> original substate UMAP,
+                composition forest/table, amyloid->DAM volcano + S2 inline figures {genotype-faceted UMAP, score
+                triptych/distributions, 16-unit composition, concordance grid, all-contrast volcanoes, substate
+                fit audit, within-substate DE counts}, under-powered interaction + @sec-trajectory pointer, Thrupp
+                + dropout caveats)
                                                           --{{< include >}}--> `_trajectory.qmd`
                (P2 trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_report [ONE
                 compact target] -> pseudotime-shift + composition-not-progression 3-channel decomposition + per-cell

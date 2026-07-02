@@ -87,6 +87,52 @@ ss_plot <- ss
 ss_plot$status <- factor(ss_plot$status, levels = rev(names(status_labels)),
                          labels = rev(unname(status_labels)))
 ss_plot$status_key <- factor(ss$status, levels = rev(names(status_labels)))
+
+claim_labels <- c(
+  amyloid_dam_activation = "amyloid-to-DAM",
+  tau_amyloid_dam_composition = "DAM composition interaction",
+  progression_beyond_composition = "progression beyond composition",
+  myc_rna_interaction = "Myc RNA interaction",
+  nfkb_attenuation = "NF-kB attenuation",
+  gsk3b_kinase = "Gsk3b kinase",
+  crossmodality_amyloid_axes = "cross-modality amyloid axes",
+  clearance_axis = "clearance axis",
+  spatial_decon_full_ccc = "SpatialDecon / full CCC",
+  bulk_run_index_sensitivity = "bulk run-index caveat"
+)
+source_labels <- c(
+  microglia_report = "microglia",
+  trajectory_report = "trajectory",
+  mechanism_report = "mechanism",
+  crossmodality_report = "cross-modality"
+)
+anchor_sources <- c(
+  `#sec-microglia` = "microglia_report",
+  `#sec-trajectory` = "trajectory_report",
+  `#sec-mechanism` = "mechanism_report",
+  `#sec-crossmodality` = "crossmodality_report"
+)
+evidence_map <- do.call(rbind, lapply(seq_len(nrow(ev)), function(i) {
+  row <- ev[i, , drop = FALSE]
+  do.call(rbind, lapply(names(source_labels), function(src) {
+    primary <- grepl(src, row$primary_sources, fixed = TRUE) ||
+      identical(unname(anchor_sources[row$report_anchor]), src)
+    supporting <- grepl(src, row$supporting_sources, fixed = TRUE)
+    role <- if (primary) "primary" else if (supporting) "supporting" else "not cited"
+    data.frame(
+      claim_id = row$claim_id,
+      claim = unname(claim_labels[row$claim_id]),
+      source = unname(source_labels[src]),
+      status = row$status,
+      source_status = if (identical(role, "not cited")) "not cited" else row$status,
+      role = role,
+      role_label = c(primary = "P", supporting = "S", `not cited` = "")[role],
+      stringsAsFactors = FALSE
+    )
+  }))
+}))
+evidence_map$claim <- factor(evidence_map$claim, levels = rev(unname(claim_labels[ev$claim_id])))
+evidence_map$source <- factor(evidence_map$source, levels = unname(source_labels))
 ```
 
 `r answer_sentence` The synthesis table has `r fmt_int(nrow(ev))` claim rows:
@@ -105,6 +151,28 @@ ggplot(ss_plot, aes(status, n, fill = status_key)) +
   scale_y_continuous(breaks = seq(0, max(ss_plot$n), by = 1)) +
   labs(x = NULL, y = "claim rows", title = "Closed synthesis status") +
   theme(panel.grid.major.y = element_blank())
+```
+
+```{r}
+#| label: fig-synthesis-evidence-map
+#| fig-width: 8.4
+#| fig-height: 4.8
+#| fig-cap: "Evidence map for the compact synthesis. Filled tiles show which compact chapter source is primary (P) or supporting (S) for each claim row; grey cells are not cited. Colours keep the closed claim status visible, including unsupported and unearned outcomes."
+ggplot(evidence_map, aes(source, claim, fill = source_status)) +
+  geom_tile(colour = "white", linewidth = 0.45) +
+  geom_text(aes(label = role_label), size = 3.1, fontface = "bold") +
+  scale_fill_manual(
+    values = c(status_colours, `not cited` = "#F1F1F1"),
+    breaks = c(names(status_labels), "not cited"),
+    labels = c(status_labels, `not cited` = "not cited"),
+    name = "claim status"
+  ) +
+  labs(x = NULL, y = NULL, title = "Claim rows are tied to compact chapter sources") +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "right"
+  )
 ```
 
 ```{r}

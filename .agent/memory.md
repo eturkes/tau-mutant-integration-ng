@@ -221,7 +221,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   targets -> a section qmd must NEVER tar_load the 612MB microglia_annotated. microglia_report_data extracts a
   COMPACT frame (per-cell {umap_1/2, genotype[factor], substate[factor], 3 *_UCell_z} cell_frame + n_cells + the
   small $prune/$provenance lists) -> `microglia_report` ~0.5MB. _microglia.qmd tar_loads microglia_report +
-  composition_results + pb_de_microglia + pb_de_substate + symbol_map (all compact) -> render ~12s. The extractor
+  composition_results + pb_de_microglia + pb_de_substate + symbol_map + `microglia_figures`
+  (all compact) -> render stays cheap. The extractor
   ASSERTS finite z + non-NA genotype/substate (a downstream NA -> a ggplot "removed rows" warning -> warn=2 gate
   fail) -> the plotting data is render-clean by construction.
 - _microglia.qmd setup `options(warn=2)` + tar_source(); included in index.qmd AFTER _qc.qmd (section flow in map.md).
@@ -631,8 +632,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - `_synthesis.qmd` is included immediately after `index.qmd` Overview and before QC. It tar_loads ONLY
   `synthesis_report`, with `options(warn=2)` and `tar_source()` like the other report sections.
 - Chapter shape: answer-first paragraph from `synthesis_report$headline`, status-count bar plot from
-  `status_summary`, compact evidence table from `evidence_table`, and an unsupported/unearned paragraph from
-  `open_questions`. It formats display labels locally (e.g. Apoe-Trem2, amyloid on P301S) without adding target deps.
+  `status_summary`, S2 claim-source evidence map from `evidence_table` source fields, compact evidence table, and
+  unsupported/unearned paragraph from `open_questions`. It formats display labels locally (e.g. Apoe-Trem2, amyloid
+  on P301S) without adding target deps.
 - `index.qmd` is now final-report wording: synthesis first, P1-P4 chapters as audit trail; no "final synthesis still
   open" phrasing.
 - P5-S3 lean pass removed stale P3/P4 forward pointers and tightened rate/progression language; report-source
@@ -655,6 +657,19 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - `tests/test_figures.R` is data-free and guards manifest drift, expected slot presence, finite geom inputs, DAM
   fraction join, unsupported mechanism rows, and cross-modality heavy-table binning. Add any new figure slot here
   before wiring it into qmd prose.
+
+## Figure expansion report figures (S2, built) -- `_synthesis.qmd` + `_microglia.qmd`
+- S2 is render-layer wiring only: no new inference/targets. `_synthesis.qmd` still tar_loads ONLY
+  `synthesis_report`; new `fig-synthesis-evidence-map` is a claim x compact-source tile with P/S labels and status
+  colours, including unsupported/unearned rows as first-class outcomes.
+- `_microglia.qmd` now tar_loads `microglia_figures` plus the prior compact P1 targets. New labelled chunks:
+  `fig-microglia-umap-substate`, `fig-microglia-score-triptych`, `fig-microglia-unit-composition`,
+  `fig-microglia-score-distribution`, `fig-microglia-composition-concordance`,
+  `fig-microglia-whole-volcano`, `fig-microglia-substate-audit`, `fig-microglia-substate-volcano`.
+- Claim guard: captions state robust amyloid-to-DAM activation, DAM composition interaction, under-powered
+  interaction DE, and composition-not-progression. No figure claims rate/acceleration/progression support.
+- Forced report render after S2 was warning-clean: 106 chunks, 9 new `fig-*` chunks visible. Full gate status lives in
+  the S2 commit/roadmap ledger.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
