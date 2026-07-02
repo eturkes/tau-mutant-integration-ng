@@ -604,6 +604,25 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   so P5 should use P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance, not
   as a stand-alone microglial kinase or spatial-abundance claim.
 
+## Synthesis target (P5-S1, built) -- `R/synthesis.R::synthesis_report_data` -> `synthesis_report`
+- S1 is read-only synthesis, not new inference. `synthesis_report_data` reads ONLY the compact report bundles
+  `microglia_report`, `trajectory_report`, `mechanism_report`, and `crossmodality_report` (no
+  `crossmodality_divergence`, no pseudobulk tables, no Seurat/heavy evidence table). Live target is ~4.8KB qs.
+- Output contract: `headline` strings; `evidence_table` = 10 rows with fields
+  `{claim_id, axis, status, direction, evidence, primary_sources, supporting_sources, caveat, report_anchor}`;
+  `status_summary`; `open_questions`; tiny `source_highlights`; `provenance`. Allowed statuses only:
+  `core_supported`, `corroborated`, `focused_support`, `not_supported`, `not_earned`, `open_caveat`.
+  Forbidden ledger/contest columns (`support`, `contradict`, `net_score`, `ledger_id`, etc.) fail loud.
+- Guarded anchors are intentionally build-fatal: amyloid->DAM support, DAM composition interaction, trajectory
+  `comp_cf` / `progression_cf` / `within_homeostatic`, whole-microglia Myc interaction, NF-kB verdict + 2 primary
+  rows, Gsk3b all canonical contrasts, GeoMx sensitivity, bulk run-index summary, SpatialDecon status, CCC verdict,
+  and clearance pair-support rows including the empty/no-earned case. If a future target drift breaks the closed
+  story, P5 should stop and revise the synthesis rather than silently table a stale claim.
+- Current live synthesis statuses: core_supported={amyloid_dam_activation, tau_amyloid_dam_composition};
+  focused_support={myc_rna_interaction, clearance_axis}; not_supported={progression_beyond_composition,
+  nfkb_attenuation, gsk3b_kinase}; not_earned={spatial_decon_full_ccc}; open_caveat={bulk_run_index_sensitivity};
+  corroborated={crossmodality_amyloid_axes}. S2 qmd should tar_load only `synthesis_report`.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
@@ -656,7 +675,8 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 - Committed tests `tests/test_*.R` = plain `stopifnot` fail-loud scripts (zero new deps), source the R/ files they
   exercise + `tests/helpers.R` (deterministic synthetic fixtures, NO RNG/clock; expect_error[+pattern]), print
   `ok - <x>`, non-zero exit on fail. Set: test_design, test_de_pb, test_io, test_plot, test_composition,
-  test_microglia, test_trajectory. Data-free; per-module live-data smoke-test still happens once before commit.
+  test_microglia, test_trajectory, test_mechanism, test_crossmodality, test_synthesis. Data-free; per-module
+  live-data smoke-test still happens once before commit.
 - Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 
 ## Operational

@@ -32,7 +32,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P5 Synthesis -> `.agent/p5_synthesis_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S1 compact synthesis target.
+Next `$session-prompt` mode = EXECUTE. Next open step = S2 synthesis chapter + report wiring.
 Acceptance = one compact, read-only synthesis target + upfront synthesis chapter + lean report pass;
 no new biological inference, no v1 ledger / contest machinery, full gate green.
 
@@ -406,6 +406,14 @@ no new biological inference, no v1 ledger / contest machinery, full gate green.
   compact read-only synthesis target, upfront `_synthesis.qmd`, and final lean report pass. Explicitly OUT:
   v1 convergence/ledger/contest machinery, MOFA/meta-analysis, human/SCENIC/topology/full CCC/decon side arcs, and
   new biological inference. Next = EXECUTE S1.
+- 2026-07-02 P5-S1 DONE -> `R/synthesis.R` + `tests/test_synthesis.R` + target `synthesis_report`.
+  `synthesis_report_data` reads ONLY compact report bundles (`microglia_report`, `trajectory_report`,
+  `mechanism_report`, `crossmodality_report`; no `crossmodality_divergence`) and returns a ~4.8KB qs object:
+  headline, 10-row descriptive evidence table, status counts, unsupported/open rows, and tiny source highlights.
+  Guarded anchors: amyloid->DAM support, DAM composition interaction, trajectory comp/prog rows, Myc, NF-kB gate,
+  Gsk3b rows, GeoMx/bulk run-index caveats, SpatialDecon status, and earned-pair empty/not-empty handling. No
+  support/contradict/net-score/ledger columns. Synthetic tests + fresh target build green; manifest/raw deps show only
+  the four compact report targets + the synthesis function. Next = S2 synthesis chapter + report wiring.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

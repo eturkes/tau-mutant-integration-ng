@@ -128,7 +128,7 @@ Each step is one closing unit. Resuming mid-plan: read this plan's Scope + your
 step + `.agent/memory.md` relevant report/target sections + files named in the
 step. Run `scripts/check.sh` unless explicitly docs-only.
 
-### S1 - Compact synthesis target [OPEN]
+### S1 - Compact synthesis target [DONE 2026-07-02]
 Add `R/synthesis.R`, `tests/test_synthesis.R`, and target `synthesis_report`.
 
 Contracts:
@@ -155,7 +155,19 @@ Acceptance:
   unless a documented `crossmodality_divergence` slice is intentionally needed.
 - `scripts/check.sh` green.
 
-### S2 - Synthesis chapter + report wiring [TODO]
+Result:
+- Built `synthesis_report_data()` over `microglia_report`, `trajectory_report`,
+  `mechanism_report`, and `crossmodality_report` only; `crossmodality_divergence`
+  was not needed.
+- Live `synthesis_report` is ~4.8KB, warning-clean, and carries 10 descriptive
+  evidence rows with status labels only.
+- `tests/test_synthesis.R` covers required anchors, status enum validation,
+  missing-anchor failures, empty earned-pair handling, and the no-ledger-column
+  invariant.
+- Manifest/raw dependency check: `synthesis_report_data(microglia_report,
+  trajectory_report, mechanism_report, crossmodality_report)`.
+
+### S2 - Synthesis chapter + report wiring [OPEN]
 Add `_synthesis.qmd`, include it in `index.qmd` immediately after Overview, and
 rewrite Overview as the entry point to the final report.
 

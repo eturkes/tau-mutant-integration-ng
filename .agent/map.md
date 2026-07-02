@@ -188,6 +188,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
       symbol/pathway highlights, and axis-level pathway summaries. Guard layer validates every field _crossmodality.qmd
       reads; render target stays small and does not load GeoMx/proteome/phospho or the 10MB evidence table.
+   + (P5-S1) synthesis.R: synthesis_report_data -> synthesis_report compact closing bundle. Reads only
+      microglia_report, trajectory_report, mechanism_report, and crossmodality_report; builds headline strings,
+      a 10-row descriptive evidence table, status counts, unsupported/open rows, and tiny source highlights. Guard
+      layer checks the synthesis anchors (amyloid->DAM, DAM composition, trajectory comp/prog rows, Myc, NF-kB,
+      Gsk3b, GeoMx/bulk caveats, SpatialDecon, clearance pairs incl. empty earned set) and rejects ledger-like
+      score columns.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -231,6 +237,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads only this
+  - P5 synthesis:
+       synthesis_report <- synthesis_report_data(microglia_report, trajectory_report, mechanism_report, crossmodality_report)  # S1 compact read-only synthesis (~4.8KB live); no crossmodality_divergence/heavy targets; descriptive status rows only
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -292,6 +300,8 @@ from project root: `Rscript tests/test_<x>.R`.
                     run-index sensitivity design + duplicate biological-site collapse + KSN coverage gate +
                     explicit Gsk3b summary carry-through; (P3-S4) mechanism_report_data compact bundle shape +
                     top-row capping + no heavy cell_frame + fail-loud dropped Myc/Gsk3b/trajectory anchors
+  - test_synthesis.R : (P5-S1) synthesis_report_data compact bundle shape + status enum validation +
+                    missing-anchor failures + empty earned-pair handling + no-ledger-column invariant
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):

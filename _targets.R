@@ -202,6 +202,15 @@ list(
                                        crossmodality_divergence, crossmodality_pathway),
              format = "qs"),
 
+  # --- P5 synthesis ---
+  # S1 compact synthesis target. Reads only the existing compact report bundles and compresses
+  # their guarded anchors into descriptive claim/status rows; no new inference, no v1 ledger or
+  # contest scoring, no heavy Seurat / harmonised-evidence table read.
+  tar_target(synthesis_report,
+             synthesis_report_data(microglia_report, trajectory_report,
+                                   mechanism_report, crossmodality_report),
+             format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing
