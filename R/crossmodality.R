@@ -226,23 +226,44 @@ repo_package_available <- function(package, repos = getOption("repos")) {
   result
 }
 
+geomx_q3_scaled_background <- function(meta) {
+  stopifnot(is.data.frame(meta), all(c("q3_factor", "neg_background") %in% names(meta)))
+  q3 <- as.numeric(meta$q3_factor)
+  bg <- as.numeric(meta$neg_background)
+  stopifnot(length(q3) == length(bg),
+            all(is.finite(q3) & q3 > 0),
+            all(is.finite(bg) & bg > 0))
+  out <- bg / q3
+  attr(out, "scale") <- "negative-probe background divided by q_norm_qFactors"
+  out
+}
+
+profile_collinearity <- function(profile) {
+  stopifnot(is.matrix(profile), nrow(profile) >= 2L, ncol(profile) >= 2L,
+            all(is.finite(profile)))
+  cc <- suppressWarnings(stats::cor(profile, use = "pairwise.complete.obs"))
+  off <- abs(cc[upper.tri(cc)])
+  max_cor <- if (length(off) && any(is.finite(off))) max(off, na.rm = TRUE) else NA_real_
+  list(n_features = nrow(profile), n_profiles = ncol(profile),
+       max_abs_correlation = max_cor)
+}
+
 geomx_decon_preflight <- function(meta, counts, profile = NULL, profile_corr_threshold = 0.95,
                                   spatialdecon = NULL) {
   stopifnot(is.data.frame(meta), identical(colnames(counts), rownames(meta)),
             all(c("q3_factor", "neg_background", "nuclei") %in% names(meta)))
   if (is.null(spatialdecon)) spatialdecon <- repo_package_available("SpatialDecon")
 
+  bg_scaled <- try(geomx_q3_scaled_background(meta), silent = TRUE)
   q3_ok <- all(is.finite(meta$q3_factor) & meta$q3_factor > 0)
-  bg_ok <- all(is.finite(meta$neg_background) & meta$neg_background > 0)
+  bg_ok <- !inherits(bg_scaled, "try-error") && all(is.finite(bg_scaled) & bg_scaled > 0)
   nuclei_sentinel <- sum(meta$nuclei < 0)
   profile_tested <- !is.null(profile)
   max_profile_cor <- NA_real_
   profile_ok <- FALSE
   if (profile_tested) {
-    stopifnot(is.matrix(profile), ncol(profile) >= 2L, nrow(profile) >= 2L)
-    cc <- stats::cor(profile, use = "pairwise.complete.obs")
-    off <- abs(cc[upper.tri(cc)])
-    max_profile_cor <- if (length(off)) max(off, na.rm = TRUE) else NA_real_
+    pc <- profile_collinearity(profile)
+    max_profile_cor <- pc$max_abs_correlation
     profile_ok <- is.finite(max_profile_cor) && max_profile_cor < profile_corr_threshold
   }
 
@@ -271,6 +292,7 @@ geomx_decon_preflight <- function(meta, counts, profile = NULL, profile_corr_thr
     background = list(q3_ok = q3_ok, negative_background_ok = bg_ok,
                       q3_factor_range = range(meta$q3_factor),
                       neg_background_range = range(meta$neg_background),
+                      q3_scaled_background_range = if (bg_ok) range(bg_scaled) else c(NA_real_, NA_real_),
                       instruction = "scale negative-probe background onto the Q3-normalised expression scale before deconvolution"),
     nuclei = list(n_sentinel = nuclei_sentinel, absolute_rescaling_enabled = FALSE),
     reference = list(profile_tested = profile_tested, profile_ok = profile_ok,
@@ -314,6 +336,59 @@ run_geomx_de <- function(geomx, min_count = 5) {
     thresholds = list(min_count = min_count)
   )
   de
+}
+
+.geomx_abundance_top_tables <- function(fit, contrasts) {
+  out <- lapply(colnames(contrasts), function(cn) {
+    tt <- tibble::rownames_to_column(
+      limma::topTable(fit, coef = cn, number = Inf, sort.by = "none", confint = TRUE),
+      "feature"
+    )
+    tt$contrast <- cn
+    tt[, c("feature", "contrast", "logFC", "P.Value", "adj.P.Val", "t", "CI.L", "CI.R",
+           setdiff(names(tt), c("feature", "contrast", "logFC", "P.Value", "adj.P.Val", "t", "CI.L", "CI.R"))),
+       drop = FALSE]
+  })
+  names(out) <- colnames(contrasts)
+  out
+}
+
+fit_geomx_abundance_de <- function(abundance, meta, offset = 1e-4) {
+  stopifnot(is.matrix(abundance), !is.null(rownames(abundance)), !is.null(colnames(abundance)),
+            is.data.frame(meta), identical(colnames(abundance), rownames(meta)),
+            all(c("genotype", "slide", "bio_unit") %in% names(meta)),
+            is.numeric(offset), length(offset) == 1L, is.finite(offset), offset > 0,
+            all(is.finite(abundance)), all(abundance >= 0))
+  fd <- geomx_slide_design(meta, include_slide = TRUE)
+  if (nrow(fd$design) <= ncol(fd$design)) {
+    stop("GeoMx abundance design has no residual degrees of freedom", call. = FALSE)
+  }
+  log_abund <- log(abundance + offset)
+  corfit <- limma::duplicateCorrelation(log_abund, design = fd$design, block = meta$bio_unit)
+  if (!is.finite(corfit$consensus.correlation)) {
+    stop("GeoMx abundance duplicateCorrelation returned non-finite consensus correlation",
+         call. = FALSE)
+  }
+  fit0 <- limma::lmFit(log_abund, design = fd$design, block = meta$bio_unit,
+                       correlation = corfit$consensus.correlation)
+  fit <- limma::eBayes(limma::contrasts.fit(fit0, fd$contrasts), robust = TRUE)
+  fit_unblocked <- limma::eBayes(limma::contrasts.fit(
+    limma::lmFit(log_abund, design = fd$design), fd$contrasts
+  ), robust = TRUE)
+  list(
+    status = "fit",
+    model = "log_beta_slide_duplicateCorrelation",
+    n_aoi = ncol(abundance),
+    n_features = nrow(abundance),
+    offset = offset,
+    duplicate_correlation = list(used = TRUE,
+                                 consensus_correlation = unname(corfit$consensus.correlation)),
+    top = .geomx_abundance_top_tables(fit, fd$contrasts),
+    sensitivity = list(
+      unblocked = list(status = "fit", model = "log_beta_slide_unblocked",
+                       top = .geomx_abundance_top_tables(fit_unblocked, fd$contrasts))
+    )
+  )
 }
 
 # ---- P4-S2: bulk proteome + protein-corrected phospho -------------------------------
@@ -782,5 +857,340 @@ bulk_omics_summary_data <- function(proteome_de_24m, phospho_de_24m, phospho_cor
   stopifnot(nrow(out$feature_counts) == 3L,
             all(out$feature_counts$n_samples == 16L),
             all(c("Gsk3b", "Mapt") %in% out$anchor_coverage$symbol))
+  out
+}
+
+# ---- P4-S3: spatial-composition decision + clearance-axis CCC-lite -------------------
+
+clearance_axis_dictionary <- function() {
+  data.frame(
+    symbol = c("Apoe", "Trem2", "App", "Cd74", "Pros1", "Mertk",
+               "C1qa", "C1qb", "C1qc", "C3",
+               "Syn1", "Syp", "Snap25", "Dlg4", "Grin1"),
+    axis = c(rep("clearance", 6), rep("complement", 4), rep("synaptic", 5)),
+    role = c("ligand", "receptor", "ligand", "receptor", "ligand", "receptor",
+             rep("component", 4), rep("marker", 5)),
+    pair = c("Apoe_Trem2", "Apoe_Trem2", "App_Cd74", "App_Cd74",
+             "Pros1_Mertk", "Pros1_Mertk", rep(NA_character_, 9)),
+    stringsAsFactors = FALSE
+  )
+}
+
+.empty_clearance_rows <- function() {
+  data.frame(axis = character(), pair = character(), role = character(), symbol = character(),
+             modality = character(), layer = character(), contrast = character(),
+             feature = character(), site_id = character(), logFC = numeric(), t = numeric(),
+             P.Value = numeric(), adj.P.Val = numeric(), significant = logical(),
+             direction = integer(), stringsAsFactors = FALSE)
+}
+
+.clearance_rows_from_vectors <- function(tbl, symbols, anchors, modality, layer, contrast,
+                                         feature, site_id = NULL, alpha = 0.10) {
+  stopifnot(is.data.frame(tbl), length(symbols) == nrow(tbl), length(feature) == nrow(tbl),
+            all(c("symbol", "axis", "role", "pair") %in% names(anchors)))
+  if (is.null(site_id)) site_id <- rep(NA_character_, nrow(tbl))
+  out <- list()
+  k <- 0L
+  for (i in seq_len(nrow(tbl))) {
+    hit <- intersect(.split_gene_symbols(symbols[i]), anchors$symbol)
+    if (!length(hit)) next
+    for (sym in hit) {
+      ai <- match(sym, anchors$symbol)
+      k <- k + 1L
+      out[[k]] <- data.frame(
+        axis = anchors$axis[ai],
+        pair = anchors$pair[ai],
+        role = anchors$role[ai],
+        symbol = sym,
+        modality = modality,
+        layer = layer,
+        contrast = contrast,
+        feature = as.character(feature[i]),
+        site_id = as.character(site_id[i] %||% NA_character_),
+        logFC = as.numeric(tbl$logFC[i]),
+        t = as.numeric(tbl$t[i]),
+        P.Value = as.numeric(tbl$P.Value[i]),
+        adj.P.Val = as.numeric(tbl$adj.P.Val[i]),
+        significant = is.finite(as.numeric(tbl$adj.P.Val[i])) &&
+          as.numeric(tbl$adj.P.Val[i]) < alpha,
+        direction = as.integer(sign(as.numeric(tbl$logFC[i]))),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (!length(out)) return(.empty_clearance_rows())
+  ans <- do.call(rbind, out)
+  rownames(ans) <- NULL
+  ans
+}
+
+clearance_rows_from_rna_top <- function(top, symbol_map, layer, anchors,
+                                        modality = "snRNAseq_microglia", alpha = 0.10) {
+  stopifnot(is.list(top), is.data.frame(symbol_map),
+            all(c("ensembl", "symbol") %in% names(symbol_map)))
+  map <- symbol_map[!is.na(symbol_map$ensembl) & !is.na(symbol_map$symbol) &
+                      symbol_map$ensembl != "" & symbol_map$symbol != "",
+                    c("ensembl", "symbol")]
+  map <- map[!duplicated(map$ensembl), , drop = FALSE]
+  rows <- lapply(intersect(mechanism_contrasts(), names(top)), function(cn) {
+    tt <- top[[cn]]
+    stopifnot(is.data.frame(tt),
+              all(c("gene", "logFC", "t", "P.Value", "adj.P.Val") %in% names(tt)))
+    symbols <- map$symbol[match(as.character(tt$gene), map$ensembl)]
+    .clearance_rows_from_vectors(tt, symbols, anchors, modality, layer, cn,
+                                 feature = tt$gene, alpha = alpha)
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+clearance_rows_from_geomx <- function(geomx_de, anchors, alpha = 0.10) {
+  stopifnot(is.list(geomx_de), is.list(geomx_de$primary), is.list(geomx_de$primary$top))
+  rows <- lapply(intersect(mechanism_contrasts(), names(geomx_de$primary$top)), function(cn) {
+    tt <- geomx_de$primary$top[[cn]]
+    stopifnot(is.data.frame(tt),
+              all(c("symbol", "logFC", "t", "P.Value", "adj.P.Val") %in% names(tt)))
+    .clearance_rows_from_vectors(tt, tt$symbol, anchors, "GeoMx_spatial", "primary", cn,
+                                 feature = tt$symbol, alpha = alpha)
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+clearance_rows_from_bulk_summary <- function(bulk_omics_summary, anchors, alpha = 0.10) {
+  stopifnot(is.list(bulk_omics_summary), is.data.frame(bulk_omics_summary$anchors))
+  b <- bulk_omics_summary$anchors
+  if (!nrow(b)) return(.empty_clearance_rows())
+  stopifnot(all(c("layer", "contrast", "feature", "site_id", "anchor_symbols",
+                  "logFC", "t", "P.Value", "adj.P.Val") %in% names(b)))
+  rows <- lapply(seq_len(nrow(b)), function(i) {
+    .clearance_rows_from_vectors(b[i, , drop = FALSE], b$anchor_symbols[i], anchors,
+                                 "bulk_hippocampus", b$layer[i], b$contrast[i],
+                                 feature = b$feature[i], site_id = b$site_id[i],
+                                 alpha = alpha)
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+.collapse_clearance_symbol <- function(d) {
+  d <- d[is.finite(d$logFC) & is.finite(d$t), , drop = FALSE]
+  if (!nrow(d)) return(d[FALSE, , drop = FALSE])
+  ord <- order(d$adj.P.Val, -abs(d$t), -abs(d$logFC), d$layer, d$feature,
+               method = "radix", na.last = TRUE)
+  d[ord[1], , drop = FALSE]
+}
+
+clearance_pair_support <- function(measured, anchors = clearance_axis_dictionary(),
+                                   alpha = 0.10) {
+  pairs <- na.omit(unique(anchors$pair))
+  contrasts <- mechanism_contrasts()
+  out <- list()
+  k <- 0L
+  for (pair in pairs) {
+    pair_symbols <- anchors$symbol[anchors$pair %in% pair]
+    for (cn in contrasts) {
+      d <- measured[measured$pair %in% pair & measured$contrast %in% cn, , drop = FALSE]
+      modalities <- sort(unique(d$modality), method = "radix")
+      coherent_supported <- character()
+      coherent_measured <- character()
+      for (mod in modalities) {
+        dm <- d[d$modality == mod, , drop = FALSE]
+        reps <- do.call(rbind, lapply(pair_symbols, function(sym) {
+          .collapse_clearance_symbol(dm[dm$symbol == sym, , drop = FALSE])
+        }))
+        if (!is.data.frame(reps) || nrow(reps) != length(pair_symbols)) next
+        signs <- sign(reps$logFC)
+        coherent <- all(signs != 0) && length(unique(signs)) == 1L
+        if (coherent) {
+          coherent_measured <- c(coherent_measured, mod)
+          if (any(reps$significant, na.rm = TRUE)) coherent_supported <- c(coherent_supported, mod)
+        }
+      }
+      mg <- d[d$modality == "snRNAseq_microglia" & d$layer == "whole_microglia", , drop = FALSE]
+      mg_reps <- do.call(rbind, lapply(pair_symbols, function(sym) {
+        .collapse_clearance_symbol(mg[mg$symbol == sym, , drop = FALSE])
+      }))
+      microglia_strong <- is.data.frame(mg_reps) && nrow(mg_reps) == length(pair_symbols) &&
+        all(sign(mg_reps$logFC) != 0) && length(unique(sign(mg_reps$logFC))) == 1L &&
+        all(is.finite(mg_reps$adj.P.Val) & mg_reps$adj.P.Val < alpha)
+      non_micro_supported <- setdiff(coherent_supported, "snRNAseq_microglia")
+      earned <- length(unique(coherent_supported)) >= 2L ||
+        (length(non_micro_supported) >= 1L && microglia_strong)
+      k <- k + 1L
+      out[[k]] <- data.frame(
+        pair = pair,
+        contrast = cn,
+        n_sides_measured = length(unique(d$symbol)),
+        modalities_measured = paste(sort(unique(d$modality), method = "radix"), collapse = ";"),
+        coherent_measured_modalities = paste(sort(unique(coherent_measured), method = "radix"),
+                                             collapse = ";"),
+        coherent_supported_modalities = paste(sort(unique(coherent_supported), method = "radix"),
+                                              collapse = ";"),
+        n_coherent_supported_modalities = length(unique(coherent_supported)),
+        microglia_strong = microglia_strong,
+        status = if (earned) "earned" else "not_earned",
+        rule = "earned requires two coherent supported modalities, or one non-microglia modality plus a strong whole-microglia anchor",
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  ans <- do.call(rbind, out)
+  rownames(ans) <- NULL
+  ans
+}
+
+clearance_axis_coverage <- function(measured, anchors = clearance_axis_dictionary()) {
+  rows <- lapply(seq_len(nrow(anchors)), function(i) {
+    d <- measured[measured$symbol == anchors$symbol[i], , drop = FALSE]
+    data.frame(
+      symbol = anchors$symbol[i],
+      axis = anchors$axis[i],
+      role = anchors$role[i],
+      pair = anchors$pair[i],
+      measured = nrow(d) > 0L,
+      n_rows = nrow(d),
+      n_modalities = length(unique(d$modality)),
+      modalities = paste(sort(unique(d$modality), method = "radix"), collapse = ";"),
+      n_significant = sum(d$significant, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+clearance_axis_modality_support <- function(measured) {
+  if (!nrow(measured)) {
+    return(data.frame(axis = character(), contrast = character(), modality = character(),
+                      n_symbols = integer(), n_significant = integer(),
+                      direction_balance = integer(), stringsAsFactors = FALSE))
+  }
+  key <- interaction(measured$axis, measured$contrast, measured$modality,
+                     drop = TRUE, lex.order = TRUE)
+  rows <- lapply(split(measured, key), function(d) {
+    sig <- d[d$significant, , drop = FALSE]
+    data.frame(
+      axis = d$axis[1],
+      contrast = d$contrast[1],
+      modality = d$modality[1],
+      n_symbols = length(unique(d$symbol)),
+      n_significant = length(unique(sig$symbol)),
+      direction_balance = sum(sign(d$logFC), na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  out <- out[order(out$axis, match(out$contrast, mechanism_contrasts()), out$modality,
+                   method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+synaptic_gene_set_rows <- function(mechanism_gene_sets,
+                                   anchors = clearance_axis_dictionary(),
+                                   pattern = "SYNAP") {
+  stopifnot(is.list(mechanism_gene_sets), is.list(mechanism_gene_sets$sets))
+  syn <- anchors$symbol[anchors$axis == "synaptic"]
+  rows <- list()
+  k <- 0L
+  for (collection in names(mechanism_gene_sets$sets)) {
+    sets <- mechanism_gene_sets$sets[[collection]]
+    hit <- grep(pattern, names(sets), value = TRUE, ignore.case = TRUE)
+    if (!length(hit)) next
+    for (set in hit) {
+      genes <- unique(sets[[set]])
+      overlap <- intersect(syn, genes)
+      k <- k + 1L
+      rows[[k]] <- data.frame(collection = collection, set = set,
+                              size = length(genes),
+                              n_synaptic_anchor_overlap = length(overlap),
+                              synaptic_anchor_overlap = paste(overlap, collapse = ";"),
+                              stringsAsFactors = FALSE)
+    }
+  }
+  if (!length(rows)) {
+    return(data.frame(collection = character(), set = character(), size = integer(),
+                      n_synaptic_anchor_overlap = integer(),
+                      synaptic_anchor_overlap = character(), stringsAsFactors = FALSE))
+  }
+  out <- do.call(rbind, rows)
+  out <- out[order(out$collection, out$set, method = "radix"), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+clearance_axis_data <- function(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
+                                bulk_omics_summary, mechanism_gene_sets,
+                                alpha = 0.10) {
+  stopifnot(is.list(pb_de_microglia), is.list(pb_de_substate), is.list(geomx_de),
+            is.list(bulk_omics_summary), is.list(mechanism_gene_sets),
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
+  decon <- geomx_de$decon_preflight
+  stopifnot(is.list(decon), "status" %in% names(decon))
+  if (identical(decon$status, "earned")) {
+    stop("GeoMx decon preflight is earned; add geomx_decon and geomx_abundance_de targets before clearance_axis",
+         call. = FALSE)
+  }
+
+  anchors <- clearance_axis_dictionary()
+  rna_whole <- clearance_rows_from_rna_top(pb_de_microglia$top, symbol_map, "whole_microglia",
+                                           anchors, alpha = alpha)
+  rna_sub <- lapply(pb_de_substate$per_substate, function(x) {
+    if (!identical(x$status, "fit")) return(.empty_clearance_rows())
+    clearance_rows_from_rna_top(x$top, symbol_map, x$substate, anchors, alpha = alpha)
+  })
+  geomx_rows <- clearance_rows_from_geomx(geomx_de, anchors, alpha = alpha)
+  bulk_rows <- clearance_rows_from_bulk_summary(bulk_omics_summary, anchors, alpha = alpha)
+  measured <- do.call(rbind, c(list(rna_whole), rna_sub, list(geomx_rows, bulk_rows)))
+  rownames(measured) <- NULL
+  measured <- measured[order(measured$axis, measured$pair, measured$symbol,
+                             match(measured$contrast, mechanism_contrasts()),
+                             measured$modality, measured$layer, measured$feature,
+                             method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(measured) <- NULL
+
+  coverage <- clearance_axis_coverage(measured, anchors)
+  pair_support <- clearance_pair_support(measured, anchors, alpha = alpha)
+  modality_support <- clearance_axis_modality_support(measured)
+  syn_sets <- synaptic_gene_set_rows(mechanism_gene_sets, anchors)
+  earned_pairs <- unique(pair_support$pair[pair_support$status == "earned"])
+  verdict_status <- if (length(earned_pairs)) "earned" else "not_earned"
+  out <- list(
+    dictionary = anchors,
+    measured = measured,
+    coverage = coverage,
+    pair_support = pair_support,
+    modality_support = modality_support,
+    synaptic_gene_sets = syn_sets,
+    spatial_decon = list(status = decon$status,
+                         action = "skipped",
+                         reasons = decon$reasons,
+                         background = decon$background,
+                         nuclei = decon$nuclei,
+                         reference = decon$reference),
+    verdict = list(status = verdict_status,
+                   ccc_called = FALSE,
+                   earned_pairs = earned_pairs,
+                   rule = "CCC-lite only; no communication claim unless pair support is earned by measured modalities"),
+    provenance = list(alpha = alpha,
+                      modalities = sort(unique(measured$modality), method = "radix"),
+                      contrasts = mechanism_contrasts(),
+                      decon_policy = "SpatialDecon targets are added only when S1 preflight status is earned",
+                      bulk_context = bulk_omics_summary$provenance$bulk_context %||%
+                        "24M bulk hippocampus; not microglia-sorted")
+  )
+  stopifnot(nrow(out$coverage) == nrow(anchors),
+            all(anchors$symbol %in% out$coverage$symbol),
+            nrow(out$pair_support) == length(na.omit(unique(anchors$pair))) *
+              length(mechanism_contrasts()),
+            out$verdict$status %in% c("earned", "not_earned"),
+            identical(out$verdict$ccc_called, FALSE),
+            decon$status %in% c("defer", "blocked"),
+            nrow(out$synaptic_gene_sets) >= 1L)
   out
 }

@@ -31,7 +31,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S3 Spatial composition + clearance-axis CCC-lite.
+Next `$session-prompt` mode = EXECUTE. Next open step = S4 Integrated gene/pathway divergence view.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -366,6 +366,14 @@ Next `$session-prompt` mode = EXECUTE. Next open step = S3 Spatial composition +
   warning-clean/tar_meta clean: proteome 3,379 protein groups; corrected phospho 15,477 sites; 15,647 phosphosite rows
   had matched filtered parents and 2,059 lacked a filtered parent. Run-index sensitivity is harsh for most primary bulk
   hits, so downstream support must downgrade run-order-dependent signals. Next = S3.
+- 2026-07-02 P4-S3 DONE -> `clearance_axis` + gated spatial-composition helpers. SpatialDecon remains intentionally
+  skipped: live GeoMx preflight status is still `defer` (42 nuclei sentinels disable absolute rescaling; no compact
+  profile was built), and `clearance_axis_data()` now fails loud if that preflight ever becomes `earned` before
+  `geomx_decon` / `geomx_abundance_de` targets exist. Added Q3-scaled background, profile-collinearity, and
+  log-beta abundance-DE helpers + tests. Live clearance-axis target warning-clean/tar_meta clean: 1,400 measured
+  anchor rows, 166 synaptic GO-set rows, all 15 dictionary anchors measured somewhere; CCC-lite verdict is earned
+  only for `Apoe_Trem2` in `nlgf_in_p301s` via coherent supported GeoMx + snRNAseq microglia evidence. No full CCC
+  method is called. Next = S4.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

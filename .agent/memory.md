@@ -547,6 +547,25 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (e.g. most proteome/phospho primary FDR<0.10 rows in amyloid contrasts). Downstream P4 claims must privilege
   signals robust to run-index or explicitly label run-order sensitivity; bulk hippocampus remains NOT microglia-sorted.
 
+## Spatial composition + clearance-axis CCC-lite (P4-S3, built) -- `R/crossmodality.R` -> `clearance_axis`
+- SpatialDecon NOT run in S3 because the live S1 preflight remains `defer`: Q3/background are usable, but nuclei has
+  42 `-1` sentinels (absolute rescaling disabled) and no compact reference profile exists. `clearance_axis_data()`
+  intentionally `stop()`s if a future `geomx_de$decon_preflight$status=="earned"` before `geomx_decon` +
+  `geomx_abundance_de` targets are added -> no silent skip once preconditions are clean.
+- Decon helper contracts are present/tested but un-wired: `geomx_q3_scaled_background` = negative-probe background /
+  `q_norm_qFactors`; `profile_collinearity` gates max absolute profile correlation; `fit_geomx_abundance_de` fits
+  log(beta+offset) abundance with slide fixed effect + bio-unit duplicateCorrelation and an unblocked sensitivity.
+  These helpers are for a future earned SpatialDecon branch; current S3 target records the skipped action.
+- `clearance_axis` harmonises measured anchor rows across whole/substate microglia RNA, GeoMx primary DE, and 24M bulk
+  anchors. Dictionary = clearance pairs {Apoe_Trem2, App_Cd74, Pros1_Mertk}, complement {C1qa/b/c,C3}, synaptic
+  {Syn1,Syp,Snap25,Dlg4,Grin1}; also carries synaptic GO-set availability from `mechanism_gene_sets`. Live target =
+  1,400 measured rows / 166 synaptic GO-set rows / all 15 anchors measured somewhere.
+- CCC-lite rule is conservative: a pair is `earned` only with coherent supported evidence in >=2 modalities, or one
+  non-microglia modality plus a strong whole-microglia anchor; `ccc_called` stays FALSE because no CellChat/LIANA/
+  MultiNicheNet model is run. Live qualitative read: only `Apoe_Trem2` earns support, specifically in
+  `nlgf_in_p301s`, by coherent supported GeoMx + snRNAseq microglia evidence. `App_Cd74` and `Pros1_Mertk` remain
+  measured but not earned. Downstream prose may call this measured clearance-axis support, not full CCC.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

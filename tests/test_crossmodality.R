@@ -106,9 +106,14 @@ stopifnot(sat$status == "skipped", grepl("no residual degrees", sat$reason, fixe
 sp_ok <- list(package = "SpatialDecon", available = TRUE, version = "0.0.0",
               repos = "synthetic", error = NA_character_, warnings = character(), messages = character())
 pf <- geomx_decon_preflight(meta, cnt, spatialdecon = sp_ok)
+bg_scaled <- geomx_q3_scaled_background(meta)
 stopifnot(pf$status == "defer",
           any(grepl("reference profile", pf$reasons, fixed = TRUE)),
           pf$nuclei$n_sentinel > 0L,
+          isTRUE(all.equal(as.numeric(bg_scaled), meta$neg_background / meta$q3_factor,
+                           tolerance = 1e-12)),
+          identical(attr(bg_scaled, "scale"),
+                    "negative-probe background divided by q_norm_qFactors"),
           is.finite(pf$memory$estimated_peak_mb))
 
 meta_bad_q3 <- meta
@@ -125,8 +130,29 @@ stopifnot(pf_col$status == "blocked",
 profile_ok <- cbind(A = c(1, 2, 3, 4, 5, 6),
                     B = c(6, 5, 3, 1, 2, 4),
                     C = c(2, 6, 1, 5, 3, 4))
+pc_ok <- profile_collinearity(profile_ok)
 pf_ok <- geomx_decon_preflight(meta, cnt, profile = profile_ok, spatialdecon = sp_ok)
-stopifnot(pf_ok$status == "earned", pf_ok$reference$profile_ok)
+stopifnot(pf_ok$status == "earned", pf_ok$reference$profile_ok,
+          is.finite(pc_ok$max_abs_correlation),
+          pc_ok$n_profiles == 3L)
+
+# --- abundance DE design: log beta + slide fixed effect + bio-unit blocking ------------
+abund <- rbind(
+  microglia = 0.20 + rep(c(0.01, 0.02, 0.04, 0.06), each = 3L * 2L),
+  astro = 0.30 + (seq_len(nrow(meta)) %% 5L) / 100,
+  neuron = 0.40 - rep(c(0.00, 0.01, 0.02, 0.03), each = 3L * 2L)
+)
+colnames(abund) <- rownames(meta)
+ab_de <- fit_geomx_abundance_de(abund, meta)
+stopifnot(ab_de$status == "fit",
+          ab_de$duplicate_correlation$used,
+          is.finite(ab_de$duplicate_correlation$consensus_correlation),
+          identical(names(ab_de$top), canonical),
+          nrow(ab_de$top$interaction) == nrow(abund),
+          all(c("feature", "contrast", "logFC", "P.Value", "adj.P.Val", "t", "CI.L", "CI.R") %in%
+                names(ab_de$top$interaction)),
+          identical(ab_de$sensitivity$unblocked$status, "fit"))
+expect_error(fit_geomx_abundance_de(abund[, -1, drop = FALSE], meta), "identical")
 
 # --- P4-S2 bulk proteome + corrected phospho ------------------------------------------
 bulk_stubs <- paste0("run", sprintf("%02d", 1:16))
@@ -248,5 +274,61 @@ stopifnot(nrow(summary$feature_counts) == 3L,
           all(c("Gsk3b", "Mapt", "Syn1") %in% summary$anchor_coverage$symbol),
           any(summary$anchors$anchor_symbols == "Gsk3b"),
           any(grepl("synaptic", summary$anchors$anchor_class, fixed = TRUE)))
+
+# --- P4-S3 clearance-axis measured table + conservative CCC-lite verdict ---------------
+axis_symbols <- c("Apoe", "Trem2", "App", "Cd74", "Pros1", "Mertk", "Syn1", "C1qb")
+axis_map <- data.frame(ensembl = paste0("ens", seq_along(axis_symbols)),
+                       symbol = axis_symbols, stringsAsFactors = FALSE)
+make_axis_top <- function(id_col = "gene", symbol_col = NULL, geomx = FALSE,
+                          fdr_pair = 0.01) {
+  lfc <- c(Apoe = 1.2, Trem2 = 0.9, App = -0.5, Cd74 = 0.7,
+           Pros1 = 0.2, Mertk = 0.4, Syn1 = -1.0, C1qb = 0.8)
+  fdr <- rep(0.5, length(lfc)); names(fdr) <- names(lfc)
+  fdr[c("Apoe", "Trem2")] <- fdr_pair
+  base <- data.frame(logFC = unname(lfc), t = unname(lfc) * 3,
+                     P.Value = pmin(unname(fdr) / 2, 0.99),
+                     adj.P.Val = unname(fdr), stringsAsFactors = FALSE)
+  if (geomx) {
+    base <- cbind(symbol = names(lfc), base)
+  } else {
+    base <- cbind(gene = axis_map$ensembl[match(names(lfc), axis_map$symbol)], base)
+  }
+  stats::setNames(lapply(canonical, function(cn) base), canonical)
+}
+axis_pb <- list(top = make_axis_top())
+axis_sub <- list(per_substate = list(
+  Homeostatic = list(status = "skipped"),
+  DAM = list(status = "skipped"),
+  IFN = list(status = "skipped"),
+  Proliferative = list(status = "skipped")
+))
+axis_geomx <- list(
+  primary = list(top = make_axis_top(geomx = TRUE)),
+  decon_preflight = pf
+)
+axis_sets <- list(sets = list(
+  GO_BP = list(GO_SYNAPTIC_SIGNALING = c("Syn1", "Syp", "Snap25", "Other")),
+  project = list(DAM = c("Apoe", "Trem2", "Tyrobp"))
+))
+ca <- clearance_axis_data(axis_pb, axis_sub, axis_map, axis_geomx, summary, axis_sets)
+apo <- ca$pair_support[ca$pair_support$pair == "Apoe_Trem2" &
+                         ca$pair_support$contrast == "nlgf_in_maptki", , drop = FALSE]
+pros <- ca$pair_support[ca$pair_support$pair == "Pros1_Mertk" &
+                          ca$pair_support$contrast == "nlgf_in_maptki", , drop = FALSE]
+stopifnot(ca$spatial_decon$status == "defer",
+          identical(ca$verdict$ccc_called, FALSE),
+          ca$verdict$status == "earned",
+          nrow(ca$coverage) == nrow(clearance_axis_dictionary()),
+          ca$coverage$measured[match("Trem2", ca$coverage$symbol)],
+          nrow(ca$synaptic_gene_sets) == 1L,
+          apo$status == "earned",
+          grepl("GeoMx_spatial", apo$coherent_supported_modalities, fixed = TRUE),
+          grepl("snRNAseq_microglia", apo$coherent_supported_modalities, fixed = TRUE),
+          pros$status == "not_earned")
+axis_geomx_earned <- axis_geomx
+axis_geomx_earned$decon_preflight$status <- "earned"
+expect_error(clearance_axis_data(axis_pb, axis_sub, axis_map, axis_geomx_earned,
+                                 summary, axis_sets),
+             "add geomx_decon")
 
 cat("ok - test_crossmodality\n")

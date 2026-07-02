@@ -168,6 +168,13 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       prep, asserts identical sample order, subtracts matched filtered parent-protein log2 intensity by exact
       `PG.ProteinGroups`, drops no-parent rows with counts, and re-filters. run_phospho_corrected_24m -> limma-
       trend + run-index. bulk_omics_summary_data compacts feature/significance/run-index/anchor coverage for S4/S5.
+   + (P4-S3) crossmodality.R: spatial-composition gate + clearance-axis CCC-lite. geomx_q3_scaled_background
+      divides negative-probe background by Q3 factor; profile_collinearity records max abs profile correlation;
+      fit_geomx_abundance_de is the un-wired future SpatialDecon beta/log-abundance DE path (slide fixed +
+      duplicateCorrelation bio-unit block, unblocked sensitivity). clearance_axis_data -> clearance_axis target:
+      fails loud if geomx_de$decon_preflight becomes `earned` before decon targets exist; otherwise records the
+      intentional decon skip and harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk, complement, and synaptic
+      anchors across microglia RNA, GeoMx, and bulk layers with a conservative pair-support verdict.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -206,6 +213,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
+       clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets)  # S3 compact measured-axis table (~37KB); decon skipped/defer recorded; Apoe_Trem2 currently the only earned CCC-lite pair
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -239,7 +247,9 @@ from project root: `Rscript tests/test_<x>.R`.
                     duplicateCorrelation primary + unblocked/collapsed sensitivity status +
                     malformed metadata + decon preflight defer/block/earned reasons; (P4-S2) 16-run bulk matching +
                     protein aggregation/no-imputation + parent-protein correction/sample-order guard +
-                    missing-parent counts + run-index summary + duplicate/multi-gene provenance
+                    missing-parent counts + run-index summary + duplicate/multi-gene provenance; (P4-S3) Q3
+                    background scaling + profile-collinearity + abundance-DE design shape + clearance-axis
+                    earned/not-earned classification + fail-loud decon-earned guard
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)

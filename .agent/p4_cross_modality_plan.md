@@ -235,7 +235,7 @@ Outcome:
   2,059 had no filtered parent. Additive run-index sensitivity fit all three layers
   and is frequently non-supportive, so S4/S5 must downgrade run-order-dependent bulk hits.
 
-### S3 - Spatial composition + clearance-axis CCC-lite [PENDING]
+### S3 - Spatial composition + clearance-axis CCC-lite [DONE]
 If S1 decon preflight status is `earned`, add `geomx_decon` and
 `geomx_abundance_de`. Always add `clearance_axis` as a focused measured-axis
 table; it may return status `not_earned`.
@@ -260,6 +260,20 @@ Acceptance:
 - Fresh targets warning-clean; if decon is skipped, skip is intentional and
   reportable.
 - `scripts/check.sh` green.
+
+Outcome:
+- Added Q3-scaled background/profile-collinearity helpers plus an un-wired
+  `fit_geomx_abundance_de()` path for future SpatialDecon beta/log-abundance
+  testing. No `geomx_decon` / `geomx_abundance_de` targets were added because the
+  live S1 preflight remains `defer`; `clearance_axis_data()` now fails loud if a
+  future preflight becomes `earned` before those targets exist.
+- Added `clearance_axis`: measured APP/TREM2/APOE/CD74/PROS1/MERTK,
+  complement, and synaptic-anchor rows across whole/substate microglia RNA,
+  GeoMx primary DE, and 24M bulk anchors, plus synaptic GO-set availability.
+- Live fresh build warning-clean / `tar_meta` clean. Spatial decon action =
+  skipped (`defer`: 42 nuclei sentinels + no compact profile). CCC-lite verdict
+  = earned for `Apoe_Trem2` only, in `nlgf_in_p301s`, by coherent supported
+  GeoMx + snRNAseq microglia evidence; no full CCC method is called.
 
 ### S4 - Integrated gene/pathway divergence view [PENDING]
 Add targets: `crossmodality_table`, `crossmodality_pathway`, and

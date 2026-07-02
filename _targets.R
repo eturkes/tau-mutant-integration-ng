@@ -166,6 +166,16 @@ list(
              bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
+  # S3 spatial-composition gate + clearance-axis CCC-lite. Since the S1 GeoMx decon preflight is
+  # currently defer/blocked rather than earned, no SpatialDecon target is run; this compact target
+  # records that skip and harmonises measured APP/TREM2/APOE/CD74/MERTK/complement/synaptic anchors
+  # across microglia RNA, GeoMx, and 24M bulk layers. If the preflight later becomes earned, the
+  # function fails loud until geomx_decon + geomx_abundance_de are added.
+  tar_target(clearance_axis,
+             clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
+                                 bulk_omics_summary, mechanism_gene_sets),
+             format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing
