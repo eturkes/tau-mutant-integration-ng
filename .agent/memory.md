@@ -418,6 +418,32 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   lineage-conditioning balanced; cell-weighted anchors; transcriptionally-close substates). Full render = 52 chunks
   0-warning, report ~3.6MB, 23 targets.
 
+## Mechanism priors + contracts (P3-S1, built) -- `R/mechanism.R` + `tests/test_mechanism.R`
+- S1 adds contract helpers only (NO target yet): pseudobulk topTable -> symbol x contrast rank matrix
+  (duplicate symbols collapse by max |stat|), decoupleR ULM wrapper -> canonical long table, prior cache +
+  fingerprint, prior expectation assert, CollecTRI/KSN standardisers, phospho site IDs, and KSN coverage
+  probe. Tests are synthetic + warning-clean; live prior/coverage smoke stays outside the routine unit gate.
+- OmnipathR load gotcha: this container's `/etc/localtime` is not a symlink, so loading OmnipathR through
+  lubridate under `warn=2` warns unless `TZ` is set. `set_mechanism_prior_cache()` sets `TZ=UTC` before
+  `requireNamespace("OmnipathR")`; this is a preflight, not warning suppression.
+- Current OmniPath package-wrapper gotcha (2026-07-02 live): `decoupleR::get_collectri()` /
+  `OmnipathR::collectri()` and `OmnipathR::enzyme_substrate(organism=10090, genesymbols=TRUE)` fail because
+  OmnipathR's postprocessor expects `ncbi_tax_id`, absent from the current server response. P3 loaders therefore
+  default to official OmniPath REST TSV endpoints cached under `storage/cache/omnipath`; `try_package=TRUE`
+  remains an explicit drift probe. This is still direct mouse OmniPath, NOT v1's off-lock nichenetr mapping.
+- Observed default REST priors after sign/component hardening (pinned in `mechanism_prior_expectations()`;
+  package versions live in rv.lock):
+  CollecTRI = 37,096 edges / 1,093 sources / 6,010 targets, hash
+  `027ee57a61246bff4127d9d36807469713731de552398bb81989a06fd1bc44e6`; sign source =
+  consensus columns, ambiguous/unsigned rows dropped = 2,449, duplicate rows collapsed = 304, conflicting pairs = 0.
+  KSN = 29,378 edges / 1,397 sources / 13,048 site targets, hash
+  `997b690d5efdfd8bb4424c12a29a80f5a980d8b3404025210e188281d554172d`; unsupported modifications dropped =
+  794, conflicting source-target sign pairs dropped = 542 pairs / 1,084 rows, duplicate rows collapsed = 1.
+- Real phospho-site coverage smoke (current `phospho` target): 64,328 raw rows -> 63,794 kept single-gene
+  rows -> 44,896 unique `SYMBOL_AApos` site IDs (312 multi-gene rows, 222 missing genes, 1 missing site,
+  18,898 duplicate rows). KSN overlap = 6,064 matched edges / 2,250 matched sites / 212 kinases with
+  minsize>=5; `Gsk3b` present with 245 matched sites -> coverage gate clears before S3.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

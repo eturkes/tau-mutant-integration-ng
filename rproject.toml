@@ -48,6 +48,12 @@ dependencies = [
     # a compiled C++ template, NOT Stan -> fully ON-lock; P3M ships the trixie BINARY co-built
     # against the snapshot's Matrix/TMB, so it loads ABI-clean (no local source build, no mismatch warning).
     "glmmTMB",
+    # mechanism (P3): RNA TF/pathway and phosphosite kinase activity with reproducible prior fingerprints.
+    { name = "decoupleR", repository = "BioCsoft" },
+    { name = "OmnipathR", repository = "BioCsoft" },
+    { name = "fgsea",     repository = "BioCsoft" },
+    "msigdbr",
+    "digest",
     # plotting
     "ggplot2",
     "ggrepel",

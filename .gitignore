@@ -21,6 +21,8 @@
 **/*.quarto_ipynb
 # sccomp/cmdstanr dumps per-chain CSV draws into ./sccomp_draws_files/ at the build CWD - regenerable
 sccomp_draws_files/
+# OmnipathR runtime logs from prior API probes / downloads - regenerable
+omnipathr-log/
 
 # optional code-graph index; regenerable, never source
 /.tokensave/

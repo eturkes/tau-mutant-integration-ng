@@ -83,14 +83,16 @@ Lean, on-lock, mechanism-specific:
    claims carry a load-bearing run-order caveat and a run-index trend sensitivity where estimable.
 
 4. Kinase inference = `decoupleR` over an OmniPath mouse KSN.
-   Build KSN through `OmnipathR::enzyme_substrate(organism=10090, genesymbols=TRUE, ...)`, filter
-   phosphorylation / dephosphorylation, validate exact columns before use, and produce `source`
-   kinase + `target` site id `SYMBOL_AApos` + `mor`. Because OmniPath uses UniProt IDs as primary
-   identifiers and gene symbols are optional, S1 must assert mouse-symbol presence, symbol case, and
-   real overlap against current phosphosite IDs before any activity score. Require smoke-test coverage
-   before the real target: nonempty network, >=50 kinases with minsize>=5 on current phospho sites,
-   `Gsk3b` present either as source or explicitly absent-with-count recorded. If direct mouse KSN fails
-   coverage, stop before implementation-choice drift and decide fallback.
+   Build KSN from the official OmniPath mouse REST `enz_sub` endpoint by default; keep
+   `try_package=TRUE` as an explicit drift probe for `OmnipathR::enzyme_substrate(...)` because S1 proved
+   the package postprocessor currently fails on the live schema. Filter phosphorylation /
+   dephosphorylation, validate exact columns before use, drop unresolved conflicting signed pairs, and
+   produce `source` kinase + `target` site id `SYMBOL_AApos` + `mor`. Because OmniPath uses UniProt IDs
+   as primary identifiers and gene symbols are optional, S1 must assert mouse-symbol presence, symbol
+   case, and real overlap against current phosphosite IDs before any activity score. Require smoke-test
+   coverage before the real target: nonempty network, >=50 kinases with minsize>=5 on current phospho
+   sites, `Gsk3b` present either as source or explicitly absent-with-count recorded. If direct mouse KSN
+   fails coverage, stop before implementation-choice drift and decide fallback.
 
 5. Report = one compact target + one chapter.
    `mechanism_report` bundles only small tables / plot frames. `_mechanism.qmd` loads that target and
@@ -114,11 +116,17 @@ mechanism request while preserving P4's larger cross-modality remit.
 Each step is one closing unit. Resuming mid-plan: read this plan's Scope + your step + `.agent/memory.md`
 relevant sections + files named in the step. Run `scripts/check.sh` unless explicitly docs-only.
 
-### S1 - Dependencies + API contracts
+### S1 - Dependencies + API contracts [DONE 2026-07-02]
 Edit `rproject.toml` and `rv.lock` only through `rv sync` after adding:
 `decoupleR` (BioCsoft), `OmnipathR` (BioCsoft), `fgsea` (BioCsoft), `msigdbr` (CRAN),
 `digest` (CRAN; prior hashes).
 Add `R/mechanism.R` with pure API/shape helpers and `tests/test_mechanism.R` synthetic tests.
+
+Outcome note: Bioc 3.23 `OmnipathR` loads warning-clean after `TZ=UTC`, but its `collectri()` /
+`enzyme_substrate()` postprocessor currently fails on the live server schema (`ncbi_tax_id` missing).
+S1 therefore uses official OmniPath REST endpoints by default (`try_package=FALSE`), with
+`try_package=TRUE` left as an explicit drift probe. This is still direct mouse OmniPath, not v1's
+off-lock `nichenetr` mapping.
 
 Contracts:
 - `add_symbol_to_top(top_df, symbol_map, gene_col="gene")` -> top table with `symbol`; fail loud on
@@ -131,14 +139,15 @@ Contracts:
 - `set_mechanism_prior_cache()` -> `OmnipathR::omnipath_set_cachedir("storage/cache/omnipath")`
   (gitignored project-local cache, not user-global); records cache path in provenance.
 - `prior_fingerprint(x, query)` -> stable hash of sorted prior tibble + query args + package versions.
-  S1 records observed CollecTRI/KSN hashes and counts in code/test fixtures or memory; later builds fail
-  loudly on unexpected drift rather than silently refreshing priors.
+  S1 records observed CollecTRI/KSN hashes and counts in code/test fixtures or memory; later builds call
+  `assert_mechanism_prior_expectations()` to fail loudly on unexpected drift rather than silently
+  refreshing priors.
 - `load_collectri_mouse()` -> returns signed mouse CollecTRI with `{source,target,mor}`; records edge /
   TF / target counts, source examples, query args, package version, hash.
-- `load_omnipath_ksn_mouse()` -> returns `{source,target,mor}` site network via current OmnipathR direct
-  mouse path; explicitly requests/validates gene symbols (`enzyme_genesymbol`, `substrate_genesymbol`,
-  `residue_type`, `residue_offset`, `modification` or documented current equivalents). No v1
-  `nichenetr` fallback unless this step proves direct path unusable.
+- `load_omnipath_ksn_mouse()` -> returns `{source,target,mor}` site network via official OmniPath mouse
+  REST by default; explicitly requests/validates gene symbols (`enzyme_genesymbol`,
+  `substrate_genesymbol`, `residue_type`, `residue_offset`, `modification` or documented current
+  equivalents). `try_package=TRUE` probes the current OmnipathR path; no v1 `nichenetr` fallback.
 - `phospho_site_ids(phospho_tbl)` -> real current phospho target IDs from `{PG.Genes, PTM.SiteAA,
   PTM.SiteLocation}` with missing/multi-gene/drop counts; used in S1 for KSN overlap before S3 DE.
 - `ksn_coverage_probe(ksn, phospho_site_ids, minsize=5)` -> matched site count, kinases passing

@@ -1,0 +1,122 @@
+# P3-S1 mechanism contracts: symbol rank matrices, decoupleR schema wrapping, prior
+# fingerprinting, OmniPath prior-table standardisation, phosphosite IDs, and KSN coverage.
+
+source("R/constants.R")
+source("R/mechanism.R")
+source("tests/helpers.R")
+
+canonical <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
+
+# --- symbol mapping + duplicate collapse -------------------------------------------------
+sym <- data.frame(ensembl = c("g1", "g2", "g3", "g4"),
+                  symbol = c("A", "B", "B", "D"), stringsAsFactors = FALSE)
+top <- data.frame(gene = c("g1", "g2", "g3", "gX"),
+                  t = c(1, -2, 3, 4), logFC = 1:4, stringsAsFactors = FALSE)
+mapped <- add_symbol_to_top(top, sym)
+mc <- attr(mapped, "symbol_mapping")
+stopifnot(identical(mapped$symbol, c("A", "B", "B")),
+          mc$n_input == 4L, mc$n_mapped == 3L, mc$n_dropped == 1L)
+expect_error(add_symbol_to_top(top, sym, gene_col = "missing"), "missing gene column")
+
+tops <- stats::setNames(rep(list(top), length(canonical)), canonical)
+tops$interaction <- data.frame(gene = c("g1", "g2", "g3", "g4"),
+                               t = c(5, -6, 7, 8), stringsAsFactors = FALSE)
+rmx <- extract_rank_matrix(tops, sym)
+stopifnot(is.matrix(rmx), identical(colnames(rmx), canonical),
+          identical(rownames(rmx), c("A", "B", "D")),
+          rmx["B", "tau_alone"] == 3, rmx["B", "interaction"] == 7,
+          rmx["D", "interaction"] == 8)
+expect_error(extract_rank_matrix(list(tau_alone = transform(top, t = NA_real_)), sym), "no finite")
+
+# --- decoupleR ULM wrapper schema --------------------------------------------------------
+mat <- matrix(c(1, 2, 3, 4, 2, 1, 4, 3, 3, 4, 1, 2), nrow = 4,
+              dimnames = list(c("GeneA", "GeneB", "GeneC", "GeneD"), c("c1", "c2", "c3")))
+net <- data.frame(source = c("TF1", "TF1", "TF2", "TF2", "TF2"),
+                  target = c("GeneA", "GeneB", "GeneB", "GeneC", "GeneD"),
+                  mor = c(1, -1, 1, 1, -1), stringsAsFactors = FALSE)
+ulm <- run_decoupler_matrix(mat, net, minsize = 2L)
+stopifnot(is.data.frame(ulm), all(c("statistic", "source", "condition", "score", "p_value") %in% names(ulm)),
+          identical(unique(ulm$statistic), "ulm"), isFALSE(attr(ulm, "has_consensus")),
+          all(ulm$source %in% c("TF1", "TF2")), all(ulm$condition %in% colnames(mat)))
+
+# --- cache preflight + prior fingerprint determinism ------------------------------------
+cache <- set_mechanism_prior_cache(file.path(tempdir(), "tau_mechanism_omnipath"))
+stopifnot(dir.exists(cache$cache_dir), identical(cache$tz, Sys.getenv("TZ")), nzchar(cache$tz))
+fp1 <- prior_fingerprint(net, list(b = 2, a = 1))
+fp2 <- prior_fingerprint(net[nrow(net):1, c("target", "mor", "source")], list(a = 1, b = 2))
+fp3 <- prior_fingerprint(transform(net, mor = -mor), list(a = 1, b = 2))
+stopifnot(identical(fp1$hash, fp2$hash), !identical(fp1$hash, fp3$hash),
+          fp1$n_rows == nrow(net), fp1$n_cols == ncol(net))
+
+# --- CollecTRI shape from OmniPath-like table -------------------------------------------
+collectri_raw <- data.frame(
+  source = c("P1", "COMPLEX:JUN_FOS", "COMPLEX:REL_NFKB", "P2", "bad", "amb", "none", "dup1", "dup2"),
+  source_genesymbol = c("Myc", "JUN_FOS", "REL_NFKB1", "Spi1", "", "Amb", "None", "Dup", "Dup"),
+  target_genesymbol = c("Tert", "Jun", "Ccl2", "B2m", "Drop", "X", "Y", "Z", "Z"),
+  is_stimulation = c("True", "True", "False", "False", "False", "True", "False", "True", "False"),
+  is_inhibition = c("False", "False", "True", "True", "False", "True", "False", "False", "True"),
+  consensus_stimulation = c("True", "True", "False", "False", "False", "True", "False", "True", "False"),
+  consensus_inhibition = c("False", "False", "True", "True", "False", "True", "False", "False", "True"),
+  stringsAsFactors = FALSE
+)
+ctr <- standardise_collectri_table(collectri_raw)
+cf <- attr(ctr, "prior_filter_counts")
+stopifnot(identical(names(ctr), c("source", "target", "mor")),
+          all(c("Myc", "AP1", "NFKB", "Spi1") %in% ctr$source),
+          ctr$mor[match("NFKB", ctr$source)] == -1,
+          all(ctr$mor %in% c(-1, 1)), !("Dup" %in% ctr$source),
+          cf$n_ambiguous_sign == 3L, cf$n_conflicting_pairs == 1L)
+
+# --- KSN parsing + phosphosite IDs + coverage -------------------------------------------
+ksn_raw <- data.frame(
+  enzyme_genesymbol = c("Gsk3b", "Gsk3b", "Mapk9", "Ptpn1", "Bad;Group", "Src", "Src", "Src", "Cdk5", "Cdk5", "Cdk5"),
+  substrate_genesymbol = c("Mapt", "Myocd", "Rxra", "Jak2", "Drop", "A,B", "Conf", "Conf", NA, "Bad", "Bad"),
+  residue_type = c("T", "S", "S", "Y", "S", "Y", "S", "S", "S", NA, "S"),
+  residue_offset = c(375, 454, 75, 1007, 1, 2, 10, 10, 1, 2, NA),
+  modification = c("phosphorylation", "phosphorylation", "phosphorylation", "dephosphorylation", "phosphorylation",
+                   "phosphorylation", "phosphorylation", "dephosphorylation", "phosphorylation",
+                   "phosphorylation", "phosphorylation"),
+  stringsAsFactors = FALSE
+)
+ksn <- standardise_ksn_table(ksn_raw)
+kf <- attr(ksn, "prior_filter_counts")
+stopifnot(all(c("Gsk3b", "Mapk9", "Ptpn1") %in% ksn$source),
+          all(c("Mapt_T375", "Myocd_S454", "Rxra_S75", "Jak2_Y1007") %in% ksn$target),
+          ksn$mor[match("Jak2_Y1007", ksn$target)] == -1,
+          !any(grepl("Bad;Group", ksn$source, fixed = TRUE)),
+          !any(grepl("A,B", ksn$target, fixed = TRUE)),
+          !any(grepl("Conf", ksn$target, fixed = TRUE)),
+          kf$n_missing_component == 3L, kf$n_multi_gene == 2L,
+          kf$n_conflicting_pairs == 1L)
+
+phospho <- data.frame(
+  PG.Genes = c("Mapt", "A;B", "", "Gsk3b", "Myocd", "Mapt"),
+  PTM.SiteAA = c("T", "S", "S", NA, "S", "T"),
+  PTM.SiteLocation = c(375, 10, 20, 30, 454, 375),
+  stringsAsFactors = FALSE
+)
+ids <- phospho_site_ids(phospho)
+pc <- attr(ids, "phospho_site_counts")
+stopifnot(is.list(pc), !is.null(pc$n_rows),
+          identical(sort(ids, method = "radix"), c("Mapt_T375", "Myocd_S454")),
+          pc$n_rows == 6L, pc$n_missing_gene == 1L, pc$n_multi_gene == 1L,
+          pc$n_missing_site == 1L, pc$n_duplicate_rows == 1L)
+cov <- ksn_coverage_probe(ksn, ids, minsize = 2L)
+stopifnot(cov$n_phospho_sites == 2L, cov$n_matched_sites == 2L,
+          cov$gsk3b$source_present, cov$gsk3b$matched_sites == 2L,
+          cov$gsk3b$passes_minsize, cov$kinases_passing_minsize == 1L,
+          cov$source_case$count[cov$source_case$pattern == "exact_Gsk3b"] == 1L)
+
+fake_prior <- net
+attr(fake_prior, "provenance") <- list(hash = "abc", n_sources = 2L, n_targets = 4L)
+fake_cov <- list(n_matched_sites = 2L, kinases_passing_minsize = 1L,
+                 gsk3b = list(matched_sites = 2L))
+exp_ok <- list(collectri = list(hash = "abc", n_rows = nrow(fake_prior), n_sources = 2L, n_targets = 4L),
+               ksn = list(hash = "abc", n_rows = nrow(fake_prior), n_sources = 2L, n_targets = 4L),
+               ksn_coverage = list(n_matched_sites = 2L, kinases_passing_minsize = 1L,
+                                   gsk3b_matched_sites = 2L))
+stopifnot(assert_mechanism_prior_expectations(fake_prior, fake_prior, fake_cov, exp_ok))
+exp_bad <- exp_ok; exp_bad$ksn_coverage$n_matched_sites <- 999L
+expect_error(assert_mechanism_prior_expectations(fake_prior, fake_prior, fake_cov, exp_bad), "KSN coverage drift")
+
+cat("ok - test_mechanism\n")

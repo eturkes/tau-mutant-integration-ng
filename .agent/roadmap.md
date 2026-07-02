@@ -30,10 +30,10 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P3 Mechanism
 Plan: `.agent/p3_mechanism_plan.md` (opened 2026-07-02 after user confirmed default P3).
-Next `$session-prompt` mode = EXECUTE: implement S1.
+Next `$session-prompt` mode = EXECUTE: implement S2.
 
 Steps:
-- [ ] S1 dependencies + API contracts.
+- [x] S1 dependencies + API contracts.
 - [ ] S2 RNA pathway + TF + NF-kB targets.
 - [ ] S3 minimal phosphosite DE + kinase activity.
 - [ ] S4 mechanism report + integration.
@@ -306,6 +306,18 @@ Steps:
   KSN coverage against current phospho IDs; duplicate phosphosite collapse before decoupleR; run-order sensitivity
   for genotype-blocked 24M phospho samples; NF-kB attenuation primary = negative `interaction`, with
   `tau_in_nlgf` supportive only. Next = EXECUTE S1.
+- 2026-07-02 P3-S1 DONE -> rproject.toml/rv.lock += decoupleR, OmnipathR, fgsea, msigdbr, digest;
+  `R/mechanism.R` + `tests/test_mechanism.R` implement symbol-ranked matrices, decoupleR ULM wrapper, prior
+  cache/fingerprint + expectation helpers, CollecTRI/KSN normalisers, phosphosite IDs, and KSN coverage. LIVE API smoke:
+  `OmnipathR` loads warning-clean only after `TZ=UTC`; its CollecTRI + enzyme_substrate postprocessors fail on the
+  current server schema (`ncbi_tax_id` missing), so loaders default to official OmniPath REST endpoints cached under
+  `storage/cache/omnipath` (still direct mouse OmniPath, no nichenetr fallback). Hardened signs/components:
+  CollecTRI uses consensus sign columns, drops 2,449 ambiguous rows; KSN drops 542 conflicting sign pairs.
+  Observed REST priors pinned in code: CollecTRI 37,096 edges / 1,093 TFs / 6,010 targets hash
+  027ee57a61246bff4127d9d36807469713731de552398bb81989a06fd1bc44e6; KSN 29,378 edges / 1,397 enzymes /
+  13,048 sites hash 997b690d5efdfd8bb4424c12a29a80f5a980d8b3404025210e188281d554172d. Real phospho-site probe:
+  64,328 rows -> 44,896 unique single-gene site IDs; KSN overlap 2,250 sites, 212 kinases pass minsize>=5, Gsk3b
+  present + 245 matched sites. Next = S2.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

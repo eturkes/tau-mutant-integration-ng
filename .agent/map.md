@@ -113,6 +113,19 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       weighted mean_pt coef/CI/p_value present+finite on all 5 canonical contrasts; per_unit/sensitivity non-empty +
       finite; glmm method-enum + finite estimate/CI/p/re_sd; provenance fin1/int1/str1 scalars + logical concordant;
       labelled genotype/substate. Pure: no RNG/IO. (_trajectory.qmd render layer = the report include chain below, S4b DONE.)
+   + (P3-S1) mechanism.R: pure mechanism-contract helpers (NO source-time package loads). add_symbol_to_top /
+      extract_rank_matrix convert pseudobulk topTables to symbol x contrast statistic matrices with duplicate symbols
+      collapsed by max |stat|; run_decoupler_matrix wraps decoupleR::run_ulm into canonical
+      {statistic,source,condition,score,p_value}; set_mechanism_prior_cache pins OmniPath cache under
+      storage/cache/omnipath and sets TZ=UTC before OmnipathR load (container /etc/localtime warning guard);
+      prior_fingerprint hashes sorted prior table + query args + package versions; mechanism_prior_expectations +
+      assert_mechanism_prior_expectations pin S1 live prior/coverage drift gates; load_collectri_mouse /
+      load_omnipath_ksn_mouse default to official OmniPath REST endpoints (cached TSV) because OmnipathR 4.0.0
+      postprocessing currently fails on live schema missing ncbi_tax_id, while try_package=TRUE remains an explicit
+      drift probe; standardise_collectri_table / standardise_ksn_table validate direct mouse source-target-mor priors
+      (consensus signs, unresolved ambiguous rows dropped, conflicting duplicate signed pairs dropped);
+      phospho_site_ids builds `SYMBOL_AApos` from {PG.Genes, PTM.SiteAA, PTM.SiteLocation} with drop counts;
+      ksn_coverage_probe reports matched sites, minsize-pass kinases, Gsk3b coverage, and source-case diagnostics.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -166,6 +179,9 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
   - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity: beta success (glmmTMB_beta, n_units=16) / singular->failed / non-estimable->failed (fail_reason + captured messages) / unknown-genotype fail-loud; (P2-S4a) trajectory_report_data field/measure/contrast presence + finite interaction inference on the jitter>0 fixture (per-unit DAM composition VARIED so comp_cf/cross fdr stay non-degenerate) + a positive finite-bundle assertion + 13 malformed-input expect_error cases (up-front schema + assembled-bundle postconditions: col-drop/measure/weighted-p/per_unit/sensitivity/glmm-enum/provenance-scalar/NaN-endpoint; fixed=TRUE patterns match the TRUNCATED stopifnot deparse prefix)
+  - test_mechanism.R  : (P3-S1) symbol mapping/drop counts + duplicate max-|stat| collapse + decoupleR ULM schema +
+                    cache/TZ preflight + prior fingerprint determinism + synthetic CollecTRI/KSN standardisers +
+                    phosphosite ID/drop counts + KSN coverage/Gsk3b assertions + prior drift assertion helper
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
