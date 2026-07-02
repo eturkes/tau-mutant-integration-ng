@@ -90,3 +90,46 @@ effect (rate only under the age-matched-snapshot assumption).
 Deferred -> P2+: activation pseudotime + interaction-as-position/extent (P2); TF/kinase mechanism, Gsk3b/Myc,
 NF-kB attenuation (P3); GeoMx spatial + proteome + phospho DE, CCC, integrated divergence (P4); lean synthesis
 report (P5).
+
+## P2 Interaction trajectory -- closed 2026-07-02 (-> `.agent/completed/p2_trajectory_plan_2026-07-02.md`)
+
+Tested the P1-deferred claim that tau x amyloid synergy is not just more DAM cells but further progression
+along a homeostatic->DAM activation ordering. Built `microglia_trajectory`, `trajectory_progression`,
+`trajectory_glmm_sensitivity`, `trajectory_report`, and `_trajectory.qmd`. Live facts -> memory.md
+(P2-S1..S4 sections); wiring -> map.md. Below = decisions + rejected alternatives.
+
+- TRAJECTORY: slingshot on the cached Harmony embedding, forced Homeostatic->DAM lineage, IFN/proliferative
+  off-lineage but retained for conditioning audit. UCell DAM-minus-homeostatic score-axis = concordance guard,
+  not independent robustness. Pseudotime is activation position/extent in a cross-sectional snapshot, NOT
+  developmental time, potency, rate, or acceleration. REJECTED: CytoTRACE2/potency framing, Python PAGA/DPT,
+  CellRank/RNA-velocity claims, retuning dims/lineage after contrast inspection.
+- PRIMARY INFERENCE: collapse on-lineage cells to 16 genotype_batch units -> existing factorial design
+  (9 residual df), ordinary weighted limma t (no eBayes), 5 canonical contrasts. Three-channel Kitagawa/Oaxaca
+  decomposition splits mean pseudotime into composition / progression / cross on raw additive pt scale; primary
+  family = {progression_cf, within_homeostatic}. Freedman-Lane replicate permutation = sensitivity, not nominal-
+  exact. REJECTED: cell-level progression tests as primary (pseudoreplication), condiments/tradeSeq as inferential
+  factorial tools, 2-channel decomposition, logit/asin decomposition.
+- SUPPORTIVE ARM: glmmTMB beta GLMM on per-cell pt01 with batch fixed + `(1|unit)`, graceful degrade to rank-normal
+  LMM or recorded failed result. It corroborates the position shift only; because it models per-cell position, it is
+  composition-confounded and never load-bearing for composition-vs-progression. Live correction vs plan: P3M served
+  a CRAN binary for glmmTMB/TMB on this stack, so no source-build/ABI handwork was needed. REJECTED: Stan/Python/GitHub
+  dependencies, leaning on GLMM asymptotics with only 16 units.
+- HEADLINE (R4.6 re-baseline, qualitative durable): amyloid strongly advances the activation ordering. The tau x
+  amyloid interaction raises mean position, but the exact decomposition attributes that position shift mainly to
+  DAM-cell composition, not progression beyond composition; the pre-registered progression endpoints are not
+  statistically supported. This confirms P1's DAM-fraction interaction and revises the v1 Arc-M interpretation
+  from "synergistic acceleration/progression" to "more DAM cells". Absence language is scoped: negative/NS progression
+  estimate = no supported progression signal, NOT proof of absence.
+- REPORT/API: `_trajectory.qmd` reads one compact `trajectory_report` target (~sub-MB), never the 612MB Seurat.
+  Prose and headline numbers are inline-computed. `trajectory_report_data` guards every nested field the qmd reads
+  and intentionally fails on non-finite inference rows rather than printing NaN. Dropped redundant
+  `trd$decomposition` output after review; loadings live in provenance and per-channel coefs live in the interaction
+  table.
+
+Verification (honest): S1-S4b each smoke-tested on live cached data, fresh leaf builds were forced where the gate
+would otherwise stay cached (`trajectory_progression`, `trajectory_glmm_sensitivity`, `trajectory_report`), and
+full `scripts/check.sh` was green through S4b + review. Close-out adversarial review found no remaining shipped
+code/prose blocker beyond updating the forward spine. Final close-out gate re-run green on 2026-07-02.
+
+Deferred -> P3+: mechanism survey (TF/kinase: Gsk3b/Myc, NF-kB attenuation) is the default next phase; P4 remains
+GeoMx spatial + bulk proteome/phospho cross-modality; P5 lean synthesis.

@@ -19,32 +19,19 @@ Durable findings mined from v1 (the headline to rebuild around):
 1. Amyloid drives a microglial homeostatic->DAM activation programme (DAM / MG-M2 /
    antigen-presentation); microglia-led, corroborated across modalities.
 2. Mutant tau MODULATES the amyloid response (the interaction) - clearest as a
-   SYNERGISTIC acceleration along the activation trajectory (v1's one positive,
-   significant orthogonal interaction). [P2 R4.6 UPDATE: re-baseline resolves this
-   synergy as DAM-cell COMPOSITION, not progression/acceleration; finalise the spine wording at P2 close.]
+   compositional DAM-cell synergy: amyloid adds more DAM cells on the mutant-tau
+   background than additivity predicts. P2 does NOT detect a supported
+   progression-beyond-composition signal along the activation trajectory.
 3. Mechanism converges on Gsk3b / Myc signalling; tau attenuates amyloid-driven NF-kB.
 4. Secondary axis: amyloid-linked synaptic suppression + TREM2 / APP clearance.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: P2 interaction trajectory -> `.agent/p2_trajectory_plan.md` (OPENED 2026-06-30)
-Tests the PIVOTAL claim P1 deferred: tau x amyloid synergy as PROGRESSION (extent-of-advance) along the
-homeostatic->DAM activation trajectory. P1 ESTABLISHED a static COMPOSITIONAL synergy (propeller DAM-fraction
-interaction sig; DE under-powered) -> P2 isolates the PROGRESSION channel BEYOND that composition shift. Stack
-DECIDED = LEAN ON-LOCK (user gate): slingshot (harmony 15-dim) + UCell score-axis concordance anchor; weighted
-per-replicate (16-unit) pseudotime-summary interaction through EXISTING factorial_design (no eBayes; 9 resid
-df); 3-channel Kitagawa composition/progression/cross decomposition; glmmTMB per-cell sensitivity (supportive).
-S2 primary = pure-R/no new dep; full P2 stack on-lock from the pinned snapshot (S3 = source-compiled glmmTMB/TMB;
-no Stan/Python/GitHub). Converged: v1 Arc M (the executed analysis, found the one +ve orthogonal interaction)
-+ 2026 SOTA sweep. Dropped v1 bloat: Python triangulation, CytoTRACE2, fragile Arc-O gene-dynamics.
-6 steps (S1 trajectory+pseudotime -> S2a estimation-core + S2b interaction-inference [pure-R primary] -> S3
-glmmTMB per-cell sensitivity [new-dep arm] -> S4a report-data extractor+target + S4b chapter+wiring). S1..S4b ALL
-DONE (2026-07-01) -> P2 steps COMPLETE, UNREVIEWED -> next mode = CLOSE-OUT (adversarial plan review; fold P2 digest
--> history.md; archive the plan; reset Active plan; + REVISE the Cohesive-story finding #2 wording -- synergy = DAM
-COMPOSITION not progression/acceleration -- per the R4.6 re-baseline). Both wip branches (wip-p2s4a-hardened,
-wip-p2s4-report) DELETED at S4b close.
-(S2 split out S3, then S2 -> S2a/S2b, then S4 -> S4a/S4b, all 2026-06-30..07-01 to fit one window each — see ledger.)
+## Active plan: none
+P2 closed 2026-07-02 -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`.
+Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the user
+(default = P3 Mechanism unless they intentionally reorder P4 Cross-modality first).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -54,11 +41,10 @@ wip-p2s4-report) DELETED at S4b close.
   IFN / proliferative, UCell), composition (propeller primary + sccomp cross-check), pseudobulk DE across
   contrasts -> the robust amyloid->DAM activation programme (3-way confirmed: composition + DE + UCell score).
   Interaction = no large-effect DE, under-powered NOT absent (reported w/ MDE/CI + 123 stageR-confirmed, real |logFC| but sub-threshold per-contrast FDR) ->
-  synergy = trajectory position/extent effect to P2 (rate interpretation only under the age-matched snapshot
-  assumption). Digest -> history.md.
-- P2 Interaction trajectory [OPENED 2026-06-30 -> p2_trajectory_plan.md]: activation pseudotime
-  (homeostatic->DAM); test amyloid advance + tau x amyloid progression synergy, decomposed composition vs
-  progression.
+  synergy handed to P2 and resolved as DAM-cell composition rather than progression/acceleration. Digest -> history.md.
+- P2 Interaction trajectory [DONE 2026-07-02 -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`]:
+  activation pseudotime (homeostatic->DAM); amyloid advances the activation axis, but the tau x amyloid
+  interaction decomposes to more DAM cells, not supported progression beyond composition.
 - P3 Mechanism: focused pathway/module survey; TF (decoupleR / CollecTRI) + kinase
   (decoupleR / OmniPath) -> Gsk3b / Myc; NF-kB attenuation check.
 - P4 Cross-modality: GeoMx spatial DE (+ light deconvolution if it earns it),
@@ -298,6 +284,12 @@ wip-p2s4-report) DELETED at S4b close.
   reviewer.md before running `scripts/codex-review.sh`; `$codex-reviewer` loads the read-only rubric directly.
   Fresh `codex exec` smoke checks confirmed `$session-prompt` + `$codex-review` appear in initial skill context and
   explicit `$codex-reviewer` loads.
+- 2026-07-02 P2 CLOSED: close-out review of plan body + shipped trajectory code/prose found no remaining blocker
+  after the S4b review fixes; the only forward-state correction was the spine wording. Folded P2 digest ->
+  history.md; archived plan -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`; reset Active plan to none.
+  Cohesive-story finding #2 now says mutant tau's amyloid-response modulation is DAM-cell COMPOSITION, not
+  supported progression/acceleration. Full `scripts/check.sh` rerun green (tests warn=2, force-render 52 chunks,
+  tar_meta clean across 23 targets, render-log clean). Next = PLAN P3 by default, with user confirmation.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
