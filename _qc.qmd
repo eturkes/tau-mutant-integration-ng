@@ -70,7 +70,7 @@ knitr::kable(addmargins(xtab))
 ```
 
 ```{r}
-#| label: crosstab-fig
+#| label: fig-qc-genotype-batch
 #| fig-width: 8
 #| fig-height: 4
 #| fig-cap: "Nuclei per genotype and batch. Every genotype-by-batch cell is populated, so all 16 pseudobulk replicates are estimable."
@@ -90,7 +90,7 @@ Library size and complexity per nucleus, by genotype (log scale; precomputed on 
 object, carried through the subset):
 
 ```{r}
-#| label: depth-fig
+#| label: fig-qc-depth
 #| fig-width: 9
 #| fig-height: 4
 #| fig-cap: "Per-nucleus total counts and detected genes by genotype."
@@ -110,7 +110,7 @@ Mitochondrial, ribosomal, MALAT1 and non-microglial contamination fractions per 
 by genotype (linear scale; these motivate the QC thresholds applied later, not here):
 
 ```{r}
-#| label: fraction-fig
+#| label: fig-qc-fractions
 #| fig-width: 9
 #| fig-height: 6
 #| fig-cap: "Per-nucleus quality fractions by genotype. Shown for sanity only; no nuclei are filtered in this phase."

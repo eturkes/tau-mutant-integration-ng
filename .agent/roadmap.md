@@ -31,12 +31,9 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: Figure expansion [OPEN -> `.agent/figure_expansion_plan.md`]
-Goal = add many more final-report figures while preserving the closed P1-P5 claims
-and cheap-render gate. Route = inline chapter expansion: add compact per-chapter
-figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
-`_trajectory.qmd`, `_mechanism.qmd`, and `_crossmodality.qmd`. Next
-`$session-prompt` mode = EXECUTE S5 (UX, visual QA, close-out prep).
+## Active plan: (none)
+Fresh rebuild + figure-density pass are closed. Next `$session-prompt` mode =
+PLAN: confirm any new phase with user before writing a plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -60,9 +57,9 @@ figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
 - P5 Synthesis [DONE 2026-07-02 -> `.agent/completed/p5_synthesis_plan_2026-07-02.md`]:
   ONE lean report - cohesive narrative + compact evidence table (no ledger /
   contest machinery).
-- Figure expansion [OPEN 2026-07-02 -> `.agent/figure_expansion_plan.md`]:
-  post-report visual-density pass. Route = inline chapter expansion backed by
-  compact per-chapter figure targets; add ~20-26 figures without changing claims.
+- Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
+  post-report visual-density pass. Inline chapter expansion backed by compact
+  per-chapter figure targets; +26 planned figures landed without changing claims.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -483,6 +480,14 @@ figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
   hippocampus, not microglia-sorted; run-index sensitivity is load-bearing;
   symbol/pathway modality counts use broad modality classes. Next = S5 UX,
   visual QA, and close-out.
+- 2026-07-02 Figure expansion S5 DONE -> CLOSED: enabled Quarto `lightbox: auto`
+  in the embedded offline HTML and normalised every captioned figure chunk to a
+  hyphenated `fig-*` label. Full `scripts/check.sh` green after forced 140-chunk
+  render. Rendered HTML QA green: 42 figure blocks, 42 captions, 42 source
+  `fig-*` labels, lightbox assets embedded, expected sections present, 0 external
+  resource refs, 0 warning/error markers. Folded digest -> history.md; archived
+  plan -> `.agent/completed/figure_expansion_plan_2026-07-02.md`; reset Active
+  plan to none.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

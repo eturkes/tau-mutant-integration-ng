@@ -707,6 +707,21 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Full gate after S4 was green: tests warn=2, forced 140-chunk report render, tar_meta clean across 46 current
   targets/branches, render-log clean; report ~8.24MB.
 
+## Figure expansion UX + close (S5, built) -- `index.qmd` + rendered HTML QA
+- S5 kept the inline route and added no new inference/targets. `index.qmd` now sets
+  Quarto `lightbox: auto` under the HTML format; with `embed-resources: true`, the
+  final `_report/index.html` remains self-contained and includes the lightbox assets.
+  Quarto's current contract: `auto` lightboxes figures/block images; computational
+  figures use their `fig-cap` metadata.
+- Captioned figure chunks are now consistently cross-reference-ready: every source
+  chunk with `fig-cap` has a hyphenated `fig-*` label, and no `fig-*` label contains
+  underscores. This includes the pre-expansion QC/P1-P4 figures, not only the 26
+  new figure-expansion chunks.
+- Final rendered-HTML QA after S5: 42 `<figure>` blocks, 42 `<figcaption>` blocks,
+  42 source `fig-*` labels, expected synthesis/trajectory/mechanism/cross-modality
+  sections present, lightbox markers present, 0 external resource refs, and 0
+  warning/error markers. Full `scripts/check.sh` stayed green after the forced render.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

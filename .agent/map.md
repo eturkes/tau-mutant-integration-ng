@@ -251,7 +251,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        synthesis_report <- synthesis_report_data(microglia_report, trajectory_report, mechanism_report, crossmodality_report)  # S1 compact read-only synthesis (~4.8KB live); no crossmodality_divergence/heavy targets; descriptive status rows only
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
-            -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_synthesis.qmd`
+            -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss)
+                                                          --{{< include >}}--> `_synthesis.qmd`
                (P5 synthesis chapter, {#sec-synthesis}: setup `options(warn=2)`; tar_load synthesis_report [ONE
                 compact target] -> answer-first paragraph + status-count figure + S2 claim-source evidence map +
                 compact evidence table + unsupported/unearned paragraph; no heavy target reads, no ledger scoring)
@@ -289,6 +290,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
                 SpatialDecon skipped/defer, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id; S5 rendered HTML QA =
+       42 figure blocks / 42 captions, lightbox embedded, 0 external resource refs.
 
 ### Tests (S3; gate-wired at S5)
 `tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,

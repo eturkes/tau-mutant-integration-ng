@@ -209,10 +209,18 @@ Work:
   roadmap; archive plan.
 
 Acceptance:
-- `scripts/check.sh` green.
-- Final report has +20 or more new figure chunks and no stale "figure atlas open"
-  or "atlas chapter" wording.
-- Close-out review accepts/fixes correctness, claim-honesty, and render-risk issues.
+- DONE 2026-07-02: `index.qmd` sets `lightbox: auto` under HTML format; forced
+  render verifies embedded lightbox assets in the self-contained report.
+- DONE 2026-07-02: every captioned source figure chunk has a hyphenated `fig-*`
+  label with no underscores, including pre-expansion figures.
+- DONE 2026-07-02: full `scripts/check.sh` green after forced 140-chunk render.
+- DONE 2026-07-02: rendered HTML QA found 42 figure blocks, 42 captions, 42
+  source `fig-*` labels, expected sections present, 0 external resource refs, and
+  0 warning/error markers.
+- DONE 2026-07-02: final report has +26 planned figure chunks and no stale atlas
+  wording in report sources.
+- DONE 2026-07-02: close-out review accepted the cross-reference/UX gaps and fixed
+  them before archive.
 
 ## Alternatives Not Selected
 

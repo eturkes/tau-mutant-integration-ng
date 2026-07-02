@@ -270,7 +270,7 @@ corroborates the amyloid tissue response, but interaction claims still lean on t
 composition and trajectory layers.
 
 ```{r}
-#| label: crossmodality-geomx-counts
+#| label: fig-crossmodality-geomx-counts
 #| fig-width: 8.8
 #| fig-height: 4.2
 #| fig-cap: "GeoMx spatial DE counts under the blocked AOI model. Bars count primary GeoMx rows with FDR < 0.10, split by logFC direction. The amyloid contrasts dominate; the interaction has far fewer spatial transcriptomic hits."
@@ -367,7 +367,7 @@ sensitivity. The most affected cell is `r layer_labels[worst_run$layer]` in
 bulk signals below are treated as support only when they survive that caveat.
 
 ```{r}
-#| label: crossmodality-bulk-counts
+#| label: fig-crossmodality-bulk-counts
 #| fig-width: 9
 #| fig-height: 4.4
 #| fig-cap: "Bulk omics feature counts at FDR < 0.10. Proteome, raw phosphosite and parent-protein-corrected phosphosite layers are 24-month bulk hippocampus, not microglia-sorted. Many primary hits are sensitive to genotype-blocked run order."
@@ -521,7 +521,7 @@ signs are expected in this design because microglia RNA, spatial tissue RNA, tot
 phosphosite statistics answer related but non-identical questions.
 
 ```{r}
-#| label: crossmodality-axis-heatmap
+#| label: fig-crossmodality-axis-heatmap
 #| fig-width: 9.2
 #| fig-height: 5.2
 #| fig-cap: "Axis-level pathway integration. Each tile is the best selected pathway row for an axis and contrast; fill counts broad modality classes with FDR-level support, while text gives the dominant direction or mixed-sign call. Rank score is descriptive only."

@@ -131,7 +131,7 @@ little (`r round(mp_ctr("tau_alone")$coef, 1)`). These amyloid main effects dwar
 follows; the interaction is a second-order adjustment on top of them.
 
 ```{r}
-#| label: pseudotime-shift
+#| label: fig-trajectory-pseudotime-shift
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "Amyloid advances microglia along the activation pseudotime. Left: per-nucleus pseudotime distribution by genotype (on-lineage nuclei), with the pooled DAM-onset landmark dashed; the amyloid-bearing genotypes carry far more mass at the DAM end. Right: the interaction in context - the genotype effects on mean pseudotime across the five canonical contrasts (point and 95% CI); the two amyloid contrasts are large, the difference-of-differences interaction (crimson) is a modest positive adjustment."
@@ -194,7 +194,7 @@ The three loadings sum to one by construction (reconstruction residual
 `r signif(prov$recon_resid_max, 2)`).
 
 ```{r}
-#| label: decomposition
+#| label: fig-trajectory-decomposition
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "The position interaction is compositional. Left: the tau-amyloid interaction on each additive pseudotime channel (point and 95% CI, all in pseudotime units); the composition channel is positive and clears zero, while the progression and within-state channels do not. Right: the shift-share loadings - composition takes more than the whole position interaction, progression is negative, and they sum to one. Mutant tau enlarges the DAM compartment; it does not measurably advance cells within a state."
@@ -326,7 +326,7 @@ because the transcriptome geometry and the DAM-minus-homeostatic marker contrast
 identical).
 
 ```{r}
-#| label: concordance
+#| label: fig-trajectory-concordance
 #| fig-width: 6.5
 #| fig-height: 4.5
 #| fig-cap: "The slingshot pseudotime and the assumption-light marker score-axis (DAM minus homeostatic UCell) order the on-lineage nuclei concordantly; the binned density runs along the diagonal. This shares the marker system that defines the substates, so it guards against gross ordering failure rather than acting as an independent check."

@@ -249,3 +249,29 @@ Verification (honest): S1-S3 each smoke-tested or rebuilt live where relevant (`
 final `scripts/check.sh` was green after the lean-pass fixes (tests warn=2, forced 88-chunk report render,
 tar_meta clean across 42 current targets/branches, render-log clean). Close-out review found no remaining plan,
 target, or report-source blocker.
+
+## Figure expansion -- closed 2026-07-02 (-> `.agent/completed/figure_expansion_plan_2026-07-02.md`)
+
+Post-report visual-density pass over the closed P1-P5 story. The user chose inline chapter expansion over a
+standalone atlas. Built compact per-chapter figure targets, wired 26 additional figures into the existing chapters,
+then closed with UX/cross-reference QA. Live facts -> memory.md (Figure expansion sections); wiring -> map.md.
+Below = decisions + rejected alternatives.
+
+- SHAPE: inline figures in `_synthesis.qmd`, `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`, and
+  `_crossmodality.qmd`, backed by compact `*_figures` targets. REJECTED: standalone figure atlas, prebuilt
+  publication gallery, and schematic-first compression.
+- DATA CONTRACT: figure builders return qmd-ready compact slots with finite geom guards and pre-binned heavy shapes
+  for volcano/scatter plots. Qmds still load compact report/figure targets only; raw modality tables, the 612MB
+  Seurat object, and the 10MB harmonised evidence table stay out of forced report renders.
+- CLAIM CONTRACT: figures expose existing evidence, including unsupported/unearned rows, without new inference.
+  Captions preserve the closed calls: amyloid-to-DAM activation, DAM composition interaction, no supported
+  progression beyond composition, Myc supported, NF-kB attenuation and Gsk3b not supported, SpatialDecon/full CCC
+  not earned, and bulk run-index sensitivity load-bearing.
+- UX/CROSSREF: enabled Quarto `lightbox: auto` in the embedded offline HTML and normalised every captioned figure
+  chunk to a hyphenated `fig-*` label with no underscores.
+
+Verification (honest): S1 compact targets built warning-clean and <5MB each; S2-S4 forced renders/gates were green
+as figures landed chapter by chapter. S5 full `scripts/check.sh` was green after the lightbox + label normalisation
+(tests warn=2, forced 140-chunk report render, tar_meta clean across 46 current targets/branches, render-log clean).
+Rendered HTML QA found 42 figure blocks, 42 captions, 42 source `fig-*` labels, expected sections present, embedded
+lightbox markers, 0 external resource refs, and 0 warning/error markers.

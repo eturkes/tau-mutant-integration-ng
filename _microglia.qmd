@@ -180,7 +180,7 @@ coherent population). Each substate signature is scored on its genes found in th
 (`r paste(sprintf("%s %s", names(mrd$provenance$n_used), mrd$provenance$n_used)[2:5], collapse = ", ")` genes used).
 
 ```{r}
-#| label: umap
+#| label: fig-microglia-umap
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "Microglia substate landscape on the batch-integrated UMAP. Left: primary substate label. Right: the calibrated DAM activation score, which forms a continuous homeostatic-to-DAM gradient rather than a discrete switch."
@@ -239,7 +239,7 @@ nucleus as a rightward move in the DAM activation score, and it is steeper on th
 background, the first hint of the tau-by-amyloid interaction tested below.
 
 ```{r}
-#| label: composition-shift
+#| label: fig-microglia-composition-shift
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "Amyloid drives the homeostatic-to-DAM shift. Left: substate proportions per genotype (cluster-level labels). Right: per-nucleus DAM activation score by genotype; the amyloid-bearing genotypes carry the heavier upper tail."
@@ -316,7 +316,7 @@ takes that up directly and finds the latter: the synergy is carried by compartme
 cells advancing further along the axis.
 
 ```{r}
-#| label: composition-forest
+#| label: fig-microglia-composition-forest
 #| fig-width: 8
 #| fig-height: 4.5
 #| fig-cap: "Substate composition effects for DAM and homeostatic microglia across the five contrasts (sccomp posterior on the logit proportion with 95% credible intervals where the Bayesian arm ran, otherwise the propeller t-statistic). DAM and homeostatic move as mirror images; both amyloid contrasts are far from zero, the interaction is small."
@@ -404,7 +404,7 @@ study's direction. The volcano below shows the strongest amyloid contrast with t
 picked out.
 
 ```{r}
-#| label: volcano
+#| label: fig-microglia-amyloid-volcano
 #| fig-width: 8
 #| fig-height: 5.5
 #| fig-cap: "Pseudobulk differential expression for amyloid on the mutant-tau background (NLGF_P301S vs P301S). Canonical DAM markers (crimson) are concentrated among the up-regulated, significant genes; the most significant are labelled. Dashed lines mark the log2 fold-change threshold."

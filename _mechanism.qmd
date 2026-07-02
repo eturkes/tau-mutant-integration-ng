@@ -210,7 +210,7 @@ progression channel remains non-significant (effect `r fmt_num(traj_prog$coef)`,
 modulation, not proven further activation of cells already on the trajectory.
 
 ```{r}
-#| label: mechanism-project-sets
+#| label: fig-mechanism-project-sets
 #| fig-width: 9.5
 #| fig-height: 4.8
 #| fig-cap: "Focused project gene sets in whole microglia. Tile colour is fgsea NES over the pseudobulk t-statistic ranks; outlined points mark FDR < 0.10 within the project collection and contrast. The DAM set stays positive in the interaction, while the NF-kB target arms are read through the formal gate below."
@@ -291,7 +291,7 @@ cleanest rebuilt support for the v1 Myc mechanism thread. It should still be rea
 regulatory-activity estimate from static pseudobulk RNA ranks, not as a perturbation experiment.
 
 ```{r}
-#| label: mechanism-tf-interaction
+#| label: fig-mechanism-tf-interaction
 #| fig-width: 9.5
 #| fig-height: 4.8
 #| fig-cap: "Top TF activities for the tau-amyloid interaction. Scores are decoupleR ULM activities over CollecTRI, FDR-adjusted within population and contrast. Myc is highlighted because it is a predeclared v1 mechanism candidate and is the strongest rebuilt TF signal."

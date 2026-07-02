@@ -140,7 +140,7 @@ evidence_map$source <- factor(evidence_map$source, levels = unname(source_labels
 the result rather than a supplement.
 
 ```{r}
-#| label: synthesis-status
+#| label: fig-synthesis-status
 #| fig-width: 7.2
 #| fig-height: 3.2
 #| fig-cap: "Synthesis status counts. Labels are descriptive categories over the closed P1-P4 analyses; they are not a scored convergence ledger."
