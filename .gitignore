@@ -22,7 +22,7 @@
 # sccomp/cmdstanr dumps per-chain CSV draws into ./sccomp_draws_files/ at the build CWD - regenerable
 sccomp_draws_files/
 
-# tokensave code-graph index (Headroom-installed MCP server; regenerable via `tokensave sync`)
+# optional code-graph index; regenerable, never source
 /.tokensave/
 
 # generic R artefacts
@@ -33,7 +33,10 @@ sccomp_draws_files/
 Rplots.pdf
 /*.html
 
-# Claude state: track settings.json + commands/, ignore the rest
-/.claude/*
-!/.claude/settings.json
-!/.claude/commands/
+# retired non-Codex agent state
+/CLAUDE.md
+/.claude/
+/.serena/
+
+# Codex project scratch; prompt templates stay tracked under .codex/prompts/
+/.codex/runs/

@@ -68,14 +68,14 @@ wip-p2s4-report) DELETED at S4b close.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
-  `.agent` docs + Claude config; reframed history as `archive_digest.md`; drafted
+  `.agent` docs + initial agent config; reframed history as `archive_digest.md`; drafted
   this streamlined phase plan.
 - 2026-06-29 S4 DONE (report engine closed): pivoted Quarto book -> ONE standalone offline HTML
   (`index.qmd` format:html embed-resources + `{{< include _qc.qmd >}}` + `theme.scss`); theme = crimson
   colours (#B0344D) + IBM Plex via 9 `@font-face` (relative `url("assets/fonts/<n>.woff2")` -> Quarto
   base64-inlines each woff2 under embed-resources). Render PROVED: 9 faces inlined OFFLINE (d09GMg magic),
   0 external loads, 0 error/0 warning (`tar_meta` all-NA), QC bounds pass (16x16 genotype-batch bijection).
-  9 woff2 COMMITTED (assets/fonts/, deny-Read `**/*.woff2` + Serena ignored_paths), listed in
+  9 woff2 COMMITTED (assets/fonts/, avoid direct reads per AGENTS read economy), listed in
   `tar_quarto(extra_files=)`. Added `R/plot.R` + device-free `tests/test_plot.R`; de-staled map.md
   (book -> standalone report wiring) + S1 plan refs. Reasoning reversal (codex-reviewed): the earlier
   "IBM Plex can't work via theme.scss" was a MEASUREMENT artifact -- once `@font-face url()` is present
@@ -127,7 +127,7 @@ wip-p2s4-report) DELETED at S4b close.
   19 targets). Folded P1 digest -> history.md; updated memory (P1-S5 + cheap-render + warn=2-per-section) + map
   (microglia_report target + _microglia.qmd include + microglia_report_data fn); archived plan ->
   `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`; reset Active plan to (none). Next = PLAN P2.
-- 2026-06-30 P1-S5 codex review PARKED (context-overflow remediation): /codex-review of the S5 close raised 14
+- 2026-06-30 P1-S5 codex review PARKED (context-overflow remediation): Codex review of the S5 close raised 14
   findings, ALL accepted (interaction "small-effect" over-claim -> "sub-threshold-per-contrast"; concordance /
   pruning / MDE prose accuracy; extractor finite+consistency guards + 4 negative tests; stale ~2MB figure). The
   fix set was applied + live-cache-verified except 2 small doc edits, but the run overflowed one window before
@@ -288,6 +288,10 @@ wip-p2s4-report) DELETED at S4b close.
   trd$decomposition, comp_cf/progression_cf/cross labels align across extractor/test/qmd, include placement +
   #sec-trajectory unique, no residual ggplot trans=. Rebuilt trajectory_report fresh on real data (new postconds
   pass, no false-red) + re-render 0-warning + tests warn=2. Commit `trajectory (p2 s4b review): ... (codex)`.
+- 2026-07-02 infra Codex-only adaptation: retired tracked `CLAUDE.md`, `.claude/`, and `.serena/` project config;
+  made `AGENTS.md` the sole canonical agent instruction surface; added `.codex/prompts/{session,review,reviewer}.md`
+  plus `scripts/codex-review.sh` read-only `codex exec` review wrapper; rewired `.agent/context.sh` to
+  Codex JSONL sessions; updated live memory/map/history wording from Claude deny-Read to Codex read-economy.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
@@ -305,7 +309,7 @@ ctx (final)      date   work unit  (session step [+ review]; commits chronologic
 95% 191K/200K    06-29  scaffold rebuild: fresh main + reset .agent/config (586f691)
 30% 60K/200K     06-29  memory: storage/data symlink provenance (222a3ab)
 46% 92K/200K     06-29  P0 plan + codex-review hardening (f765085, f612ede)
-20% 39K/200K     06-29  infra: /codex-review rollout-path fix (d0e870b)
+20% 39K/200K     06-29  infra: codex-review rollout-path fix (d0e870b)
 59% 117K/200K    06-29  P0-S1 spine: env + targets/quarto scaffold +review (37216a8, 39bb692)
 62% 123K/200K    06-29  P0-S2 data: io loaders + 4 modality targets +review (a8312b9, 66aa492)
 88% 176K/200K    06-29  P0-S3 design: 5-contrast + pseudobulk/bulk DE +review (e6b183f, 466c65f)
@@ -319,7 +323,7 @@ ctx (final)      date   work unit  (session step [+ review]; commits chronologic
 88% 176K/200K    06-30  P1-S3 composition propeller + sccomp +review (7713248, cdff4bc)
 76% 151K/200K    06-30  infra: gitignore .tokensave/ index (7a2518b)
 79% 158K/200K    06-30  P1-S3 composition close: live sccomp arm +review (e27c41e, 7ca25f9)
-54% 109K/200K    06-30  infra: upstream Claude config sync (a8593ec)
+54% 109K/200K    06-30  infra: upstream agent config sync (a8593ec)
 45% 90K/200K     06-30  P1-S4 pseudobulk DE + stageR +review (64bf2c2, 94d4505)
 55% 110K/200K    06-30  P1-S5 microglia report + P1 close + handoff +review (67b7dbc, 7a5e4d3, cf974bd)
 67% 134K/200K    06-30  P2 plan +review (a6d58e2, 3fca9c2)

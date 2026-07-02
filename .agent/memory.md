@@ -1,6 +1,9 @@
 # Memory - standing contract (read every session)
 
-Durable facts / decisions / gotchas surviving all plans. Companions: `roadmap.md`
+Durable facts / decisions / gotchas surviving all plans. Codex-only repo:
+`AGENTS.md` is the canonical instruction file; prompt templates live under
+`.codex/prompts/`; per-run Codex review output lives under ignored `.codex/runs/`.
+Companions: `roadmap.md`
 (direction), `map.md` (wiring), `history.md` (new decision digests),
 `archive_digest.md` (v1 reference). This is a FRESH streamlined rebuild; v1 lives
 on branch `archive`.
@@ -14,7 +17,7 @@ P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 
 ## Raw data (storage/data = symlink -> host Documents tree, shared/external read-only copy;
-gitignored via /storage/* + deny-Read; Rscript reads resolve through it, bypassing the deny.
+gitignored via /storage/* + Codex read-economy skip; Rscript can read it when a task requires live data.
 Shapes VERIFIED live in S2 via the R/io.R loaders; data is immutable so numbers are stable.)
 - snrnaseq.rds 8.3G: Seurat; full = RNA 33683 genes (Assay5, ENSMUSG rownames) + SCT 28299
   (active assay). GOTCHA: dim(obj)=SCT(28299) but @misc$geneids (33683 symbols) aligns to RNA,
@@ -473,14 +476,12 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 - Prose register: British English; human-facing report/figure text uses hyphens over
   em/en-dashes (commas or parentheses for asides, colons for restatements). R `#`
   comments + code stay exempt (LLM-facing).
-- storage/** + future caches/HTML are gitignored AND deny-Read -> Read/grep/ls on
-  them is blocked (the `cat`-deny also bites). Rscript file reads BYPASS the deny
-  matcher: inspect via `Rscript -e 'readRDS(...)' / 'readLines(...)'`. storage/data is
-  a symlink now -> `git check-ignore` on a path UNDER it fatals (`beyond a symbolic
+- Read economy set lives in `AGENTS.md`: avoid generated/heavy trees (`storage/**`,
+  `_targets/`, `_report/`, `.quarto/`, `rv/library/`, `tools/`, `.venv/`, fonts,
+  completed plans) unless the task requires them. For generated outputs, prefer compact
+  targets, target metadata, or runtime indirection over large direct reads. storage/data
+  is a symlink now -> `git check-ignore` on a path UNDER it fatals (`beyond a symbolic
   link`); probe `storage/data` itself.
-- Bash deny-gate is static on command text -> a cmd naming a deny-Read path as an
-  arg (rm/stat/grep/find-piped) is blocked; use a glob/`find -delete` or runtime
-  indirection. `ls`/`wc`/`echo` slip through.
 - New `R/*.R` = pure functions loaded by targets via `tar_source()`; the DAG orders
   execution (no manual dependency loader). Heavy producers = `tar_target`s storing
   `format="qs"`/`"file"`; Python steps = `uv run <script>` as `tar_file` targets.
@@ -500,8 +501,9 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   is deprecated -> use `format="file"` + `tar_option_set(trust_timestamps=TRUE)` (set in
   `_targets.R`) so the 8G snrnaseq input is change-detected by mtime/size, not re-hashed each
   run. Heavy seurat target: `memory="transient"` + `garbage_collection=TRUE` release the load.
-- Commit `.serena/` (project.yml + .gitignore); Serena language changes are
-  startup-only (restart Claude Code to apply).
+- Codex-only project config: keep `CLAUDE.md`, `.claude/`, and `.serena/` untracked/ignored.
+  Session/review reusable prompts belong in `.codex/prompts/`; run outputs belong in
+  `.codex/runs/` (ignored).
 
 ## Reports (Quarto; built P0-S4)
 - Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
@@ -516,7 +518,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)
   with a relative `url("assets/fonts/<n>.woff2") format("woff2")`. Quarto base64-INLINES each woff2 into
   the embedded CSS under embed-resources -> ONE offline file (render PROVED: 9 faces inlined, magic d09GMg,
-  0 external). The 9 woff2 are COMMITTED (assets/fonts/, deny-Read `**/*.woff2`, Serena ignored_paths);
+  0 external). The 9 woff2 are COMMITTED (assets/fonts/; avoid direct reads via `AGENTS.md` read economy);
   list them in `tar_quarto(extra_files=)` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
   (device font) so figures stay decoupled from this chrome + warning-free.
@@ -525,12 +527,16 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   woff2 magic -> `d09GMg`); RAW `.count` reads ~0 theme-side and URLdecoding the ~1MB blob is very slow. Figures
   embed as `data:image/png` base64, so their colours are not raw either.
 - Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
-  is deny-Read -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
-  script), not a Bash `rm`. Inspect the output HTML the same way (output dir is deny-Read): build the
-  path inside a python/R script ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
+  is generated/heavy -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
+  script), not a direct large-tree read. Inspect output HTML via a tiny python/R script building the path
+  ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
 
-## Subagents & skills
-Scan the available-skills list each session; invoke a matching Skill before
-improvising (scientific-writing, scientific-visualization, pathway-enrichment,
-pydeseq2, scanpy, anndata, bioservices). Spawn subagents to protect main context
-(Explore = cross-file search, Plan = design, general-purpose = research).
+## Codex workflow
+- Fresh session: start from `.codex/prompts/session.md` or manually follow its load order.
+- Review: `scripts/codex-review.sh [focus]` runs read-only generic `codex exec` with
+  `.codex/prompts/reviewer.md` because Codex CLI 0.142.5 rejects custom stdin prompts
+  with `review --uncommitted`; accept/reject findings explicitly, fix accepted ones, then
+  commit one scoped unit.
+- Headroom: `.agent/context.sh` scans newest Codex JSONL session for this cwd and parses
+  latest `token_count` (`last_token_usage.input_tokens`, `model_context_window`); override
+  the window with `CODEX_CONTEXT_WINDOW`.
