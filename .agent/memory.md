@@ -622,6 +622,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   focused_support={myc_rna_interaction, clearance_axis}; not_supported={progression_beyond_composition,
   nfkb_attenuation, gsk3b_kinase}; not_earned={spatial_decon_full_ccc}; open_caveat={bulk_run_index_sensitivity};
   corroborated={crossmodality_amyloid_axes}. S2 qmd should tar_load only `synthesis_report`.
+- P5-S3 review hardening: source-level caveat cleanup lives in `synthesis_report_data`, not the qmd.
+  It normalises cross-modality raw strings (`value(s)` -> values; `deconvolution deferred to S3` ->
+  deconvolution deferred) before they enter the compact evidence table. `tests/test_synthesis.R`
+  guards this so future consumers of `synthesis_report` do not inherit stale phase-step wording.
 
 ## Synthesis report chapter (P5-S2, built) -- `_synthesis.qmd`
 - `_synthesis.qmd` is included immediately after `index.qmd` Overview and before QC. It tar_loads ONLY
@@ -631,6 +635,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `open_questions`. It formats display labels locally (e.g. Apoe-Trem2, amyloid on P301S) without adding target deps.
 - `index.qmd` is now final-report wording: synthesis first, P1-P4 chapters as audit trail; no "final synthesis still
   open" phrasing.
+- P5-S3 lean pass removed stale P3/P4 forward pointers and tightened rate/progression language; report-source
+  search is clean for `P5`, `final synthesis`, `still open`, and `before the final synthesis`.
 
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown

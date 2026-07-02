@@ -221,8 +221,8 @@ interaction mostly onto progression (about `r prov$v1_progression_loading` of th
 suggestive significance (FDR about `r prov$v1_progression_fdr`); on R `r prov$r_version` the
 decomposition attributes it mainly to composition instead, and neither the progression nor the within-state
 channel clears significance. The qualitative headline - a real, modest tau-amyloid synergy carried
-by the DAM compartment - is unchanged; its mechanistic reading shifts from "faster cells" toward
-"more cells". The ordering itself is stable and marker-concordant: refitting on 10 and 20 harmony
+by the DAM compartment - is unchanged; its mechanistic reading shifts from "further-progressed
+cells" toward "more cells". The ordering itself is stable and marker-concordant: refitting on 10 and 20 harmony
 dimensions and on all retained nuclei reproduces the primary pseudotime at Spearman
 `r round(dims_min, 3)` or better, and the slingshot ordering agrees with the marker score-axis at
 Spearman `r round(prov$concordance_rho, 2)` (a moderate-to-large concordance, expected below one

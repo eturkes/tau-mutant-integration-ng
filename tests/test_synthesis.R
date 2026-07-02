@@ -149,7 +149,8 @@ make_synthesis_inputs <- function() {
     bulk = list(run_index = bulk_run),
     clearance = list(
       spatial_decon = list(status = "defer", action = "skipped",
-                           reasons = c("nuclei sentinels", "no compact reference profile")),
+                           reasons = c("nuclei contains 42 sentinel value(s)",
+                                       "no compact reference profile was built in S1; deconvolution deferred to S3")),
       verdict = list(status = "earned", ccc_called = FALSE),
       pair_support = pair_support
     ),
@@ -168,6 +169,8 @@ stopifnot(all(c("headline", "evidence_table", "status_summary", "open_questions"
           sum(sr$status_summary$n) == nrow(sr$evidence_table),
           any(sr$evidence_table$claim_id == "clearance_axis" &
                 sr$evidence_table$status == "focused_support"),
+          !any(grepl("value(s)", sr$evidence_table$caveat, fixed = TRUE)),
+          !any(grepl("deconvolution deferred to S3", sr$evidence_table$caveat, fixed = TRUE)),
           !any(c("support", "contradict", "net_score", "ledger_id", "arc_id") %in%
                  names(sr$evidence_table)),
           identical(sr$provenance$source_targets,

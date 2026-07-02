@@ -127,7 +127,7 @@ clearance_synthesis_phrase <- if (length(earned_pair_names)) {
 } else {
   "no clearance pair earns focused measured clearance support"
 }
-p5_support_phrase <- if (length(earned_pair_names)) {
+closing_support_phrase <- if (length(earned_pair_names)) {
   "DAM activation, synaptic suppression and the earned clearance-axis support"
 } else {
   "DAM activation and synaptic suppression, with clearance kept descriptive"
@@ -346,7 +346,7 @@ show their largest effects in amyloid contrasts, pathway rows reproduce antigen-
 phagocytic/clearance and synaptic axes, and `r clearance_synthesis_phrase`. The same evidence
 narrows the claims: the tau-amyloid interaction is
 not broadly spatial or bulk-omics significant, SpatialDecon abundance is not earned, full CCC is
-not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. P5
-should therefore use P4 as corroboration for `r p5_support_phrase`, while keeping progression,
-NF-kB attenuation, Gsk3b and
-spatial abundance as unresolved or unsupported in the rebuilt data.
+not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. In the
+closing synthesis, this chapter therefore corroborates `r closing_support_phrase`, while keeping
+progression, NF-kB attenuation, Gsk3b and spatial abundance unresolved or unsupported in the
+rebuilt data.

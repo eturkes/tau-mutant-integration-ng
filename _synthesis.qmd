@@ -56,8 +56,6 @@ display_text <- function(x) {
   x <- gsub("comp_cf", "composition channel", x, fixed = TRUE)
   x <- gsub("progression_cf", "progression channel", x, fixed = TRUE)
   x <- gsub("ccc_called", "full CCC called", x, fixed = TRUE)
-  x <- gsub("value(s)", "values", x, fixed = TRUE)
-  x <- gsub("deconvolution deferred to S3", "deconvolution deferred", x, fixed = TRUE)
   x
 }
 fmt_int <- function(x) format(as.integer(round(x)), big.mark = ",", trim = TRUE)

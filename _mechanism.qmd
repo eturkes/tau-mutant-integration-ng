@@ -131,7 +131,7 @@ ratio `r fmt_num(dam_int$prop_ratio)`, FDR `r fmt_p(dam_int$fdr_global)`) and th
 composition channel (effect `r fmt_num(traj_comp$coef)`, FDR `r fmt_p(traj_comp$fdr)`). The
 progression channel remains non-significant (effect `r fmt_num(traj_prog$coef)`, FDR
 `r fmt_p(traj_prog$fdr)`), so the mechanism target is DAM-cell expansion and amyloid-response
-modulation, not a proven acceleration of cells already on the trajectory.
+modulation, not proven further activation of cells already on the trajectory.
 
 ```{r}
 #| label: mechanism-project-sets
@@ -268,6 +268,6 @@ DAM-centred interaction signal, and the pathway layer ties that signal back to t
 state expansion established in P1/P2. The targeted NF-kB attenuation check is discordant rather
 than supported, and the 24-month bulk phosphosite kinase layer does not recover a significant
 Gsk3b interaction. P3 therefore strengthens the DAM/Myc mechanism hypothesis while downgrading
-Gsk3b and NF-kB attenuation to unresolved or unsupported within the rebuilt data. The next phase
-can still ask whether spatial, total-proteome and broader phosphoproteome views add cross-modality
-support, but this chapter keeps those future modalities out of the current claim.
+Gsk3b and NF-kB attenuation to unresolved or unsupported within the rebuilt data. The closing
+synthesis treats those negatives as part of the result, while the cross-modality chapter audits
+whether spatial, total-proteome and broader phosphoproteome views add corroborating context.

@@ -32,9 +32,9 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P5 Synthesis -> `.agent/p5_synthesis_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S3 lean report pass + phase-ready close.
-Acceptance = stale-pointer search clean, full gate green, and adversarial synthesis/report prose review fixed;
-no new biological inference, no v1 ledger / contest machinery, full gate green.
+Next `$session-prompt` mode = CLOSE-OUT. Steps complete; plan unreviewed for close-out.
+Acceptance = fold durable P5 decisions into history, archive the plan, reset Active plan, and run the
+close-out gate; no new biological inference, no v1 ledger / contest machinery.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -419,6 +419,13 @@ no new biological inference, no v1 ledger / contest machinery, full gate green.
   bar plot, compact evidence table, and unsupported/unearned paragraph from the compact target. Overview now states
   the final answer up front and treats P1-P4 chapters as audit trail (no "final synthesis still open" wording).
   Docs: map.md include chain + memory.md render contract. Next = S3 lean report pass.
+- 2026-07-02 P5-S3 DONE -> P5 STEPS COMPLETE. Lean report pass removed stale P3/P4 forward pointers, cleaned
+  required report-source stale search (`P5` / `final synthesis` / `still open` / `before the final synthesis`),
+  tightened trajectory/mechanism/synthesis wording around progression-vs-rate, and moved raw caveat cleanup into
+  `synthesis_report_data` so the compact evidence table itself no longer carries `value(s)` or
+  `deconvolution deferred to S3`. Adversarial review accepted/fixed the raw-caveat leak + acceleration-wording
+  caveat. Full gate GREEN after final fixes (tests warn=2, forced 88-chunk report render, tar_meta clean across
+  42 current targets/branches, render-log clean). Next mode = CLOSE-OUT.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

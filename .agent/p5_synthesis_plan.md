@@ -197,7 +197,7 @@ Result:
 - Updated report wiring docs in `map.md` and durable render contract in
   `memory.md`.
 
-### S3 - Lean report pass + phase-ready close [OPEN]
+### S3 - Lean report pass + phase-ready close [DONE 2026-07-02]
 Review the full rendered report and source prose for stale pointers, duplicated
 chapter conclusions, and overclaims introduced before P5.
 
@@ -220,3 +220,16 @@ Acceptance:
 After S3, enter CLOSE-OUT mode: fold durable P5 decisions into `history.md`,
 archive this plan to `.agent/completed/`, reset roadmap Active plan, update the
 roadmap spine if the synthesis changes wording, and commit the close-out.
+
+Result:
+- Removed stale forward-looking report prose from `_mechanism.qmd` and `_crossmodality.qmd`;
+  required stale-pointer search over `index.qmd` + `_*.qmd` is clean for `P5`,
+  `final synthesis`, `still open`, and `before the final synthesis`.
+- Tightened rate/progression wording in `_trajectory.qmd`, `_mechanism.qmd`, and
+  `synthesis_report` caveats without changing P1-P4 biological calls.
+- Moved raw caveat cleanup into `R/synthesis.R` so `synthesis_report` itself no longer
+  carries `value(s)` or `deconvolution deferred to S3`; added a regression test.
+- Adversarial review accepted/fixed the raw synthesis-caveat leak and the acceleration-wording
+  caveat before final gate.
+- Full `scripts/check.sh` green after the final fixes (tests warn=2, forced 88-chunk report
+  render, tar_meta clean across 42 current targets/branches, render-log clean).

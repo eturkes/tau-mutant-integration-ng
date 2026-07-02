@@ -193,7 +193,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       a 10-row descriptive evidence table, status counts, unsupported/open rows, and tiny source highlights. Guard
       layer checks the synthesis anchors (amyloid->DAM, DAM composition, trajectory comp/prog rows, Myc, NF-kB,
       Gsk3b, GeoMx/bulk caveats, SpatialDecon, clearance pairs incl. empty earned set) and rejects ledger-like
-      score columns.
+      score columns. `.synthesis_clean_text` normalises raw caveat strings before table output, so the compact
+      target itself stays free of stale phase-step wording.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -267,7 +268,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                (P4 cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`; tar_load
                 crossmodality_report [ONE compact target] -> GeoMx spatial DE, 24M bulk proteome/phospho +
                 run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/symbol divergence, and
-                P4 synthesis for P5. Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
+                final-synthesis audit text. Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
                 SpatialDecon skipped/defer, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
 

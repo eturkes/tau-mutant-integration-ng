@@ -58,6 +58,12 @@ synthesis_focus_contrasts <- function() {
   formatC(x, format = "f", digits = digits)
 }
 
+.synthesis_clean_text <- function(x) {
+  x <- gsub("value(s)", "values", x, fixed = TRUE)
+  x <- gsub("deconvolution deferred to S3", "deconvolution deferred", x, fixed = TRUE)
+  x
+}
+
 synthesis_validate_evidence_table <- function(evidence_table) {
   required <- c("claim_id", "axis", "status", "direction", "evidence",
                 "primary_sources", "supporting_sources", "caveat", "report_anchor")
@@ -343,7 +349,7 @@ synthesis_report_data <- function(microglia_report, trajectory_report, mechanism
   } else {
     "no clearance pair passed the earned CCC-lite rule"
   }
-  spatial_text <- paste(spatial_decon$reasons, collapse = "; ")
+  spatial_text <- .synthesis_clean_text(paste(spatial_decon$reasons, collapse = "; "))
 
   evidence_table <- do.call(rbind, list(
     .synthesis_evidence_row(
@@ -365,7 +371,7 @@ synthesis_report_data <- function(microglia_report, trajectory_report, mechanism
              " (FDR ", .synthesis_fmt_p(comp_cf$fdr), ")."),
       "mechanism_report$composition_anchor; trajectory_report$interaction",
       "crossmodality_report",
-      "This is a composition result, not a per-cell acceleration claim.",
+      "This is a composition result, not a per-cell progression or rate claim.",
       "#sec-trajectory"
     ),
     .synthesis_evidence_row(
