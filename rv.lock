@@ -53,6 +53,20 @@ dependencies = [
 ]
 
 [[packages]]
+name = "Biostrings"
+version = "2.80.1"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    { name = "BiocGenerics", requirement = "(>= 0.37.0)" },
+    { name = "S4Vectors", requirement = "(>= 0.27.12)" },
+    { name = "IRanges", requirement = "(>= 2.31.2)" },
+    { name = "XVector", requirement = "(>= 0.37.1)" },
+    "Seqinfo",
+    "crayon",
+]
+
+[[packages]]
 name = "DBI"
 version = "1.3.0"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -97,11 +111,43 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "EnvStats"
+version = "3.1.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "MASS",
+    "ggplot2",
+    "nortest",
+]
+
+[[packages]]
 name = "FNN"
 version = "1.1.4.1"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
 force_source = false
 dependencies = []
+
+[[packages]]
+name = "GGally"
+version = "2.4.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "ggplot2", requirement = "(>= 3.5.2)" },
+    "cli",
+    { name = "dplyr", requirement = "(>= 1.1.0)" },
+    { name = "ggstats", requirement = "(>= 0.9.0)" },
+    { name = "gtable", requirement = "(>= 0.2.0)" },
+    "lifecycle",
+    "magrittr",
+    "progress",
+    "RColorBrewer",
+    "rlang",
+    { name = "S7", requirement = "(>= 0.2.0)" },
+    { name = "scales", requirement = "(>= 1.3.0)" },
+    { name = "tidyr", requirement = "(>= 1.3.0)" },
+]
 
 [[packages]]
 name = "GenomicRanges"
@@ -113,6 +159,30 @@ dependencies = [
     { name = "S4Vectors", requirement = "(>= 0.45.2)" },
     { name = "IRanges", requirement = "(>= 2.43.6)" },
     { name = "Seqinfo", requirement = "(>= 0.99.3)" },
+]
+
+[[packages]]
+name = "GeomxTools"
+version = "3.16.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    "Biobase",
+    "NanoStringNCTools",
+    "S4Vectors",
+    "BiocGenerics",
+    "rjson",
+    "readxl",
+    "EnvStats",
+    "reshape2",
+    "data.table",
+    "lmerTest",
+    "dplyr",
+    "stringr",
+    "GGally",
+    "rlang",
+    "ggplot2",
+    "SeuratObject",
 ]
 
 [[packages]]
@@ -175,6 +245,25 @@ dependencies = [
 ]
 
 [[packages]]
+name = "NanoStringNCTools"
+version = "1.20.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    "Biobase",
+    "S4Vectors",
+    "ggplot2",
+    "BiocGenerics",
+    "Biostrings",
+    "ggbeeswarm",
+    "ggiraph",
+    "ggthemes",
+    "IRanges",
+    "pheatmap",
+    "RColorBrewer",
+]
+
+[[packages]]
 name = "OmnipathR"
 version = "4.0.0"
 source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
@@ -215,6 +304,18 @@ dependencies = [
     "xml2",
     "yaml",
     "zip",
+]
+
+[[packages]]
+name = "R.cache"
+version = "0.17.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "R.methodsS3", requirement = "(>= 1.8.1)" },
+    { name = "R.oo", requirement = "(>= 1.24.0)" },
+    { name = "R.utils", requirement = "(>= 2.10.1)" },
+    { name = "digest", requirement = "(>= 0.6.13)" },
 ]
 
 [[packages]]
@@ -544,6 +645,20 @@ dependencies = [
 ]
 
 [[packages]]
+name = "SpatialDecon"
+version = "1.22.0"
+source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
+force_source = true
+dependencies = [
+    "SeuratObject",
+    "Biobase",
+    "GeomxTools",
+    "repmis",
+    "Matrix",
+    { name = "logNormReg", requirement = "(>= 0.4)" },
+]
+
+[[packages]]
 name = "SummarizedExperiment"
 version = "1.42.0"
 source = { repository = "https://p3m.dev/bioconductor/2026-06-22/packages/3.23/bioc" }
@@ -695,6 +810,13 @@ dependencies = [
     "Rcpp",
     { name = "assorthead", requirement = "(>= 1.5.4)" },
 ]
+
+[[packages]]
+name = "beeswarm"
+version = "0.4.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
 
 [[packages]]
 name = "biocmake"
@@ -1122,6 +1244,20 @@ dependencies = [
 ]
 
 [[packages]]
+name = "fontBitstreamVera"
+version = "0.1.1"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
+
+[[packages]]
+name = "fontLiberation"
+version = "0.1.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
+
+[[packages]]
 name = "fontawesome"
 version = "0.5.3"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -1129,6 +1265,16 @@ force_source = false
 dependencies = [
     { name = "rlang", requirement = "(>= 1.0.6)" },
     { name = "htmltools", requirement = "(>= 0.5.1.1)" },
+]
+
+[[packages]]
+name = "fontquiver"
+version = "0.2.1"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "fontBitstreamVera", requirement = "(>= 0.1.0)" },
+    { name = "fontLiberation", requirement = "(>= 0.1.0)" },
 ]
 
 [[packages]]
@@ -1227,11 +1373,57 @@ dependencies = [
 ]
 
 [[packages]]
+name = "gdtools"
+version = "0.5.1"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "fontquiver", requirement = "(>= 0.2.0)" },
+    "htmltools",
+    { name = "Rcpp", requirement = "(>= 0.12.12)" },
+    { name = "systemfonts", requirement = "(>= 1.3.1)" },
+]
+
+[[packages]]
 name = "generics"
 version = "0.1.4"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
 force_source = false
 dependencies = []
+
+[[packages]]
+name = "ggbeeswarm"
+version = "0.7.3"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "ggplot2", requirement = "(>= 3.3.0)" },
+    "beeswarm",
+    "lifecycle",
+    "vipor",
+    "cli",
+]
+
+[[packages]]
+name = "ggiraph"
+version = "0.9.6"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "cli",
+    "dplyr",
+    { name = "gdtools", requirement = "(>= 0.5.0)" },
+    { name = "ggplot2", requirement = "(>= 4.0.0)" },
+    "htmltools",
+    { name = "htmlwidgets", requirement = "(>= 1.5)" },
+    "MASS",
+    "purrr",
+    { name = "Rcpp", requirement = "(>= 1.1.0)" },
+    "rlang",
+    { name = "S7", requirement = "(>= 0.2.0)" },
+    { name = "systemfonts", requirement = "(>= 1.3.1)" },
+    "vctrs",
+]
 
 [[packages]]
 name = "ggplot2"
@@ -1273,6 +1465,39 @@ dependencies = [
     { name = "ggplot2", requirement = "(>= 3.5.0)" },
     { name = "scales", requirement = "(>= 0.4.1)" },
     { name = "withr", requirement = "(>= 2.1.1)" },
+]
+
+[[packages]]
+name = "ggstats"
+version = "0.13.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "cli",
+    "dplyr",
+    "forcats",
+    { name = "ggplot2", requirement = "(>= 4.0.0)" },
+    "lifecycle",
+    "patchwork",
+    "purrr",
+    "rlang",
+    "scales",
+    "stringr",
+    "tidyr",
+]
+
+[[packages]]
+name = "ggthemes"
+version = "5.2.0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "ggplot2", requirement = "(>= 3.0.0)" },
+    "lifecycle",
+    "purrr",
+    "scales",
+    "stringr",
+    "tibble",
 ]
 
 [[packages]]
@@ -1686,6 +1911,19 @@ dependencies = [
 ]
 
 [[packages]]
+name = "lmerTest"
+version = "3.2-1"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    { name = "lme4", requirement = "(>= 1.1-10)" },
+    "numDeriv",
+    "MASS",
+    "ggplot2",
+    "reformulas",
+]
+
+[[packages]]
 name = "lmtest"
 version = "0.9-40"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -1702,6 +1940,13 @@ force_source = false
 dependencies = [
     "lattice",
 ]
+
+[[packages]]
+name = "logNormReg"
+version = "0.5-0"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
 
 [[packages]]
 name = "logger"
@@ -1843,6 +2088,13 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "nortest"
+version = "1.0-4"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
+
+[[packages]]
 name = "numDeriv"
 version = "2016.8-1.1"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -1905,6 +2157,17 @@ dependencies = [
     "numDeriv",
     { name = "Matrix", requirement = "(>= 1.2.3)" },
     { name = "doBy", requirement = "(>= 4.6.22)" },
+]
+
+[[packages]]
+name = "pheatmap"
+version = "1.0.13"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "RColorBrewer",
+    "scales",
+    "gtable",
 ]
 
 [[packages]]
@@ -2158,6 +2421,19 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "repmis"
+version = "0.5.1"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "data.table",
+    "digest",
+    "httr",
+    "plyr",
+    "R.cache",
+]
+
+[[packages]]
 name = "reshape2"
 version = "1.4.5"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -2203,6 +2479,13 @@ force_source = true
 dependencies = [
     "Rhdf5lib",
 ]
+
+[[packages]]
+name = "rjson"
+version = "0.2.23"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
 
 [[packages]]
 name = "rlang"
@@ -2645,6 +2928,18 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "systemfonts"
+version = "1.3.2"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = [
+    "base64enc",
+    "jsonlite",
+    "lifecycle",
+    { name = "cpp11", requirement = "(>= 0.2.1)" },
+]
+
+[[packages]]
 name = "tarchetypes"
 version = "0.14.1"
 source = { repository = "https://p3m.dev/cran/2026-06-22" }
@@ -2818,6 +3113,13 @@ dependencies = [
     { name = "lifecycle", requirement = "(>= 1.0.3)" },
     { name = "rlang", requirement = "(>= 1.1.7)" },
 ]
+
+[[packages]]
+name = "vipor"
+version = "0.4.7"
+source = { repository = "https://p3m.dev/cran/2026-06-22" }
+force_source = false
+dependencies = []
 
 [[packages]]
 name = "viridisLite"

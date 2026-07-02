@@ -162,6 +162,13 @@ list(
   # preflight records Q3/background/nuclei/reference/package feasibility for the S3 gate.
   tar_target(geomx_de, run_geomx_de(geomx), format = "qs"),
 
+  # Spatial decon follow-up S1: compact full-reference profile. Loads the full snRNAseq RDS
+  # once, overlays retained microglia substates from microglia_annotated, caps cells per
+  # class before profile averaging, and stores only broad/substate profile matrices + QC.
+  tar_target(geomx_reference_profile,
+             geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx),
+             format = "qs"),
+
   # S2 bulk proteome + corrected phospho: 24M 16-run sample-key-matched bulk hippocampus
   # layers. Proteome aggregates raw positive rows to PG.ProteinGroups before log2/median
   # normalisation/limma-trend. Corrected phospho subtracts matched parent-protein log2

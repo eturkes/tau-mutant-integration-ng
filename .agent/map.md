@@ -159,7 +159,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       ROI XY, Q3, negative background, nuclei). fit_geomx_de -> edgeR TMM + limma-voom with `~0+genotype+slide`,
       duplicateCorrelation(block=bio_unit), robust eBayes, canonical 5 contrasts; stores unblocked AOI and
       bio-unit-collapsed sensitivities separately. geomx_decon_preflight records SpatialDecon pinned-repo
-      availability + Q3/background/nuclei/reference/profile/memory feasibility; no SpatialDecon install/run in S1.
+      availability + Q3/background/nuclei/reference/profile/memory feasibility; no SpatialDecon install/run in P4-S1.
+   + (Spatial decon follow-up S1) crossmodality.R: geomx_reference_profile_data -> geomx_reference_profile.
+      Heavy-once full-reference loader: read full snrnaseq_file RNA/counts, map ENSMUSG->symbol via symbol_map,
+      overlay retained microglia substates by barcode from microglia_annotated, cap cells/class under fixed seed,
+      full-library-normalise selected cells, sparse-average expression over GeoMx-overlap genes, and return only
+      broad/substate profile matrices + QC.
+      Helpers: spatialdecon_package_info (warn/message capture), reference_label_sets, reference_gene_map,
+      reference_select_cells, reference_profile_from_counts, profile_condition_number. No decon fit yet.
    + (P4-S2) crossmodality.R: bulk proteome + corrected phospho. match_24m_bulk_columns asserts exact 16-run
       sample-key matching for proteome/phospho-style exports. protein_group_features + aggregate_proteome_raw +
       prepare_proteome_24m_matrix sum raw positive intensities to `PG.ProteinGroups` (NO zero-imputation),
@@ -238,6 +245,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        mechanism_figures   <- mechanism_figure_data(mechanism_report)  # Figure expansion S1: pathway/GO/TF/NF-kB/kinase figure slots; 0.107MB live
   - P4 cross-modality:
        geomx_de <- run_geomx_de(geomx)  # S1: GeoMx RNA/counts DE; slide fixed + duplicateCorrelation bio-unit block primary; unblocked/collapsed sensitivities; decon preflight status/reasons, no SpatialDecon run
+       geomx_reference_profile <- geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)  # spatial-decon follow-up S1: full-snRNAseq compact broad/substate reference profile + QC; serialized 1.88MB live
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)

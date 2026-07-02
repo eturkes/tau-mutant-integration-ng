@@ -32,8 +32,9 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
-Next `$session-prompt` mode = EXECUTE S1 dependency + compact reference profile.
-Route selected = broad-first SpatialDecon with a gated substate attempt.
+Next `$session-prompt` mode = EXECUTE S2 SpatialDecon fit + two-stage assembly.
+Route selected = broad-first SpatialDecon with a gated substate attempt; S1
+reference profile earned broad and substate gates.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -500,6 +501,13 @@ Route selected = broad-first SpatialDecon with a gated substate attempt.
   absolute counts while 42/91 sentinels remain, abundance DE/spatial residual
   audit, and report/synthesis rewiring only if earned. Active S0 route gate awaits
   user choice; no implementation yet.
+- 2026-07-02 Spatial decon follow-up S0/S1 DONE: user chose the recommended
+  broad-first SpatialDecon route with gated substate attempt. Added
+  SpatialDecon 1.22.0 to the repo lock; built `geomx_reference_profile` from the
+  full snRNAseq RDS + retained microglia substates + GeoMx gene overlap. Live
+  compact target warning-clean/tar_meta clean: broad 15,919 genes x 6 profiles
+  earned, substate 16,079 genes x 8 profiles earned, Proliferative absent
+  recorded, serialized 1.88 MB. Next = S2 decon fit.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

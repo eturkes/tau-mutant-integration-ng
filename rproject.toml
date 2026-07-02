@@ -54,6 +54,9 @@ dependencies = [
     { name = "fgsea",     repository = "BioCsoft" },
     "msigdbr",
     "digest",
+    # spatial decon follow-up: GeoMx-native deconvolution API; S1 builds the compact
+    # reference profile, S2 runs SpatialDecon only if gates pass.
+    { name = "SpatialDecon", repository = "BioCsoft" },
     # plotting
     "ggplot2",
     "ggrepel",

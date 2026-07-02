@@ -136,6 +136,96 @@ stopifnot(pf_ok$status == "earned", pf_ok$reference$profile_ok,
           is.finite(pc_ok$max_abs_correlation),
           pc_ok$n_profiles == 3L)
 
+# --- spatial-decon S1 reference profile: labels, genes, caps, gates --------------------
+ref_cells <- paste0("cell", 1:8)
+full_meta <- data.frame(
+  broad_annotations = c("Microglia", "Microglia", "Microglia", "Microglia",
+                        "Astrocyte", "Neuron", "Neuron", "Astrocyte"),
+  nFeature_RNA = c(8, 8, 8, 8, 8, 8, 8, 1),
+  row.names = ref_cells,
+  stringsAsFactors = FALSE
+)
+micro_counts <- Matrix::Matrix(matrix(1, nrow = 6, ncol = 3,
+                                      dimnames = list(paste0("ens", 1:6), ref_cells[1:3])),
+                               sparse = TRUE)
+micro_ann <- SeuratObject::CreateSeuratObject(micro_counts, min.cells = 0, min.features = 0)
+micro_ann$microglia_substate <- factor(c("Homeostatic", "DAM", "IFN"),
+                                       levels = microglia_substate_levels)
+labs <- reference_label_sets(full_meta, micro_ann)
+stopifnot(is.na(labs$broad$labels["cell4"]),                         # dropped microglia excluded
+          labs$broad$labels["cell5"] == "Astrocyte",
+          labs$broad$labels["cell1"] == "Microglia",
+          labs$substate$labels["cell2"] == "Microglia_DAM",
+          "Microglia_Proliferative" %in% labs$substate$expected_classes)
+
+symap <- data.frame(ensembl = paste0("ens", 1:6),
+                    symbol = paste0("Sym", 1:6), stringsAsFactors = FALSE)
+gm <- reference_gene_map(paste0("ens", 1:6), symap, c("Sym3", "Sym1", "Missing", "Sym6"))
+stopifnot(identical(gm$symbol, c("Sym3", "Sym1", "Sym6")),
+          identical(gm$ensembl, c("ens3", "ens1", "ens6")))
+
+ref_counts <- 1 + outer(seq_len(6), seq_along(ref_cells),
+                        function(i, j) (i * j + j^2 + i^2) %% 17L)
+dimnames(ref_counts) <- list(paste0("ens", 1:6), ref_cells)
+ref_counts <- Matrix::Matrix(ref_counts, sparse = TRUE)
+ref_gene_map <- reference_gene_map(rownames(ref_counts), symap, paste0("Sym", 1:6))
+nfeat <- stats::setNames(full_meta$nFeature_RNA, rownames(full_meta))
+prof1 <- reference_profile_from_counts(
+  ref_counts, ref_gene_map, labs$broad$labels, labs$broad$expected_classes,
+  geomx_gene_count = 6L, n_features = nfeat,
+  max_cells_per_class = 2L, min_cells = 1L, min_genes_per_cell = 2L, seed = 77L,
+  profile_corr_threshold = 1.01, condition_number_threshold = 1e99,
+  min_common_genes = 2L)
+prof2 <- reference_profile_from_counts(
+  ref_counts, ref_gene_map, labs$broad$labels, labs$broad$expected_classes,
+  geomx_gene_count = 6L, n_features = nfeat,
+  max_cells_per_class = 2L, min_cells = 1L, min_genes_per_cell = 2L, seed = 77L,
+  profile_corr_threshold = 1.01, condition_number_threshold = 1e99,
+  min_common_genes = 2L)
+stopifnot(identical(prof1$profile, prof2$profile),
+          prof1$qc$status == "earned",
+          prof1$cells$n_dropped_by_cap[prof1$cells$profile_label == "Microglia"] == 1L,
+          prof1$cells$n_dropped_by_qc[prof1$cells$profile_label == "Astrocyte"] == 1L,
+          all(c("Astrocyte", "Microglia", "Neuron") %in% colnames(prof1$profile)),
+          nrow(prof1$profile) == 6L)
+
+sub_prof <- reference_profile_from_counts(
+  ref_counts, ref_gene_map, labs$substate$labels, labs$substate$expected_classes,
+  geomx_gene_count = 6L, n_features = nfeat,
+  max_cells_per_class = 2L, min_cells = 1L, min_genes_per_cell = 2L, seed = 77L,
+  profile_corr_threshold = 1.01, condition_number_threshold = 1e99,
+  min_common_genes = 2L)
+prolif <- sub_prof$cells[sub_prof$cells$profile_label == "Microglia_Proliferative", , drop = FALSE]
+stopifnot(nrow(prolif) == 1L, prolif$status == "absent",
+          !("Microglia_Proliferative" %in% colnames(sub_prof$profile)))
+
+prof_block <- reference_profile_from_counts(
+  ref_counts, ref_gene_map, labs$broad$labels, labs$broad$expected_classes,
+  geomx_gene_count = 6L, n_features = nfeat,
+  max_cells_per_class = 2L, min_cells = 1L, min_genes_per_cell = 2L, seed = 77L,
+  profile_corr_threshold = 0.01, condition_number_threshold = 1e99,
+  min_common_genes = 2L)
+stopifnot(prof_block$qc$status == "blocked",
+          any(grepl("correlation", prof_block$qc$reasons, fixed = TRUE)))
+
+norm_counts <- Matrix::Matrix(matrix(c(10, 10, 80,
+                                       10, 10,  0),
+                                     nrow = 3,
+                                     dimnames = list(paste0("ens", 1:3), c("cellA", "cellB"))),
+                              sparse = TRUE)
+norm_map <- data.frame(ensembl = c("ens1", "ens2"),
+                       symbol = c("Sym1", "Sym2"), stringsAsFactors = FALSE)
+norm_labels <- c(cellA = "A", cellB = "B")
+norm_prof <- reference_profile_from_counts(
+  norm_counts, norm_map, norm_labels, expected_classes = c("A", "B"),
+  geomx_gene_count = 2L, max_cells_per_class = 1L, min_cells = 1L,
+  min_genes_per_cell = 0L, seed = 1L, scaling_factor = 1,
+  profile_corr_threshold = 1.01, condition_number_threshold = 1e99,
+  min_common_genes = 2L)
+stopifnot(all.equal(unname(norm_prof$profile["Sym1", "A"]), 6),
+          all.equal(unname(norm_prof$profile["Sym1", "B"]), 30),
+          !is.finite(norm_prof$qc$condition_number))
+
 # --- abundance DE design: log beta + slide fixed effect + bio-unit blocking ------------
 abund <- rbind(
   microglia = 0.20 + rep(c(0.01, 0.02, 0.04, 0.06), each = 3L * 2L),

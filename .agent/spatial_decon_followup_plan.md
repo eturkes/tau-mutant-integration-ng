@@ -146,9 +146,20 @@ Acceptance:
 - If the user chooses away from default, revise this plan and roadmap before
   implementation.
 
-### S1 - Dependency + compact reference profile
-Add `SpatialDecon` to the project-local R lock and build the compact reference
+### S1 - Dependency + compact reference profile [DONE 2026-07-02]
+Added `SpatialDecon` to the project-local R lock and built the compact reference
 profile target.
+
+Result:
+- `SpatialDecon` 1.22.0 installed project-locally and smoke-loaded under
+  `warn=2` with no warnings/messages.
+- `geomx_reference_profile` loads the full snRNAseq RDS once, overlays retained
+  microglia substates by barcode, caps at 500 cells/class, and stores only
+  broad/substate profiles plus QC/provenance.
+- Live target warning-clean: 1.88 MB serialized; broad profile earned
+  (15,919 genes x 6 profiles, max |cor| 0.674); substate profile earned
+  (16,079 genes x 8 profiles, max |cor| 0.902); Microglia_Proliferative is
+  recorded absent.
 
 Contracts:
 - Add package via `rproject.toml` (`repository = "BioCsoft"`) + `rv sync`; no

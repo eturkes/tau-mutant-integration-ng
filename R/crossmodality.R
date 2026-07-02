@@ -1,5 +1,5 @@
-# P4 cross-modality helpers. S1 covers GeoMx DE plus a deconvolution preflight only;
-# later steps add bulk omics, clearance-axis, integration, and report bundles.
+# Cross-modality helpers. P4 built GeoMx/bulk/clearance/integration; the spatial
+# decon follow-up adds a compact snRNAseq-derived GeoMx reference profile first.
 
 geomx_required_meta_cols <- function() {
   c("genotype", "slide_rep", "bio_rep", "roi", "SampleID",
@@ -246,6 +246,363 @@ profile_collinearity <- function(profile) {
   max_cor <- if (length(off) && any(is.finite(off))) max(off, na.rm = TRUE) else NA_real_
   list(n_features = nrow(profile), n_profiles = ncol(profile),
        max_abs_correlation = max_cor)
+}
+
+profile_condition_number <- function(profile) {
+  stopifnot(is.matrix(profile), nrow(profile) >= 2L, ncol(profile) >= 1L,
+            all(is.finite(profile)))
+  sv <- svd(profile, nu = 0L, nv = 0L)$d
+  eps <- sqrt(.Machine$double.eps)
+  if (!length(sv) || any(sv <= eps)) return(Inf)
+  max(sv) / min(sv)
+}
+
+spatialdecon_package_info <- function() {
+  warnings <- character()
+  messages <- character()
+  result <- tryCatch(
+    withCallingHandlers({
+      ok <- requireNamespace("SpatialDecon", quietly = TRUE)
+      list(package = "SpatialDecon", installed = ok,
+           version = if (ok) as.character(utils::packageVersion("SpatialDecon")) else NA_character_,
+           error = NA_character_)
+    }, warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }, message = function(m) {
+      messages <<- c(messages, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }),
+    error = function(e) {
+      list(package = "SpatialDecon", installed = FALSE,
+           version = NA_character_, error = conditionMessage(e))
+    }
+  )
+  result$warnings <- warnings
+  result$messages <- messages
+  result
+}
+
+reference_clean_labels <- function(x) {
+  x <- trimws(as.character(x))
+  x[is.na(x) | x == ""] <- NA_character_
+  out <- gsub("[^A-Za-z0-9]+", "_", x)
+  out <- gsub("^_+|_+$", "", out)
+  out[out == ""] <- NA_character_
+  starts_digit <- !is.na(out) & grepl("^[0-9]", out)
+  out[starts_digit] <- paste0("X", out[starts_digit])
+  out
+}
+
+reference_label_map <- function(raw_labels) {
+  raw <- sort(unique(as.character(raw_labels[!is.na(raw_labels) & raw_labels != ""])),
+              method = "radix")
+  clean <- reference_clean_labels(raw)
+  stopifnot(length(raw) == length(clean), !anyNA(clean), anyDuplicated(raw) == 0L)
+  if (anyDuplicated(clean)) {
+    dup <- unique(clean[duplicated(clean)])
+    stop("reference label sanitation collision: ", paste(dup, collapse = ", "), call. = FALSE)
+  }
+  data.frame(raw_label = raw, profile_label = clean, stringsAsFactors = FALSE)
+}
+
+reference_label_sets <- function(full_meta, microglia_annotated) {
+  stopifnot(is.data.frame(full_meta), "broad_annotations" %in% names(full_meta),
+            !is.null(rownames(full_meta)), !anyDuplicated(rownames(full_meta)),
+            inherits(microglia_annotated, "Seurat"),
+            "microglia_substate" %in% colnames(microglia_annotated@meta.data),
+            !anyDuplicated(colnames(microglia_annotated)))
+  cell_names <- rownames(full_meta)
+  retained_micro <- colnames(microglia_annotated)
+  if (!all(retained_micro %in% cell_names)) {
+    stop("retained microglia barcodes are absent from the full snRNAseq reference", call. = FALSE)
+  }
+
+  broad <- as.character(full_meta$broad_annotations)
+  non_micro <- !is.na(broad) & broad != "" & broad != "Microglia"
+  micro_idx <- match(retained_micro, cell_names)
+  micro_sub <- as.character(microglia_annotated@meta.data$microglia_substate)
+  names(micro_sub) <- retained_micro
+  coherent_micro <- micro_sub %in% microglia_substate_levels
+
+  broad_raw <- rep(NA_character_, length(cell_names))
+  names(broad_raw) <- cell_names
+  broad_raw[non_micro] <- broad[non_micro]
+  broad_raw[micro_idx] <- "Microglia"
+
+  sub_raw <- rep(NA_character_, length(cell_names))
+  names(sub_raw) <- cell_names
+  sub_raw[non_micro] <- broad[non_micro]
+  sub_raw[match(retained_micro[coherent_micro], cell_names)] <-
+    paste0("Microglia_", micro_sub[coherent_micro])
+
+  non_micro_expected <- sort(unique(broad[non_micro]), method = "radix")
+  expected_broad_raw <- c(non_micro_expected, "Microglia")
+  expected_sub_raw <- c(non_micro_expected, paste0("Microglia_", microglia_substate_levels))
+  lmap <- reference_label_map(c(expected_broad_raw, expected_sub_raw))
+  clean <- function(v) lmap$profile_label[match(v, lmap$raw_label)]
+
+  broad_clean <- clean(broad_raw); names(broad_clean) <- names(broad_raw)
+  sub_clean <- clean(sub_raw); names(sub_clean) <- names(sub_raw)
+  list(
+    broad = list(labels = broad_clean, expected_classes = clean(expected_broad_raw),
+                 expected_raw = expected_broad_raw),
+    substate = list(labels = sub_clean, expected_classes = clean(expected_sub_raw),
+                    expected_raw = expected_sub_raw),
+    label_map = lmap,
+    provenance = list(
+      n_full_cells = nrow(full_meta),
+      n_non_microglia_cells = sum(non_micro),
+      n_retained_microglia_cells = length(retained_micro),
+      n_coherent_microglia_substate_cells = sum(coherent_micro),
+      excluded_microglia_cells = sum(broad == "Microglia", na.rm = TRUE) - length(retained_micro),
+      excluded_noncoherent_microglia_cells = sum(!coherent_micro)
+    )
+  )
+}
+
+reference_gene_map <- function(rna_rownames, symbol_map, geomx_genes) {
+  stopifnot(is.character(rna_rownames), length(rna_rownames) >= 2L,
+            is.data.frame(symbol_map), all(c("ensembl", "symbol") %in% names(symbol_map)),
+            is.character(geomx_genes), length(geomx_genes) >= 2L,
+            anyDuplicated(symbol_map$ensembl) == 0L,
+            anyDuplicated(symbol_map$symbol) == 0L)
+  idx <- match(rna_rownames, symbol_map$ensembl)
+  if (anyNA(idx)) stop("RNA rownames missing from symbol_map", call. = FALSE)
+  syms <- as.character(symbol_map$symbol[idx])
+  stopifnot(!anyNA(syms), anyDuplicated(syms) == 0L)
+  geomx_genes <- unique(as.character(geomx_genes[!is.na(geomx_genes) & geomx_genes != ""]))
+  common <- geomx_genes[geomx_genes %in% syms]
+  if (length(common) < 2L) stop("fewer than two common GeoMx/reference genes", call. = FALSE)
+  ens <- rna_rownames[match(common, syms)]
+  data.frame(ensembl = ens, symbol = common, stringsAsFactors = FALSE)
+}
+
+reference_select_cells <- function(labels, expected_classes, n_features = NULL,
+                                   max_cells_per_class = 500L, min_cells = 25L,
+                                   min_genes_per_cell = 200L, seed = 42L) {
+  stopifnot(is.character(labels), !is.null(names(labels)), !anyDuplicated(names(labels)),
+            is.character(expected_classes), length(expected_classes) >= 1L,
+            is.numeric(max_cells_per_class), length(max_cells_per_class) == 1L,
+            is.numeric(min_cells), length(min_cells) == 1L,
+            is.numeric(min_genes_per_cell), length(min_genes_per_cell) == 1L,
+            is.numeric(seed), length(seed) == 1L,
+            max_cells_per_class >= min_cells, min_cells >= 1L, min_genes_per_cell >= 0)
+  valid <- !is.na(labels) & labels != ""
+  if (!is.null(n_features)) {
+    stopifnot(is.numeric(n_features), !is.null(names(n_features)))
+    nf <- n_features[names(labels)]
+    viable <- valid & !is.na(nf) & nf >= min_genes_per_cell
+  } else {
+    nf <- rep(NA_real_, length(labels)); names(nf) <- names(labels)
+    viable <- valid
+  }
+  classes <- unique(c(expected_classes, sort(unique(labels[valid]), method = "radix")))
+
+  old_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (has_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  on.exit({
+    RNGkind(old_kind[1], old_kind[2], old_kind[3])
+    if (has_seed) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+      rm(".Random.seed", envir = .GlobalEnv)
+  }, add = TRUE)
+  RNGkind("Mersenne-Twister", "Inversion", "Rejection")
+  set.seed(seed)
+
+  selected <- character()
+  rows <- lapply(classes, function(cl) {
+    raw_cells <- names(labels)[valid & labels == cl]
+    viable_cells <- sort(names(labels)[viable & labels == cl], method = "radix")
+    status <- if (!length(raw_cells)) "absent" else if (length(viable_cells) < min_cells) "under_min" else "used"
+    use <- character()
+    if (identical(status, "used")) {
+      use <- if (length(viable_cells) > max_cells_per_class) {
+        sort(sample(viable_cells, max_cells_per_class), method = "radix")
+      } else viable_cells
+      selected <<- c(selected, use)
+    }
+    data.frame(
+      profile_label = cl,
+      n_raw = length(raw_cells),
+      n_viable = length(viable_cells),
+      n_selected = length(use),
+      n_dropped_by_qc = length(raw_cells) - length(viable_cells),
+      n_dropped_by_cap = if (identical(status, "used")) max(0L, length(viable_cells) - length(use)) else 0L,
+      status = status,
+      stringsAsFactors = FALSE
+    )
+  })
+  tab <- do.call(rbind, rows)
+  rownames(tab) <- NULL
+  selected <- unique(selected)
+  list(cells = selected, labels = labels[selected], table = tab)
+}
+
+reference_profile_from_counts <- function(counts, gene_map, labels, expected_classes,
+                                          geomx_gene_count, n_features = NULL,
+                                          max_cells_per_class = 500L, min_cells = 25L,
+                                          min_genes_per_cell = 200L, seed = 42L,
+                                          scaling_factor = 5,
+                                          profile_corr_threshold = 0.95,
+                                          condition_number_threshold = 1e4,
+                                          min_common_genes = 200L) {
+  stopifnot(inherits(counts, "Matrix") || is.matrix(counts),
+            is.data.frame(gene_map), all(c("ensembl", "symbol") %in% names(gene_map)),
+            all(gene_map$ensembl %in% rownames(counts)),
+            is.character(labels), is.character(expected_classes),
+            is.numeric(geomx_gene_count), length(geomx_gene_count) == 1L,
+            is.numeric(scaling_factor), length(scaling_factor) == 1L, scaling_factor > 0)
+  sel <- reference_select_cells(labels, expected_classes, n_features = n_features,
+                                max_cells_per_class = max_cells_per_class,
+                                min_cells = min_cells,
+                                min_genes_per_cell = min_genes_per_cell,
+                                seed = seed)
+  used <- sel$table$profile_label[sel$table$status == "used"]
+  if (length(used) < 2L) stop("reference profile needs at least two usable classes", call. = FALSE)
+  selected_cells <- sel$cells
+  if (!length(selected_cells)) stop("no cells selected for reference profile", call. = FALSE)
+  lib <- Matrix::colSums(counts[, selected_cells, drop = FALSE])
+  keep <- is.finite(lib) & lib > 0
+  if (!all(keep)) {
+    sel_labels <- sel$labels[keep]
+    sel$table$n_selected <- vapply(sel$table$profile_label, function(cl) sum(sel_labels == cl), integer(1))
+    sel$table$status[sel$table$status == "used" & sel$table$n_selected < min_cells] <- "under_min"
+    used <- sel$table$profile_label[sel$table$status == "used"]
+    if (length(used) < 2L) stop("reference profile needs at least two usable classes", call. = FALSE)
+  } else {
+    sel_labels <- sel$labels
+  }
+  selected_cells <- selected_cells[keep]
+  lib <- lib[keep]
+  mat <- counts[gene_map$ensembl, selected_cells, drop = FALSE]
+  med <- stats::median(lib)
+  norm <- mat %*% Matrix::Diagonal(x = med / lib)
+  prof <- vapply(used, function(cl) {
+    Matrix::rowMeans(norm[, sel_labels == cl, drop = FALSE])
+  }, numeric(nrow(norm)))
+  prof <- as.matrix(prof) * scaling_factor
+  rownames(prof) <- gene_map$symbol
+  keep_gene <- Matrix::rowSums(prof > 0) > 0
+  prof <- prof[keep_gene, , drop = FALSE]
+  stopifnot(nrow(prof) >= 2L, ncol(prof) >= 2L,
+            all(is.finite(prof)), all(prof >= 0), !anyDuplicated(rownames(prof)),
+            identical(colnames(prof), used))
+
+  pc <- profile_collinearity(prof)
+  cond <- profile_condition_number(prof)
+  gate_reasons <- character()
+  if (nrow(prof) < min_common_genes) {
+    gate_reasons <- c(gate_reasons,
+                      sprintf("profile has %d nonzero common genes below threshold %d",
+                              nrow(prof), min_common_genes))
+  }
+  if (!is.finite(pc$max_abs_correlation) || pc$max_abs_correlation >= profile_corr_threshold) {
+    gate_reasons <- c(gate_reasons,
+                      sprintf("profile max correlation %.3f exceeds threshold %.3f",
+                              pc$max_abs_correlation, profile_corr_threshold))
+  }
+  if (!is.finite(cond) || cond >= condition_number_threshold) {
+    gate_reasons <- c(gate_reasons,
+                      sprintf("profile condition number %.3f exceeds threshold %.3f",
+                              cond, condition_number_threshold))
+  }
+  status <- if (length(gate_reasons)) "blocked" else "earned"
+  list(
+    profile = prof,
+    cells = sel$table,
+    common_genes = gene_map[keep_gene, , drop = FALSE],
+    qc = list(
+      status = status,
+      reasons = gate_reasons,
+      n_common_genes_input = nrow(gene_map),
+      n_common_genes_nonzero = nrow(prof),
+      geomx_gene_count = geomx_gene_count,
+      reference_gene_count = length(unique(rownames(counts))),
+      profile_collinearity = pc,
+      condition_number = cond,
+      matrix_mb = as.numeric(utils::object.size(prof)) / 1024^2,
+      selected_sparse_mb = as.numeric(utils::object.size(mat)) / 1024^2
+    )
+  )
+}
+
+geomx_reference_profile_data <- function(snrnaseq_file, microglia_annotated, symbol_map, geomx,
+                                         max_cells_per_class = 500L, min_cells = 25L,
+                                         min_genes_per_cell = 200L, seed = 42L,
+                                         scaling_factor = 5,
+                                         profile_corr_threshold = 0.95,
+                                         condition_number_threshold = 1e4,
+                                         min_common_genes = 200L) {
+  stopifnot(file.exists(snrnaseq_file), inherits(microglia_annotated, "Seurat"),
+            is.data.frame(symbol_map), inherits(geomx, "Seurat"))
+  geomx_genes <- rownames(SeuratObject::GetAssayData(geomx, assay = "RNA", layer = "data"))
+  stopifnot(length(geomx_genes) >= 2L, anyDuplicated(geomx_genes) == 0L)
+  spatialdecon <- spatialdecon_package_info()
+  if (!isTRUE(spatialdecon$installed)) {
+    stop("SpatialDecon is not installed in the project library", call. = FALSE)
+  }
+
+  sc <- readRDS(snrnaseq_file)
+  on.exit({
+    if (exists("sc", inherits = FALSE)) rm(sc)
+    invisible(gc())
+  }, add = TRUE)
+  stopifnot(inherits(sc, "Seurat"), "RNA" %in% names(sc@assays),
+            "broad_annotations" %in% colnames(sc@meta.data))
+  full_meta <- sc@meta.data
+  n_features <- if ("nFeature_RNA" %in% names(full_meta)) {
+    stats::setNames(as.numeric(full_meta$nFeature_RNA), rownames(full_meta))
+  } else NULL
+  labels <- reference_label_sets(full_meta, microglia_annotated)
+  counts <- SeuratObject::GetAssayData(sc, assay = "RNA", layer = "counts")
+  gene_map <- reference_gene_map(rownames(counts), symbol_map, geomx_genes)
+  broad <- reference_profile_from_counts(
+    counts, gene_map, labels$broad$labels, labels$broad$expected_classes,
+    geomx_gene_count = length(geomx_genes), n_features = n_features,
+    max_cells_per_class = max_cells_per_class, min_cells = min_cells,
+    min_genes_per_cell = min_genes_per_cell, seed = seed,
+    scaling_factor = scaling_factor, profile_corr_threshold = profile_corr_threshold,
+    condition_number_threshold = condition_number_threshold, min_common_genes = min_common_genes)
+  substate <- reference_profile_from_counts(
+    counts, gene_map, labels$substate$labels, labels$substate$expected_classes,
+    geomx_gene_count = length(geomx_genes), n_features = n_features,
+    max_cells_per_class = max_cells_per_class, min_cells = min_cells,
+    min_genes_per_cell = min_genes_per_cell, seed = seed,
+    scaling_factor = scaling_factor, profile_corr_threshold = profile_corr_threshold,
+    condition_number_threshold = condition_number_threshold, min_common_genes = min_common_genes)
+  rm(sc, counts)
+  invisible(gc())
+
+  thresholds <- list(max_cells_per_class = max_cells_per_class,
+                     min_cells = min_cells,
+                     min_genes_per_cell = min_genes_per_cell,
+                     scaling_factor = scaling_factor,
+                     profile_corr_threshold = profile_corr_threshold,
+                     condition_number_threshold = condition_number_threshold,
+                     min_common_genes = min_common_genes)
+  out <- list(
+    broad = broad,
+    substate = substate,
+    label_map = labels$label_map,
+    package = spatialdecon,
+    thresholds = thresholds,
+    provenance = c(labels$provenance, list(
+      seed = seed,
+      snrnaseq_file = basename(snrnaseq_file),
+      geomx_genes = length(geomx_genes),
+      reference_rna_genes = nrow(symbol_map),
+      package_contract = "SpatialDecon uses norm + same-scale background + cell-profile matrix; profile built as capped sparse average expression"
+    ))
+  )
+  stopifnot(is.matrix(out$broad$profile), is.matrix(out$substate$profile),
+            nrow(out$broad$profile) >= min_common_genes,
+            nrow(out$substate$profile) >= min_common_genes,
+            out$broad$qc$status %in% c("earned", "blocked"),
+            out$substate$qc$status %in% c("earned", "blocked"),
+            "Microglia_Proliferative" %in% out$substate$cells$profile_label)
+  out
 }
 
 geomx_decon_preflight <- function(meta, counts, profile = NULL, profile_corr_threshold = 0.95,
