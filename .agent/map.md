@@ -175,6 +175,15 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       fails loud if geomx_de$decon_preflight becomes `earned` before decon targets exist; otherwise records the
       intentional decon skip and harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk, complement, and synaptic
       anchors across microglia RNA, GeoMx, and bulk layers with a conservative pair-support verdict.
+   + (P4-S4) crossmodality.R: integration helpers. crossmodality_table_data -> crossmodality_table harmonises
+      snRNAseq whole/substate RNA, GeoMx, proteome, raw/corrected phospho, TF activity, and kinase summary rows to
+      one symbol x contrast x modality_group x feature_type table, collapsing duplicate RNA/protein/phosphosite
+      symbols by best FDR then abs(statistic) while retaining feature/site counts + missingness reasons. Carries
+      both modality_group (layer-level evidence) and modality_class (broad count semantics). crossmodality_pathway_data
+      selects project sets + top RNA-mechanism GO sets, scores each selected set from ranked modality statistics,
+      and summarises n_modalities_present/sig + n_evidence_groups_present/sig + sign consistency. crossmodality_divergence_data
+      focuses {interaction,nlgf_in_maptki,nlgf_in_p301s,tau_in_nlgf}, keeps mixed signs explicit, and outputs compact
+      symbol/pathway/clearance highlights for S5.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -214,6 +223,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
        clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets)  # S3 compact measured-axis table (~37KB); decon skipped/defer recorded; Apoe_Trem2 currently the only earned CCC-lite pair
+       crossmodality_table <- crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m, phospho_corrected_24m, mechanism_tf, kinase_mechanism_summary)  # S4 harmonised symbol evidence table (~10MB; 337k rows live), broad modality_class + layer-level modality_group
+       crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
+       crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -249,7 +261,9 @@ from project root: `Rscript tests/test_<x>.R`.
                     protein aggregation/no-imputation + parent-protein correction/sample-order guard +
                     missing-parent counts + run-index summary + duplicate/multi-gene provenance; (P4-S3) Q3
                     background scaling + profile-collinearity + abundance-DE design shape + clearance-axis
-                    earned/not-earned classification + fail-loud decon-earned guard
+                    earned/not-earned classification + fail-loud decon-earned guard; (P4-S4) duplicate RNA/protein/
+                    phosphosite collapse + missingness + canonical-contrast guard + pathway modality-score invariants
+                    + divergence mixed-sign / clearance-highlight checks
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)

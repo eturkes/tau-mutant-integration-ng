@@ -176,6 +176,24 @@ list(
                                  bulk_omics_summary, mechanism_gene_sets),
              format = "qs"),
 
+  # S4 integrated gene/pathway divergence view. Evidence rows collapse duplicated RNA symbols,
+  # protein groups, and phosphosites to one symbol x contrast x modality_group row while retaining
+  # feature/site counts. Pathway/divergence leaves nulls and mixed signs explicit for the S5 report.
+  tar_target(crossmodality_table,
+             crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
+                                      proteome_de_24m, phospho_de_24m,
+                                      phospho_corrected_24m, mechanism_tf,
+                                      kinase_mechanism_summary),
+             format = "qs"),
+  tar_target(crossmodality_pathway,
+             crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets,
+                                        mechanism_pathway),
+             format = "qs"),
+  tar_target(crossmodality_divergence,
+             crossmodality_divergence_data(crossmodality_table, crossmodality_pathway,
+                                           clearance_axis),
+             format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

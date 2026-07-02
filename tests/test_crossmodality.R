@@ -331,4 +331,135 @@ expect_error(clearance_axis_data(axis_pb, axis_sub, axis_map, axis_geomx_earned,
                                  summary, axis_sets),
              "add geomx_decon")
 
+# --- P4-S4 integrated evidence, pathway, and divergence views -------------------------
+axis_map_dup <- rbind(axis_map, data.frame(ensembl = "ens_dup_apoe", symbol = "Apoe",
+                                           stringsAsFactors = FALSE))
+axis_pb_dup <- axis_pb
+for (cn in names(axis_pb_dup$top)) {
+  dupe <- axis_pb_dup$top[[cn]][axis_pb_dup$top[[cn]]$gene == "ens1", , drop = FALSE]
+  dupe$gene <- "ens_dup_apoe"
+  dupe$logFC <- dupe$logFC * 0.5
+  dupe$t <- dupe$t * 0.5
+  dupe$P.Value <- pmin(dupe$P.Value * 2, 0.99)
+  dupe$adj.P.Val <- pmin(dupe$adj.P.Val * 2, 0.99)
+  unmapped <- dupe
+  unmapped$gene <- "ens_unmapped"
+  axis_pb_dup$top[[cn]] <- rbind(axis_pb_dup$top[[cn]], dupe, unmapped)
+}
+
+raw_phos_dup <- raw_phos
+for (cn in names(raw_phos_dup$top)) {
+  base <- raw_phos_dup$top[[cn]][raw_phos_dup$top[[cn]]$gene == "Gsk3b", , drop = FALSE][1, ]
+  base$feature <- paste0(base$feature, "_dup")
+  base$site_id <- "Gsk3b_S999"
+  base$site_location <- "999"
+  base$t <- base$t * 1.5
+  base$logFC <- base$logFC * 1.5
+  raw_phos_dup$top[[cn]] <- rbind(raw_phos_dup$top[[cn]], base)
+}
+
+tf_grid <- expand.grid(population = c("whole_microglia", "DAM"),
+                       source = c("Myc", "Rela"),
+                       contrast = canonical,
+                       stringsAsFactors = FALSE)
+tf_grid$population_type <- ifelse(tf_grid$population == "whole_microglia", "whole", "substate")
+tf_grid$statistic <- "ulm"
+tf_grid$score <- ifelse(tf_grid$source == "Myc", -2.5, 1.2) *
+  ifelse(tf_grid$contrast == "interaction", 1, 0.4)
+tf_grid$p_value <- ifelse(abs(tf_grid$score) > 2, 0.01, 0.2)
+tf_grid$direction <- tf_grid$score
+tf_grid$method <- "ulm"
+tf_grid$has_consensus <- FALSE
+tf_grid$fdr <- ave(tf_grid$p_value, tf_grid$population, tf_grid$contrast,
+                   FUN = function(p) p.adjust(p, method = "BH"))
+tf <- list(activity = tf_grid)
+
+kinase <- list(table = data.frame(
+  source = rep(c("Gsk3b", "Camk2a"), each = length(canonical)),
+  contrast = rep(canonical, times = 2L),
+  fit = "primary",
+  statistic = "ulm",
+  score = c(rep(NA_real_, length(canonical)),
+            rep(c(0.4, 0.8, 1.1, -0.7, 1.5), 1L)),
+  p_value = c(rep(NA_real_, length(canonical)),
+              c(0.4, 0.2, 0.05, 0.3, 0.02)),
+  direction = c(rep(NA_real_, length(canonical)),
+                c(0.4, 0.8, 1.1, -0.7, 1.5)),
+  method = "ulm",
+  fdr = c(rep(NA_real_, length(canonical)),
+          p.adjust(c(0.4, 0.2, 0.05, 0.3, 0.02), method = "BH")),
+  significant = c(rep(FALSE, length(canonical)), rep(FALSE, length(canonical))),
+  include_reason = c(rep("gsk3b_absent", length(canonical)), rep("significant", length(canonical))),
+  run_index_score = NA_real_,
+  run_index_fdr = NA_real_,
+  run_index_sign_concordant = FALSE,
+  run_index_supports = FALSE,
+  run_order_confounded = FALSE,
+  alpha = 0.10,
+  stringsAsFactors = FALSE
+))
+
+cmt <- crossmodality_table_data(axis_pb_dup, axis_sub, axis_map_dup, axis_geomx,
+                                prot_de, raw_phos_dup, corr_de, tf, kinase,
+                                alpha = 0.10)
+stopifnot(is.data.frame(cmt$evidence),
+          all(canonical %in% cmt$evidence$contrast),
+          any(cmt$missingness$reason == "unmapped_ensembl_symbol"),
+          any(grepl("substate: skipped", cmt$missingness$reason, fixed = TRUE)),
+          any(cmt$evidence$modality == "TF_activity"),
+          any(cmt$evidence$modality == "kinase_activity"))
+apoe_rna <- cmt$evidence[cmt$evidence$symbol == "Apoe" &
+                           cmt$evidence$contrast == "interaction" &
+                           cmt$evidence$modality_group == "snRNAseq_microglia:whole_microglia" &
+                           cmt$evidence$feature_type == "gene", , drop = FALSE]
+gsk3b_phos <- cmt$evidence[cmt$evidence$symbol == "Gsk3b" &
+                             cmt$evidence$contrast == "interaction" &
+                             cmt$evidence$layer == "phospho_raw", , drop = FALSE]
+stopifnot(nrow(apoe_rna) == 1L, apoe_rna$n_features_collapsed >= 2L,
+          nrow(gsk3b_phos) == 1L, gsk3b_phos$n_sites_collapsed >= 2L)
+bad_geomx <- axis_geomx
+bad_geomx$primary$top$interaction <- NULL
+expect_error(crossmodality_table_data(axis_pb, axis_sub, axis_map, bad_geomx,
+                                      prot_de, raw_phos, corr_de, tf, kinase),
+             "missing canonical contrasts")
+
+axis_sets_s4 <- axis_sets
+axis_sets_s4$sets$project$Homeostatic <- c("Pros1", "Mertk", "Other")
+axis_sets_s4$sizes <- do.call(rbind, lapply(names(axis_sets_s4$sets), function(collection) {
+  data.frame(collection = collection, set = names(axis_sets_s4$sets[[collection]]),
+             size = lengths(axis_sets_s4$sets[[collection]]), stringsAsFactors = FALSE)
+}))
+axis_sets_s4$thresholds <- list(go_min_size = 2L, custom_min_size = 2L)
+pathway_synth <- list(pathway = data.frame(
+  population = "whole_microglia",
+  population_type = "whole",
+  collection = "GO_BP",
+  pathway = "GO_SYNAPTIC_SIGNALING",
+  contrast = rep(canonical, each = 1L),
+  NES = c(1.5, -1.3, -1.4, 0.8, 1.1),
+  pval = 0.05,
+  padj = 0.08,
+  size = 4L,
+  p_floor_warning = FALSE,
+  direction = c(1.5, -1.3, -1.4, 0.8, 1.1),
+  p_value = 0.05,
+  fdr = 0.08,
+  stringsAsFactors = FALSE
+))
+cmp <- crossmodality_pathway_data(cmt, axis_sets_s4, pathway_synth,
+                                  min_overlap = 1L, go_top_n = 2L)
+stopifnot(nrow(cmp$selected_sets) >= 2L,
+          all(crossmodality_focus_contrasts() %in% cmp$scores$contrast),
+          all(crossmodality_focus_contrasts() %in% cmp$summary$contrast),
+          all(cmp$summary$n_consistent_sign <= cmp$summary$n_modalities_present),
+          any(cmp$summary$axis_member))
+
+div <- crossmodality_divergence_data(cmt, cmp, ca, top_n = 50L)
+stopifnot(all(crossmodality_focus_contrasts() %in% div$contrast_summary$contrast),
+          nrow(div$highlights) >= 1L,
+          nrow(div$pathway_highlights) >= 1L,
+          all(div$symbol_summary$n_consistent_sign <= div$symbol_summary$n_modalities_present),
+          any(div$symbol_summary$mixed_sign),
+          any(div$earned_clearance_pairs$pair == "Apoe_Trem2"))
+
 cat("ok - test_crossmodality\n")

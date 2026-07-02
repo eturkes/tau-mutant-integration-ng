@@ -275,7 +275,7 @@ Outcome:
   = earned for `Apoe_Trem2` only, in `nlgf_in_p301s`, by coherent supported
   GeoMx + snRNAseq microglia evidence; no full CCC method is called.
 
-### S4 - Integrated gene/pathway divergence view [PENDING]
+### S4 - Integrated gene/pathway divergence view [DONE]
 Add targets: `crossmodality_table`, `crossmodality_pathway`, and
 `crossmodality_divergence`.
 
@@ -297,6 +297,19 @@ Acceptance:
   scoring, pathway score invariants, and no silent drop of canonical contrasts.
 - Fresh targets warning-clean and compact enough for report rendering.
 - `scripts/check.sh` green.
+
+Outcome:
+- Added S4 helpers in `R/crossmodality.R`, targets `crossmodality_table`,
+  `crossmodality_pathway`, and `crossmodality_divergence`, plus synthetic tests.
+- `crossmodality_table` harmonises symbol-level evidence across snRNAseq whole/substate
+  RNA, GeoMx, proteome, raw/corrected phospho, TF activity, and kinase summaries.
+  Duplicate RNA/protein/phosphosite rows collapse with feature/site provenance and
+  missingness rows; canonical contrast coverage fails loud.
+- Count semantics hardened before commit: `modality_group` is layer-level evidence,
+  while `modality_class` drives `n_modalities_present/sig`; layer counts remain in
+  `n_evidence_groups_present/sig`.
+- Live targets warning-clean / `tar_meta` clean: table ~337k rows / ~10MB, selected
+  pathway summary ~108KB, divergence summary ~1.9MB. Full `scripts/check.sh` green.
 
 ### S5 - Cross-modality report chapter [PENDING]
 Add `crossmodality_report` target and `_crossmodality.qmd`; include the chapter

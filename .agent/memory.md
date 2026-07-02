@@ -566,6 +566,26 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `nlgf_in_p301s`, by coherent supported GeoMx + snRNAseq microglia evidence. `App_Cd74` and `Pros1_Mertk` remain
   measured but not earned. Downstream prose may call this measured clearance-axis support, not full CCC.
 
+## Cross-modality integration tables (P4-S4, built) -- `R/crossmodality.R` -> `crossmodality_*`
+- `crossmodality_table_data`: harmonises snRNAseq whole/substate RNA, GeoMx primary DE, 24M proteome, raw/corrected
+  phospho, TF activity, and kinase-summary rows to one symbol x contrast x modality_group x feature_type evidence table.
+  Duplicate RNA/protein/phosphosite symbols collapse by best FDR then abs(statistic); provenance keeps representative
+  feature_id, feature_examples, n_features_collapsed, n_sites_collapsed, source_target, and missingness rows (unmapped
+  Ensembl, skipped substates, missing/multi-gene phosphosites, missing protein symbols). Live target warning-clean:
+  ~337k evidence rows, ~10MB, all 5 canonical contrasts.
+- COUNT-HONESTY GOTCHA fixed before commit: `modality_group` = layer-level evidence (`snRNAseq_microglia:DAM`,
+  `bulk_hippocampus:phospho_raw`, etc.); `modality_class` = broad count semantics (`snRNAseq_microglia`,
+  `GeoMx_spatial`, `bulk_proteome`, `bulk_phosphoproteome`, `TF_activity`, `kinase_activity`). Any prose using
+  `n_modalities_present/sig` reads modality_class counts; `n_evidence_groups_present/sig` is the layer-level count.
+  Do not call substate layers or raw/corrected phospho rows separate modalities.
+- `crossmodality_pathway_data`: selects project gene sets + top RNA-mechanism GO sets, then scores each selected set
+  from ranked modality statistics (no new formal GSEA). Summary fields = n_modalities_present/sig, n_evidence_groups_*
+  and sign consistency; rank_score is descriptive ordering only, not a contest margin.
+- `crossmodality_divergence_data`: focus contrasts = interaction, nlgf_in_maptki, nlgf_in_p301s, tau_in_nlgf. Keeps
+  mixed-sign rows explicit, carries axis labels from clearance/bulk anchors + microglia marker sets, and forwards earned
+  clearance pairs from `clearance_axis`. Live target warning-clean (~1.9MB). S5 report should load a compact report
+  bundle, not the 10MB table directly.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

@@ -31,7 +31,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S4 Integrated gene/pathway divergence view.
+Next `$session-prompt` mode = EXECUTE. Next open step = S5 Cross-modality report chapter.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -374,6 +374,13 @@ Next `$session-prompt` mode = EXECUTE. Next open step = S4 Integrated gene/pathw
   anchor rows, 166 synaptic GO-set rows, all 15 dictionary anchors measured somewhere; CCC-lite verdict is earned
   only for `Apoe_Trem2` in `nlgf_in_p301s` via coherent supported GeoMx + snRNAseq microglia evidence. No full CCC
   method is called. Next = S4.
+- 2026-07-02 P4-S4 DONE -> `crossmodality_table`, `crossmodality_pathway`, `crossmodality_divergence`.
+  Harmonised snRNAseq/GeoMx/proteome/raw+corrected phospho/TF/kinase rows to one symbol-evidence table, preserving
+  feature/site collapse provenance + missingness. Pathway target scores selected project + RNA-mechanism GO sets from
+  ranked modality statistics; divergence target focuses the four story contrasts and keeps mixed signs explicit.
+  Count-honesty hardening: `modality_class` drives `n_modalities_present/sig`; `modality_group` is layer-level evidence
+  only. Live fresh targets warning-clean/tar_meta clean (~10MB table, ~108KB pathway, ~1.9MB divergence). Full
+  `scripts/check.sh` green. Next = S5 report chapter.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
