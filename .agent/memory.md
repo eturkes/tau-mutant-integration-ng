@@ -548,7 +548,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   Unknown has 2 cells -> under_min. Substate earned: 16,079 genes x 8 profiles (the five broad non-microglia
   classes + Homeostatic/DAM/IFN); Proliferative absent. QC: broad max |cor| 0.674 / condition 4.34; substate max
   |cor| 0.902 / condition 9.89. S2 may try both broad and substate decon; if SpatialDecon fit fails, report the
-  precise fit/status reason, not the old "no compact profile" negative.
+  precise fit/status reason, not the old missing-reference negative.
 
 ## Spatial decon fit (follow-up S2, built) -- `R/crossmodality.R` -> `geomx_decon`
 - `run_geomx_decon` reads GeoMx RNA `data` as linear Q3-normalised expression, aligns AOIs to `geomx_meta`, broadcasts
@@ -581,7 +581,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Live S3 (warning-clean/tar_meta clean, target 5.93KB; full `scripts/check.sh` green): broad/substate/
   microglia-substate abundance DE all blocked by the same 4 unresolved AOIs from S2; residual audit is available for
   broad and substate arms over 91 AOIs x 4 slides (median RMS residual ~0.821 for both). S4 report/synthesis replaced
-  "no compact profile" with this actual blocked-fit state, while still making no abundance claim.
+  the old missing-reference negative with this actual blocked-fit state, while still making no abundance claim.
 
 ## Spatial decon report integration (follow-up S4, built) -- `spatial_decon_report` + report/synthesis rewiring
 - `spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)` is the compact handoff:
@@ -597,6 +597,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   SpatialDecon was attempted and blocked, gives the unresolved-AOI reason, states nuclei-rescaled absolute counts are
   disabled, and keeps residual QC as descriptive fit QC. `_synthesis.qmd`/`index.qmd` now say SpatialDecon abundance
   is blocked and full CCC is not called. Targeted live build + forced 142-chunk render were warning-clean.
+- S5 QA wording fixes: GeoMx figure captions say "bio-unit-blocked" for the primary DE model so that statistical
+  blocking is not confused with the blocked SpatialDecon abundance state; the historical decon preflight reason points
+  readers to `geomx_reference_profile` / `geomx_decon` for the follow-up fit. No new figures were added in the
+  follow-up, so Figure expansion's `fig-*` label QA remains current.
 
 ## Bulk proteome + corrected phospho (P4-S2, built) -- `R/crossmodality.R` -> `proteome_de_24m` / `phospho_corrected_24m` / `bulk_omics_summary`
 - 24M sample matching is exact 16/16 via `sample_key`, balanced 4/genotype, ordered by key stub. `match_24m_bulk_columns`
@@ -777,8 +781,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `fig-crossmodality-bulk-run-index`, `fig-crossmodality-phospho-correction`,
   `fig-crossmodality-anchor-heatmap`, `fig-crossmodality-clearance-grid`,
   `fig-crossmodality-symbol-matrix`, `fig-crossmodality-pathway-heatmap`.
-- Claim guard: captions/encodings keep GeoMx AOIs as repeated/block-adjusted observations; SpatialDecon deferred;
-  no full CCC; only Apoe-Trem2 in amyloid-on-P301S earns measured pair support; bulk layers remain 24M hippocampus,
+- Claim guard: captions/encodings keep GeoMx AOIs as repeated/block-adjusted observations; SpatialDecon status is
+  target-derived and now blocked after attempted fit; no full CCC; only Apoe-Trem2 in amyloid-on-P301S earns measured
+  pair support; bulk layers remain 24M hippocampus,
   not microglia-sorted; run-index sensitivity downgrades bulk hits. Symbol/pathway figures use broad
   `n_modalities_sig` counts, not layer-level modality groups.
 - Full gate after S4 was green: tests warn=2, forced 140-chunk report render, tar_meta clean across 46 current

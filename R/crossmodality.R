@@ -635,7 +635,7 @@ geomx_decon_preflight <- function(meta, counts, profile = NULL, profile_corr_thr
     reasons <- c(reasons, "SpatialDecon is not confirmed available from the pinned repositories")
   }
   if (!profile_tested) {
-    reasons <- c(reasons, "no compact reference profile was built in S1; deconvolution deferred to S3")
+    reasons <- c(reasons, "no compact reference profile supplied to this preflight; consult geomx_reference_profile and geomx_decon for the follow-up fit")
   } else if (!profile_ok) {
     reasons <- c(reasons, sprintf("reference profile collinearity %.3f exceeds threshold %.3f",
                                   max_profile_cor, profile_corr_threshold))

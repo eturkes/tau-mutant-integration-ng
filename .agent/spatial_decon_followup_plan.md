@@ -26,9 +26,9 @@ Local current state:
 - P4 already added the right seams: `geomx_q3_scaled_background`,
   `profile_collinearity`, `geomx_decon_preflight`, and
   `fit_geomx_abundance_de` in `R/crossmodality.R`, with synthetic tests.
-- Live `geomx_de$decon_preflight` = `defer`: `SpatialDecon` is available from
-  pinned repos as 1.22.0, Q3/background are usable, nuclei has 42 sentinels, and
-  no compact profile was built.
+- At plan open, live `geomx_de$decon_preflight` = `defer`: `SpatialDecon` was available from
+  pinned repos as 1.22.0, Q3/background were usable, nuclei had 42 sentinels, and
+  the compact reference profile was still absent.
 - `SpatialDecon` is not installed in the current project library. S1 must add it
   to `rproject.toml` / `rv.lock`, smoke-load it warning-clean, and capture any
   package messages like the optimiser-heavy targets do.
@@ -106,7 +106,7 @@ Broad-first SpatialDecon with substate attempt guarded separately.
 
 6. Report/synthesis become honest to the new state.
    If SpatialDecon remains blocked/not-earned, update the report from
-   "no compact profile" to the actual reason. If earned, update
+   the old missing-profile negative to the actual reason. If earned, update
    `clearance_axis`, `crossmodality_report`, `synthesis_report`, and report
    prose so the final answer reflects the abundance layer without reviving full
    CCC.
@@ -290,22 +290,34 @@ Acceptance:
 - Forced report render warning-clean.
 - `scripts/check.sh` green.
 
-### S5 - Follow-up QA pass
+### S5 - Follow-up QA pass [DONE 2026-07-02]
 Adversarially review the spatial-decon follow-up against the closed P1-P5 story.
+
+Result:
+- Accepted/fixed claim-scope wording issues: GeoMx captions now say
+  bio-unit-blocked primary model/calls, so they are not confused with the blocked
+  SpatialDecon abundance state.
+- Accepted/fixed stale-negative wording: the P4 decon preflight reason now
+  points to `geomx_reference_profile` / `geomx_decon` follow-up targets, and
+  history/memory/spine summaries say SpatialDecon abundance is blocked after
+  attempted fit rather than skipped or missing-profile.
+- No new figure section was added in the follow-up, so existing hyphenated
+  `fig-*` label QA from Figure expansion still applies.
+- Full `scripts/check.sh` green; plan is ready for CLOSE-OUT mode.
 
 Contracts:
 - Check claim scope: model-estimated tissue abundance, not cell counts; GeoMx
   whole-tissue ROIs, not plaque niches; broad/substate distinction clear.
-- Check stale negatives: no remaining "no compact profile" phrasing if S1 built
-  one.
+- Check stale negatives: no remaining missing-profile negative after S1 built
+  the reference profile.
 - Check figure/caption labels if a new section adds figures.
 - Update `.agent/memory.md`, `.agent/map.md`, `.agent/history.md`, and the
   cohesive story only for durable outcomes.
 
 Acceptance:
-- Accepted findings fixed before close-out.
-- Full `scripts/check.sh` green.
-- Plan ready for CLOSE-OUT mode.
+- Accepted findings fixed before close-out. [DONE]
+- Full `scripts/check.sh` green. [DONE]
+- Plan ready for CLOSE-OUT mode. [DONE]
 
 ## Close-Out
 After S5, run the standard close-out:

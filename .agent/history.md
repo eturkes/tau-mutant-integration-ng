@@ -185,9 +185,10 @@ map.md. Below = decisions + rejected alternatives.
 - GEOMX: primary = edgeR TMM + limma-voom with slide fixed effects and `duplicateCorrelation(block=genotype:bio_rep)`;
   unblocked AOI and collapsed-bio-unit fits are sensitivities. GeoMx object default assay is SCT, so counts are read
   explicitly from RNA/counts; live counts are count-like but not fully integer, so residues are recorded and values are
-  not rounded. SpatialDecon stayed gated: preflight is `defer` because Q3/background are usable but nuclei sentinels
-  disable absolute rescaling and no compact reference profile exists. REJECTED: treating repeated AOIs as independent
-  animals, silent decon skip once preconditions become earned.
+  not rounded. At P4 close, SpatialDecon was gated at preflight because Q3/background were usable but nuclei sentinels
+  disabled absolute rescaling and no compact reference profile existed; the later follow-up built that profile and
+  found the attempted fit blocked by 4 unresolved AOIs. REJECTED: treating repeated AOIs as independent animals,
+  silent decon skip once preconditions become earned.
 - BULK OMICS: 24M sample-key matched 16/16 runs. Proteome sums raw positive intensities to `PG.ProteinGroups` before
   log2/median-normalisation/prevalence filtering/limma-trend. Corrected phospho subtracts matched filtered parent
   protein log2 intensity, then re-filters/refits; raw P3 phosphosite DE is reused. Additive run-index sensitivity is
@@ -205,8 +206,9 @@ map.md. Below = decisions + rejected alternatives.
   not formal meta-analysis or contest margins.
 - HEADLINE: P4 strengthens the amyloid-response spine across tissue/spatial and bulk layers, especially antigen
   presentation / phagocytic-clearance / synaptic axes. It narrows the claims: the tau-amyloid interaction is not
-  broadly spatial or bulk-omics significant, SpatialDecon abundance is not earned, full CCC is not called, and bulk
-  run-order sensitivity downgrades standalone proteome/phosphosite claims.
+  broadly spatial or bulk-omics significant, SpatialDecon abundance is blocked after attempted fitting (superseding
+  P4's preflight-only negative), full CCC is not called, and bulk run-order sensitivity downgrades standalone
+  proteome/phosphosite claims.
 - REPORT/API: `_crossmodality.qmd` reads one compact `crossmodality_report` target (~23KB live), not GeoMx/proteome/
   phospho or the ~10MB evidence table. Prose is target-derived; close-out review fixed the remaining stale-claim risk
   by making the earned clearance-pair text branch on the current `pair_support` rows instead of hardcoding Apoe-Trem2.
@@ -235,7 +237,8 @@ wiring -> map.md. Below = decisions + rejected alternatives.
 - STATUS CONTRACT: rows use descriptive labels (`core_supported`, `corroborated`, `focused_support`,
   `not_supported`, `not_earned`, `open_caveat`), not scores. Negative rows are first-class: no supported
   progression-beyond-composition signal, NF-kB attenuation not supported, Gsk3b not recovered, SpatialDecon/full CCC
-  not earned, and bulk run-index sensitivity. Regression tests reject ledger-like columns and missing anchors.
+  not earned (now with SpatialDecon abundance blocked after attempted fit), and bulk run-index sensitivity. Regression
+  tests reject ledger-like columns and missing anchors.
 - REPORT/API: `_synthesis.qmd` is included immediately after Overview and tar_loads only `synthesis_report`; P1-P4
   chapters remain the audit trail. Final lean pass removed stale forward pointers, tightened progression/rate wording,
   and moved raw caveat cleanup into `synthesis_report_data` so the compact table itself does not carry stale phase-step
@@ -243,7 +246,8 @@ wiring -> map.md. Below = decisions + rejected alternatives.
 - HEADLINE: amyloid drives a microglial homeostatic-to-DAM activation programme; mutant tau modulates that amyloid
   response mainly through extra DAM-cell composition rather than supported further activation-axis progression; Myc is
   the focused RNA mechanism signal; NF-kB attenuation and Gsk3b are not recovered; cross-modality corroborates the
-  amyloid-response and synaptic-clearance axes while SpatialDecon/full CCC remain unearned.
+  amyloid-response and synaptic-clearance axes while SpatialDecon abundance is blocked after attempted fit and full CCC
+  remains absent.
 
 Verification (honest): S1-S3 each smoke-tested or rebuilt live where relevant (`synthesis_report`, forced report);
 final `scripts/check.sh` was green after the lean-pass fixes (tests warn=2, forced 88-chunk report render,

@@ -318,7 +318,7 @@ composition and trajectory layers.
 #| label: fig-crossmodality-geomx-counts
 #| fig-width: 8.8
 #| fig-height: 4.2
-#| fig-cap: "GeoMx spatial DE counts under the blocked AOI model. Bars count primary GeoMx rows with FDR < 0.10, split by logFC direction. The amyloid contrasts dominate; the interaction has far fewer spatial transcriptomic hits."
+#| fig-cap: "GeoMx spatial DE counts under the primary AOI model with bio-unit blocking. Bars count primary GeoMx rows with FDR < 0.10, split by logFC direction. The amyloid contrasts dominate; the interaction has far fewer spatial transcriptomic hits."
 geo_plot <- geom_counts[geom_counts$contrast %in% focus, , drop = FALSE]
 geo_long <- rbind(
   data.frame(contrast = geo_plot$contrast, direction = "up", n = geo_plot$n_up_fdr_0_10),
@@ -338,7 +338,7 @@ ggplot(geo_long, aes(contrast, n, fill = direction)) +
 #| label: fig-crossmodality-geomx-volcano
 #| fig-width: 10
 #| fig-height: 6
-#| fig-cap: "GeoMx primary-model volcanoes across the P4 focus contrasts. Points are pre-binned from the blocked AOI model, and labels mark the strongest rows per contrast. The amyloid contrasts have dense high-significance structure; the interaction is visibly smaller."
+#| fig-cap: "GeoMx primary-model volcanoes across the P4 focus contrasts. Points are pre-binned from the AOI model with bio-unit blocking, and labels mark the strongest rows per contrast. The amyloid contrasts have dense high-significance structure; the interaction is visibly smaller."
 ggplot(geo_volc_bins) +
   geom_rect(aes(xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max,
                 fill = log_n),
@@ -384,7 +384,7 @@ knitr::kable(gtab, row.names = FALSE,
 #| label: fig-crossmodality-geomx-sensitivity
 #| fig-width: 9.2
 #| fig-height: 4.8
-#| fig-cap: "GeoMx primary blocked-AOI calls against the two sensitivity fits. Positive bars are rows gained by a sensitivity fit, negative bars are primary rows lost. The collapsed biological-unit fit loses many primary rows, so the chapter privileges the duplicate-correlation blocked primary model rather than reading AOIs as independent animals."
+#| fig-cap: "GeoMx bio-unit-blocked primary calls against the two sensitivity fits. Positive bars are rows gained by a sensitivity fit, negative bars are primary rows lost. The collapsed biological-unit fit loses many primary rows, so the chapter privileges the duplicate-correlation primary model rather than reading AOIs as independent animals."
 ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
   geom_hline(yintercept = 0, colour = "grey65") +
   geom_col(width = 0.68) +
