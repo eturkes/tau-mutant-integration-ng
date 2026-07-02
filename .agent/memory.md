@@ -580,8 +580,23 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   inference, not a new biological claim axis.
 - Live S3 (warning-clean/tar_meta clean, target 5.93KB; full `scripts/check.sh` green): broad/substate/
   microglia-substate abundance DE all blocked by the same 4 unresolved AOIs from S2; residual audit is available for
-  broad and substate arms over 91 AOIs x 4 slides (median RMS residual ~0.821 for both). S4 report/synthesis must
-  replace "no compact profile" with this actual blocked-fit state, while still making no abundance claim.
+  broad and substate arms over 91 AOIs x 4 slides (median RMS residual ~0.821 for both). S4 report/synthesis replaced
+  "no compact profile" with this actual blocked-fit state, while still making no abundance claim.
+
+## Spatial decon report integration (follow-up S4, built) -- `spatial_decon_report` + report/synthesis rewiring
+- `spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)` is the compact handoff:
+  no beta matrices, only reference QC, decon arm status, abundance arm status, unresolved AOIs, residual-audit summary,
+  nuclei policy, and provenance. Live target is tiny (~1.5KB qs): status=`blocked`, action=`attempted`, reason =
+  SpatialDecon beta has 4 unresolved AOIs with near-zero total abundance; broad/substate abundance arms have empty
+  5-contrast top tables; residual audit remains fit-QC only.
+- `clearance_axis_data(..., spatial_decon_report=)` now accepts the earned-preflight follow-up state instead of
+  failing loud. With the S4 target wired, `clearance_axis`, `crossmodality_report`, and `synthesis_report` derive
+  SpatialDecon status from `geomx_decon`/`geomx_abundance_de`, not the historical P4 preflight. Full CCC remains
+  absent (`ccc_called=FALSE`).
+- `_crossmodality.qmd` still loads only compact report bundles, but the Spatial Composition section now says
+  SpatialDecon was attempted and blocked, gives the unresolved-AOI reason, states nuclei-rescaled absolute counts are
+  disabled, and keeps residual QC as descriptive fit QC. `_synthesis.qmd`/`index.qmd` now say SpatialDecon abundance
+  is blocked and full CCC is not called. Targeted live build + forced 142-chunk render were warning-clean.
 
 ## Bulk proteome + corrected phospho (P4-S2, built) -- `R/crossmodality.R` -> `proteome_de_24m` / `phospho_corrected_24m` / `bulk_omics_summary`
 - 24M sample matching is exact 16/16 via `sample_key`, balanced 4/genotype, ordered by key stub. `match_24m_bulk_columns`
@@ -608,9 +623,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 
 ## Spatial composition + clearance-axis CCC-lite (P4-S3, built) -- `R/crossmodality.R` -> `clearance_axis`
 - SpatialDecon NOT run in P4-S3 because the P4 preflight remained `defer`: Q3/background were usable, but nuclei had
-  42 `-1` sentinels (absolute rescaling disabled) and no compact reference profile existed yet. Follow-up S1-S3 now
-  build the profile, run SpatialDecon, and add `geomx_abundance_de`; `clearance_axis_data()` still intentionally
-  records the historical pre-profile status until S4 revises it to accept `geomx_decon` + `geomx_abundance_de`.
+  42 `-1` sentinels (absolute rescaling disabled) and no compact reference profile existed yet. Follow-up S1-S4 now
+  build the profile, run SpatialDecon, add `geomx_abundance_de`, and pass the compact `spatial_decon_report` into
+  `clearance_axis_data()` so the attempted/blocked state flows to report and synthesis surfaces.
 - Decon helper contracts are present/tested: `geomx_q3_scaled_background` = negative-probe background /
   `q_norm_qFactors`; `profile_collinearity` gates max absolute profile correlation; S2 `geomx_decon` stores
   blocked/fit beta + residual diagnostics; `fit_geomx_abundance_de` fits log(beta+offset) abundance with slide fixed
@@ -660,12 +675,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (earned pair/contrast/modalities + P5 support phrase) instead of hardcoding the current Apoe-Trem2 result; a future
   target drift renders honest prose rather than a stale claim.
 - Live interpretation (qualitative, margins inline-computed): GeoMx and bulk layers have strongest signal in amyloid
-  contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. The current report
-  bundle still carries the P4 skipped/defer state; follow-up S2 now replaces the missing-profile reason with a real
-  SpatialDecon blocked-fit reason (4 unresolved AOIs), but no spatial abundance/cell-count claim is earned. CCC-lite
-  earns only Apoe_Trem2 in `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity
-  remains severe, so the final synthesis uses P4 as corroboration for DAM activation, synaptic suppression, and
-  measured Apoe-Trem2 clearance, not as a stand-alone microglial kinase or spatial-abundance claim.
+  contrasts; the interaction is much smaller outside the microglia composition/trajectory layer. SpatialDecon is
+  target-derived from the follow-up fit: attempted, blocked by 4 unresolved AOIs with beta_total=0, residual QC
+  available descriptively, and no spatial abundance/cell-count claim earned. CCC-lite earns only Apoe_Trem2 in
+  `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity remains severe, so the final
+  synthesis uses P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance,
+  not as a stand-alone microglial kinase or spatial-abundance claim.
 
 ## Synthesis target (P5-S1, built) -- `R/synthesis.R::synthesis_report_data` -> `synthesis_report`
 - S1 is read-only synthesis, not new inference. `synthesis_report_data` reads ONLY the compact report bundles
@@ -684,7 +699,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Current live synthesis statuses: core_supported={amyloid_dam_activation, tau_amyloid_dam_composition};
   focused_support={myc_rna_interaction, clearance_axis}; not_supported={progression_beyond_composition,
   nfkb_attenuation, gsk3b_kinase}; not_earned={spatial_decon_full_ccc}; open_caveat={bulk_run_index_sensitivity};
-  corroborated={crossmodality_amyloid_axes}. S2 qmd should tar_load only `synthesis_report`.
+  corroborated={crossmodality_amyloid_axes}. The SpatialDecon row's synthesis status remains `not_earned`, but its
+  direction/evidence/caveat now say abundance is blocked after fitting by the unresolved-AOI state. S2 qmd should
+  tar_load only `synthesis_report`.
 - P5-S3 review hardening: source-level caveat cleanup lives in `synthesis_report_data`, not the qmd.
   It normalises cross-modality raw strings (`value(s)` -> values; `deconvolution deferred to S3` ->
   deconvolution deferred) before they enter the compact evidence table. `tests/test_synthesis.R`

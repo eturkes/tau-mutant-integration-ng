@@ -212,6 +212,51 @@ worst_run <- run_index[order(-run_index$n_lost_or_flipped, run_index$layer,
                              match(run_index$contrast, names(contrast_labels)),
                              method = "radix", na.last = TRUE), , drop = FALSE][1L, ]
 decon_reasons <- if (length(decon$reasons)) paste(decon$reasons, collapse = "; ") else "no blocking reason recorded"
+decon_unresolved <- if (is.list(decon$decon) && is.data.frame(decon$decon$unresolved_aoi)) {
+  decon$decon$unresolved_aoi
+} else {
+  data.frame()
+}
+decon_unresolved_n <- if (nrow(decon_unresolved)) length(unique(decon_unresolved$aoi)) else 0L
+decon_unresolved_sentence <- if (decon_unresolved_n > 0L) {
+  paste0(decon_unresolved_n, " AOIs have near-zero total beta in the attempted fit")
+} else {
+  decon_reasons
+}
+decon_ref <- if (is.data.frame(decon$reference) && nrow(decon$reference)) decon$reference else data.frame()
+decon_ref_sentence <- if (nrow(decon_ref)) {
+  paste0(
+    paste0(decon_ref$arm, " profile ", decon_ref$status, " (",
+           fmt_int(decon_ref$n_genes), " genes x ", decon_ref$n_profiles,
+           " profiles, max |cor| ", fmt_num(decon_ref$max_abs_correlation, 2), ")"),
+    collapse = "; "
+  )
+} else {
+  "reference-profile summary unavailable in this compact bundle"
+}
+decon_nuclei_sentence <- if (is.list(decon$decon) && is.list(decon$decon$nuclei) &&
+                             isFALSE(decon$decon$nuclei$absolute_rescaling_enabled)) {
+  paste0("Nuclei-rescaled absolute cell counts remain disabled",
+         if (is.finite(decon$decon$nuclei$n_sentinel %||% NA_real_)) {
+           paste0(" (", decon$decon$nuclei$n_sentinel, " sentinel nuclei values)")
+         } else {
+           ""
+         })
+} else {
+  "Nuclei-rescaled absolute cell counts are not used"
+}
+decon_audit <- if (is.list(decon$residual_audit) && is.data.frame(decon$residual_audit$summary)) {
+  decon$residual_audit$summary
+} else {
+  data.frame()
+}
+decon_audit_sentence <- if (nrow(decon_audit) && any(is.finite(decon_audit$median_metric))) {
+  paste0("residual QC remains available (median RMS residual ",
+         paste(paste0(decon_audit$arm, " ", fmt_num(decon_audit$median_metric, 3)),
+               collapse = "; "), ")")
+} else {
+  "residual QC is unavailable"
+}
 earned_pairs <- pairs[pairs$status == "earned", , drop = FALSE]
 earned_sentence <- if (nrow(earned_pairs)) {
   paste0(paste(unique(earned_pairs$pair), collapse = ", "), " in ",
@@ -465,10 +510,35 @@ ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
 
 ## Spatial Composition And Clearance Axis
 
-SpatialDecon remains intentionally skipped here: the live preflight status is
-`r decon$status`, with action `r decon$action`. The blocking reasons are:
-`r decon_reasons`. This means P4 does not claim spatial abundance or cell counting from GeoMx.
-It reports only GeoMx DE plus the measured clearance-axis evidence.
+SpatialDecon is no longer a skipped preflight. The follow-up built compact full-reference
+profiles (`r decon_ref_sentence`) and attempted GeoMx deconvolution. The target-derived
+status is `r decon$status` with action `r decon$action`: `r decon_unresolved_sentence`.
+The blocking reasons are: `r decon_reasons`. `r decon_nuclei_sentence`, and
+`r decon_audit_sentence`. The report therefore makes no spatial-abundance or cell-count
+claim from GeoMx; it keeps the residual audit as fit QC and reports only GeoMx DE plus the
+measured clearance-axis evidence.
+
+```{r}
+#| label: crossmodality-spatial-decon-status
+da <- if (is.list(decon$abundance) && is.data.frame(decon$abundance$arms)) {
+  decon$abundance$arms
+} else {
+  data.frame()
+}
+if (nrow(da)) {
+  dtab <- data.frame(
+    arm = gsub("_", " ", da$arm, fixed = TRUE),
+    status = da$status,
+    `source status` = da$source_status,
+    `attempted profiles` = da$n_attempted_profiles,
+    `unresolved AOIs` = da$unresolved_aoi_count,
+    reason = ifelse(da$reason == "", "-", da$reason),
+    check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
+  )
+  knitr::kable(dtab, row.names = FALSE,
+               caption = "SpatialDecon abundance status by arm. Empty top tables are deliberate blocked outputs, not abundance tests.")
+}
+```
 
 The targeted CCC-lite rule earns `r earned_sentence`; `ccc_called` stays
 `r cmr$clearance$verdict$ccc_called`, because no CellChat, LIANA or MultiNicheNet model is run.
@@ -626,8 +696,8 @@ Cross-modality evidence strengthens the amyloid-response spine. GeoMx and bulk l
 show their largest effects in amyloid contrasts, pathway rows reproduce antigen-presentation,
 phagocytic/clearance and synaptic axes, and `r clearance_synthesis_phrase`. The same evidence
 narrows the claims: the tau-amyloid interaction is
-not broadly spatial or bulk-omics significant, SpatialDecon abundance is not earned, full CCC is
-not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. In the
+not broadly spatial or bulk-omics significant, SpatialDecon abundance is blocked after fitting,
+full CCC is not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. In the
 closing synthesis, this chapter therefore corroborates `r closing_support_phrase`, while keeping
 progression, NF-kB attenuation, Gsk3b and spatial abundance unresolved or unsupported in the
 rebuilt data.

@@ -187,5 +187,5 @@ knitr::kable(
 What remains unsupported or unearned is also explicit: `r open_sentence`. These limits keep the
 closed report focused on the rebuilt evidence: DAM activation and DAM-cell composition are the
 central interaction story; Myc is the focused RNA mechanism signal; NF-kB attenuation, Gsk3b,
-progression beyond composition, SpatialDecon abundance, full CCC and run-order-sensitive bulk
-hits stay outside the supported claim set.
+progression beyond composition, blocked SpatialDecon abundance, full CCC and run-order-sensitive
+bulk hits stay outside the supported claim set.

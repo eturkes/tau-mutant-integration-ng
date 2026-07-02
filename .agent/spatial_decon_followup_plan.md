@@ -253,9 +253,25 @@ Acceptance:
   abundance, or whether the profile made that unearned.
 - `scripts/check.sh` green.
 
-### S4 - Report + synthesis integration
+### S4 - Report + synthesis integration [DONE 2026-07-02]
 Wire a compact report bundle and update the closed synthesis surfaces to the new
 abundance state.
+
+Result:
+- Added `spatial_decon_report`, a compact handoff over `geomx_decon`,
+  `geomx_abundance_de`, and `geomx_reference_profile`. Live status is
+  `blocked`, action `attempted`, with the real reason: 4 unresolved AOIs have
+  near-zero total beta. It stores reference QC, arm summaries, unresolved AOIs,
+  residual-audit summary, nuclei policy, and provenance, but no beta matrices.
+- Rewired `clearance_axis` to accept the compact handoff, so
+  `crossmodality_report` and `synthesis_report` are target-derived from the
+  attempted SpatialDecon fit instead of the historical P4 preflight.
+- Updated `_crossmodality.qmd`, `_synthesis.qmd`, and `index.qmd`: report prose
+  now says SpatialDecon abundance is blocked after fitting, residual audit is
+  descriptive fit QC, nuclei-rescaled absolute counts are disabled, and full CCC
+  is not called.
+- Targeted tests, live target rebuild, forced 142-chunk report render, and
+  tar_meta warning/error check were green.
 
 Contracts:
 - Add `spatial_decon_report` target; qmds read only compact report bundles.

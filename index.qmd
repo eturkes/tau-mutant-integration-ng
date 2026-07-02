@@ -21,8 +21,8 @@ backgrounds, reading the tau-amyloid interaction across all four modalities.
 The synthesis comes first because the rebuilt answer is compact: amyloid drives a
 homeostatic-to-DAM microglial programme; mutant tau modulates that response mainly as extra
 DAM-cell composition rather than supported further trajectory progression; Myc has focused RNA
-support; NF-kB attenuation, Gsk3b, SpatialDecon abundance and full CCC are not recovered or not
-earned. The remaining chapters are the audit trail. QC checks the modality shapes and the
+support; NF-kB attenuation and Gsk3b are not recovered; SpatialDecon abundance is blocked and full
+CCC is not called. The remaining chapters are the audit trail. QC checks the modality shapes and the
 single-nucleus genotype-by-batch design, then the microglia, trajectory, mechanism and
 cross-modality chapters show the evidence behind each synthesis row.
 

@@ -1353,6 +1353,174 @@ run_geomx_abundance_de <- function(geomx_decon, geomx, offset = 1e-4) {
   out
 }
 
+# ---- Spatial-decon follow-up S4: compact report bundle -------------------------------
+
+.spatial_decon_reasons <- function(...) {
+  reasons <- unlist(list(...), use.names = FALSE)
+  reasons <- as.character(reasons %||% character())
+  reasons <- reasons[!is.na(reasons) & reasons != ""]
+  unique(reasons)
+}
+
+.spatial_decon_arm_summary <- function(x, arm) {
+  stopifnot(is.list(x), length(arm) == 1L, nzchar(arm))
+  profiles <- .geomx_decon_profiles(x)
+  data.frame(
+    arm = arm,
+    status = as.character(x$status %||% NA_character_),
+    n_profiles = length(profiles),
+    n_shared_genes = as.integer(x$n_shared_genes %||% NA_integer_),
+    n_aoi = as.integer(x$n_aoi %||% if (is.matrix(x$beta)) ncol(x$beta) else NA_integer_),
+    resolved_aoi_count = as.integer(x$resolved_aoi_count %||% NA_integer_),
+    unresolved_aoi_count = as.integer(x$unresolved_aoi_count %||% NA_integer_),
+    reason = paste(.spatial_decon_reasons(x$reasons), collapse = "; "),
+    stringsAsFactors = FALSE
+  )
+}
+
+.spatial_abundance_arm_summary <- function(x, arm) {
+  stopifnot(is.list(x), length(arm) == 1L, nzchar(arm), is.list(x$top))
+  data.frame(
+    arm = arm,
+    status = as.character(x$status %||% NA_character_),
+    source_status = as.character(x$source_status %||% NA_character_),
+    n_attempted_profiles = length(as.character(x$attempted_profiles %||% character())),
+    n_contrasts = length(x$top),
+    n_top_rows = sum(vapply(x$top, nrow, integer(1))),
+    unresolved_aoi_count = as.integer(x$unresolved_aoi_count %||% NA_integer_),
+    reason = paste(.spatial_decon_reasons(x$reasons), collapse = "; "),
+    stringsAsFactors = FALSE
+  )
+}
+
+.spatial_reference_summary <- function(geomx_reference_profile) {
+  empty <- data.frame(arm = character(), status = character(),
+                      n_genes = integer(), n_profiles = integer(),
+                      max_abs_correlation = numeric(), condition_number = numeric(),
+                      reason = character(), stringsAsFactors = FALSE)
+  if (is.null(geomx_reference_profile)) return(empty)
+  arms <- intersect(c("broad", "substate"), names(geomx_reference_profile))
+  rows <- lapply(arms, function(arm) {
+    obj <- geomx_reference_profile[[arm]]
+    qc <- obj$qc %||% list()
+    pc <- qc$profile_collinearity %||% list()
+    data.frame(
+      arm = arm,
+      status = as.character(qc$status %||% NA_character_),
+      n_genes = as.integer(qc$n_common_genes_nonzero %||%
+                             if (is.matrix(obj$profile)) nrow(obj$profile) else NA_integer_),
+      n_profiles = as.integer(pc$n_profiles %||%
+                                if (is.matrix(obj$profile)) ncol(obj$profile) else NA_integer_),
+      max_abs_correlation = as.numeric(pc$max_abs_correlation %||% NA_real_),
+      condition_number = as.numeric(qc$condition_number %||% NA_real_),
+      reason = paste(.spatial_decon_reasons(qc$reasons), collapse = "; "),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- if (length(rows)) do.call(rbind, rows) else empty
+  rownames(out) <- NULL
+  out
+}
+
+.spatial_unresolved_aoi <- function(geomx_decon) {
+  rows <- lapply(intersect(c("broad", "substate"), names(geomx_decon)), function(arm) {
+    ua <- geomx_decon[[arm]]$unresolved_aoi %||% NULL
+    if (!is.data.frame(ua) || !all(c("aoi", "beta_total", "unresolved") %in% names(ua))) {
+      return(NULL)
+    }
+    ua <- ua[ua$unresolved %in% TRUE, c("aoi", "beta_total", "unresolved"), drop = FALSE]
+    if (!nrow(ua)) return(NULL)
+    data.frame(arm = arm, ua, row.names = NULL, stringsAsFactors = FALSE)
+  })
+  rows <- rows[!vapply(rows, is.null, logical(1))]
+  if (!length(rows)) {
+    return(data.frame(arm = character(), aoi = character(), beta_total = numeric(),
+                      unresolved = logical(), stringsAsFactors = FALSE))
+  }
+  out <- do.call(rbind, rows)
+  out <- out[order(out$aoi, out$arm, method = "radix"), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+spatial_decon_report_data <- function(geomx_decon, geomx_abundance_de,
+                                      geomx_reference_profile = NULL) {
+  stopifnot(is.list(geomx_decon), is.list(geomx_abundance_de),
+            is.list(geomx_decon$broad), is.list(geomx_decon$substate),
+            is.list(geomx_abundance_de$broad), is.list(geomx_abundance_de$substate),
+            is.list(geomx_abundance_de$microglia_substate))
+  decon_arms <- do.call(rbind, list(
+    .spatial_decon_arm_summary(geomx_decon$broad, "broad"),
+    .spatial_decon_arm_summary(geomx_decon$substate, "substate")
+  ))
+  abundance_arms <- do.call(rbind, list(
+    .spatial_abundance_arm_summary(geomx_abundance_de$broad, "broad"),
+    .spatial_abundance_arm_summary(geomx_abundance_de$substate, "substate"),
+    .spatial_abundance_arm_summary(geomx_abundance_de$microglia_substate,
+                                   "microglia_substate")
+  ))
+  residual <- geomx_abundance_de$spatial_audit %||% list(status = "blocked",
+                                                         summary = data.frame(),
+                                                         provenance = list())
+  stopifnot(is.list(residual), "status" %in% names(residual),
+            residual$status %in% c("fit", "blocked"))
+  if (is.data.frame(residual$summary) && nrow(residual$summary)) {
+    .crossmodality_require_cols(residual$summary,
+                                c("arm", "status", "n_aoi", "n_slides",
+                                  "genotype_residual_status", "median_metric",
+                                  "median_abs_genotype_resid",
+                                  "median_nn_abs_genotype_resid_diff"),
+                                "geomx_abundance_de$spatial_audit$summary")
+  }
+  status <- if (identical(geomx_abundance_de$status, "fit")) "earned" else "blocked"
+  action <- if (identical(status, "earned")) "log_beta_abundance_fit" else "attempted"
+  reasons <- if (identical(status, "earned")) {
+    character()
+  } else {
+    .spatial_decon_reasons(geomx_abundance_de$reasons, geomx_decon$reasons,
+                           geomx_abundance_de$broad$reasons,
+                           geomx_decon$broad$reasons,
+                           geomx_decon$substate$reasons)
+  }
+  if (!length(reasons) && identical(status, "blocked")) {
+    reasons <- "SpatialDecon abundance did not earn a reportable log-beta fit"
+  }
+  out <- list(
+    status = status,
+    action = action,
+    reasons = reasons,
+    reference = .spatial_reference_summary(geomx_reference_profile),
+    decon = list(status = as.character(geomx_decon$status %||% NA_character_),
+                 arms = decon_arms,
+                 unresolved_aoi = .spatial_unresolved_aoi(geomx_decon),
+                 nuclei = geomx_decon$nuclei %||% list()),
+    abundance = list(status = as.character(geomx_abundance_de$status %||% NA_character_),
+                     arms = abundance_arms,
+                     contrast_names = geomx_abundance_de$provenance$contrast_names %||%
+                       names(geomx_abundance_de$broad$top)),
+    residual_audit = list(status = residual$status,
+                          summary = residual$summary %||% data.frame(),
+                          provenance = residual$provenance %||% list()),
+    provenance = list(
+      n_aoi = geomx_abundance_de$provenance$n_aoi %||% NA_integer_,
+      n_bio_units = geomx_abundance_de$provenance$n_bio_units %||% NA_integer_,
+      primary = geomx_abundance_de$provenance$primary %||% "broad",
+      claim_scope = "model-estimated GeoMx tissue abundance only; no nuclei-rescaled cell counts and no full CCC"
+    )
+  )
+  stopifnot(out$status %in% c("earned", "blocked"),
+            is.character(out$action), length(out$action) == 1L, !is.na(out$action),
+            is.character(out$reasons), !anyNA(out$reasons),
+            all(out$decon$arms$status %in% c("fit", "blocked")),
+            all(out$abundance$arms$status %in% c("fit", "blocked")),
+            all(is.finite(out$decon$arms$unresolved_aoi_count) |
+                  is.na(out$decon$arms$unresolved_aoi_count)),
+            all(is.finite(out$abundance$arms$n_contrasts)),
+            is.data.frame(out$decon$unresolved_aoi),
+            is.data.frame(out$residual_audit$summary))
+  out
+}
+
 # ---- P4-S2: bulk proteome + protein-corrected phospho -------------------------------
 
 match_24m_bulk_columns <- function(tbl, sample_key, n_keep = 16L, modality = "bulk") {
@@ -2088,13 +2256,14 @@ synaptic_gene_set_rows <- function(mechanism_gene_sets,
 
 clearance_axis_data <- function(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
                                 bulk_omics_summary, mechanism_gene_sets,
-                                alpha = 0.10) {
+                                spatial_decon_report = NULL, alpha = 0.10) {
   stopifnot(is.list(pb_de_microglia), is.list(pb_de_substate), is.list(geomx_de),
             is.list(bulk_omics_summary), is.list(mechanism_gene_sets),
+            is.null(spatial_decon_report) || is.list(spatial_decon_report),
             is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
   decon <- geomx_de$decon_preflight
   stopifnot(is.list(decon), "status" %in% names(decon))
-  if (identical(decon$status, "earned")) {
+  if (identical(decon$status, "earned") && is.null(spatial_decon_report)) {
     stop("GeoMx decon preflight is earned; add geomx_decon and geomx_abundance_de targets before clearance_axis",
          call. = FALSE)
   }
@@ -2129,12 +2298,13 @@ clearance_axis_data <- function(pb_de_microglia, pb_de_substate, symbol_map, geo
     pair_support = pair_support,
     modality_support = modality_support,
     synaptic_gene_sets = syn_sets,
-    spatial_decon = list(status = decon$status,
-                         action = "skipped",
-                         reasons = decon$reasons,
-                         background = decon$background,
-                         nuclei = decon$nuclei,
-                         reference = decon$reference),
+    spatial_decon = spatial_decon_report %||%
+      list(status = decon$status,
+           action = "skipped",
+           reasons = decon$reasons,
+           background = decon$background,
+           nuclei = decon$nuclei,
+           reference = decon$reference),
     verdict = list(status = verdict_status,
                    ccc_called = FALSE,
                    earned_pairs = earned_pairs,
@@ -2142,7 +2312,11 @@ clearance_axis_data <- function(pb_de_microglia, pb_de_substate, symbol_map, geo
     provenance = list(alpha = alpha,
                       modalities = sort(unique(measured$modality), method = "radix"),
                       contrasts = mechanism_contrasts(),
-                      decon_policy = "SpatialDecon targets are added only when S1 preflight status is earned",
+                      decon_policy = if (is.null(spatial_decon_report)) {
+                        "historical P4 pre-profile deconvolution preflight"
+                      } else {
+                        "SpatialDecon follow-up status from geomx_decon and geomx_abundance_de"
+                      },
                       bulk_context = bulk_omics_summary$provenance$bulk_context %||%
                         "24M bulk hippocampus; not microglia-sorted")
   )
@@ -2152,7 +2326,7 @@ clearance_axis_data <- function(pb_de_microglia, pb_de_substate, symbol_map, geo
               length(mechanism_contrasts()),
             out$verdict$status %in% c("earned", "not_earned"),
             identical(out$verdict$ccc_called, FALSE),
-            decon$status %in% c("defer", "blocked"),
+            out$spatial_decon$status %in% c("earned", "defer", "blocked"),
             nrow(out$synaptic_gene_sets) >= 1L)
   out
 }

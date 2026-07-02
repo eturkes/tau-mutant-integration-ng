@@ -32,12 +32,13 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
-Next `$session-prompt` mode = EXECUTE S4 report + synthesis integration.
+Next `$session-prompt` mode = EXECUTE S5 follow-up QA pass.
 Route selected = broad-first SpatialDecon with a gated substate attempt; S1
 reference profile earned broad/substate gates, but S2 SpatialDecon arms both
 blocked on 4 unresolved AOIs (beta_total=0). S3 added the abundance-DE
-pass-through and residual audit; S4 should make report/synthesis status
-target-derived from the blocked abundance state.
+pass-through and residual audit; S4 made report/synthesis status target-derived
+from the blocked abundance state. S5 should adversarially check claim scope,
+stale negatives, and docs before close-out.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -68,9 +69,9 @@ target-derived from the blocked abundance state.
   gated GeoMx tissue-abundance follow-up to the P4 "SpatialDecon not earned"
   row. S0 chose the default: install/run SpatialDecon only after a compact
   full-reference profile earns it, keep nuclei absolute counts disabled, report
-  broad abundance primary and microglia substates only if stable. S3 status:
+  broad abundance primary and microglia substates only if stable. S4 status:
   profile earned, SpatialDecon ran, abundance DE blocked by unresolved AOIs;
-  residual audit stored for S4 prose.
+  residual audit is report QC; synthesis says blocked, not skipped.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -403,9 +404,10 @@ target-derived from the blocked abundance state.
 - 2026-07-02 P4-S5 DONE -> P4 STEPS COMPLETE. Added compact `crossmodality_report` (~23KB qs live) via
   `crossmodality_report_data`, `_crossmodality.qmd` include after mechanism, index overview wording, and S5 tests.
   Chapter reads only the compact target and covers GeoMx spatial DE, 24M bulk proteome/raw+corrected phospho with
-  run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/symbol divergence, and P4 synthesis.
+  run-index caveats, then-skipped decon + clearance-axis CCC-lite, integrated pathway/symbol divergence, and P4 synthesis.
   Live read: GeoMx/bulk strongest in amyloid contrasts; interaction is smaller outside microglia composition/trajectory;
-  SpatialDecon remains skipped/defer; CCC-lite earns only Apoe_Trem2 in `nlgf_in_p301s`; no full CCC. Full
+  SpatialDecon was skipped/defer at P4 close (superseded by follow-up S4's blocked-fit state); CCC-lite earns only
+  Apoe_Trem2 in `nlgf_in_p301s`; no full CCC. Full
   `scripts/check.sh` green (tests warn=2, forced 82-chunk report render, tar_meta clean across 41 targets/branches,
   render-log clean). Next mode = CLOSE-OUT.
 - 2026-07-02 P4 CLOSED: close-out review of plan body + shipped cross-modality code/prose found one low report-prose
@@ -531,6 +533,17 @@ target-derived from the blocked abundance state.
   broad and substate arms (91 AOIs x 4 slides; genotype-residualised RMS
   nearest-neighbour summaries), no abundance claim. Full `scripts/check.sh` green
   across 49 current targets/branches. Next = S4 report/synthesis integration.
+- 2026-07-02 Spatial decon follow-up S4 DONE -> report/synthesis integration.
+  Added compact `spatial_decon_report` (~1.5 KB live) over `geomx_decon`,
+  `geomx_abundance_de`, and `geomx_reference_profile`; no beta matrices enter
+  report bundles. `clearance_axis` now consumes the report handoff, so
+  `crossmodality_report` and `synthesis_report` derive SpatialDecon status from
+  the attempted fit: blocked/action attempted because 4 AOIs have beta_total=0;
+  residual audit remains descriptive fit QC; nuclei-rescaled absolute counts and
+  full CCC remain absent. `_crossmodality.qmd`, `_synthesis.qmd`, and `index.qmd`
+  now say blocked after fitting, not skipped/no compact profile. Targeted tests,
+  live target rebuild, forced 142-chunk report render, and tar_meta check were
+  warning-clean. Next = S5 follow-up QA pass.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

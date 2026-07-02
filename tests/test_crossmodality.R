@@ -399,6 +399,32 @@ decon_blocked$substate$unresolved_aoi_count <- 2L
 decon_blocked$two_stage <- list(status = "blocked",
                                 reasons = "broad and substate fits are both required",
                                 unresolved_aoi_count = 2L)
+decon_blocked$nuclei <- list(n_sentinel = 2L, absolute_rescaling_enabled = FALSE,
+                             reason = "synthetic sentinel nuclei")
+u <- data.frame(aoi = rownames(meta), beta_total = seq_len(nrow(meta)) / 10,
+                unresolved = FALSE, stringsAsFactors = FALSE)
+u$beta_total[1:2] <- 0
+u$unresolved[1:2] <- TRUE
+decon_blocked$broad$unresolved_aoi <- u
+decon_blocked$substate$unresolved_aoi <- u
+ref_fixture <- list(
+  broad = list(
+    profile = matrix(1, nrow = 5L, ncol = 2L),
+    qc = list(status = "earned", reasons = character(),
+              n_common_genes_nonzero = 5L,
+              profile_collinearity = list(n_profiles = 2L,
+                                           max_abs_correlation = 0.2),
+              condition_number = 3)
+  ),
+  substate = list(
+    profile = matrix(1, nrow = 6L, ncol = 3L),
+    qc = list(status = "earned", reasons = character(),
+              n_common_genes_nonzero = 6L,
+              profile_collinearity = list(n_profiles = 3L,
+                                           max_abs_correlation = 0.4),
+              condition_number = 5)
+  )
+)
 ab_blocked <- run_geomx_abundance_de(decon_blocked, gx)
 stopifnot(ab_blocked$status == "blocked",
           ab_blocked$broad$status == "blocked",
@@ -409,6 +435,16 @@ stopifnot(ab_blocked$status == "blocked",
           ab_blocked$broad$unresolved_aoi_count == 2L,
           ab_blocked$spatial_audit$status == "fit",
           nrow(ab_blocked$spatial_audit$per_aoi) == nrow(meta) * 2L)
+sdr_blocked <- spatial_decon_report_data(decon_blocked, ab_blocked, ref_fixture)
+stopifnot(sdr_blocked$status == "blocked",
+          sdr_blocked$action == "attempted",
+          any(grepl("synthetic unresolved", sdr_blocked$reasons, fixed = TRUE)),
+          nrow(sdr_blocked$reference) == 2L,
+          nrow(sdr_blocked$decon$arms) == 2L,
+          nrow(sdr_blocked$abundance$arms) == 3L,
+          length(unique(sdr_blocked$decon$unresolved_aoi$aoi)) == 2L,
+          sdr_blocked$residual_audit$status == "fit",
+          all(sdr_blocked$abundance$arms$status == "blocked"))
 
 # --- P4-S2 bulk proteome + corrected phospho ------------------------------------------
 bulk_stubs <- paste0("run", sprintf("%02d", 1:16))
@@ -567,6 +603,8 @@ axis_sets <- list(sets = list(
   project = list(DAM = c("Apoe", "Trem2", "Tyrobp"))
 ))
 ca <- clearance_axis_data(axis_pb, axis_sub, axis_map, axis_geomx, summary, axis_sets)
+ca_sd <- clearance_axis_data(axis_pb, axis_sub, axis_map, axis_geomx, summary,
+                             axis_sets, sdr_blocked)
 apo <- ca$pair_support[ca$pair_support$pair == "Apoe_Trem2" &
                          ca$pair_support$contrast == "nlgf_in_maptki", , drop = FALSE]
 pros <- ca$pair_support[ca$pair_support$pair == "Pros1_Mertk" &
@@ -580,7 +618,10 @@ stopifnot(ca$spatial_decon$status == "defer",
           apo$status == "earned",
           grepl("GeoMx_spatial", apo$coherent_supported_modalities, fixed = TRUE),
           grepl("snRNAseq_microglia", apo$coherent_supported_modalities, fixed = TRUE),
-          pros$status == "not_earned")
+          pros$status == "not_earned",
+          ca_sd$spatial_decon$status == "blocked",
+          ca_sd$spatial_decon$action == "attempted",
+          ca_sd$spatial_decon$abundance$status == "blocked")
 axis_geomx_earned <- axis_geomx
 axis_geomx_earned$decon_preflight$status <- "earned"
 expect_error(clearance_axis_data(axis_pb, axis_sub, axis_map, axis_geomx_earned,
@@ -710,7 +751,7 @@ stopifnot(nrow(cmp$selected_sets) >= 2L,
           all(cmp$summary$n_consistent_sign <= cmp$summary$n_modalities_present),
           any(cmp$summary$axis_member))
 
-div <- crossmodality_divergence_data(cmt, cmp, ca, top_n = 50L)
+div <- crossmodality_divergence_data(cmt, cmp, ca_sd, top_n = 50L)
 stopifnot(all(crossmodality_focus_contrasts() %in% div$contrast_summary$contrast),
           nrow(div$highlights) >= 1L,
           nrow(div$pathway_highlights) >= 1L,
@@ -722,7 +763,7 @@ stopifnot(all(crossmodality_focus_contrasts() %in% div$contrast_summary$contrast
 de_report <- de
 de_report$n_aoi <- ncol(cnt)
 de_report$n_bio_units <- nlevels(meta$bio_unit)
-cmr <- crossmodality_report_data(de_report, summary, ca, div, cmp,
+cmr <- crossmodality_report_data(de_report, summary, ca_sd, div, cmp,
                                  geomx_top_n = 2L, symbol_top_n = 8L,
                                  pathway_top_n = 8L)
 stopifnot(all(c("geomx", "bulk", "clearance", "divergence", "pathway", "provenance") %in%
@@ -731,7 +772,9 @@ stopifnot(all(c("geomx", "bulk", "clearance", "divergence", "pathway", "provenan
           nrow(cmr$geomx$top) >= length(crossmodality_focus_contrasts()),
           nrow(cmr$bulk$feature_counts) == 3L,
           all(crossmodality_focus_contrasts() %in% cmr$bulk$run_index$contrast),
-          identical(cmr$clearance$spatial_decon$status, "defer"),
+          identical(cmr$clearance$spatial_decon$status, "blocked"),
+          identical(cmr$clearance$spatial_decon$action, "attempted"),
+          nrow(cmr$clearance$spatial_decon$abundance$arms) == 3L,
           any(cmr$clearance$pair_support$status == "earned"),
           nrow(cmr$divergence$axis_symbols) >= 1L,
           nrow(cmr$pathway$axis_summary) >= 1L,

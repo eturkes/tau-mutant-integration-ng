@@ -148,9 +148,9 @@ make_synthesis_inputs <- function() {
     geomx = list(sensitivity = geomx_sens),
     bulk = list(run_index = bulk_run),
     clearance = list(
-      spatial_decon = list(status = "defer", action = "skipped",
-                           reasons = c("nuclei contains 42 sentinel value(s)",
-                                       "no compact reference profile was built in S1; deconvolution deferred to S3")),
+      spatial_decon = list(status = "blocked", action = "attempted",
+                           reasons = c("SpatialDecon beta has 4 unresolved AOI(s) with near-zero total abundance",
+                                       "broad and substate abundance DE returned canonical empty top tables")),
       verdict = list(status = "earned", ccc_called = FALSE),
       pair_support = pair_support
     ),
@@ -169,6 +169,10 @@ stopifnot(all(c("headline", "evidence_table", "status_summary", "open_questions"
           sum(sr$status_summary$n) == nrow(sr$evidence_table),
           any(sr$evidence_table$claim_id == "clearance_axis" &
                 sr$evidence_table$status == "focused_support"),
+          any(sr$evidence_table$claim_id == "spatial_decon_full_ccc" &
+                grepl("blocked", sr$evidence_table$direction, fixed = TRUE)),
+          any(sr$evidence_table$claim_id == "spatial_decon_full_ccc" &
+                grepl("unresolved AOI", sr$evidence_table$caveat, fixed = TRUE)),
           !any(grepl("value(s)", sr$evidence_table$caveat, fixed = TRUE)),
           !any(grepl("deconvolution deferred to S3", sr$evidence_table$caveat, fixed = TRUE)),
           !any(c("support", "contradict", "net_score", "ledger_id", "arc_id") %in%

@@ -183,6 +183,10 @@ list(
   tar_target(geomx_abundance_de,
              run_geomx_abundance_de(geomx_decon, geomx),
              format = "qs"),
+  tar_target(spatial_decon_report,
+             spatial_decon_report_data(geomx_decon, geomx_abundance_de,
+                                       geomx_reference_profile),
+             format = "qs"),
 
   # S2 bulk proteome + corrected phospho: 24M 16-run sample-key-matched bulk hippocampus
   # layers. Proteome aggregates raw positive rows to PG.ProteinGroups before log2/median
@@ -196,12 +200,12 @@ list(
              bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
-  # Historical P4 spatial-composition gate + clearance-axis CCC-lite. This still records the
-  # pre-profile decon defer from geomx_de; spatial-decon S4 will rewire the report/synthesis
-  # surfaces to consume geomx_decon + geomx_abundance_de's target-derived blocked state.
+  # Spatial-composition gate + clearance-axis CCC-lite. The follow-up report bundle carries
+  # the actual SpatialDecon attempted/blocked state into cross-modality + synthesis surfaces.
   tar_target(clearance_axis,
              clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
-                                 bulk_omics_summary, mechanism_gene_sets),
+                                 bulk_omics_summary, mechanism_gene_sets,
+                                 spatial_decon_report),
              format = "qs"),
 
   # S4 integrated gene/pathway divergence view. Evidence rows collapse duplicated RNA symbols,

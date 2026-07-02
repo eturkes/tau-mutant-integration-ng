@@ -180,6 +180,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       geomx_spatial_residual_audit joins SpatialDecon residual QC to GeoMx coordinates and emits per-slide
       nearest-neighbour summaries of genotype-residualised AOI RMS residuals (descriptive QC only). Live S3 target
       is warning-clean but abundance-blocked by the same 4 unresolved AOIs; broad/substate residual audit stored.
+   + (Spatial decon follow-up S4) crossmodality.R: spatial_decon_report_data -> spatial_decon_report. Compact
+      report handoff over geomx_decon + geomx_abundance_de + geomx_reference_profile: reference QC, decon/abundance
+      arm summaries, unresolved AOIs, residual-audit summary, nuclei policy, provenance; NO beta matrices. Live
+      status is blocked/action attempted because 4 AOIs have beta_total=0; residual QC remains descriptive.
    + (P4-S2) crossmodality.R: bulk proteome + corrected phospho. match_24m_bulk_columns asserts exact 16-run
       sample-key matching for proteome/phospho-style exports. protein_group_features + aggregate_proteome_raw +
       prepare_proteome_24m_matrix sum raw positive intensities to `PG.ProteinGroups` (NO zero-imputation),
@@ -192,9 +196,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       divides negative-probe background by Q3 factor; profile_collinearity records max abs profile correlation;
       geomx_decon now carries blocked/fit beta + residual diagnostics; fit_geomx_abundance_de is the S3
       log-beta abundance DE path (slide fixed + duplicateCorrelation bio-unit block, unblocked sensitivity).
-      clearance_axis_data -> clearance_axis target still reads the historical P4 decon skip and fails loud if
-      geomx_de$decon_preflight becomes `earned` before S4 revises it to accept geomx_decon/geomx_abundance_de;
-      otherwise records the intentional decon skip and harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk,
+      clearance_axis_data -> clearance_axis now accepts optional spatial_decon_report; without it an earned preflight
+      still fails loud, with it the real follow-up status flows downstream. It harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk,
       complement, and synaptic anchors across microglia RNA, GeoMx, and bulk layers with a conservative
       pair-support verdict.
    + (P4-S4) crossmodality.R: integration helpers. crossmodality_table_data -> crossmodality_table harmonises
@@ -263,10 +266,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        geomx_reference_profile <- geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)  # spatial-decon follow-up S1: full-snRNAseq compact broad/substate reference profile + QC; serialized 1.88MB live
        geomx_decon <- run_geomx_decon(geomx, geomx_reference_profile)  # spatial-decon follow-up S2: SpatialDecon broad/substate beta + proportions + residual QC; live blocked by 4 unresolved AOIs, no abundance claim
        geomx_abundance_de <- run_geomx_abundance_de(geomx_decon, geomx)  # spatial-decon follow-up S3: abundance-DE pass-through + residual audit; live blocked, 5.93KB compact target
+       spatial_decon_report <- spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)  # S4: tiny compact handoff for report/synthesis; status blocked/action attempted; no beta matrices
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
-       clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets)  # historical P4 compact measured-axis table (~37KB); still records pre-profile decon defer until spatial-decon S4 rewires it to geomx_decon/geomx_abundance_de
+       clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets, spatial_decon_report)  # compact measured-axis table; carries target-derived SpatialDecon blocked state + CCC-lite pair support
        crossmodality_table <- crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m, phospho_corrected_24m, mechanism_tf, kinase_mechanism_summary)  # S4 harmonised symbol evidence table (~10MB; 337k rows live), broad modality_class + layer-level modality_group
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
@@ -309,11 +313,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                                                           --{{< include >}}--> `_crossmodality.qmd`
                (P4 cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`; tar_load
                 crossmodality_report + crossmodality_figures [compact targets] -> GeoMx spatial DE, 24M bulk
-                proteome/phospho + run-index caveats, decon skip + clearance-axis CCC-lite, integrated pathway/
+                proteome/phospho + run-index caveats, decon blocked status + clearance-axis CCC-lite, integrated pathway/
                 symbol divergence, and S4 inline figures {GeoMx volcanoes, sensitivity/loss, bulk run-index,
                 raw-vs-corrected phospho, anchor heatmap, clearance grid, symbol matrix, pathway heatmap}.
                 Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
-                SpatialDecon skipped/defer, and CCC-lite != full CCC.)
+                SpatialDecon attempted but blocked by unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id; S5 rendered HTML QA =
        42 figure blocks / 42 captions, lightbox embedded, 0 external resource refs.
@@ -334,7 +338,8 @@ from project root: `Rscript tests/test_<x>.R`.
                     protein aggregation/no-imputation + parent-protein correction/sample-order guard +
                     missing-parent counts + run-index summary + duplicate/multi-gene provenance; (P4-S3) Q3
                     background scaling + profile-collinearity + abundance-DE design shape + clearance-axis
-                    earned/not-earned classification + fail-loud decon-earned guard; (P4-S4) duplicate RNA/protein/
+                    earned/not-earned classification + fail-loud decon-earned guard + spatial_decon_report compact
+                    blocked-state handoff; (P4-S4) duplicate RNA/protein/
                     phosphosite collapse + missingness + canonical-contrast guard + pathway modality-score invariants
                     + divergence mixed-sign / clearance-highlight checks; (P4-S5) compact crossmodality_report_data
                     bundle structure + malformed-input schema guards

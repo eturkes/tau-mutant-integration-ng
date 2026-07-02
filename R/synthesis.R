@@ -350,6 +350,15 @@ synthesis_report_data <- function(microglia_report, trajectory_report, mechanism
     "no clearance pair passed the earned CCC-lite rule"
   }
   spatial_text <- .synthesis_clean_text(paste(spatial_decon$reasons, collapse = "; "))
+  spatial_direction <- switch(
+    spatial_decon$status,
+    blocked = "SpatialDecon abundance is blocked after fitting; full CCC is not called",
+    defer = "SpatialDecon abundance and full CCC are not earned in this rebuild",
+    earned = "SpatialDecon abundance is earned; synthesis must be revised"
+  )
+  spatial_evidence <- paste0("SpatialDecon action is ", spatial_decon$action,
+                             "; status is ", spatial_decon$status,
+                             "; ccc_called is ", verdict$ccc_called, ".")
 
   evidence_table <- do.call(rbind, list(
     .synthesis_evidence_row(
@@ -440,9 +449,8 @@ synthesis_report_data <- function(microglia_report, trajectory_report, mechanism
     ),
     .synthesis_evidence_row(
       "spatial_decon_full_ccc", "unearned", "not_earned",
-      "SpatialDecon abundance and full CCC are not earned in this rebuild",
-      paste0("SpatialDecon status is ", spatial_decon$status,
-             "; ccc_called is ", verdict$ccc_called, "."),
+      spatial_direction,
+      spatial_evidence,
       "crossmodality_report$clearance$spatial_decon",
       "crossmodality_report$clearance$verdict",
       spatial_text,
@@ -473,7 +481,11 @@ synthesis_report_data <- function(microglia_report, trajectory_report, mechanism
       "Amyloid drives a microglial homeostatic-to-DAM activation programme.",
       "Mutant tau modulates the amyloid response mainly through DAM-cell composition, not supported further activation-axis progression.",
       "Mechanism support is asymmetric: Myc is supported in RNA, while NF-kB attenuation and Gsk3b are not recovered.",
-      "Cross-modality evidence corroborates the amyloid-response and synaptic-clearance axes; SpatialDecon/full CCC remain unearned."
+      if (identical(spatial_decon$status, "blocked")) {
+        "Cross-modality evidence corroborates the amyloid-response and synaptic-clearance axes; SpatialDecon abundance is blocked and full CCC remains absent."
+      } else {
+        "Cross-modality evidence corroborates the amyloid-response and synaptic-clearance axes; SpatialDecon/full CCC remain unearned."
+      }
     ),
     evidence_table = evidence_table,
     status_summary = status_summary,
