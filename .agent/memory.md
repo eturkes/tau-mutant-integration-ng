@@ -444,6 +444,37 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   18,898 duplicate rows). KSN overlap = 6,064 matched edges / 2,250 matched sites / 212 kinases with
   minsize>=5; `Gsk3b` present with 245 matched sites -> coverage gate clears before S3.
 
+## RNA mechanism targets (P3-S2, built) -- `R/mechanism.R` -> `mechanism_*` + `nfkb_attenuation`
+- Targets: `mechanism_collectri` (S1 CollecTRI prior + drift gate), `mechanism_gene_sets` (native mouse MSigDB
+  GO BP/CC/MF + project sets DAM/Homeostatic/MHC_APC/IFN/NF-kB union + activated/repressed CollecTRI targets),
+  `mechanism_tf` (decoupleR ULM on pseudobulk t-stat matrices), `mechanism_pathway` (fgsea preranked GSEA),
+  `nfkb_attenuation` (targeted gate).
+  Inputs = existing pseudobulk DE only: whole microglia + fit substates; IFN/Proliferative skipped status travels
+  in each result. No cell-level TF/pathway inference.
+- Rank contract: `collect_rna_rank_matrices` builds symbol x contrast t-stat matrices from `pb_de_microglia$top`
+  and fit `pb_de_substate$per_substate`, duplicate symbols collapse by max |t| via S1 helper. TF FDR = BH within
+  population x contrast; pathway FDR = fgsea padj within population x collection x contrast. Direction = ULM score
+  for TF, NES for pathway.
+- Gene-set/runtime/drift gotcha: full native mouse GO without a max-size bound made `mechanism_pathway` CPU-bound
+  >9 min before interruption. fgsea manual says maxSize ~500 is strongly recommended because runtime scales with
+  maximal pathway size, so GO collections use `go_max_size=500`; project sets stay uncapped so NF-kB targets are
+  not silently dropped. Gene sets are drift-gated by a sorted payload hash in `mechanism_gene_set_expectations()`
+  (current rows=840988, sets=6142; package versions recorded in target provenance). Bounded pathway build ~5 min,
+  target ~3.3MB; cache it, don't casually invalidate it.
+- fgsea warning policy: `eps=1e-10` keeps runtime bounded. The known message "P-values are less than 1e-10" is
+  captured into `mechanism_pathway$warnings` (38 population/collection/contrast calls live) and never leaks to
+  tar_meta/render logs; ANY other fgsea warning stops the target. Interpret p=1e-10 rows as floored, not exact.
+- NF-kB attenuation gate: sources = CollecTRI sources matching NFKB/Nfkb1/Nfkb2/Rel/Rela/Relb. TF-family test =
+  best NF-kB source after BH across sources (score = chosen ULM score; p_value = source-family adjusted p).
+  Target-GSEA is sign-aware: activated targets use NES, repressed targets use -NES, then choose the best component
+  after BH across components; the union set is retained for reference, not direction. ONLY whole-microglia
+  `interaction` rows can support attenuation, and support requires concordant negative primary directions plus
+  FDR<0.10 for at least one of {TF family, target GSEA}; sign-conflicted primary rows return `discordant`.
+  `tau_in_nlgf` + substates are supportive. Live S2 = DISCORDANT, NOT supported (target-GSEA negative,
+  TF-family positive). Report honestly as transcript-level RNA evidence, not composition or kinase.
+- Live qualitative read (drift-prone margins stay in targets): DAM `interaction` top TF includes Myc negative and
+  significant; NF-kB is discordant. No hardcoded winners in downstream prose.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

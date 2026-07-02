@@ -30,11 +30,11 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P3 Mechanism
 Plan: `.agent/p3_mechanism_plan.md` (opened 2026-07-02 after user confirmed default P3).
-Next `$session-prompt` mode = EXECUTE: implement S2.
+Next `$session-prompt` mode = EXECUTE: implement S3.
 
 Steps:
 - [x] S1 dependencies + API contracts.
-- [ ] S2 RNA pathway + TF + NF-kB targets.
+- [x] S2 RNA pathway + TF + NF-kB targets.
 - [ ] S3 minimal phosphosite DE + kinase activity.
 - [ ] S4 mechanism report + integration.
 
@@ -318,6 +318,17 @@ Steps:
   13,048 sites hash 997b690d5efdfd8bb4424c12a29a80f5a980d8b3404025210e188281d554172d. Real phospho-site probe:
   64,328 rows -> 44,896 unique single-gene site IDs; KSN overlap 2,250 sites, 212 kinases pass minsize>=5, Gsk3b
   present + 245 matched sites. Next = S2.
+- 2026-07-02 P3-S2 DONE -> RNA mechanism targets: `mechanism_collectri` (prior drift gate), `mechanism_gene_sets`
+  (native mouse MSigDB GO BP/CC/MF + project sets DAM/Homeostatic/MHC_APC/IFN/NF-kB union + activated/repressed
+  targets), `mechanism_tf` (decoupleR ULM CollecTRI on whole microglia + fit substates), `mechanism_pathway`
+  (fgsea preranked GSEA), and `nfkb_attenuation` (predeclared primary-family gate). Live build clean in tar_meta;
+  GO fgsea capped at maxSize=500 per fgsea manual runtime guidance, project sets uncapped; known sub-1e-10 fgsea
+  p-value floor notices are recorded as provenance and any other fgsea warning fails loud; MSigDB/project gene-set
+  payload hash pinned. CODEX-REVIEWED (7 findings all accepted): sign-aware NF-kB target-GSEA (activated NES,
+  repressed -NES), conservative family-best BH for NF-kB TF/components, concordant-negative support gate, p-floor
+  propagation, central contrast order. Live outcome: Myc is the top DAM interaction TF (negative, significant);
+  NF-kB attenuation is DISCORDANT, not supported (target-GSEA negative, TF-family positive). Full `scripts/check.sh`
+  green. Next = S3.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

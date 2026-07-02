@@ -2,10 +2,11 @@
 # fingerprinting, OmniPath prior-table standardisation, phosphosite IDs, and KSN coverage.
 
 source("R/constants.R")
+source("R/utils.R")
 source("R/mechanism.R")
 source("tests/helpers.R")
 
-canonical <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
+canonical <- mechanism_contrasts()
 
 # --- symbol mapping + duplicate collapse -------------------------------------------------
 sym <- data.frame(ensembl = c("g1", "g2", "g3", "g4"),
@@ -118,5 +119,118 @@ exp_ok <- list(collectri = list(hash = "abc", n_rows = nrow(fake_prior), n_sourc
 stopifnot(assert_mechanism_prior_expectations(fake_prior, fake_prior, fake_cov, exp_ok))
 exp_bad <- exp_ok; exp_bad$ksn_coverage$n_matched_sites <- 999L
 expect_error(assert_mechanism_prior_expectations(fake_prior, fake_prior, fake_cov, exp_bad), "KSN coverage drift")
+
+# --- P3-S2 RNA mechanism helpers --------------------------------------------------------
+s2_genes <- paste0("g", seq_len(24))
+s2_symbols <- paste0("Sym", seq_len(24))
+s2_map <- data.frame(ensembl = s2_genes, symbol = s2_symbols, stringsAsFactors = FALSE)
+mk_top <- function(mult = 1) {
+  data.frame(gene = s2_genes,
+             logFC = seq(-1.2, 1.2, length.out = length(s2_genes)) * mult,
+             t = seq(-3, 3, length.out = length(s2_genes)) * mult,
+             P.Value = seq(0.001, 0.2, length.out = length(s2_genes)),
+             adj.P.Val = seq(0.01, 0.5, length.out = length(s2_genes)),
+             stringsAsFactors = FALSE)
+}
+s2_tops <- stats::setNames(lapply(seq_along(canonical), function(i) mk_top(ifelse(i %% 2L, 1, -1))),
+                           canonical)
+s2_pbm <- list(top = s2_tops, n_cells = 1000L)
+s2_pbs <- list(per_substate = list(
+  Homeostatic = c(list(status = "fit", substate = "Homeostatic", n_cells = 500L), list(top = s2_tops)),
+  DAM = list(status = "skipped", substate = "DAM", n_cells = 20L, reason = "floor")
+))
+ranks <- collect_rna_rank_matrices(s2_pbm, s2_pbs, s2_map)
+stopifnot(setequal(names(ranks), c("whole_microglia", "Homeostatic")),
+          identical(attr(ranks, "skipped")$population, "DAM"),
+          identical(colnames(ranks$whole_microglia$matrix), canonical))
+
+tiny_sets <- list(big = c("a", "b", "c"), small = c("a", "b"), with_na = c("a", NA, ""))
+flt <- filter_gene_set_list(tiny_sets, min_size = 3L, universe = c("a", "b", "c"))
+stopifnot(identical(names(flt), "big"), identical(flt$big, c("a", "b", "c")))
+
+s2_collectri <- data.frame(
+  source = c(rep("Nfkb1", 5), rep("Rela", 5), rep("Reln", 5), rep("Myc", 5)),
+  target = paste0("Sym", c(1:5, 6:10, 11:15, 16:20)),
+  mor = rep(c(1, -1), length.out = 20),
+  stringsAsFactors = FALSE
+)
+nf_src <- nfkb_family_sources(s2_collectri)
+stopifnot(setequal(nf_src, c("Nfkb1", "Rela")), !("Reln" %in% nf_src))
+project_sets <- build_project_gene_sets(s2_collectri, custom_min_size = 5L)
+stopifnot("NFkB_CollecTRI_Targets" %in% names(project_sets),
+          all(c("NFkB_Activated_Targets", "NFkB_Repressed_Targets") %in% names(project_sets)),
+          length(project_sets$NFkB_CollecTRI_Targets) == 10L,
+          length(project_sets$NFkB_Activated_Targets) == 5L,
+          length(project_sets$NFkB_Repressed_Targets) == 5L)
+gene_sets <- list(
+  sets = list(project = project_sets),
+  sizes = data.frame(collection = "project", set = names(project_sets),
+                     size = lengths(project_sets), stringsAsFactors = FALSE),
+  nfkb_sources = attr(project_sets, "nfkb_sources"),
+  thresholds = list(go_min_size = 5L, custom_min_size = 5L)
+)
+
+tf_s2 <- run_mechanism_tf(s2_pbm, s2_pbs, s2_map, s2_collectri, minsize = 5L)
+stopifnot(is.data.frame(tf_s2$activity), identical(tf_s2$skipped$population, "DAM"),
+          all(tf_s2$activity$direction == tf_s2$activity$score),
+          all(is.finite(tf_s2$activity$fdr)),
+          all(tf_s2$activity$fdr >= tf_s2$activity$p_value - 1e-12))
+
+pw_s2 <- run_mechanism_pathway(s2_pbm, s2_pbs, s2_map, gene_sets)
+stopifnot(is.data.frame(pw_s2$pathway), nrow(pw_s2$pathway) > 0L,
+          identical(pw_s2$skipped$population, "DAM"),
+          all(pw_s2$pathway$direction == pw_s2$pathway$NES),
+          all(pw_s2$pathway$fdr == pw_s2$pathway$padj),
+          is.logical(pw_s2$pathway$p_floor_warning),
+          setequal(pw_s2$pathway$contrast, canonical))
+
+fake_tf <- list(
+  activity = data.frame(
+    population = rep("whole_microglia", 2),
+    population_type = rep("whole", 2),
+    source = rep("Nfkb1", 2),
+    contrast = c("interaction", "tau_in_nlgf"),
+    score = c(2, -5),
+    p_value = c(0, 1e-300),
+    stringsAsFactors = FALSE),
+  skipped = .empty_df(c("population", "population_type", "status", "n_cells", "reason"))
+)
+fake_path <- list(
+  pathway = data.frame(
+    population = rep("whole_microglia", 4),
+    population_type = rep("whole", 4),
+    collection = rep("project", 4),
+    contrast = rep(c("interaction", "tau_in_nlgf"), each = 2),
+    pathway = rep(c("NFkB_Activated_Targets", "NFkB_Repressed_Targets"), times = 2),
+    NES = c(1, -1, -4, 4),
+    pval = c(1e-6, 1e-6, 1e-6, 1e-6),
+    padj = c(1e-6, 1e-6, 1e-6, 1e-6),
+    size = rep(5L, 4),
+    p_floor_warning = c(TRUE, TRUE, FALSE, FALSE),
+    stringsAsFactors = FALSE),
+  warnings = data.frame(population = "whole_microglia", collection = "project",
+                        contrast = "interaction", warning = "known", stringsAsFactors = FALSE)
+)
+fake_sets <- list(nfkb_sources = "Nfkb1")
+nf_fake <- build_nfkb_attenuation(fake_tf, fake_path, fake_sets, alpha = 0.10)
+stopifnot(!nf_fake$verdict$supported,
+          identical(nf_fake$verdict$status, "not_supported"),
+          any(nf_fake$table$p_floor_warning[nf_fake$table$test == "target_gsea" & nf_fake$table$primary_test]),
+          all(is.finite(nf_fake$table$score[nf_fake$table$test == "tf_family"])))
+
+fake_tf$activity$score[1] <- -5
+fake_tf$activity$p_value[1] <- 1e-6
+nf_discordant <- build_nfkb_attenuation(fake_tf, fake_path, fake_sets, alpha = 0.10)
+stopifnot(!nf_discordant$verdict$supported,
+          identical(nf_discordant$verdict$status, "discordant"))
+
+fake_path$pathway$NES[fake_path$pathway$contrast == "interaction" &
+                        fake_path$pathway$pathway == "NFkB_Activated_Targets"] <- -4
+fake_path$pathway$NES[fake_path$pathway$contrast == "interaction" &
+                        fake_path$pathway$pathway == "NFkB_Repressed_Targets"] <- 4
+nf_supported <- build_nfkb_attenuation(fake_tf, fake_path, fake_sets, alpha = 0.10)
+stopifnot(nf_supported$verdict$supported,
+          identical(nf_supported$verdict$status, "supported"),
+          nf_supported$verdict$n_primary_supported == 2L)
 
 cat("ok - test_mechanism\n")

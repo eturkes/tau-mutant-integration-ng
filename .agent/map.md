@@ -126,6 +126,17 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (consensus signs, unresolved ambiguous rows dropped, conflicting duplicate signed pairs dropped);
       phospho_site_ids builds `SYMBOL_AApos` from {PG.Genes, PTM.SiteAA, PTM.SiteLocation} with drop counts;
       ksn_coverage_probe reports matched sites, minsize-pass kinases, Gsk3b coverage, and source-case diagnostics.
+   + (P3-S2) mechanism.R: RNA mechanism orchestration. collect_rna_rank_matrices converts `pb_de_microglia` +
+      fit `pb_de_substate` topTables to symbol x contrast t-stat matrices (whole_microglia + Homeostatic + DAM;
+      skipped IFN/Proliferative metadata carried). build_mechanism_gene_sets pulls native mouse MSigDB GO BP/CC/MF
+      via msigdbr plus project sets (DAM/Homeostatic/MHC_APC/IFN/NF-kB union + activated/repressed CollecTRI
+      targets) and pins a sorted gene-set payload hash. run_mechanism_tf -> decoupleR ULM activity, FDR BH within
+      population x contrast. run_mechanism_pathway -> fgseaMultilevel NES, FDR/padj within population x collection
+      x contrast; GO maxSize=500, project sets uncapped; known sub-1e-10 fgsea p-floor warning captured, any other
+      fgsea warning fails. build_nfkb_attenuation -> NF-kB TF family best source after BH + sign-aware target GSEA
+      (activated NES, repressed -NES); support gate only whole_microglia interaction, requires concordant negative
+      primary rows after BH across {tf_family,target_gsea}; discordant signs -> `discordant`; tau_in_nlgf/substates
+      supportive-only.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -149,6 +160,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        trajectory_progression <- run_trajectory_progression(microglia_trajectory)  # S2b: 16-unit pseudotime summaries -> weighted/ols/bounded interaction fits + 3-channel Kitagawa decompose + Freedman-Lane null; primary BH {progression_cf, within_homeostatic}; reads COMPACT S1 target (no 612MB load)
        trajectory_glmm_sensitivity <- glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame)  # S3: per-cell beta GLMM tau:amyloid (degrade -> rank-normal LMM -> method="failed"); supportive, INDEPENDENT of trajectory_progression; ~0.3KB
        trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # S4a: bundles the 3 compact targets -> one ~0.34MB render object (slim cell_frame + interaction table [decomposition channels as rows] + weighted_top + per_unit + lineage_per_unit + sensitivity + glmm row + provenance [incl. decomposition loadings]); two-layer guards (input schema + assembled-bundle postconditions: col-existence-before-finiteness, weighted mean_pt p on all 5 contrasts, glmm/provenance scalars); keeps gate force-render cheap
+  - P3 mechanism (format="qs"; consumes compact P1 pseudobulk DE + S1 prior helpers):
+       mechanism_collectri <- load_collectri_mouse() + assert_mechanism_prior_expectations(collectri)  # cached direct-mouse CollecTRI prior; drift-gated
+       mechanism_gene_sets <- build_mechanism_gene_sets(mechanism_collectri)  # GO_BP/GO_CC/GO_MF native mouse MSigDB + project sets incl. signed NF-kB target arms; hash-pinned
+       mechanism_tf        <- run_mechanism_tf(pb_de_microglia, pb_de_substate, symbol_map, mechanism_collectri)  # decoupleR ULM TF activity x populations x 5 contrasts; skipped substates carried
+       mechanism_pathway   <- run_mechanism_pathway(pb_de_microglia, pb_de_substate, symbol_map, mechanism_gene_sets)  # fgsea NES x populations x {GO/project} x contrasts; GO maxSize=500
+       nfkb_attenuation    <- build_nfkb_attenuation(mechanism_tf, mechanism_pathway, mechanism_gene_sets)  # sign-aware primary whole-MG interaction gate + supportive rows
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -181,7 +198,10 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity: beta success (glmmTMB_beta, n_units=16) / singular->failed / non-estimable->failed (fail_reason + captured messages) / unknown-genotype fail-loud; (P2-S4a) trajectory_report_data field/measure/contrast presence + finite interaction inference on the jitter>0 fixture (per-unit DAM composition VARIED so comp_cf/cross fdr stay non-degenerate) + a positive finite-bundle assertion + 13 malformed-input expect_error cases (up-front schema + assembled-bundle postconditions: col-drop/measure/weighted-p/per_unit/sensitivity/glmm-enum/provenance-scalar/NaN-endpoint; fixed=TRUE patterns match the TRUNCATED stopifnot deparse prefix)
   - test_mechanism.R  : (P3-S1) symbol mapping/drop counts + duplicate max-|stat| collapse + decoupleR ULM schema +
                     cache/TZ preflight + prior fingerprint determinism + synthetic CollecTRI/KSN standardisers +
-                    phosphosite ID/drop counts + KSN coverage/Gsk3b assertions + prior drift assertion helper
+                    phosphosite ID/drop counts + KSN coverage/Gsk3b assertions + prior drift assertion helper;
+                    (P3-S2) RNA rank-matrix population/skipped propagation + gene-set filtering/sign splitting +
+                    NF-kB source extraction + TF/pathway FDR/direction conventions + p-floor propagation +
+                    tau_in_nlgf-supportive-only / discordant / supported attenuation rules
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):

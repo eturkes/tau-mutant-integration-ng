@@ -110,6 +110,24 @@ list(
   tar_target(trajectory_report, trajectory_report_data(microglia_trajectory, trajectory_progression,
                                                        trajectory_glmm_sensitivity), format = "qs"),
 
+  # --- P3 mechanism ---
+  # S2 RNA mechanism targets. Reuse the cached/fingerprinted direct-mouse CollecTRI prior from S1,
+  # then derive focused mouse gene sets, decoupleR ULM TF activity, fgsea preranked pathway scores,
+  # and the sign-aware predeclared NF-kB attenuation gate. Inputs are the existing replicate-corrected
+  # pseudobulk DE targets (whole microglia + fit substates); skipped substates travel as metadata.
+  tar_target(mechanism_collectri, {
+    net <- load_collectri_mouse()
+    assert_mechanism_prior_expectations(collectri = net)
+    net
+  }, format = "qs"),
+  tar_target(mechanism_gene_sets, build_mechanism_gene_sets(mechanism_collectri), format = "qs"),
+  tar_target(mechanism_tf, run_mechanism_tf(pb_de_microglia, pb_de_substate, symbol_map,
+                                           mechanism_collectri), format = "qs"),
+  tar_target(mechanism_pathway, run_mechanism_pathway(pb_de_microglia, pb_de_substate,
+                                                     symbol_map, mechanism_gene_sets), format = "qs"),
+  tar_target(nfkb_attenuation, build_nfkb_attenuation(mechanism_tf, mechanism_pathway,
+                                                     mechanism_gene_sets), format = "qs"),
+
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),

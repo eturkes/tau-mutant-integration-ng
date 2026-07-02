@@ -161,11 +161,12 @@ Acceptance:
   mouse OmniPath coverage is unusable.
 - `scripts/check.sh` green.
 
-### S2 - RNA pathway + TF + NF-kB targets
+### S2 - RNA pathway + TF + NF-kB targets [DONE 2026-07-02]
 Add targets:
 - `mechanism_gene_sets` = focused mouse gene sets: GO BP / GO CC / GO MF from native Mouse MSigDB via
   `msigdbr(db_species="MM", species="Mus musculus")`, plus compact project sets: DAM, Homeostatic,
-  MHC_APC, IFN, NF-kB target union from CollecTRI family sources. Apply min_size 5 for custom, 15 for GO.
+  MHC_APC, IFN, NF-kB target union and activated/repressed target sets from CollecTRI family sources.
+  Apply min_size 5 for custom, 15 for GO.
 - `mechanism_tf` = decoupleR CollecTRI activity on whole microglia + fit substates across 5 contrasts.
 - `mechanism_pathway` = fgsea preranked GSEA on the same RNA ranked matrices.
 - `nfkb_attenuation` = targeted table for NF-kB-family TF activity + NF-kB-target GSEA in `interaction`
@@ -186,6 +187,15 @@ Acceptance:
   substate propagation, and the rule that `tau_in_nlgf` alone cannot call attenuation supported.
 - Live smoke prints top TFs/pathways for amyloid, interaction, tau_in_nlgf; no hardcoded expected winner.
 - `scripts/check.sh` green.
+
+Outcome note: built `mechanism_collectri`, `mechanism_gene_sets`, `mechanism_tf`, `mechanism_pathway`,
+and `nfkb_attenuation`. `mechanism_pathway` uses fgsea `maxSize=500` for GO collections (official
+runtime guidance) and leaves project sets uncapped; the known sub-`1e-10` p-value floor notice is
+recorded, while unexpected fgsea warnings fail the target. Review hardening made NF-kB target GSEA
+sign-aware (activated targets NES, repressed targets -NES), replaced source Stouffer with family-best
+BH, pinned the MSigDB/project gene-set hash, propagated p-floor flags, and made support require
+concordant negative primary rows. Live NF-kB gate = discordant, not supported; `tau_in_nlgf` remains
+supportive-only. Full `scripts/check.sh` green. Next = S3.
 
 ### S3 - Minimal phosphosite DE + kinase activity
 Add targets:
