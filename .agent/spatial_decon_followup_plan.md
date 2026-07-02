@@ -136,9 +136,9 @@ valid outcome.
 Each step is one closing unit. Run `scripts/check.sh` unless the step is
 explicitly docs-only and a lighter check is justified.
 
-### S0 - Route gate [OPEN]
-Present the default and alternatives above. Wait for user route choice before
-adding dependencies or invalidating targets.
+### S0 - Route gate [DONE 2026-07-02]
+User chose the recommended default: broad-first SpatialDecon with a gated
+substate attempt. Proceed to S1 without changing the default design.
 
 Acceptance:
 - User chooses default / alternative A / alternative B / alternative C / another

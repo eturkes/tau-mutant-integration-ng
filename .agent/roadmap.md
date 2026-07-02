@@ -32,10 +32,8 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Spatial decon follow-up -> `.agent/spatial_decon_followup_plan.md`
-Next `$session-prompt` mode = EXECUTE S0 route gate. Default = broad-first
-SpatialDecon with a gated substate attempt; alternatives = broad-only,
-full two-stage primary, or RCTD/cell2location side branch. Await user route
-choice before adding dependencies or invalidating targets.
+Next `$session-prompt` mode = EXECUTE S1 dependency + compact reference profile.
+Route selected = broad-first SpatialDecon with a gated substate attempt.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -64,9 +62,9 @@ choice before adding dependencies or invalidating targets.
   per-chapter figure targets; +26 planned figures landed without changing claims.
 - Spatial decon follow-up [ACTIVE 2026-07-02 -> `.agent/spatial_decon_followup_plan.md`]:
   gated GeoMx tissue-abundance follow-up to the P4 "SpatialDecon not earned"
-  row. S0 route gate is open; default = install/run SpatialDecon only after a
-  compact full-reference profile earns it, keep nuclei absolute counts disabled,
-  report broad abundance primary and microglia substates only if stable.
+  row. S0 chose the default: install/run SpatialDecon only after a compact
+  full-reference profile earns it, keep nuclei absolute counts disabled, report
+  broad abundance primary and microglia substates only if stable.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
