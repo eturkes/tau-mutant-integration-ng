@@ -36,7 +36,7 @@ Goal = add many more final-report figures while preserving the closed P1-P5 clai
 and cheap-render gate. Route = inline chapter expansion: add compact per-chapter
 figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
 `_trajectory.qmd`, `_mechanism.qmd`, and `_crossmodality.qmd`. Next
-`$session-prompt` mode = EXECUTE S1 (inline figure data contract).
+`$session-prompt` mode = EXECUTE S2 (synthesis + microglia inline figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -61,9 +61,8 @@ figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
   ONE lean report - cohesive narrative + compact evidence table (no ledger /
   contest machinery).
 - Figure expansion [OPEN 2026-07-02 -> `.agent/figure_expansion_plan.md`]:
-  post-report visual-density pass. Default = compact target-backed evidence atlas
-  adding ~20-26 figures without changing claims; alternatives = inline chapter
-  expansion / prebuilt publication gallery / schematic-first expansion.
+  post-report visual-density pass. Route = inline chapter expansion backed by
+  compact per-chapter figure targets; add ~20-26 figures without changing claims.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -445,6 +444,14 @@ figure targets and place new figures inside `_synthesis.qmd`, `_microglia.qmd`,
 - 2026-07-02 Figure expansion S0 DONE: user chose inline chapter expansion. Revised
   plan away from a standalone atlas chapter toward compact per-chapter figure targets
   plus inline qmd additions; figure budget stays +20-26. Next = S1 data contract.
+- 2026-07-02 Figure expansion S1 DONE -> `R/figures.R` + four compact targets:
+  `microglia_figures`, `trajectory_figures`, `mechanism_figures`,
+  `crossmodality_figures`; `tests/test_figures.R` pins the 26-figure manifest and
+  finite/slot guards. Fresh target build warning-clean/tar_meta clean; object sizes
+  all <5MB (microglia 2.381MB, trajectory 0.033MB, mechanism 0.107MB,
+  crossmodality 0.514MB). Heavy plot shapes are pre-binned/top-row compressed
+  (volcanoes, GeoMx, raw-vs-corrected phospho) so qmds can stay compact. Next = S2
+  synthesis + microglia inline figures.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

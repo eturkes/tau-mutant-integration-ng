@@ -125,10 +125,13 @@ Work:
   planned figure manifest by chapter.
 
 Acceptance:
-- Fresh `tar_make()` of the new figure targets warning-clean.
-- Each figure target object size recorded and justified if >5MB.
-- Test proves no required inline figure slot is empty; geom-fed numeric columns are
-  finite or intentionally handled with `na.rm` plus explicit caption/prose.
+- DONE 2026-07-02: `R/figures.R` + targets `microglia_figures`,
+  `trajectory_figures`, `mechanism_figures`, `crossmodality_figures`.
+- Fresh target build warning-clean/tar_meta clean. Object sizes all <5MB:
+  microglia 2.381MB, trajectory 0.033MB, mechanism 0.107MB, cross-modality
+  0.514MB.
+- `tests/test_figures.R` proves manifest slot presence and finite geom-fed numeric
+  columns on deterministic fixtures. Heavy volcano/scatter shapes are pre-binned.
 
 ### S2 - Synthesis + Microglia Inline Figures
 

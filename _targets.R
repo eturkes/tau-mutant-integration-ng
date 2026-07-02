@@ -81,6 +81,10 @@ list(
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.
   tar_target(microglia_report, microglia_report_data(microglia_annotated), format = "qs"),
+  tar_target(microglia_figures,
+             microglia_figure_data(microglia_report, composition_results,
+                                   pb_de_microglia, pb_de_substate, symbol_map),
+             format = "qs"),
 
   # --- P2 interaction trajectory ---
   # S1: activation pseudotime. slingshot on the harmony embedding (dims 1:15), forced single
@@ -109,6 +113,9 @@ list(
   # a single compact target -- no 612MB Seurat, no heavy re-read (all three inputs are compact).
   tar_target(trajectory_report, trajectory_report_data(microglia_trajectory, trajectory_progression,
                                                        trajectory_glmm_sensitivity), format = "qs"),
+  tar_target(trajectory_figures,
+             trajectory_figure_data(trajectory_report, composition_results),
+             format = "qs"),
 
   # --- P3 mechanism ---
   # S2 RNA mechanism targets. Reuse the cached/fingerprinted direct-mouse CollecTRI prior from S1,
@@ -146,6 +153,7 @@ list(
                                                      nfkb_attenuation, kinase_mechanism_summary,
                                                      composition_results, trajectory_report),
              format = "qs"),
+  tar_target(mechanism_figures, mechanism_figure_data(mechanism_report), format = "qs"),
 
   # --- P4 cross-modality ---
   # S1 GeoMx spatial DE: RNA count layer (explicit, despite the object's SCT default) ->
@@ -200,6 +208,10 @@ list(
   tar_target(crossmodality_report,
              crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis,
                                        crossmodality_divergence, crossmodality_pathway),
+             format = "qs"),
+  tar_target(crossmodality_figures,
+             crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary,
+                                       phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
   # --- P5 synthesis ---

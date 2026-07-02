@@ -638,6 +638,24 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - P5-S3 lean pass removed stale P3/P4 forward pointers and tightened rate/progression language; report-source
   search is clean for `P5`, `final synthesis`, `still open`, and `before the final synthesis`.
 
+## Figure expansion data contract (S1, built) -- `R/figures.R` -> `*_figures`
+- `figure_manifest()` pins the +26 inline figure contract with hyphenated `fig-*` ids (no underscores) and maps
+  each planned figure to a chapter/target/slot. Synthesis figure 1 can still read `synthesis_report` directly;
+  the other chapters use compact targets: `microglia_figures`, `trajectory_figures`, `mechanism_figures`,
+  `crossmodality_figures`.
+- Builders are qmd-data contracts, not plotting functions. They validate required fields and finite geom inputs,
+  then return pre-shaped slots for later qmd chunks. Heavy scatter shapes are pre-binned/top-row reduced:
+  microglia whole/substate DE volcanoes, GeoMx volcanoes, and raw-vs-parent-corrected phospho scatter. This keeps
+  S2-S4 report edits simple and avoids qmd reads of `microglia_annotated`, full GeoMx/proteome/phospho tables, or
+  the 10MB cross-modality evidence table.
+- Live S1 target build warning-clean/tar_meta clean. In-memory object sizes: `microglia_figures` 2.381MB
+  (qs 420KB), `trajectory_figures` 0.033MB, `mechanism_figures` 0.107MB, `crossmodality_figures` 0.514MB. All are
+  below the 5MB S1 threshold. `crossmodality_figures` intentionally reads large cached inputs (`geomx_de`,
+  `phospho_de_24m`, `phospho_corrected_24m`) only during target build, then stores compact binned outputs.
+- `tests/test_figures.R` is data-free and guards manifest drift, expected slot presence, finite geom inputs, DAM
+  fraction join, unsupported mechanism rows, and cross-modality heavy-table binning. Add any new figure slot here
+  before wiring it into qmd prose.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
@@ -690,7 +708,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 - Committed tests `tests/test_*.R` = plain `stopifnot` fail-loud scripts (zero new deps), source the R/ files they
   exercise + `tests/helpers.R` (deterministic synthetic fixtures, NO RNG/clock; expect_error[+pattern]), print
   `ok - <x>`, non-zero exit on fail. Set: test_design, test_de_pb, test_io, test_plot, test_composition,
-  test_microglia, test_trajectory, test_mechanism, test_crossmodality, test_synthesis. Data-free; per-module
+  test_microglia, test_trajectory, test_mechanism, test_crossmodality, test_synthesis, test_figures. Data-free; per-module
   live-data smoke-test still happens once before commit.
 - Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 
