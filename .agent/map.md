@@ -153,6 +153,13 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       + DAM composition interaction + trajectory composition/progression anchors. Guard layer checks required cols
       and build-fatal chapter anchors (Myc whole interaction, 2 NF-kB primary rows, Gsk3b all contrasts, DAM
       composition interaction, trajectory anchors). No heavy Seurat object.
+   + (P4-S1) crossmodality.R: GeoMx DE + decon preflight. geomx_count_matrix explicitly reads RNA/counts
+      (GeoMx object default is SCT), drops empty genes, records non-integer residues, and only rounds integer-ish
+      matrices. geomx_meta aligns AOI metadata (genotype, slide_rep, bio_unit=genotype:bio_rep, roi/SampleID,
+      ROI XY, Q3, negative background, nuclei). fit_geomx_de -> edgeR TMM + limma-voom with `~0+genotype+slide`,
+      duplicateCorrelation(block=bio_unit), robust eBayes, canonical 5 contrasts; stores unblocked AOI and
+      bio-unit-collapsed sensitivities separately. geomx_decon_preflight records SpatialDecon pinned-repo
+      availability + Q3/background/nuclei/reference/profile/memory feasibility; no SpatialDecon install/run in S1.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -186,6 +193,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        kinase_activity     <- run_kinase_activity(phospho_de_24m)  # decoupleR ULM over direct-mouse KSN; KSN coverage gate + primary/run-index activity tables
        kinase_mechanism_summary <- build_kinase_mechanism_summary(kinase_activity)  # significant kinases + explicit Gsk3b rows with run-index support flags
        mechanism_report    <- mechanism_report_data(mechanism_tf, mechanism_pathway, nfkb_attenuation, kinase_mechanism_summary, composition_results, trajectory_report)  # S4: one compact report object (~26KB) for _mechanism.qmd; no heavy Seurat
+  - P4 cross-modality:
+       geomx_de <- run_geomx_de(geomx)  # S1: GeoMx RNA/counts DE; slide fixed + duplicateCorrelation bio-unit block primary; unblocked/collapsed sensitivities; decon preflight status/reasons, no SpatialDecon run
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, theme=theme.scss) --{{< include >}}--> `_qc.qmd`
@@ -215,6 +224,9 @@ slingshot embedding), run stopifnot checks (fail-loud, no testthat dep), print `
 from project root: `Rscript tests/test_<x>.R`.
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
+  - test_crossmodality.R : (P4-S1) GeoMx RNA/count extraction + meta alignment + slide rank guard +
+                    duplicateCorrelation primary + unblocked/collapsed sensitivity status +
+                    malformed metadata + decon preflight defer/block/earned reasons
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)

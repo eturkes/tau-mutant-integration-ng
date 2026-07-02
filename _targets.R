@@ -147,6 +147,13 @@ list(
                                                      composition_results, trajectory_report),
              format = "qs"),
 
+  # --- P4 cross-modality ---
+  # S1 GeoMx spatial DE: RNA count layer (explicit, despite the object's SCT default) ->
+  # edgeR TMM + limma-voom, slide fixed effect, duplicateCorrelation block = genotype:bio_rep,
+  # plus unblocked and bio-unit-collapsed sensitivities. Deconvolution is NOT run here; the
+  # preflight records Q3/background/nuclei/reference/package feasibility for the S3 gate.
+  tar_target(geomx_de, run_geomx_de(geomx), format = "qs"),
+
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

@@ -31,7 +31,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: P4 Cross-modality -> `.agent/p4_cross_modality_plan.md`
-Next `$session-prompt` mode = EXECUTE. Next open step = S1 GeoMx DE + deconvolution preflight.
+Next `$session-prompt` mode = EXECUTE. Next open step = S2 Bulk proteome + corrected phospho.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -351,6 +351,14 @@ Next `$session-prompt` mode = EXECUTE. Next open step = S1 GeoMx DE + deconvolut
   replicate-aware GeoMx DE with deconvolution gated, 24M proteome + raw/corrected phospho, targeted clearance-axis
   CCC-lite, and an integrated gene/pathway divergence view. Explicit alternatives: proteomics-heavy
   QFeatures/msqrob2PTM, full off-lock CCC stack, or no deconvolution. Next = EXECUTE S1.
+- 2026-07-02 P4-S1 DONE -> `R/crossmodality.R` + `tests/test_crossmodality.R` + target `geomx_de`. GeoMx DE =
+  explicit RNA count layer (object default is SCT), edgeR TMM + limma-voom, slide fixed effect,
+  duplicateCorrelation block `genotype:bio_rep`, plus unblocked and bio-unit-collapsed sensitivities. Live build
+  warning-clean: 91 AOIs / 15 bio-units / 19,959 genes kept; duplicateCorrelation consensus small positive; both
+  sensitivities fit. Counts layer has 351 non-integer residues (max ~0.5) -> recorded, not rounded. Decon preflight
+  = `defer`: SpatialDecon is pinned-repo available, Q3/background usable, but 42 nuclei sentinels disable absolute
+  nuclei rescaling and no compact reference profile is built in S1. Full `scripts/check.sh` green (33 current
+  targets/branches). Next = S2.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

@@ -508,6 +508,22 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   hypothesis-generating because additive run-index sensitivity weakens them. Kinase prose MUST keep "24M bulk
   hippocampus, not microglia-sorted" + genotype-blocked run-order caveats.
 
+## GeoMx spatial DE + decon preflight (P4-S1, built) -- `R/crossmodality.R` -> `geomx_de`
+- GeoMx object default assay is SCT; `geomx_count_matrix()` ALWAYS reads `RNA` / `counts` explicitly. Live RNA count
+  layer is count-like but not fully integer (351 non-integer entries, max residue ~0.5) -> provenance records residues
+  and leaves the numeric matrix unrounded. Empty genes drop before edgeR; live kept-feature DE input = 19,963 genes.
+- `geomx_meta()` standardises AOI rows aligned to counts: genotype, slide=`slide_rep`, `bio_unit=genotype:bio_rep`,
+  roi/SampleID, ROI X/Y, Q3 factor, negative-probe background, nuclei. Live design = 91 AOIs / 15 bio-units / 4 slides.
+- `fit_geomx_de()` primary = edgeR TMM + limma-voom, `~0 + genotype + slide` fixed-effect design, robust eBayes,
+  canonical 5 contrasts, `duplicateCorrelation(block=bio_unit)`. Sensitivities stored separately: same AOI-level
+  slide-fixed fit without blocking, and bio-unit-collapsed counts with genotype-only design if full-rank. Live S1:
+  primary warning-clean, 19,959 genes kept, duplicateCorrelation consensus small positive; both sensitivities fit.
+  Later report claims should privilege primary; unblocked-only signals are downgraded.
+- Decon preflight ONLY records feasibility; it does not install/load/run SpatialDecon. Live status = `defer`:
+  SpatialDecon is pinned-repo available and Q3/background fields are usable, but nuclei has 42 `-1` sentinels
+  (absolute nuclei rescaling disabled) and no compact reference profile was built in S1. S3 may attempt beta/log-
+  abundance decon only after building a compact profile and passing the collinearity gate.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

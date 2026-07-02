@@ -163,7 +163,7 @@ Each step is one closing unit. Resuming mid-plan: read this plan's Scope + your
 step + `.agent/memory.md` relevant sections + files named in the step. Run
 `scripts/check.sh` unless explicitly docs-only.
 
-### S1 - GeoMx DE + deconvolution preflight [OPEN]
+### S1 - GeoMx DE + deconvolution preflight [DONE]
 Add `R/crossmodality.R` and `tests/test_crossmodality.R` with GeoMx helpers.
 Add `geomx_de` target. Do not install `SpatialDecon` in this step; record
 pinned-repo availability and data/reference feasibility in the preflight
@@ -192,7 +192,14 @@ Acceptance:
 - If decon status is not `earned`, the reason is specific enough for report text.
 - `scripts/check.sh` green.
 
-### S2 - Bulk proteome + corrected phospho [PENDING]
+Outcome:
+- Built `R/crossmodality.R`, `tests/test_crossmodality.R`, and `geomx_de`.
+- Live primary fit = slide-fixed voom/TMM + duplicateCorrelation(block=`genotype:bio_rep`);
+  unblocked and bio-unit-collapsed sensitivities both fit.
+- Decon preflight = `defer`: `SpatialDecon` is pinned-repo available and Q3/background data are usable,
+  but nuclei sentinels disable absolute rescaling and no compact reference profile is built in S1.
+
+### S2 - Bulk proteome + corrected phospho [OPEN]
 Add targets: `proteome_de_24m`, `phospho_corrected_24m`, and
 `bulk_omics_summary`.
 
