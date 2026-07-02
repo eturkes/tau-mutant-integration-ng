@@ -106,8 +106,10 @@ along a homeostatic->DAM activation ordering. Built `microglia_trajectory`, `tra
 - PRIMARY INFERENCE: collapse on-lineage cells to 16 genotype_batch units -> existing factorial design
   (9 residual df), ordinary weighted limma t (no eBayes), 5 canonical contrasts. Three-channel Kitagawa/Oaxaca
   decomposition splits mean pseudotime into composition / progression / cross on raw additive pt scale; primary
-  family = {progression_cf, within_homeostatic}. Freedman-Lane replicate permutation = sensitivity, not nominal-
-  exact. REJECTED: cell-level progression tests as primary (pseudoreplication), condiments/tradeSeq as inferential
+  family = {progression_cf, within_homeostatic}. Shared weights preserve exact reconstruction; `mean_pt` is
+  composition-confounded/exploratory for the distinct P2 question, so a positive mean-position interaction alone
+  would overclaim progression. Freedman-Lane replicate permutation = sensitivity, not nominal-exact. REJECTED:
+  cell-level progression tests as primary (pseudoreplication), condiments/tradeSeq as inferential
   factorial tools, 2-channel decomposition, logit/asin decomposition.
 - SUPPORTIVE ARM: glmmTMB beta GLMM on per-cell pt01 with batch fixed + `(1|unit)`, graceful degrade to rank-normal
   LMM or recorded failed result. It corroborates the position shift only; because it models per-cell position, it is
@@ -124,7 +126,8 @@ along a homeostatic->DAM activation ordering. Built `microglia_trajectory`, `tra
   Prose and headline numbers are inline-computed. `trajectory_report_data` guards every nested field the qmd reads
   and intentionally fails on non-finite inference rows rather than printing NaN. Dropped redundant
   `trd$decomposition` output after review; loadings live in provenance and per-channel coefs live in the interaction
-  table.
+  table. S4b review specifically hardened absence/rate wording, failed-GLMM provenance, reconstruction/loadings
+  guards, and stale hardcodes.
 
 Verification (honest): S1-S4b each smoke-tested on live cached data, fresh leaf builds were forced where the gate
 would otherwise stay cached (`trajectory_progression`, `trajectory_glmm_sensitivity`, `trajectory_report`), and
