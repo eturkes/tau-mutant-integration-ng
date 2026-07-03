@@ -936,9 +936,10 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   list them in `report_extra_files` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
   (device font); `theme_tau()` installs muted ggplot discrete defaults for generic `scale_*_discrete()`
-  calls, genotype scales use a stable manual muted palette, and continuous heatmap/score fills use the
-  softened shared RWB helper (`scale_fill_rwb` / `scale_colour_rwb`: blue lows, white midpoint, red highs;
-  signed panels with midpoint=0). Figures stay decoupled from the HTML chrome + warning-free.
+  calls, genotype scales use a stable manual muted palette, microglia-substate scales pin DAM=red and
+  IFN=orange wherever `substate` is mapped, and continuous heatmap/score fills use the softened shared
+  RWB helper (`scale_fill_rwb` / `scale_colour_rwb`: blue lows, white midpoint, red highs; signed panels
+  with midpoint=0). Figures stay decoupled from the HTML chrome + warning-free.
 - Theme-CSS DETECTION gotcha: with an `@font-face url()` in the theme, Quarto URL-encodes the WHOLE compiled
   theme CSS into a `data:text/css,...` URI -> to verify embedding, match ENCODED tokens (`#B0344D`->`%23B0344D`,
   woff2 magic -> `d09GMg`); RAW `.count` reads ~0 theme-side and URLdecoding the ~1MB blob is very slow. Figures

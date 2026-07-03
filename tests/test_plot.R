@@ -1,10 +1,10 @@
 # S4 acceptance: plot layer. Device-free structural checks on the shared ggplot helpers -- no
 # graphics device is opened and nothing is drawn. Verifies theme_tau is a ggplot theme, the
 # genotype colour/fill scales pin a muted project palette + domain, the generic ggplot
-# discrete defaults inherit the same muted palette after theme_tau(), the US-spelling alias is
-# the same function, and concordance_plot assembles the expected layered ggplot (dropping
-# non-finite rows, reporting correlations) without rendering. Mirrors the stopifnot idiom of
-# the other tests/test_*.R.
+# discrete defaults inherit the same muted palette after theme_tau(), microglia-substate scales
+# keep DAM red + IFN orange, the US-spelling aliases are the same functions, and
+# concordance_plot assembles the expected layered ggplot (dropping non-finite rows, reporting
+# correlations) without rendering. Mirrors the stopifnot idiom of the other tests/test_*.R.
 
 source("R/constants.R")
 source("R/utils.R")
@@ -41,6 +41,23 @@ stopifnot(
   identical(sc_default$fallback_palette(4), tau_discrete_colours[1:4]),
   identical(sf_default$fallback_palette(4), tau_discrete_colours[1:4]),
   identical(scale_color_genotype, scale_colour_genotype)                          # US-spelling alias = same fn
+)
+
+# --- substate scales: DAM red, IFN orange, canonical domain pinned ----------------------
+ss_c <- scale_colour_substate(breaks = c("Homeostatic", "DAM", "IFN"))
+ss_f <- scale_fill_substate(breaks = c("DAM", "IFN"))
+stopifnot(
+  identical(substate_colours,
+            c(Homeostatic = "#4C78A8", DAM = "#C44E52",
+              IFN = "#F58518", Proliferative = "#B279A2")),
+  identical(ss_c$aesthetics, "colour"), identical(ss_f$aesthetics, "fill"),
+  identical(ss_c$limits, microglia_substate_levels),
+  identical(ss_f$limits, microglia_substate_levels),
+  identical(ss_c$breaks, c("Homeostatic", "DAM", "IFN")),
+  identical(ss_f$breaks, c("DAM", "IFN")),
+  identical(ss_c$palette(length(microglia_substate_levels)), substate_colours),
+  identical(ss_f$palette(length(microglia_substate_levels)), substate_colours),
+  identical(scale_color_substate, scale_colour_substate)
 )
 
 # --- RWB heatmap scales: blue-low / red-high helpers for sequential + signed panels ----

@@ -26,6 +26,13 @@ genotype_colours <- c(
   NLGF_P301S  = "#C44E52"
 )
 
+substate_colours <- c(
+  Homeostatic   = "#4C78A8",
+  DAM           = "#C44E52",
+  IFN           = "#F58518",
+  Proliferative = "#B279A2"
+)
+
 set_tau_plot_defaults <- function() {
   options(
     ggplot2.discrete.colour = tau_discrete_scale_types,
@@ -65,6 +72,18 @@ scale_fill_genotype <- function(...) {
                              breaks = genotype_levels, drop = FALSE, ...)
 }
 scale_color_genotype <- scale_colour_genotype   # US-spelling alias
+
+# Microglia-substate colour/fill scales: keep DAM red and IFN orange wherever
+# coherent substates are mapped. `breaks=` can be narrowed to present_sub in a qmd.
+scale_colour_substate <- function(..., breaks = microglia_substate_levels) {
+  ggplot2::scale_colour_manual(values = substate_colours, limits = microglia_substate_levels,
+                               breaks = breaks, drop = FALSE, ...)
+}
+scale_fill_substate <- function(..., breaks = microglia_substate_levels) {
+  ggplot2::scale_fill_manual(values = substate_colours, limits = microglia_substate_levels,
+                             breaks = breaks, drop = FALSE, ...)
+}
+scale_color_substate <- scale_colour_substate
 
 # RWB heatmap scales: blue lows, white midpoint, red highs. `midpoint=NULL` maps
 # the observed continuous range; signed effects pass `midpoint=0` so zero is white.

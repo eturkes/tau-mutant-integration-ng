@@ -176,7 +176,7 @@ p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
 ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
   facet_grid(substate ~ genotype, scales = "free_y") +
-  scale_fill_discrete(guide = "none") +
+  scale_fill_substate(guide = "none") +
   labs(x = "activation pseudotime", y = "nuclei per bin",
        title = "Pseudotime density by genotype and substate") +
   theme(panel.grid.minor = element_blank(),

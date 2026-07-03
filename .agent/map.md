@@ -38,8 +38,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free; installs
       muted ggplot discrete defaults for the render session) + manual muted scale_colour/fill_genotype
-      (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) + softened RWB continuous heatmap
-      scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass midpoint=0) +
+      (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate
+      scales (DAM=red, IFN=orange) + softened RWB continuous heatmap scales (`scale_fill_rwb`,
+      `scale_colour_rwb`; signed panels pass midpoint=0) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +

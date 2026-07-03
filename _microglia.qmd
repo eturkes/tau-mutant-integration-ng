@@ -182,7 +182,7 @@ ggplot(mf_board, aes(status, panel, fill = status)) +
 #| fig-alt: "Two UMAP panels show primary substate labels and DAM activation score."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
-  scale_colour_discrete(breaks = present_sub, name = "substate") +
+  scale_colour_substate(breaks = present_sub, name = "substate") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
   labs(x = "UMAP 1", y = "UMAP 2", title = "Primary substate")
 
@@ -203,7 +203,7 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.18, alpha = 0.55) +
   facet_wrap(~ genotype, ncol = 2) +
-  scale_colour_discrete(breaks = present_sub, name = "substate") +
+  scale_colour_substate(breaks = present_sub, name = "substate") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
   labs(x = "UMAP 1", y = "UMAP 2", title = "Substates by genotype") +
   theme(panel.grid = element_blank())
@@ -239,7 +239,7 @@ prop_df$substate <- factor(as.character(prop_df$substate), levels = present_sub)
 
 p_prop <- ggplot(prop_df, aes(genotype, Freq, fill = substate)) +
   geom_col() +
-  scale_fill_discrete(breaks = present_sub, name = "substate") +
+  scale_fill_substate(breaks = present_sub, name = "substate") +
   labs(x = NULL, y = "proportion of microglia", title = "Substate composition") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
@@ -261,7 +261,7 @@ p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
 ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   geom_col(width = 0.78) +
   facet_grid(. ~ genotype) +
-  scale_fill_discrete(breaks = present_sub, name = "substate") +
+  scale_fill_substate(breaks = present_sub, name = "substate") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
   labs(x = "batch", y = "within-unit proportion", title = "Substate composition at replicate-unit resolution") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
@@ -299,7 +299,7 @@ if (!is.null(comp$sccomp)) {
     geom_vline(xintercept = 0, colour = "grey70") +
     geom_pointrange(aes(xmin = c_lower, xmax = c_upper),
                     position = position_dodge(width = 0.6)) +
-    scale_colour_discrete(name = "substate") +
+    scale_colour_substate(breaks = c("Homeostatic", "DAM"), name = "substate") +
     labs(x = "effect on logit proportion (sccomp c_effect)", y = NULL,
          title = "Composition effects across contrasts")
 } else {
@@ -308,7 +308,7 @@ if (!is.null(comp$sccomp)) {
   ggplot(fdf, aes(t, contrast, fill = substate)) +
     geom_vline(xintercept = 0, colour = "grey70") +
     geom_col(position = position_dodge(width = 0.6), width = 0.6) +
-    scale_fill_discrete(name = "substate") +
+    scale_fill_substate(breaks = c("Homeostatic", "DAM"), name = "substate") +
     labs(x = "propeller t-statistic", y = NULL,
          title = "Composition effects across contrasts (propeller)")
 }
@@ -354,7 +354,7 @@ ggplot(vol, aes(logFC, neglog10p, colour = gene_class)) +
   geom_vline(xintercept = c(-lfc, lfc), linetype = "dashed", colour = "grey70") +
   ggrepel::geom_text_repel(data = lab, aes(label = symbol), size = 3,
                            max.overlaps = Inf, seed = 42L) +
-  scale_colour_discrete(name = NULL) +
+  scale_colour_manual(values = c(other = "grey65", `DAM marker` = substate_colours[["DAM"]]), name = NULL) +
   labs(x = "log2 fold-change (NLGF_P301S vs P301S)", y = "-log10 p-value",
        title = "Amyloid-driven DAM programme")
 ```
