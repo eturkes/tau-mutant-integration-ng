@@ -932,7 +932,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   0 external). The 9 woff2 are COMMITTED (assets/fonts/; avoid direct reads via `AGENTS.md` read economy);
   list them in `report_extra_files` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
-  (device font) so figures stay decoupled from this chrome + warning-free.
+  (device font) and ggplot default data colours, so figures stay decoupled from this chrome + warning-free.
 - Theme-CSS DETECTION gotcha: with an `@font-face url()` in the theme, Quarto URL-encodes the WHOLE compiled
   theme CSS into a `data:text/css,...` URI -> to verify embedding, match ENCODED tokens (`#B0344D`->`%23B0344D`,
   woff2 magic -> `d09GMg`); RAW `.count` reads ~0 theme-side and URLdecoding the ~1MB blob is very slow. Figures

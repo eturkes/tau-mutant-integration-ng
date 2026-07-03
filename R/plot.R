@@ -1,9 +1,9 @@
-# Shared ggplot2 plotting layer: a project base theme, genotype colour/fill scales, and the
-# cross-modality concordance scatter. Pure functions consumed by P1+ analysis chapters. All
+# Shared ggplot2 plotting layer: a project base theme, default genotype colour/fill scales,
+# and the cross-modality concordance scatter. Pure functions consumed by P1+ analysis chapters. All
 # ggplot2/ggrepel/stats calls are namespace-qualified so the file sources cleanly into any
 # session (targets attaches only `quarto`; a Quarto chunk may attach ggplot2 for inline
-# plotting -- these helpers need neither). The genotype palette lives in R/constants.R; the
-# HTML report identity (IBM Plex + crimson) lives in theme.scss, decoupled from these panels.
+# plotting -- these helpers need neither). Plot data colours use ggplot defaults; the HTML
+# report identity (IBM Plex + crimson) lives in theme.scss, decoupled from these panels.
 
 # Project base theme. base_family defaults to "" (device default sans) on purpose: a named
 # family (e.g. "IBM Plex Sans") not registered with the graphics device warns at draw time and
@@ -21,18 +21,18 @@ theme_tau <- function(base_size = 11, base_family = "") {
     )
 }
 
-# Genotype colour/fill scales: map the canonical 4 genotypes to their fixed palette
-# (R/constants.R genotype_colours). limits/breaks = genotype_levels pin all four genotypes into
-# the domain and legend even when a subset is plotted (drop = FALSE alone does so only for a
-# complete factor); `...` forwards name/labels/guide to the underlying manual scale. The data
-# column must be a factor/character over genotype_levels.
+# Genotype colour/fill scales: use ggplot's default discrete scheme while pinning the
+# canonical 4-genotype domain and legend order. limits/breaks = genotype_levels include all
+# genotypes even when a subset is plotted (drop = FALSE alone does so only for a complete
+# factor); `...` forwards name/labels/guide to the underlying discrete scale. The data column
+# must be a factor/character over genotype_levels.
 scale_colour_genotype <- function(...) {
-  ggplot2::scale_colour_manual(values = genotype_colours, limits = genotype_levels,
-                               breaks = genotype_levels, drop = FALSE, ...)
+  ggplot2::scale_colour_discrete(limits = genotype_levels, breaks = genotype_levels,
+                                 drop = FALSE, ...)
 }
 scale_fill_genotype <- function(...) {
-  ggplot2::scale_fill_manual(values = genotype_colours, limits = genotype_levels,
-                             breaks = genotype_levels, drop = FALSE, ...)
+  ggplot2::scale_fill_discrete(limits = genotype_levels, breaks = genotype_levels,
+                               drop = FALSE, ...)
 }
 scale_color_genotype <- scale_colour_genotype   # US-spelling alias
 
@@ -52,7 +52,7 @@ concordance_plot <- function(df, x_col, y_col, label_col = "gene",
     ggplot2::geom_vline(xintercept = 0, colour = "grey70") +
     ggplot2::geom_point(alpha = 0.3, size = 0.6) +
     # formula spelt out -> silence geom_smooth()'s default-formula message (keeps render logs clean)
-    ggplot2::geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "#1f77b4") +
+    ggplot2::geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
     ggrepel::geom_text_repel(data = top, ggplot2::aes(label = .data[[label_col]]),
                              size = 3, max.overlaps = 50) +
     ggplot2::labs(

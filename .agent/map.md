@@ -29,7 +29,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        -> sccomp cross-check arm; absent -> propeller-only (fresh clone still green)
   - tar_option_set(packages="quarto", memory="transient", garbage_collection=TRUE, trust_timestamps=TRUE)
   - tar_source("R")                                     # loads every R/*.R pure fn
-  R/ pure fns (S2): constants.R (genotype_levels/colours, contrast_definitions, marker lists,
+  R/ pure fns (S2): constants.R (genotype_levels, contrast_definitions, marker lists,
       rbc_marker_symbols, data_paths) | utils.R (`%||%`, write_tsv_safe) | io.R (loaders) | spine.R
    + (S3) design.R: factorial_design (treatment ~tau+nlgf+tau_nlgf[+batch]) + make_contrast_matrix
       (cell-means ~0+genotype) -> the 5 canonical contrasts; two equivalent parameterisations |
@@ -37,7 +37,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       subset pre-aggregation), fit_limma_voom (voomWQW default + confint) / fit_limma_log (log-intensity),
       median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free) +
-      scale_colour/fill_genotype (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) +
+      default ggplot scale_colour/fill_genotype (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +

@@ -1,18 +1,10 @@
-# Project constants: factor levels, colours, contrast definitions, canonical marker
+# Project constants: factor levels, contrast definitions, canonical marker
 # lists, RBC-contamination markers, and raw-data paths. Sourced first by tar_source();
 # downstream R/ files + targets read these symbols. Values carried byte-exact from v1
-# (genotype labels, hex colours, marker sets are load-bearing -- do not let them drift).
+# (genotype labels and marker sets are load-bearing -- do not let them drift).
 
 # Canonical genotype order -> factor levels everywhere downstream (MAPTKI = reference).
 genotype_levels <- c("MAPTKI", "P301S", "NLGF_MAPTKI", "NLGF_P301S")
-
-# Per-genotype colours (hex; carried from the v1 bslib palette).
-genotype_colours <- c(
-  MAPTKI      = "#7FA8C1",
-  P301S       = "#B295C1",
-  NLGF_MAPTKI = "#E08754",
-  NLGF_P301S  = "#B0344D"
-)
 
 # Pairwise contrasts (numerator, denominator) driving the divergence narrative. The 5th
 # canonical contrast `interaction` = (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI) is a

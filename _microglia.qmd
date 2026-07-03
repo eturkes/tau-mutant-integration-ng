@@ -25,10 +25,8 @@ mf_board <- mf$summary_board
 mf_board$panel <- factor(mf_board$panel, levels = rev(mf_board$panel))
 mf_board$status <- factor(mf_board$status, levels = c("descriptive", "available"))
 
-# substate colours reuse the genotype palette hues -> cohesive with the report identity.
-sub_cols <- c(Homeostatic = "#7FA8C1", DAM = "#B0344D", IFN = "#E08754",
-              Proliferative = "#6BAF7F", ambiguous = "grey70", unassigned = "grey85")
-present_sub <- intersect(names(sub_cols), as.character(unique(cf$substate)))
+substate_levels <- c(microglia_substate_levels, "ambiguous", "unassigned")
+present_sub <- intersect(substate_levels, as.character(unique(cf$substate)))
 cf$substate <- factor(as.character(cf$substate), levels = present_sub)
 ctr_levels <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
 ctr_labels <- c(
@@ -38,7 +36,6 @@ ctr_labels <- c(
   tau_in_nlgf = "tau in NLGF",
   interaction = "tau x amyloid"
 )
-score_cols <- c(Homeostatic = "#3F5A6B", DAM = "#B0344D", MHC_APC = "#6B7A3F")
 score_labels <- c(Homeostatic = "homeostatic", DAM = "DAM", MHC_APC = "MHC-APC")
 fmt_contrast <- function(x, rev = FALSE) {
   lv <- if (rev) rev(ctr_levels) else ctr_levels
@@ -146,7 +143,7 @@ names(audit_total)[2] <- "n_cells"
 audit_status <- unique(mf$substate_fit_audit$fit_status[c("substate", "status", "reason")])
 mf_audit <- Reduce(function(x, y) merge(x, y, by = "substate", all = TRUE, sort = FALSE),
                    list(audit_min, audit_total, audit_status))
-mf_audit$substate <- factor(mf_audit$substate, levels = names(sub_cols))
+mf_audit$substate <- factor(mf_audit$substate, levels = microglia_substate_levels)
 mf_audit$status <- factor(mf_audit$status, levels = c("fit", "skipped"))
 mf_ss_counts <- mf$substate_de_volcano$counts
 mf_ss_counts <- mf_ss_counts[mf_ss_counts$substate %in% c("Homeostatic", "DAM"), , drop = FALSE]
@@ -170,7 +167,7 @@ mf_ss_signed$direction <- factor(mf_ss_signed$direction, levels = c("down", "up"
 ggplot(mf_board, aes(status, panel, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = slot), size = 3.1) +
-  scale_fill_manual(values = c(descriptive = "#B7A06A", available = "#6B7A3F"), guide = "none") +
+  scale_fill_discrete(guide = "none") +
   labs(x = NULL, y = NULL, title = "Microglia evidence board") +
   theme(panel.grid = element_blank())
 ```
@@ -185,13 +182,13 @@ ggplot(mf_board, aes(status, panel, fill = status)) +
 #| fig-alt: "Two UMAP panels show primary substate labels and DAM activation score."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
-  scale_colour_manual(values = sub_cols, breaks = present_sub, name = "substate") +
+  scale_colour_discrete(breaks = present_sub, name = "substate") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
   labs(x = "UMAP 1", y = "UMAP 2", title = "Primary substate")
 
 p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
   geom_point(size = 0.25, alpha = 0.6) +
-  scale_colour_gradient(low = "grey85", high = "#B0344D", name = "DAM z") +
+  scale_colour_continuous(name = "DAM z") +
   labs(x = "UMAP 1", y = "UMAP 2", title = "DAM activation score")
 
 (p_sub | p_dam)
@@ -206,7 +203,7 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.18, alpha = 0.55) +
   facet_wrap(~ genotype, ncol = 2) +
-  scale_colour_manual(values = sub_cols, breaks = present_sub, name = "substate") +
+  scale_colour_discrete(breaks = present_sub, name = "substate") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
   labs(x = "UMAP 1", y = "UMAP 2", title = "Substates by genotype") +
   theme(panel.grid = element_blank())
@@ -221,8 +218,7 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
   geom_point(aes(size = pmin(n, 6)), shape = 15, alpha = 0.85) +
   facet_wrap(~ score_name, nrow = 1) +
-  scale_colour_gradient2(low = "#3F5A6B", mid = "grey92", high = "#B0344D",
-                         midpoint = 0, name = "mean z") +
+  scale_colour_continuous(name = "mean z") +
   scale_size_continuous(range = c(0.4, 1.4), guide = "none") +
   labs(x = "UMAP 1", y = "UMAP 2", title = "Signature gradients across the microglia manifold") +
   theme(panel.grid = element_blank())
@@ -243,7 +239,7 @@ prop_df$substate <- factor(as.character(prop_df$substate), levels = present_sub)
 
 p_prop <- ggplot(prop_df, aes(genotype, Freq, fill = substate)) +
   geom_col() +
-  scale_fill_manual(values = sub_cols, breaks = present_sub, name = "substate") +
+  scale_fill_discrete(breaks = present_sub, name = "substate") +
   labs(x = NULL, y = "proportion of microglia", title = "Substate composition") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
@@ -265,7 +261,7 @@ p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
 ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   geom_col(width = 0.78) +
   facet_grid(. ~ genotype) +
-  scale_fill_manual(values = sub_cols, breaks = present_sub, name = "substate") +
+  scale_fill_discrete(breaks = present_sub, name = "substate") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
   labs(x = "batch", y = "within-unit proportion", title = "Substate composition at replicate-unit resolution") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
@@ -303,7 +299,7 @@ if (!is.null(comp$sccomp)) {
     geom_vline(xintercept = 0, colour = "grey70") +
     geom_pointrange(aes(xmin = c_lower, xmax = c_upper),
                     position = position_dodge(width = 0.6)) +
-    scale_colour_manual(values = sub_cols[c("Homeostatic", "DAM")], name = "substate") +
+    scale_colour_discrete(name = "substate") +
     labs(x = "effect on logit proportion (sccomp c_effect)", y = NULL,
          title = "Composition effects across contrasts")
 } else {
@@ -312,7 +308,7 @@ if (!is.null(comp$sccomp)) {
   ggplot(fdf, aes(t, contrast, fill = substate)) +
     geom_vline(xintercept = 0, colour = "grey70") +
     geom_col(position = position_dodge(width = 0.6), width = 0.6) +
-    scale_fill_manual(values = sub_cols[c("Homeostatic", "DAM")], name = "substate") +
+    scale_fill_discrete(name = "substate") +
     labs(x = "propeller t-statistic", y = NULL,
          title = "Composition effects across contrasts (propeller)")
 }
@@ -327,11 +323,7 @@ if (!is.null(comp$sccomp)) {
 ggplot(mf_conc, aes(contrast, substate, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_text(aes(label = label), size = 3) +
-  scale_fill_manual(
-    values = c(`primary up` = "#B0344D", `primary down` = "#3F5A6B",
-               `not significant` = "#D8D8D8", `method flag` = "#B7A06A"),
-    name = "primary call"
-  ) +
+  scale_fill_discrete(name = "primary call") +
   labs(x = NULL, y = NULL, title = "Composition calls are concordant where the DAM conclusion rests") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid = element_blank())
@@ -352,15 +344,17 @@ vol$neglog10p <- -log10(pmax(vol$P.Value, 1e-300))               # cap guards a 
 dam_ens <- unique(symbol_map$ensembl[match(canonical_microglia_markers$DAM, symbol_map$symbol)])
 dam_ens <- dam_ens[!is.na(dam_ens)]
 vol$is_dam <- vol$gene %in% dam_ens
+vol$gene_class <- factor(ifelse(vol$is_dam, "DAM marker", "other"),
+                         levels = c("other", "DAM marker"))
 lab <- vol[vol$is_dam & vol$adj.P.Val < fdr & abs(vol$logFC) > lfc, ]
 lab <- lab[order(lab$adj.P.Val), ][seq_len(min(12L, nrow(lab))), , drop = FALSE]
 
-ggplot(mapping = aes(logFC, neglog10p)) +
-  geom_point(data = vol[!vol$is_dam, ], colour = "grey80", size = 0.5, alpha = 0.5) +
-  geom_point(data = vol[vol$is_dam, ], colour = "#B0344D", size = 1.6) +
+ggplot(vol, aes(logFC, neglog10p, colour = gene_class)) +
+  geom_point(size = 0.6, alpha = 0.55) +
   geom_vline(xintercept = c(-lfc, lfc), linetype = "dashed", colour = "grey70") +
-  ggrepel::geom_text_repel(data = lab, aes(label = symbol), colour = "#B0344D",
-                           size = 3, max.overlaps = Inf, seed = 42L) +
+  ggrepel::geom_text_repel(data = lab, aes(label = symbol), size = 3,
+                           max.overlaps = Inf, seed = 42L) +
+  scale_colour_discrete(name = NULL) +
   labs(x = "log2 fold-change (NLGF_P301S vs P301S)", y = "-log10 p-value",
        title = "Amyloid-driven DAM programme")
 ```
@@ -385,7 +379,7 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
     box.padding = 0.15
   ) +
   facet_wrap(~ contrast, ncol = 3) +
-  scale_fill_gradient(low = "grey94", high = "#B0344D", name = "log10(n + 1)") +
+  scale_fill_continuous(name = "log10(n + 1)") +
   labs(x = "log2 fold-change", y = "-log10 p-value",
        title = "Whole-microglia DE across all contrasts") +
   theme(panel.grid = element_blank())
@@ -403,9 +397,9 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 #| fig-alt: "Bar plot marks substates that pass or miss the replicate-unit cell floor."
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
   geom_col(width = 0.68) +
-  geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#B0344D") +
+  geom_hline(yintercept = pbs$min_cells, linetype = "dashed") +
   geom_text(aes(label = status), vjust = -0.35, size = 3) +
-  scale_fill_manual(values = c(fit = "#6B7A3F", skipped = "#B7A06A"), guide = "none") +
+  scale_fill_discrete(guide = "none") +
   labs(x = NULL, y = "minimum cells per replicate unit",
        title = "Substate fits are limited by replicate-unit cell floors") +
   theme(panel.grid.major.x = element_blank())
@@ -421,7 +415,7 @@ ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
   geom_hline(yintercept = 0, colour = "grey65") +
   geom_col(width = 0.72) +
   facet_wrap(~ substate, nrow = 1) +
-  scale_fill_manual(values = c(down = "#3F5A6B", up = "#B0344D"), name = "direction") +
+  scale_fill_discrete(name = "direction") +
   labs(x = NULL, y = "signed FDR < 0.10 gene count",
        title = "Within-substate expression shifts keep the amyloid programme visible") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),

@@ -36,9 +36,6 @@ fmt_contrast <- function(x, rev = FALSE) {
   lv <- if (rev) rev(ctr_levels) else ctr_levels
   factor(x, levels = lv, labels = unname(ctr_labels[lv]))
 }
-tr_sub_cols <- c(Homeostatic = "#7FA8C1", DAM = "#B0344D", IFN = "#E08754",
-                 Proliferative = "#6BAF7F")
-
 # ALL headline numbers inline-computed from the loaded target -> they track the actual cached build
 # (R4.6 re-baseline; the per-channel p-values and loadings are drift-prone), never hardcoded.
 int_mpt  <- irow("mean_pt")                          # interaction on mean position
@@ -78,7 +75,7 @@ cond$`omitted %` <- round(100 * (1 - cond$n_on_lineage / cond$n_cells), 1)
 tr_pt <- trf$pt_density
 tr_pt$genotype <- factor(as.character(tr_pt$genotype), levels = genotype_levels)
 tr_pt$substate <- factor(as.character(tr_pt$substate),
-                         levels = intersect(names(tr_sub_cols), as.character(unique(tr_pt$substate))))
+                         levels = intersect(microglia_substate_levels, as.character(unique(tr_pt$substate))))
 tr_unit <- trf$unit_pt_vs_dam
 tr_unit$genotype <- factor(as.character(tr_unit$genotype), levels = genotype_levels)
 tr_unit$batch <- factor(as.character(tr_unit$batch), levels = sort(unique(tr_unit$batch), method = "radix"))
@@ -132,8 +129,7 @@ method_status$status <- factor(method_status$status,
 ggplot(tr_logic, aes(status, endpoint, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = label), size = 3.2, lineheight = 0.9) +
-  scale_fill_manual(values = c(context = "#D8D8D8", supported = "#B0344D",
-                               `not supported` = "#3F5A6B"), guide = "none") +
+  scale_fill_discrete(guide = "none") +
   labs(x = NULL, y = NULL, title = "Trajectory inference logic") +
   theme(panel.grid = element_blank())
 ```
@@ -164,7 +160,7 @@ ov$is_int   <- ov$contrast == "interaction"
 p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
   geom_vline(xintercept = 0, colour = "grey70") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r)) +
-  scale_colour_manual(values = c(`FALSE` = "grey40", `TRUE` = "#B0344D"), guide = "none") +
+  scale_colour_discrete(guide = "none") +
   labs(x = "interaction effect on mean pseudotime", y = NULL,
        title = "Genotype effects on position")
 
@@ -180,7 +176,7 @@ p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
 ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
   facet_grid(substate ~ genotype, scales = "free_y") +
-  scale_fill_manual(values = tr_sub_cols, guide = "none") +
+  scale_fill_discrete(guide = "none") +
   labs(x = "activation pseudotime", y = "nuclei per bin",
        title = "Pseudotime density by genotype and substate") +
   theme(panel.grid.minor = element_blank(),
@@ -204,7 +200,7 @@ fd$sig   <- fd$ci_l > 0 | fd$ci_r < 0                            # 95% CI exclud
 p_forest <- ggplot(fd, aes(coef, label, colour = sig)) +
   geom_vline(xintercept = 0, colour = "grey70") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r)) +
-  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#B0344D"), guide = "none") +
+  scale_colour_discrete(guide = "none") +
   labs(x = "interaction effect (pseudotime units)", y = NULL, title = "Interaction by channel")
 
 ld <- data.frame(
@@ -214,8 +210,7 @@ ld <- data.frame(
 p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
   geom_col(width = 0.7) +
   geom_hline(yintercept = 0, colour = "grey50") +
-  scale_fill_manual(values = c(composition = "#B0344D", progression = "#7FA8C1",
-                               cross = "grey70"), guide = "none") +
+  scale_fill_discrete(guide = "none") +
   labs(x = NULL, y = "loading (fraction of position interaction)",
        title = "Decomposition loadings")
 
@@ -253,13 +248,13 @@ p_all_channels <- ggplot(tr_forest, aes(coef, contrast_label, colour = significa
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.35) +
   facet_wrap(~ measure_label, nrow = 1) +
-  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#B0344D"), guide = "none") +
+  scale_colour_discrete(guide = "none") +
   labs(x = "effect on pseudotime position", y = NULL, title = "Overall and within-state rows")
 
 p_decomp <- ggplot(decomp_rows, aes(coef, channel, colour = sig)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.45) +
-  scale_colour_manual(values = c(`FALSE` = "grey55", `TRUE` = "#B0344D"), guide = "none") +
+  scale_colour_discrete(guide = "none") +
   labs(x = "interaction effect", y = NULL, title = "Interaction decomposition")
 
 p_all_channels | p_decomp
@@ -277,7 +272,7 @@ p_all_channels | p_decomp
 #| fig-alt: "Binned scatter shows positive concordance between slingshot pseudotime and marker score-axis."
 ggplot(on, aes(pt_raw, score_axis_pt)) +
   geom_bin2d(bins = 60) +
-  scale_fill_gradient(low = "grey88", high = "#3F5A6B", name = "nuclei", transform = "log10") +
+  scale_fill_continuous(name = "nuclei", transform = "log10") +
   labs(x = "activation pseudotime", y = "marker score-axis (DAM - homeostatic)",
        title = sprintf("Pseudotime vs marker score-axis (rho = %.2f)", prov$concordance_rho))
 ```
@@ -289,7 +284,7 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| fig-cap: "Refits are stable and lineage omission is low across genotypes."
 #| fig-alt: "Bar and point panels show stable refits and low lineage omission by genotype."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
-  geom_col(fill = "#3F5A6B", width = 0.66) +
+  geom_col(width = 0.66) +
   geom_text(aes(label = sprintf("%.3f", spearman_vs_primary)), vjust = -0.35, size = 3) +
   coord_cartesian(ylim = c(0.95, 1.01)) +
   labs(x = NULL, y = "Spearman vs primary", title = "Pseudotime refit concordance") +
@@ -316,11 +311,7 @@ p_sens | p_omit
 ggplot(method_status, aes(status, check, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = label), size = 3, lineheight = 0.9) +
-  scale_fill_manual(
-    values = c(pass = "#6B7A3F", context = "#D8D8D8", `position only` = "#B7A06A",
-               flag = "#E08754", failed = "#3F5A6B"),
-    guide = "none"
-  ) +
+  scale_fill_discrete(guide = "none") +
   labs(x = NULL, y = NULL, title = "Trajectory method status") +
   theme(panel.grid = element_blank())
 ```

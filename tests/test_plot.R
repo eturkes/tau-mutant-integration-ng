@@ -1,6 +1,6 @@
 # S4 acceptance: plot layer. Device-free structural checks on the shared ggplot helpers -- no
 # graphics device is opened and nothing is drawn. Verifies theme_tau is a ggplot theme, the
-# genotype colour/fill scales pin the canonical palette + domain, the US-spelling alias is the same
+# genotype colour/fill scales use ggplot defaults while pinning the canonical domain, the US-spelling alias is the same
 # function, and concordance_plot assembles the expected layered ggplot (dropping non-finite rows,
 # reporting correlations) without rendering. Mirrors the stopifnot idiom of the other tests/test_*.R.
 
@@ -17,15 +17,17 @@ stopifnot(inherits(theme_tau(), "theme"), inherits(theme_tau(), "gg"),
           inherits(theme_tau(base_size = 14, base_family = "serif"), "theme"),
           theme_tau(base_size = 14)$text$size == 14)   # base_size plumbs through (value, not just class)
 
-# --- genotype scales: aesthetics + domain pinned to the canonical four ------------------
+# --- genotype scales: ggplot defaults + domain pinned to the canonical four -------------
 sc <- scale_colour_genotype()
 sf <- scale_fill_genotype()
+sc_default <- ggplot2::scale_colour_discrete()
+sf_default <- ggplot2::scale_fill_discrete()
 stopifnot(
   identical(sc$aesthetics, "colour"), identical(sf$aesthetics, "fill"),
   identical(sc$limits, genotype_levels), identical(sc$breaks, genotype_levels),  # all 4 in domain + legend
   identical(sf$limits, genotype_levels), identical(sf$breaks, genotype_levels),
-  identical(sc$palette(length(genotype_levels)), genotype_colours),               # exact palette values (named)
-  identical(sf$palette(length(genotype_levels)), genotype_colours),
+  identical(sc$fallback_palette(length(genotype_levels)), sc_default$fallback_palette(length(genotype_levels))),
+  identical(sf$fallback_palette(length(genotype_levels)), sf_default$fallback_palette(length(genotype_levels))),
   identical(scale_color_genotype, scale_colour_genotype)                          # US-spelling alias = same fn
 )
 

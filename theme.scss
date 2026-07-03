@@ -1,8 +1,8 @@
 /*-- scss:defaults --*/
-// Report visual identity (Quarto Bootstrap theme; supersedes the dropped _brand.yml). Carries the
-// v1 bslib palette: crimson (== genotype NLGF_P301S, R/constants.R) drives primary + links; steel
-// tints inline code (a darkened MAPTKI blue, deliberately != the link colour). IBM Plex is the
-// typeface -- Sans body, Serif headings, Mono code; the 9 woff2 in assets/fonts/ are base64-inlined
+// Report visual identity (Quarto Bootstrap theme; supersedes the dropped _brand.yml). Crimson
+// drives primary + links; steel tints inline code. These chrome colours stay decoupled from
+// plot data colours, which use ggplot defaults. IBM Plex is the typeface -- Sans body, Serif
+// headings, Mono code; the 9 woff2 in assets/fonts/ are base64-inlined
 // by Quarto under embed-resources (each @font-face url() resolves relative to this file at the
 // project root). The ggplot panels keep the device-default font (R/plot.R theme_tau base_family "")
 // so figures stay decoupled from this HTML chrome and warning-free.

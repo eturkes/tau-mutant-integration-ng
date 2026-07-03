@@ -204,12 +204,7 @@ mech_board$status <- factor(mech_board$status,
 ggplot(mech_board, aes(status, mechanism, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = source_slot), size = 3) +
-  scale_fill_manual(
-    values = c(context = "#D8D8D8", `focused support` = "#B0344D",
-               discordant = "#B7A06A", `not supported` = "#3F5A6B",
-               `open caveat` = "#E08754"),
-    guide = "none"
-  ) +
+  scale_fill_discrete(guide = "none") +
   labs(x = NULL, y = NULL, title = "Mechanism evidence board") +
   theme(panel.grid = element_blank())
 ```
@@ -233,8 +228,7 @@ ggplot(proj_plot, aes(contrast, pathway_label, fill = NES)) +
   geom_tile(colour = "white", linewidth = 0.4) +
   geom_point(data = proj_plot[proj_plot$padj < alpha, , drop = FALSE],
              shape = 21, size = 2, stroke = 0.3, fill = "white", colour = "grey20") +
-  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D", midpoint = 0,
-                       name = "NES") +
+  scale_fill_continuous(name = "NES") +
   labs(x = NULL, y = NULL, title = "Project gene-set activity")
 ```
 
@@ -249,8 +243,7 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
   geom_point(data = m_project[m_project$fdr < alpha, , drop = FALSE],
              shape = 21, size = 1.8, stroke = 0.3, fill = "white", colour = "grey20") +
   facet_wrap(~ population_label, nrow = 1) +
-  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
-                       midpoint = 0, name = "NES") +
+  scale_fill_continuous(name = "NES") +
   labs(x = NULL, y = NULL, title = "Project gene sets across RNA populations") +
   theme(axis.text.x = element_text(angle = 35, hjust = 1),
         panel.grid = element_blank())
@@ -265,8 +258,7 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
 ggplot(go_select, aes(contrast, pathway_label)) +
   geom_point(aes(size = size, colour = NES, alpha = supported)) +
   facet_wrap(~ population_label, nrow = 1, scales = "free_y") +
-  scale_colour_gradient2(low = "#3F5A6B", mid = "grey88", high = "#B0344D",
-                         midpoint = 0, name = "NES") +
+  scale_colour_continuous(name = "NES") +
   scale_alpha_manual(values = c(`FALSE` = 0.45, `TRUE` = 1), guide = "none") +
   scale_size_continuous(range = c(1.4, 4.2), name = "set size") +
   labs(x = NULL, y = NULL, title = "Top GO rows by population and contrast") +
@@ -296,7 +288,7 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_point(size = 2.2) +
   facet_wrap(~ population, scales = "free_y") +
-  scale_colour_manual(values = c(`FALSE` = "grey35", `TRUE` = "#B0344D"), guide = "none") +
+  scale_colour_discrete(guide = "none") +
   labs(x = "ULM activity score", y = NULL, title = "Interaction TF activity")
 ```
 
@@ -311,8 +303,7 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
   geom_segment(aes(x = 0, xend = score, yend = source), linewidth = 0.45) +
   geom_point(aes(shape = supported), size = 2.2) +
   facet_grid(population_label ~ contrast) +
-  scale_colour_manual(values = c(Myc = "#B0344D", `NF-kB family` = "#3F5A6B"),
-                      name = NULL) +
+  scale_colour_discrete(name = NULL) +
   scale_shape_manual(values = c(`FALSE` = 1, `TRUE` = 16), name = "FDR < 0.10") +
   labs(x = "ULM activity score", y = NULL,
        title = "Myc and NF-kB-family TF activities") +
@@ -330,10 +321,9 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
 ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_tile(data = nf_plot[nf_plot$primary_test, , drop = FALSE],
-            fill = NA, colour = "#B0344D", linewidth = 1) +
+            fill = NA, colour = "black", linewidth = 1) +
   geom_text(aes(label = tile_label), size = 2.7, lineheight = 0.9) +
-  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
-                       midpoint = 0, name = "score") +
+  scale_fill_continuous(name = "score") +
   labs(x = NULL, y = NULL,
        title = paste("NF-kB attenuation gate:", nf_status)) +
   theme(panel.grid = element_blank())
@@ -353,8 +343,7 @@ ggplot(kin_plot, aes(contrast, source, fill = score)) +
              shape = 21, size = 2.1, stroke = 0.35, fill = "white", colour = "grey20") +
   geom_point(data = kin_plot[kin_plot$run_supported, , drop = FALSE],
              shape = 4, size = 2.6, stroke = 0.8, colour = "black") +
-  scale_fill_gradient2(low = "#3F5A6B", mid = "white", high = "#B0344D",
-                       midpoint = 0, name = "ULM score") +
+  scale_fill_continuous(name = "ULM score") +
   labs(x = NULL, y = NULL,
        title = "Kinase activity and run-index sensitivity") +
   theme(axis.text.x = element_text(angle = 35, hjust = 1),
