@@ -340,16 +340,6 @@ stopifnot(all(c("modality_table", "genotype_batch", "depth_distribution",
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")
 
-rv <- report_visual_data(data.frame(component = "R", version = "test"),
-                         qc, mf, tf, mecf, cmf)
-stopifnot("report_spine_schematic" %in% names(rv),
-          !"synthesis" %in% rv$report_spine_schematic$nodes$node,
-          all(c("inputs", "qc", "microglia", "trajectory", "mechanism",
-                "crossmodality", "environment") %in% rv$report_spine_schematic$nodes$node),
-          rv$source_target_contract$n_manifest_slots[
-            rv$source_target_contract$target == "report_visuals"] > 0L)
-cat("ok - report_visual_data builds overview spine without synthesis chapter dependency\n")
-
 replacement_manifest <- utils::read.delim(".agent/prose_replacement_manifest.tsv",
                                           stringsAsFactors = FALSE, check.names = FALSE)
 coverage <- visual_slot_coverage(replacement_manifest)

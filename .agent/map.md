@@ -218,10 +218,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       crossmodality_figure_data. Builders emit qmd-ready slots, finite geom guards, and pre-binned/top-row
       reductions for heavy shapes (whole/substate volcanoes, GeoMx volcanoes, raw-vs-corrected phospho) so
       later qmd chunks tar_load compact figure targets rather than raw/heavy analysis tables.
-   + (Prose-to-figures S2) figures.R: visual_reduction_slot_map + visual_slot_coverage + qc_figure_data +
-      report_visual_data. Adds compact visual-grammar contracts without qmd rewrites: QC slots from already
-      materialised modality targets, report-spine slot from compact report/figure bundles, and alias board slots
-      inside the existing chapter figure targets. Coverage test =
+   + (Prose-to-figures S2) figures.R: visual_reduction_slot_map + visual_slot_coverage + qc_figure_data.
+      Adds compact visual-grammar contracts without qmd rewrites: QC slots from already materialised modality
+      targets and alias board slots inside the existing chapter figure targets. Coverage test =
       every S1 manifest `figure`/`schematic` slot has a compact source.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
@@ -275,12 +274,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m)  # Figure expansion S1 + Prose-to-figures S2: GeoMx/phospho heavy tables reduced to binned/top-row plot data + status/count aliases; ~60KB qs live
-  - Report overview visuals:
-       report_visuals <- report_visual_data(spine, qc_figures, microglia_figures, trajectory_figures, mechanism_figures, crossmodality_figures)  # visual spine + manifest/source-target contract; no synthesis_report dependency
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
-            -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; S3 overview setup
-                tar_loads compact `report_visuals` -> `fig-report-spine-schematic` visual report spine)
+            -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
+                immediately includes report chapters)
                                                           --{{< include >}}--> `_qc.qmd`
                (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
                 modalities + sample_key -> dims, 16x16 design bijection, bounds)

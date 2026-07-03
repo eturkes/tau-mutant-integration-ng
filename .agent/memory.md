@@ -686,16 +686,16 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   report uses P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance,
   not as a stand-alone microglial kinase or spatial-abundance claim.
 
-## Report synthesis removal (2026-07-03)
-- User rejected the top-level synthesis section as useless. Current report order =
-  Overview -> QC -> Microglia -> Trajectory -> Mechanism -> Cross-modality.
+## Report top-section removal (2026-07-03)
+- User rejected the top-level synthesis section and then the overview. Current
+  report order = QC -> Microglia -> Trajectory -> Mechanism -> Cross-modality.
 - Removed the unused layer, not just the include: `_synthesis.qmd`,
   `R/synthesis.R`, `tests/test_synthesis.R`, and the `synthesis_report` target are
-  gone. `report_visuals` now depends on `spine` + compact chapter figure targets
-  only; it emits the overview spine + manifest/source-target contract.
-- Report TOC has no synthesis-labelled section. Mechanism/Cross-modality tail
-  headings were renamed to status headings. Future report summary should live in
-  chapter boards/captions, not a separate synthesis chapter.
+  gone. The overview body and its `report_visuals` target/helper/manifest slot
+  are also gone. `index.qmd` now only carries YAML and includes.
+- Report TOC has no synthesis-labelled or overview section. Mechanism/Cross-
+  modality tail headings were renamed to status headings. Future summary should
+  live in chapter boards/captions, not a separate top section.
 
 ## Figure expansion data contract (S1, built) -- `R/figures.R` -> `*_figures`
 - `figure_manifest()` pins the 25 inline figure contract with hyphenated `fig-*` ids (no underscores) and maps
@@ -778,16 +778,14 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   sections present, lightbox markers present, 0 external resource refs, and 0
   warning/error markers. Full `scripts/check.sh` stayed green after the forced render.
 
-## Prose-to-figures visual contract (S2, built) -- `R/figures.R` -> `qc_figures` / `report_visuals`
+## Prose-to-figures visual contract (S2, built; top-section slots removed 2026-07-03) -- `R/figures.R` -> `qc_figures`
 - Purpose = data contract only for the aggressive prose-reduction pass; no qmd
   prose rewrites yet and no new biological inference. `visual_reduction_slot_map`
   maps every S1 manifest target slot to a compact source target/slot, and
   `visual_slot_coverage(.agent/prose_replacement_manifest.tsv)` must report
   `n_missing=0` for `figure`/`schematic` dispositions before S3/S4 rewrites.
-- New compact targets: `qc_figures` (modality table, GeoMx genotype tally,
-  genotype-batch grid, depth/fraction histograms, metric bounds, audit notes)
-  and `report_visuals` (report spine schematic incl. Mermaid text plus
-  source-target contract). Live build sizes are tiny.
+- Compact QC target: `qc_figures` (modality table, GeoMx genotype tally,
+  genotype-batch grid, depth/fraction histograms, metric bounds, audit notes).
 - Existing chapter figure targets gained alias/board slots without heavy reads:
   `microglia_figures` adds summary board, composition shift/forest, amyloid
   volcano alias; `trajectory_figures` adds pseudotime-shift bundle,
@@ -795,20 +793,18 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   board, project-set and interaction-TF aliases; `crossmodality_figures` adds
   status board plus GeoMx/bulk count and axis aliases. These slots exist to let
   S3/S4 move prose into figures/captions without recomputing in qmd chunks.
-- Test contract: `tests/test_figures.R` now covers compact QC/report-visual
-  builders, per-chapter alias slots, manifest coverage, and finite geom guards.
-  Real build command used for S2: `Rscript -e 'targets::tar_make(c(qc_figures, report_visuals))'`.
+- Test contract: `tests/test_figures.R` now covers compact QC builders,
+  per-chapter alias slots, manifest coverage, and finite geom guards.
+  Real build command: `Rscript -e 'targets::tar_make(qc_figures)'`.
 
-## Prose-to-figures overview conversion (S3, built; synthesis part removed 2026-07-03) -- `index.qmd`
-- Current `index.qmd` tar_loads compact `report_visuals` and draws
-  `fig-report-spine-schematic` from `report_visuals$report_spine_schematic`.
-  The former `_synthesis.qmd` conversion and `fig-synthesis-*` panels were
-  deleted with the top-level synthesis section.
-- Current prose inventory: no `_synthesis.qmd`; `index.qmd` has 3 blocks / 16
-  counted words, and the full report source inventory has 1,135 counted words.
-- Claim guard: overview panels are compact-target-derived from `report_visuals`;
-  unsupported/not-earned/open-caveat states remain visible in the relevant
-  result chapters rather than a separate synthesis page.
+## Prose-to-figures top-section removal (2026-07-03) -- `index.qmd`
+- Current `index.qmd` has no human-facing blocks. It carries YAML only, then
+  includes `_qc.qmd`, `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`, and
+  `_crossmodality.qmd`.
+- Current prose inventory: no `_synthesis.qmd`; `index.qmd` has 0 blocks / 0
+  counted words, and the full report source inventory has 1,119 counted words.
+- Claim guard: unsupported/not-earned/open-caveat states remain visible in the
+  relevant result chapters rather than a separate top section.
 - Render gotcha: ggplot2 4.x deprecates `geom_label(label.size=)`; use
   `linewidth=` because report chunks run under `options(warn=2)`.
 

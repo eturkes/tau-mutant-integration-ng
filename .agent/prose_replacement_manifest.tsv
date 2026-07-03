@@ -1,7 +1,4 @@
 qmd	block_id	line	kind	section	words	disposition	target_slot	label	text
-index.qmd	index-001-h1-overview	14	h1	Overview	1	keep	section-nav	.	Overview
-index.qmd	index-002-paragraph-visual-first-report-qc-first-result-chapters-after	62	paragraph	Overview	7	schematic	fig-report-spine-schematic	.	Visual-first report: QC first, result chapters after.
-index.qmd	index-003-caption-report-spine-compact-targets-feed-the-visual-audit	68	caption	Overview	8	caption	fig-report-spine-schematic	fig-report-spine-schematic	Report spine: compact targets feed the visual audit.
 _qc.qmd	qc-001-h1-quality-control	1	h1	Quality control	2	keep	section-nav	.	Quality control
 _qc.qmd	qc-002-paragraph-this-chapter-is-a-sanity-pass-over-the	3	paragraph	Quality control	92	collapsed_audit	collapsed-qc-audit	.	This chapter is a sanity pass over the four loaded modalities. It confirms that each target materialises at the expected shape, that the single-nucleus microglia carry a fully-crossed genotype-by-batch design, and that their per-nucleus quality metrics sit inside predeclared physical bounds. No reprocessing happens here: clustering, substate assignment and differential expression arrive in later phases. The bounds below are definitional rails (a count is at least one, a percentage lies in nought to a hundred), not analysis thresholds, so a breach signals a load or computation fault and stops the render.
 _qc.qmd	qc-003-h2-modalities-loaded	28	h2	Modalities loaded	2	keep	section-nav	.	Modalities loaded

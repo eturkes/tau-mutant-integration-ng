@@ -241,15 +241,6 @@ list(
                                        phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
-  # --- report overview visuals ---
-  # Compact visual grammar for the rendered overview. Depends on the compact chapter figure
-  # bundles so source/manifest drift invalidates the rendered report without loading heavy data.
-  tar_target(report_visuals,
-             report_visual_data(spine, qc_figures,
-                                microglia_figures, trajectory_figures,
-                                mechanism_figures, crossmodality_figures),
-             format = "qs"),
-
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
   # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
   # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing

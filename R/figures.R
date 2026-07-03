@@ -88,7 +88,6 @@ figure_manifest <- function(chapter = NULL) {
 visual_reduction_slot_map <- function(disposition = NULL) {
   out <- data.frame(
     manifest_slot = c(
-      "fig-report-spine-schematic",
       "qc-modality-table",
       "fig-qc-genotype-batch",
       "fig-qc-depth",
@@ -139,7 +138,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "collapsed-trajectory-audit"
     ),
     target = c(
-      "report_visuals",
       "qc_figures",
       "qc_figures",
       "qc_figures",
@@ -190,7 +188,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "trajectory_figures"
     ),
     slot = c(
-      "report_spine_schematic",
       "modality_table",
       "genotype_batch",
       "depth_distribution",
@@ -241,7 +238,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "logic_board"
     ),
     disposition = c(
-      "figure;schematic",
       "figure",
       "figure;caption",
       "figure;caption",
@@ -462,68 +458,6 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   .fig_assert_finite(out$depth_distribution, c("x_mid", "n"), "qc depth_distribution")
   .fig_assert_finite(out$fraction_distribution, c("x_mid", "n"), "qc fraction_distribution")
   .fig_assert_finite(out$metric_bounds, c("lower", "obs_min", "obs_max", "n_na"), "qc metric_bounds")
-  out
-}
-
-report_visual_data <- function(spine, qc_figures, microglia_figures, trajectory_figures,
-                               mechanism_figures, crossmodality_figures) {
-  stopifnot(is.data.frame(spine), is.list(qc_figures), is.list(microglia_figures),
-            is.list(trajectory_figures),
-            is.list(mechanism_figures), is.list(crossmodality_figures))
-
-  nodes <- data.frame(
-    node = c("inputs", "qc", "microglia", "trajectory", "mechanism",
-             "crossmodality", "environment"),
-    label = c("4 modalities", "QC", "microglia state", "trajectory",
-              "mechanism", "cross-modality", "pinned env"),
-    kind = c("input", "gate", "chapter", "chapter", "chapter", "chapter",
-             "reproducibility"),
-    stringsAsFactors = FALSE
-  )
-  edges <- data.frame(
-    from = c("inputs", "inputs", "microglia", "microglia", "trajectory",
-             "mechanism", "environment"),
-    to = c("qc", "microglia", "trajectory", "mechanism", "crossmodality",
-           "crossmodality", "qc"),
-    relation = c("loaded by", "state inference", "composition question",
-                 "candidate mechanisms", "interaction resolution", "mechanism status",
-                 "reproducibility gate"),
-    stringsAsFactors = FALSE
-  )
-  mermaid <- paste(
-    "flowchart LR",
-    "  inputs[4 modalities] --> qc[QC gates]",
-    "  inputs --> microglia[microglia state]",
-    "  microglia --> trajectory[composition vs progression]",
-    "  microglia --> mechanism[mechanism tests]",
-    "  trajectory --> crossmodality[cross-modality audit]",
-    "  mechanism --> crossmodality",
-    "  environment[pinned rv/uv/targets/Quarto] --> qc",
-    sep = "\n"
-  )
-
-  slot_map <- visual_reduction_slot_map()
-  out <- list(
-    manifest = slot_map,
-    report_spine_schematic = list(nodes = nodes, edges = edges, mermaid = mermaid),
-    source_target_contract = data.frame(
-      target = c("report_visuals", "qc_figures", "microglia_figures", "trajectory_figures",
-                 "mechanism_figures", "crossmodality_figures"),
-      qmd_safe = TRUE,
-      n_manifest_slots = as.integer(table(factor(slot_map$target,
-                                                 levels = c("report_visuals", "qc_figures",
-                                                            "microglia_figures", "trajectory_figures",
-                                                            "mechanism_figures",
-                                                            "crossmodality_figures")))),
-      stringsAsFactors = FALSE
-    ),
-    provenance = list(
-      source_targets = c("spine", "qc_figures", "microglia_figures", "trajectory_figures",
-                         "mechanism_figures", "crossmodality_figures"),
-      spine_rows = nrow(spine),
-      contract = "visual grammar and manifest coverage over compact report/figure targets"
-    )
-  )
   out
 }
 

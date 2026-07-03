@@ -41,7 +41,6 @@ HTML_RE = re.compile(r"<[^>]+>")
 
 
 SECTION_SLOTS = {
-    ("index.qmd", "Overview"): "fig-report-spine-schematic",
     ("_qc.qmd", "Quality control"): "collapsed-qc-audit",
     ("_qc.qmd", "Modalities loaded"): "qc-modality-table",
     ("_qc.qmd", "snRNAseq microglia: design balance"): "fig-qc-genotype-batch",
@@ -219,8 +218,6 @@ def disposition(block: Block) -> tuple[str, str]:
         return "collapsed_audit", slot
     if "spatialdecon" in text_l or "blocked" in text_l or "not called" in text_l:
         return "figure", slot
-    if block.qmd == "index.qmd":
-        return "schematic", slot
     if "sanity" in block.section.lower() or "quality control" in block.section.lower() or "sanity" in text_l:
         return "collapsed_audit", slot
     if "this section" in text_l or "this chapter" in text_l:

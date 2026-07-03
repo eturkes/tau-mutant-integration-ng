@@ -630,12 +630,12 @@ before opening a plan.
   history.md; archived plan -> `.agent/completed/prose_to_figures_plan_2026-07-03.md`;
   reset Active plan to none. Next = PLAN only after user confirms a new roadmap
   unit.
-- 2026-07-03 Report synthesis section REMOVED by direct user request. Deleted
-  `_synthesis.qmd`, `R/synthesis.R`, `tests/test_synthesis.R`, and the
-  `synthesis_report` target; `report_visuals` now drives only the overview
-  spine + manifest/source-target contract and has no synthesis dependency.
-  `index.qmd` renders Overview -> QC -> result chapters, and local
-  mechanism/cross-modality "Synthesis" tails were renamed to status headings.
+- 2026-07-03 Report top sections REMOVED by direct user request. Deleted
+  `_synthesis.qmd`, `R/synthesis.R`, `tests/test_synthesis.R`, `synthesis_report`,
+  plus the Overview body, `report_visuals` target/helper, and report-spine manifest
+  slot. `index.qmd` is now YAML + includes only; rendered order is QC -> result
+  chapters. Local mechanism/cross-modality "Synthesis" tails were renamed to status
+  headings.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
