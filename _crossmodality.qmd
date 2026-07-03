@@ -89,7 +89,6 @@ run_index <- cmr$bulk$run_index
 decon <- cmr$clearance$spatial_decon
 pairs <- cmr$clearance$pair_support
 contrast_summary <- cmr$divergence$contrast_summary
-path_axis <- cmr$pathway$axis_summary
 
 geo_volc_bins <- cmf$geomx_volcano$bins
 geo_volc_bins$contrast <- plot_contrast(geo_volc_bins$contrast)
@@ -116,15 +115,6 @@ geo_sens_long <- rbind(
 geo_sens_long$metric <- factor(geo_sens_long$metric,
                                levels = c("lost from primary", "gained in sensitivity"))
 
-bulk_run_plot <- cmf$bulk_run_index
-bulk_run_plot$contrast <- plot_contrast(bulk_run_plot$contrast, levels = names(contrast_labels))
-bulk_run_plot$layer_label <- factor(layer_labels[bulk_run_plot$layer],
-                                    levels = unname(layer_labels))
-bulk_run_plot$cell_label <- ifelse(bulk_run_plot$n_primary_sig > 0,
-                                   paste0(bulk_run_plot$n_lost_or_flipped, "/",
-                                          bulk_run_plot$n_primary_sig),
-                                   "0/0")
-
 pc_bins <- cmf$phospho_raw_corrected$bins
 pc_bins$contrast <- plot_contrast(pc_bins$contrast)
 pc_bins$log_n <- log10(pc_bins$n + 1)
@@ -137,62 +127,6 @@ pc_lab <- do.call(rbind, lapply(split(pc_lab, pc_lab$contrast, drop = TRUE), fun
 }))
 pc_lab$contrast <- plot_contrast(pc_lab$contrast)
 pc_lab$site_label <- wrap_label(gsub("_", " ", pc_lab$site_id, fixed = TRUE), 14L)
-
-anchor_plot <- cmf$anchor_effect_heatmap
-anchor_plot <- anchor_plot[anchor_plot$contrast %in% names(contrast_labels), , drop = FALSE]
-anchor_plot$key <- paste(anchor_plot$layer, anchor_plot$contrast, anchor_plot$anchor_symbols,
-                         sep = "\r")
-anchor_plot <- anchor_plot[order(anchor_plot$key, anchor_plot$adj.P.Val, -abs(anchor_plot$t),
-                                 anchor_plot$feature, method = "radix", na.last = TRUE),
-                           , drop = FALSE]
-anchor_plot <- anchor_plot[!duplicated(anchor_plot$key), , drop = FALSE]
-anchor_plot$contrast <- plot_contrast(anchor_plot$contrast, levels = names(contrast_labels))
-anchor_plot$layer_label <- factor(layer_labels[anchor_plot$layer],
-                                  levels = unname(layer_labels))
-anchor_plot$anchor_label <- factor(anchor_plot$anchor_symbols,
-                                   levels = rev(sort(unique(anchor_plot$anchor_symbols),
-                                                     method = "radix")))
-anchor_plot$supported <- anchor_plot$adj.P.Val < alpha
-
-clear_plot <- cmf$clearance_pair_grid
-clear_plot <- clear_plot[clear_plot$contrast %in% focus, , drop = FALSE]
-clear_plot$contrast <- plot_contrast(clear_plot$contrast)
-clear_plot$pair_label <- factor(fmt_pair(clear_plot$pair),
-                                levels = rev(unique(fmt_pair(clear_plot$pair))))
-clear_plot$status_label <- factor(ifelse(clear_plot$status == "earned", "earned", "not earned"),
-                                  levels = c("not earned", "earned"))
-clear_plot$support_label <- ifelse(clear_plot$n_coherent_supported_modalities > 0,
-                                   clear_plot$n_coherent_supported_modalities, "")
-
-sym_all <- cmf$symbol_modality_matrix
-sym_all <- sym_all[sym_all$contrast %in% focus, , drop = FALSE]
-sym_rank <- do.call(rbind, lapply(split(sym_all, sym_all$symbol, drop = TRUE), function(d) {
-  data.frame(symbol = d$symbol[1L],
-             max_sig = max(d$n_modalities_sig, na.rm = TRUE),
-             max_present = max(d$n_modalities_present, na.rm = TRUE),
-             min_fdr = min(d$min_fdr, na.rm = TRUE),
-             max_rank = max(d$rank_score, na.rm = TRUE),
-             stringsAsFactors = FALSE)
-}))
-sym_rank <- sym_rank[order(-sym_rank$max_sig, sym_rank$min_fdr, -sym_rank$max_present,
-                           sym_rank$symbol, method = "radix", na.last = TRUE), , drop = FALSE]
-sym_keep <- head(sym_rank$symbol, 18L)
-sym_plot <- sym_all[sym_all$symbol %in% sym_keep, , drop = FALSE]
-sym_plot$contrast <- plot_contrast(sym_plot$contrast)
-sym_plot$symbol <- factor(sym_plot$symbol, levels = rev(sym_keep))
-sym_plot$dir_label <- ifelse(sym_plot$n_modalities_sig == 0, "0",
-                             ifelse(sym_plot$direction_call == "mixed", "mix",
-                                    ifelse(sym_plot$direction_call == "positive", "+", "-")))
-
-path_fig <- cmf$pathway_axis_heatmap
-path_fig <- path_fig[path_fig$contrast %in% focus, , drop = FALSE]
-path_fig$contrast <- plot_contrast(path_fig$contrast)
-path_fig$axis_label <- fmt_axis(path_fig$axis)
-path_fig$set_label <- short_label(path_fig$set, 34L)
-path_fig$set_label <- factor(path_fig$set_label, levels = rev(unique(path_fig$set_label)))
-path_fig$direction_label <- ifelse(path_fig$mixed_sign, "mix",
-                                   ifelse(path_fig$consistent_direction == "positive", "+",
-                                          ifelse(path_fig$consistent_direction == "negative", "-", "0")))
 
 geo_int <- one_row(geom_counts, geom_counts$contrast == "interaction", "GeoMx interaction counts")
 geo_amy_k <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_maptki", "GeoMx amyloid MAPTKI counts")
@@ -284,28 +218,6 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 } else {
   "DAM activation and synaptic suppression, with clearance kept descriptive"
 }
-cross_board <- cmf$status_board
-cross_board$axis <- factor(cross_board$axis, levels = rev(cross_board$axis))
-cross_board$status <- factor(cross_board$status,
-                             levels = c("corroborative", "focused support", "blocked",
-                                        "open caveat", "descriptive"))
-cross_board$label <- ifelse(is.finite(cross_board$n),
-                            paste0(cross_board$status, "\n", fmt_int(cross_board$n)),
-                            as.character(cross_board$status))
-```
-
-```{r}
-#| label: fig-crossmodality-status-board
-#| fig-width: 8.4
-#| fig-height: 3.4
-#| fig-cap: "Cross-modality status board: SpatialDecon blocked, CCC-lite focused."
-#| fig-alt: "Tile board summarises cross-modality corroboration, blocked SpatialDecon and caveats."
-ggplot(cross_board, aes(status, axis, fill = status)) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = label), size = 3, lineheight = 0.9) +
-  scale_fill_discrete(guide = "none") +
-  labs(x = NULL, y = NULL, title = "Cross-modality evidence board") +
-  theme(panel.grid = element_blank())
 ```
 
 ## GeoMx Spatial DE
@@ -430,21 +342,6 @@ ggplot(bp, aes(n_fdr_0_10, contrast, fill = layer)) +
 ```
 
 ```{r}
-#| label: fig-crossmodality-bulk-run-index
-#| fig-width: 9.2
-#| fig-height: 4.8
-#| fig-cap: "Run-index sensitivity downgrades many bulk hits."
-#| fig-alt: "Tile grid shows primary bulk hits lost or flipped under run-index adjustment."
-ggplot(bulk_run_plot, aes(contrast, layer_label, fill = loss_fraction)) +
-  geom_tile(colour = "white", linewidth = 0.45) +
-  geom_text(aes(label = cell_label), size = 3) +
-  scale_fill_rwb(limits = c(0, 1), name = "loss fraction") +
-  labs(x = NULL, y = NULL, title = "Bulk run-index sensitivity is load-bearing") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank())
-```
-
-```{r}
 #| label: fig-crossmodality-phospho-correction
 #| fig-width: 10
 #| fig-height: 7
@@ -473,99 +370,4 @@ ggplot(pc_bins) +
        y = "parent-corrected phosphosite log2 fold-change",
        title = "Parent correction changes phosphosite effect geometry") +
   theme(panel.grid = element_blank())
-```
-
-```{r}
-#| label: fig-crossmodality-anchor-heatmap
-#| fig-width: 10
-#| fig-height: 6
-#| fig-cap: "Bulk anchor rows are sparse and layer-dependent."
-#| fig-alt: "Heatmap shows sparse bulk anchor effects across layers and contrasts."
-ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
-  geom_tile(colour = "white", linewidth = 0.35) +
-  geom_point(data = anchor_plot[anchor_plot$supported, , drop = FALSE],
-             shape = 21, size = 1.9, stroke = 0.35, fill = "white", colour = "grey20") +
-  facet_wrap(~ layer_label, nrow = 1) +
-  scale_fill_rwb(name = "logFC", midpoint = 0) +
-  labs(x = NULL, y = NULL, title = "Bulk anchor rows are sparse and layer-dependent") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank())
-```
-
-## Spatial Composition And Clearance Axis
-
-```{r}
-#| label: fig-crossmodality-clearance-grid
-#| fig-width: 8.4
-#| fig-height: 3.8
-#| fig-cap: "CCC-lite earns focused measured support; full CCC is absent."
-#| fig-alt: "Tile grid shows measured clearance-pair support and absent full CCC."
-ggplot(clear_plot, aes(contrast, pair_label, fill = status_label)) +
-  geom_tile(colour = "white", linewidth = 0.5) +
-  geom_text(aes(label = support_label), size = 3.2) +
-  geom_point(data = clear_plot[clear_plot$microglia_strong, , drop = FALSE],
-             shape = 21, fill = "white", colour = "grey20", size = 2.1, stroke = 0.35) +
-  scale_fill_discrete(name = NULL) +
-  labs(x = NULL, y = NULL, title = "Measured clearance-pair support is focused") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank(),
-        legend.position = "bottom")
-```
-
-## Integrated Divergence
-
-```{r}
-#| label: fig-crossmodality-axis-heatmap
-#| fig-width: 9.2
-#| fig-height: 5.2
-#| fig-cap: "Axis-level support is descriptive and strongest in amyloid contrasts."
-#| fig-alt: "Tile grid shows descriptive pathway-axis support across focal contrasts."
-pa <- path_axis
-pa$contrast <- factor(pa$contrast, levels = focus, labels = contrast_labels[focus])
-pa$axis_label <- axis_labels[pa$axis]
-pa$axis_label[is.na(pa$axis_label)] <- pa$axis[is.na(pa$axis_label)]
-pa$axis_label <- factor(pa$axis_label, levels = rev(unique(pa$axis_label)))
-pa$direction_label <- ifelse(pa$mixed_sign, "mix",
-                             ifelse(pa$consistent_direction == "positive", "+",
-                                    ifelse(pa$consistent_direction == "negative", "-", "0")))
-
-ggplot(pa, aes(contrast, axis_label, fill = n_modalities_sig)) +
-  geom_tile(colour = "white", linewidth = 0.4) +
-  geom_text(aes(label = direction_label), size = 3) +
-  scale_fill_rwb(name = "sig modalities") +
-  labs(x = NULL, y = NULL, title = "Cross-modality axis support") +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
-```
-
-```{r}
-#| label: fig-crossmodality-symbol-matrix
-#| fig-width: 9.4
-#| fig-height: 7
-#| fig-cap: "Symbol matrix uses broad modality classes and keeps interaction nulls visible."
-#| fig-alt: "Tile matrix shows broad-modality support counts and direction calls for symbols."
-ggplot(sym_plot, aes(contrast, symbol, fill = n_modalities_sig)) +
-  geom_tile(colour = "white", linewidth = 0.35) +
-  geom_text(aes(label = dir_label), size = 2.8) +
-  scale_fill_rwb(breaks = 0:max(sym_plot$n_modalities_sig),
-                 name = "sig broad\nmodalities") +
-  labs(x = NULL, y = NULL, title = "Symbol-level evidence uses broad modality classes") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank())
-```
-
-```{r}
-#| label: fig-crossmodality-pathway-heatmap
-#| fig-width: 10
-#| fig-height: 7.2
-#| fig-cap: "Pathway-axis summaries are descriptive, not formal meta-analysis."
-#| fig-alt: "Faceted heatmap shows descriptive pathway set support and direction calls."
-ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
-  geom_tile(colour = "white", linewidth = 0.35) +
-  geom_text(aes(label = direction_label), size = 2.7) +
-  facet_wrap(~ axis_label, scales = "free_y", ncol = 2) +
-  scale_fill_rwb(breaks = 0:max(path_fig$n_modalities_sig),
-                 name = "sig broad\nmodalities") +
-  labs(x = NULL, y = NULL, title = "Pathway-axis support is strongest in amyloid contrasts") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank())
 ```

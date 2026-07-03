@@ -96,42 +96,6 @@ tr_sens$variant_label <- factor(tr_sens$variant_label,
 tr_lineage <- trf$trajectory_audit$lineage_per_unit
 tr_lineage$genotype <- factor(as.character(tr_lineage$genotype), levels = genotype_levels)
 tr_lineage$omitted_pct <- 100 * tr_lineage$omitted_frac
-tr_logic <- trf$logic_board
-tr_logic$endpoint <- factor(tr_logic$endpoint, levels = rev(tr_logic$endpoint))
-tr_logic$status <- factor(tr_logic$status, levels = c("context", "supported", "not supported"))
-tr_logic$label <- paste0(sprintf("%+.2f", tr_logic$coef), "\nFDR ", sprintf("%.2f", tr_logic$fdr))
-method_status <- data.frame(
-  check = c("lineage", "factorial", "per-cell"),
-  status = c(ifelse(isTRUE(prov$concordant), "pass", "flag"), "context",
-             ifelse(identical(glmm$method, "failed"), "failed", "position only")),
-  label = c(
-    sprintf("%s -> %s\nrho %.2f", prov$root_substate, prov$terminal_substate, prov$concordance_rho),
-    sprintf("%d units\n%d FL perms", nrow(trd$per_unit), prov$n_perm),
-    if (identical(glmm$method, "failed")) {
-      "failed\nsummary only"
-    } else {
-      sprintf("%s\n%+.2f", glmm$method, glmm$estimate)
-    }
-  ),
-  stringsAsFactors = FALSE
-)
-method_status$check <- factor(method_status$check, levels = rev(method_status$check))
-method_status$status <- factor(method_status$status,
-                               levels = c("pass", "context", "position only", "flag", "failed"))
-```
-
-```{r}
-#| label: fig-trajectory-logic-board
-#| fig-width: 7.8
-#| fig-height: 3
-#| fig-cap: "Logic board: composition supported; progression endpoints not supported."
-#| fig-alt: "Tile board shows composition supported while progression endpoints are not supported."
-ggplot(tr_logic, aes(status, endpoint, fill = status)) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = label), size = 3.2, lineheight = 0.9) +
-  scale_fill_discrete(guide = "none") +
-  labs(x = NULL, y = NULL, title = "Trajectory inference logic") +
-  theme(panel.grid = element_blank())
 ```
 
 ## Amyloid drives a large shift along the activation axis
@@ -260,8 +224,6 @@ p_decomp <- ggplot(decomp_rows, aes(coef, channel, colour = sig)) +
 p_all_channels | p_decomp
 ```
 
-## A per-cell model corroborates the position shift
-
 ## Reconciliation, robustness and concordance
 
 ```{r}
@@ -298,20 +260,4 @@ p_omit <- ggplot(tr_lineage, aes(genotype, omitted_pct, colour = genotype, group
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
 p_sens | p_omit
-```
-
-## Caveats and provenance
-
-```{r}
-#| label: fig-trajectory-method-status
-#| fig-width: 7.6
-#| fig-height: 2.7
-#| fig-cap: "Method board: lineage passes; per-cell fit is position-only."
-#| fig-alt: "Tile board shows lineage, factorial and per-cell model status."
-ggplot(method_status, aes(status, check, fill = status)) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = label), size = 3, lineheight = 0.9) +
-  scale_fill_discrete(guide = "none") +
-  labs(x = NULL, y = NULL, title = "Trajectory method status") +
-  theme(panel.grid = element_blank())
 ```

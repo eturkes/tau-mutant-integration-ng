@@ -8,13 +8,13 @@ contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "i
 focus <- c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
 
 manifest <- figure_manifest()
-stopifnot(nrow(manifest) == 25L,
+stopifnot(nrow(manifest) == 18L,
           !anyDuplicated(manifest$figure_id),
           all(grepl("^fig-", manifest$figure_id)),
           !any(grepl("_", manifest$figure_id, fixed = TRUE)),
           all(c("microglia", "trajectory", "mechanism", "crossmodality") %in%
                 manifest$chapter))
-cat("ok - figure_manifest pins 25 hyphenated inline figure ids\n")
+cat("ok - figure_manifest pins 18 hyphenated inline figure ids\n")
 
 symbol_map <- data.frame(
   ensembl = paste0("ENSMUSG", sprintf("%08d", 1:80)),
@@ -112,7 +112,7 @@ pb_de_substate <- list(
 mf <- microglia_figure_data(list(cell_frame = cf), composition_results,
                             pb_de_microglia, pb_de_substate, symbol_map)
 stopifnot(all(figure_manifest("microglia")$slot %in% names(mf)),
-          all(c("summary_board", "composition_shift", "composition_forest", "amyloid_volcano") %in% names(mf)),
+          all(c("composition_shift", "composition_forest", "amyloid_volcano") %in% names(mf)),
           nrow(mf$umap_by_substate) == nrow(cf),
           nrow(mf$score_triptych) > 0L,
           nrow(mf$unit_composition) == length(units16) * 3L,
@@ -177,7 +177,7 @@ trajectory_report <- list(
 )
 tf <- trajectory_figure_data(trajectory_report, composition_results)
 stopifnot(all(figure_manifest("trajectory")$slot %in% names(tf)),
-          all(c("pseudotime_shift", "decomposition", "concordance", "logic_board") %in% names(tf)),
+          all(c("pseudotime_shift", "decomposition", "concordance") %in% names(tf)),
           nrow(tf$pt_density) > 0L,
           all(is.finite(tf$unit_pt_vs_dam$dam_fraction)),
           all(c("comp_cf", "progression_cf", "cross") %in% tf$kitagawa_forest$measure))
@@ -228,9 +228,8 @@ mechanism_report$kinase$table$include_reason <- ifelse(mechanism_report$kinase$t
                                                        "gsk3b_carry", "significant")
 mecf <- mechanism_figure_data(mechanism_report)
 stopifnot(all(figure_manifest("mechanism")$slot %in% names(mecf)),
-          all(c("status_board", "project_sets", "tf_interaction") %in% names(mecf)),
+          all(c("project_pathway_heatmap", "tf_interaction") %in% names(mecf)),
           nrow(mecf$project_pathway_heatmap) > 0L,
-          nrow(mecf$nfkb_discordance$table) > 0L,
           any(mecf$kinase_heatmap$source == "Gsk3b"))
 cat("ok - mechanism_figure_data exposes supported and unsupported mechanism rows\n")
 
@@ -306,11 +305,10 @@ cmf <- crossmodality_figure_data(crossmodality_report, geomx_de, list(),
                                  list(top = make_top_site()),
                                  list(top = make_top_site(shift = 0.2)))
 stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
-          all(c("status_board", "geomx_counts", "bulk_counts", "axis_heatmap") %in% names(cmf)),
+          all(c("geomx_counts", "bulk_counts", "phospho_raw_corrected") %in% names(cmf)),
           nrow(cmf$geomx_volcano$bins) > 0L,
           nrow(cmf$geomx_sensitivity) == length(focus) * 2L,
-          nrow(cmf$phospho_raw_corrected$labels) > 0L,
-          all(is.finite(cmf$bulk_run_index$loss_fraction)))
+          nrow(cmf$phospho_raw_corrected$labels) > 0L)
 cat("ok - crossmodality_figure_data bins heavy contrasts into compact plotting tables\n")
 
 qc_md <- data.frame(

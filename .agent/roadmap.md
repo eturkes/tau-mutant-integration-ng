@@ -34,8 +34,8 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Figure-caption-only report
-(`.agent/completed/figure_caption_only_plan_2026-07-03.md`).
+user before writing a plan. Last closed = Box-figure curation (ad hoc,
+2026-07-03; supersedes the 48-figure caption-only surface with 31 curated figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -86,6 +86,12 @@ user before writing a plan. Last closed = Figure-caption-only report
   48 captions / 48 alt attributes, no visible body prose/tables/provenance/code
   UI, strict gate green, claim-parity review no accepted blockers, and full gate
   green.
+- Box-figure curation [DONE 2026-07-03]:
+  user feedback: too many figures were just boxes. Removed pure status/logic/
+  checklist/matrix figures from QC, result, mechanism, and cross-modality
+  chapters; retained data-rich journal-relevant plots. Rendered main path now has
+  31 figures / 31 captions, no removed-label hits, strict caption-only HTML QA
+  green, and full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -666,8 +672,8 @@ user before writing a plan. Last closed = Figure-caption-only report
   paragraph/list/table source blockers: headings + figure chunks/captions only.
   Removed chapter opener/status-tail prose from `_microglia.qmd`, `_trajectory.qmd`,
   `_mechanism.qmd`, `_crossmodality.qmd`; hid microglia sccomp diagnostics as a
-  render-fatal check; converted trajectory provenance/per-cell status to
-  `fig-trajectory-method-status`. Captions pass S3 rule (53 captions, max 12 words,
+  render-fatal check; converted trajectory provenance/per-cell status from stdout
+  into a figure later removed by curation. Captions pass S3 rule (53 captions, max 12 words,
   median 8). Strict rendered HTML is down to the known YAML author paragraph only;
   no result-body paragraphs, tables, text-only outputs, or stdout provenance remain.
   Full `scripts/check.sh` green. Next = S4 caption/alt/HTML QA + author metadata.
@@ -690,6 +696,18 @@ user before writing a plan. Last closed = Figure-caption-only report
   IDs, 0 external refs, 0 code UI. Full `scripts/check.sh` green. Archived plan
   to `.agent/completed/figure_caption_only_plan_2026-07-03.md`; reset Active plan
   to none. Next = PLAN only after user confirms a new roadmap direction.
+- 2026-07-03 Box-figure curation DONE (ad hoc user task): removed visible pure
+  box/status figures from the caption-only report even where that omits prepared
+  audit information. Dropped QC modality/design/bounds boxes, microglia summary +
+  composition-concordance tiles, trajectory logic/method boards, mechanism status/
+  project-set/NF-kB-discordance boxes, and cross-modality status/run-index/anchor/
+  clearance/integrated-divergence matrices. Retained 31 data-rich figures:
+  distributions, UMAPs, compositions, forests, volcanoes, densities, scatter,
+  dot/lollipop plots, and quantitative heatmaps. `figure_manifest()` now pins 18
+  curated expansion ids; `visual_slot_coverage()` accepts the empty figure/
+  schematic prose-replacement set after manifest regeneration. Strict rendered
+  HTML QA green (31 captions, 0 body prose/tables/stdout/text-only outputs,
+  0 removed-label hits); full `scripts/check.sh` green across 52 targets/branches.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

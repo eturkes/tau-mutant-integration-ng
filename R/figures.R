@@ -16,7 +16,6 @@ figure_manifest <- function(chapter = NULL) {
       "fig-microglia-score-triptych",
       "fig-microglia-unit-composition",
       "fig-microglia-score-distribution",
-      "fig-microglia-composition-concordance",
       "fig-microglia-whole-volcano",
       "fig-microglia-substate-audit",
       "fig-microglia-substate-volcano",
@@ -27,35 +26,28 @@ figure_manifest <- function(chapter = NULL) {
       "fig-mechanism-project-pathway",
       "fig-mechanism-go-dotplot",
       "fig-mechanism-tf-lollipop",
-      "fig-mechanism-nfkb-discordance",
       "fig-mechanism-kinase-heatmap",
       "fig-crossmodality-geomx-volcano",
       "fig-crossmodality-geomx-sensitivity",
-      "fig-crossmodality-bulk-run-index",
-      "fig-crossmodality-phospho-correction",
-      "fig-crossmodality-anchor-heatmap",
-      "fig-crossmodality-clearance-grid",
-      "fig-crossmodality-symbol-matrix",
-      "fig-crossmodality-pathway-heatmap"
+      "fig-crossmodality-phospho-correction"
     ),
     chapter = c(
-      rep("microglia", 8),
+      rep("microglia", 7),
       rep("trajectory", 4),
-      rep("mechanism", 5),
-      rep("crossmodality", 8)
+      rep("mechanism", 4),
+      rep("crossmodality", 3)
     ),
     target = c(
-      rep("microglia_figures", 8),
+      rep("microglia_figures", 7),
       rep("trajectory_figures", 4),
-      rep("mechanism_figures", 5),
-      rep("crossmodality_figures", 8)
+      rep("mechanism_figures", 4),
+      rep("crossmodality_figures", 3)
     ),
     slot = c(
       "umap_by_substate",
       "score_triptych",
       "unit_composition",
       "score_distribution",
-      "composition_concordance",
       "whole_de_volcano",
       "substate_fit_audit",
       "substate_de_volcano",
@@ -66,16 +58,10 @@ figure_manifest <- function(chapter = NULL) {
       "project_pathway_heatmap",
       "go_top_dotplot",
       "tf_lollipop",
-      "nfkb_discordance",
       "kinase_heatmap",
       "geomx_volcano",
       "geomx_sensitivity",
-      "bulk_run_index",
-      "phospho_raw_corrected",
-      "anchor_effect_heatmap",
-      "clearance_pair_grid",
-      "symbol_modality_matrix",
-      "pathway_axis_heatmap"
+      "phospho_raw_corrected"
     ),
     stringsAsFactors = FALSE
   )
@@ -86,209 +72,94 @@ figure_manifest <- function(chapter = NULL) {
 }
 
 visual_reduction_slot_map <- function(disposition = NULL) {
+  pinned <- figure_manifest()
   out <- data.frame(
+    manifest_slot = pinned$figure_id,
+    target = pinned$target,
+    slot = pinned$slot,
+    disposition = "figure;caption",
+    stringsAsFactors = FALSE
+  )
+  retained <- data.frame(
     manifest_slot = c(
-      "qc-modality-table",
-      "fig-qc-genotype-batch",
       "fig-qc-depth",
       "fig-qc-fractions",
-      "fig-microglia-summary-board",
       "fig-microglia-umap",
-      "fig-microglia-umap-substate",
-      "fig-microglia-score-triptych",
       "fig-microglia-composition-shift",
-      "fig-microglia-unit-composition",
-      "fig-microglia-score-distribution",
       "fig-microglia-composition-forest",
-      "fig-microglia-composition-concordance",
       "fig-microglia-amyloid-volcano",
-      "fig-microglia-whole-volcano",
-      "fig-microglia-substate-audit",
-      "fig-microglia-substate-volcano",
-      "fig-trajectory-logic-board",
+      "fig-microglia-dropout-audit",
       "fig-trajectory-pseudotime-shift",
-      "fig-trajectory-pt-density",
       "fig-trajectory-decomposition",
-      "fig-trajectory-kitagawa-forest",
-      "fig-trajectory-unit-pt-dam",
       "fig-trajectory-concordance",
-      "fig-trajectory-audit",
-      "fig-mechanism-status-board",
-      "fig-mechanism-project-sets",
-      "fig-mechanism-project-pathway",
-      "fig-mechanism-go-dotplot",
       "fig-mechanism-tf-interaction",
-      "fig-mechanism-tf-lollipop",
-      "fig-mechanism-nfkb-discordance",
-      "fig-mechanism-kinase-heatmap",
-      "fig-crossmodality-status-board",
       "fig-crossmodality-geomx-counts",
-      "fig-crossmodality-geomx-volcano",
-      "fig-crossmodality-geomx-sensitivity",
       "fig-crossmodality-bulk-counts",
-      "fig-crossmodality-bulk-run-index",
-      "fig-crossmodality-phospho-correction",
-      "fig-crossmodality-anchor-heatmap",
-      "fig-crossmodality-clearance-grid",
-      "fig-crossmodality-axis-heatmap",
-      "fig-crossmodality-symbol-matrix",
-      "fig-crossmodality-pathway-heatmap",
       "collapsed-qc-audit",
       "collapsed-microglia-audit",
-      "collapsed-trajectory-audit"
+      "collapsed-trajectory-audit",
+      "section-nav"
     ),
     target = c(
       "qc_figures",
       "qc_figures",
-      "qc_figures",
-      "qc_figures",
+      "microglia_report",
       "microglia_figures",
       "microglia_figures",
       "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "microglia_figures",
-      "trajectory_figures",
-      "trajectory_figures",
-      "trajectory_figures",
-      "trajectory_figures",
-      "trajectory_figures",
+      "microglia_report",
       "trajectory_figures",
       "trajectory_figures",
       "trajectory_figures",
       "mechanism_figures",
-      "mechanism_figures",
-      "mechanism_figures",
-      "mechanism_figures",
-      "mechanism_figures",
-      "mechanism_figures",
-      "mechanism_figures",
-      "mechanism_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
       "crossmodality_figures",
       "crossmodality_figures",
       "qc_figures",
-      "microglia_figures",
-      "trajectory_figures"
+      "microglia_report",
+      "trajectory_figures",
+      "report"
     ),
     slot = c(
-      "modality_table",
-      "genotype_batch",
       "depth_distribution",
       "fraction_distribution",
-      "summary_board",
-      "umap_by_substate",
-      "umap_by_substate",
-      "score_triptych",
+      "cell_frame",
       "composition_shift",
-      "unit_composition",
-      "score_distribution",
       "composition_forest",
-      "composition_concordance",
       "amyloid_volcano",
-      "whole_de_volcano",
-      "substate_fit_audit",
-      "substate_de_volcano",
-      "logic_board",
+      "prune",
       "pseudotime_shift",
-      "pt_density",
       "decomposition",
-      "kitagawa_forest",
-      "unit_pt_vs_dam",
       "concordance",
-      "trajectory_audit",
-      "status_board",
-      "project_sets",
-      "project_pathway_heatmap",
-      "go_top_dotplot",
       "tf_interaction",
-      "tf_lollipop",
-      "nfkb_discordance",
-      "kinase_heatmap",
-      "status_board",
       "geomx_counts",
-      "geomx_volcano",
-      "geomx_sensitivity",
       "bulk_counts",
-      "bulk_run_index",
-      "phospho_raw_corrected",
-      "anchor_effect_heatmap",
-      "clearance_pair_grid",
-      "axis_heatmap",
-      "symbol_modality_matrix",
-      "pathway_axis_heatmap",
       "audit_notes",
-      "summary_board",
-      "logic_board"
+      "prune",
+      "trajectory_audit",
+      "heading"
     ),
     disposition = c(
-      "figure",
-      "figure;caption",
-      "figure;caption",
-      "figure;caption",
-      "collapsed_audit",
-      "caption",
-      "figure;caption",
-      "figure;caption",
       "figure;caption",
       "figure;caption",
       "caption",
       "figure;caption",
       "figure;caption",
       "caption",
-      "figure;caption",
-      "figure;caption",
-      "figure;caption",
-      "figure;schematic",
-      "figure;caption",
-      "figure;caption",
-      "figure;caption",
-      "figure;caption",
-      "caption",
-      "figure;caption",
-      "figure;caption",
-      "figure;schematic",
-      "caption",
-      "figure;caption",
-      "figure;caption",
       "caption",
       "figure;caption",
       "figure;caption",
       "figure;caption",
-      "figure;collapsed_audit",
       "caption",
-      "figure;caption",
-      "figure;caption",
       "caption",
-      "caption;collapsed_audit",
-      "caption;collapsed_audit",
       "caption",
-      "figure;caption",
-      "caption",
-      "figure;caption",
-      "figure;caption",
       "collapsed_audit",
       "collapsed_audit",
-      "collapsed_audit"
+      "collapsed_audit",
+      "keep"
     ),
     stringsAsFactors = FALSE
   )
+  out <- rbind(out, retained)
   stopifnot(!anyDuplicated(out$manifest_slot))
   if (!is.null(disposition)) {
     keep <- vapply(out$disposition, function(x) {
@@ -304,9 +175,13 @@ visual_slot_coverage <- function(manifest, disposition = c("figure", "schematic"
                                  slot_map = visual_reduction_slot_map()) {
   .fig_require_cols(manifest, c("disposition", "target_slot"), "prose replacement manifest")
   selected <- manifest[manifest$disposition %in% disposition, , drop = FALSE]
-  split_slots <- strsplit(selected$target_slot, ";", fixed = TRUE)
-  slots <- sort(unique(unlist(split_slots, use.names = FALSE)), method = "radix")
-  slots <- slots[nzchar(slots)]
+  if (nrow(selected) > 0L) {
+    split_slots <- strsplit(selected$target_slot, ";", fixed = TRUE)
+    slots <- sort(unique(unlist(split_slots, use.names = FALSE)), method = "radix")
+    slots <- slots[nzchar(slots)]
+  } else {
+    slots <- character()
+  }
   missing <- setdiff(slots, slot_map$manifest_slot)
   data.frame(
     n_slots = length(slots),
@@ -781,18 +656,9 @@ microglia_figure_data <- function(microglia_report, composition_results,
     score_triptych = .fig_score_triptych(cf, score_cols),
     unit_composition = comp,
     score_distribution = score_dist,
-    summary_board = data.frame(
-      panel = c("substate landscape", "composition", "whole-microglia DE", "substate DE"),
-      status = c("available", "available", "available",
-                 if (nrow(substate_volcano$bins)) "available" else "descriptive"),
-      slot = c("umap_by_substate", "composition_shift", "whole_de_volcano",
-               "substate_de_volcano"),
-      stringsAsFactors = FALSE
-    ),
     composition_shift = list(genotype_substate = genotype_comp,
                              score_distribution = score_dist),
     composition_forest = composition_forest,
-    composition_concordance = concordance,
     amyloid_volcano = amyloid_volcano,
     whole_de_volcano = whole_volcano,
     substate_fit_audit = list(cell_counts = cell_counts, fit_status = fit_status),
@@ -808,7 +674,6 @@ microglia_figure_data <- function(microglia_report, composition_results,
   .fig_assert_finite(out$umap_by_substate, c("umap_1", "umap_2"), "umap_by_substate")
   .fig_assert_nonempty(out$score_triptych, "score_triptych")
   .fig_assert_nonempty(out$score_distribution, "score_distribution")
-  .fig_assert_nonempty(out$composition_concordance, "composition_concordance")
   .fig_assert_nonempty(out$composition_forest, "composition_forest")
   .fig_assert_nonempty(out$substate_de_volcano$bins, "substate_de_volcano bins")
   out
@@ -852,21 +717,6 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
                        "within_homeostatic", "within_dam")
   decomposition <- interaction[interaction$measure %in% decomp_measures, , drop = FALSE]
   decomposition$significant <- is.finite(decomposition$fdr) & decomposition$fdr < alpha
-  logic_board <- data.frame(
-    endpoint = c("position", "composition", "progression", "within-homeostatic"),
-    measure = c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic"),
-    interpretation = c("position shift", "DAM compartment size",
-                       "within-state further advance", "root-state further advance"),
-    stringsAsFactors = FALSE
-  )
-  logic_board <- merge(logic_board,
-                       decomposition[c("measure", "coef", "fdr", "perm_p", "significant")],
-                       by = "measure", all.x = TRUE, sort = FALSE)
-  logic_board$status <- ifelse(logic_board$measure == "comp_cf" & logic_board$significant,
-                               "supported",
-                               ifelse(logic_board$measure %in% c("progression_cf", "within_homeostatic") &
-                                        !logic_board$significant,
-                                      "not supported", "context"))
 
   audit <- list(
     sensitivity = trajectory_report$sensitivity,
@@ -888,7 +738,6 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
     decomposition = decomposition,
     kitagawa_forest = forest,
     concordance = concordance,
-    logic_board = logic_board,
     trajectory_audit = audit,
     provenance = list(
       source_targets = c("trajectory_report", "composition_results"),
@@ -909,7 +758,6 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
   project <- mechanism_report$pathway_project
   go_top <- mechanism_report$pathway_go_top
   tf <- mechanism_report$tf_highlights
-  nfkb <- mechanism_report$nfkb$table
   kinase <- mechanism_report$kinase$table
   .fig_require_cols(project, c("pathway", "population", "contrast", "NES", "fdr"),
                     "mechanism pathway_project")
@@ -917,37 +765,16 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
                     "mechanism pathway_go_top")
   .fig_require_cols(tf, c("population", "source", "contrast", "score", "fdr", "selection"),
                     "mechanism tf_highlights")
-  .fig_require_cols(nfkb, c("population", "contrast", "test", "score", "p_value",
-                            "primary_test", "supportive_only", "primary_family_fdr"),
-                    "mechanism nfkb")
   .fig_require_cols(kinase, c("source", "contrast", "score", "fdr", "significant",
                               "run_index_score", "run_index_fdr", "run_index_supports",
                               "include_reason"),
                     "mechanism kinase")
-  myc <- tf[tf$source == "Myc" & tf$contrast == "interaction", , drop = FALSE]
-  myc_supported <- nrow(myc) > 0L && any(myc$fdr < alpha, na.rm = TRUE)
-  nfkb_status <- as.character(mechanism_report$nfkb$verdict$status %||% "unknown")
-  gsk <- kinase[kinase$source == "Gsk3b" & kinase$contrast %in% c("interaction", "tau_in_nlgf"),
-                , drop = FALSE]
-  gsk_supported <- nrow(gsk) > 0L && any(gsk$significant %in% TRUE, na.rm = TRUE)
-  status_board <- data.frame(
-    mechanism = c("DAM pathway", "Myc RNA", "NF-kB attenuation", "Gsk3b kinase", "bulk kinase caveat"),
-    status = c("context", if (myc_supported) "focused support" else "not supported",
-               nfkb_status, if (gsk_supported) "supported" else "not supported",
-               "open caveat"),
-    source_slot = c("project_pathway_heatmap", "tf_lollipop", "nfkb_discordance",
-                    "kinase_heatmap", "kinase_heatmap"),
-    stringsAsFactors = FALSE
-  )
   out <- list(
     manifest = figure_manifest("mechanism"),
-    status_board = status_board,
-    project_sets = project[project$population == "whole_microglia", , drop = FALSE],
     project_pathway_heatmap = project,
     go_top_dotplot = go_top,
     tf_interaction = tf[tf$contrast == "interaction", , drop = FALSE],
     tf_lollipop = tf,
-    nfkb_discordance = list(table = nfkb, verdict = mechanism_report$nfkb$verdict),
     kinase_heatmap = kinase,
     provenance = list(
       source_targets = "mechanism_report",
@@ -1064,10 +891,6 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
                                      alpha = alpha, n_label = 8L)
   geomx_sens <- .fig_sensitivity_counts(geomx_de$primary$top, geomx_de$sensitivity,
                                         contrasts, alpha = alpha)
-  run_index <- crossmodality_report$bulk$run_index
-  run_index$loss_fraction <- ifelse(run_index$n_primary_sig > 0,
-                                    run_index$n_lost_or_flipped / run_index$n_primary_sig,
-                                    0)
   geomx_counts <- crossmodality_report$geomx$counts
   bulk_counts <- crossmodality_report$bulk$significant_counts
   .fig_require_cols(geomx_counts, c("contrast", "n_up_fdr_0_10", "n_down_fdr_0_10", "n_fdr_0_10"),
@@ -1080,43 +903,14 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   phospho_correction <- .fig_phospho_correction(phospho_de_24m$top,
                                                 phospho_corrected_24m$top,
                                                 contrasts, alpha = alpha)
-  decon <- crossmodality_report$clearance$spatial_decon
-  decon_status <- if (is.list(decon)) as.character(decon$status %||% "unknown") else "unknown"
-  earned_pairs <- crossmodality_report$clearance$pair_support
-  earned_n <- if (is.data.frame(earned_pairs) && "status" %in% names(earned_pairs)) {
-    sum(earned_pairs$status == "earned", na.rm = TRUE)
-  } else {
-    0L
-  }
-  status_board <- data.frame(
-    axis = c("GeoMx DE", "bulk run-index", "SpatialDecon abundance", "CCC-lite", "integrated divergence"),
-    status = c("corroborative", "open caveat", decon_status,
-               if (earned_n > 0L) "focused support" else "not earned",
-               "descriptive"),
-    source_slot = c("geomx_volcano", "bulk_run_index", "clearance_pair_grid",
-                    "clearance_pair_grid", "symbol_modality_matrix"),
-    n = c(sum(geomx_counts$n_sig, na.rm = TRUE),
-          sum(run_index$n_lost_or_flipped, na.rm = TRUE),
-          as.numeric(decon$unresolved_aoi_n %||% NA_real_),
-          earned_n,
-          nrow(crossmodality_report$divergence$axis_symbols)),
-    stringsAsFactors = FALSE
-  )
 
   out <- list(
     manifest = figure_manifest("crossmodality"),
-    status_board = status_board,
     geomx_counts = geomx_counts,
     geomx_volcano = geomx_volcano,
     geomx_sensitivity = geomx_sens,
     bulk_counts = bulk_counts,
-    bulk_run_index = run_index,
     phospho_raw_corrected = phospho_correction,
-    anchor_effect_heatmap = crossmodality_report$bulk$anchor_rows,
-    clearance_pair_grid = crossmodality_report$clearance$pair_support,
-    axis_heatmap = crossmodality_report$pathway$axis_summary,
-    symbol_modality_matrix = crossmodality_report$divergence$axis_symbols,
-    pathway_axis_heatmap = crossmodality_report$pathway$axis_summary,
     provenance = list(
       source_targets = c("crossmodality_report", "geomx_de",
                          "bulk_omics_summary", "phospho_de_24m",
@@ -1128,17 +922,7 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   .fig_assert_finite(out$geomx_sensitivity,
                      c("n_primary_sig", "n_sensitivity_sig", "n_lost", "n_gained", "n_sign_flip"),
                      "geomx_sensitivity")
-  .fig_assert_finite(out$bulk_run_index, c("n_primary_sig", "n_lost_or_flipped", "loss_fraction"),
-                     "bulk_run_index")
   .fig_assert_finite(out$geomx_counts, c("n_up", "n_down", "n_sig"), "geomx_counts")
   .fig_assert_finite(out$bulk_counts, "n_sig", "bulk_counts")
-  .fig_assert_finite(out$anchor_effect_heatmap, c("logFC", "t", "P.Value", "adj.P.Val"),
-                     "anchor_effect_heatmap")
-  .fig_assert_finite(out$symbol_modality_matrix,
-                     c("n_modalities_present", "n_modalities_sig", "min_fdr", "rank_score"),
-                     "symbol_modality_matrix")
-  .fig_assert_finite(out$pathway_axis_heatmap,
-                     c("n_modalities_present", "n_modalities_sig", "rank_score"),
-                     "pathway_axis_heatmap")
   out
 }

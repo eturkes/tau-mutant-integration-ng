@@ -169,17 +169,6 @@ tf_focus$source <- factor(tf_focus$source, levels = rev(c("Myc", "Nfkb1", "Nfkb2
 tf_focus$class <- ifelse(tf_focus$source == "Myc", "Myc", "NF-kB family")
 tf_focus$supported <- tf_focus$fdr < alpha
 
-nf_plot <- mfg$nfkb_discordance$table
-nf_plot <- nf_plot[nf_plot$population == "whole_microglia" &
-                     nf_plot$contrast %in% c("interaction", "tau_in_nlgf"), , drop = FALSE]
-nf_plot$contrast <- fmt_contrast(nf_plot$contrast)
-nf_plot$test_label <- factor(nf_plot$test,
-                             levels = c("tf_family", "target_gsea"),
-                             labels = c("TF-family", "target GSEA"))
-nf_plot$role <- ifelse(nf_plot$primary_test, "primary", "supportive")
-nf_plot$tile_label <- paste0(nf_plot$role, "\n", fmt_num(nf_plot$score),
-                             "\nFDR ", fmt_p(nf_plot$primary_family_fdr))
-
 kin_plot <- mfg$kinase_heatmap
 kin_plot$contrast <- fmt_contrast(kin_plot$contrast)
 kin_plot$primary_sig <- kin_plot$significant %in% TRUE
@@ -188,49 +177,9 @@ kin_order <- kin_plot[order(kin_plot$source != "Gsk3b", kin_plot$fdr,
                             -abs(kin_plot$score), kin_plot$source,
                             method = "radix", na.last = TRUE), "source"]
 kin_plot$source <- factor(kin_plot$source, levels = rev(unique(kin_order)))
-mech_board <- mfg$status_board
-mech_board$mechanism <- factor(mech_board$mechanism, levels = rev(mech_board$mechanism))
-mech_board$status <- factor(mech_board$status,
-                            levels = c("context", "focused support", "discordant",
-                                       "not supported", "open caveat"))
-```
-
-```{r}
-#| label: fig-mechanism-status-board
-#| fig-width: 8.2
-#| fig-height: 3.2
-#| fig-cap: "Mechanism status board: Myc supported; NF-kB and Gsk3b not recovered."
-#| fig-alt: "Tile board summarises Myc support, NF-kB discordance, Gsk3b status and caveats."
-ggplot(mech_board, aes(status, mechanism, fill = status)) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = source_slot), size = 3) +
-  scale_fill_discrete(guide = "none") +
-  labs(x = NULL, y = NULL, title = "Mechanism evidence board") +
-  theme(panel.grid = element_blank())
 ```
 
 ## Pathway Survey
-
-```{r}
-#| label: fig-mechanism-project-sets
-#| fig-width: 9.5
-#| fig-height: 4.8
-#| fig-cap: "Focused project gene sets in whole microglia."
-#| fig-alt: "Heatmap shows focused project gene-set activity in whole microglia."
-proj_plot <- pp[pp$population == "whole_microglia", , drop = FALSE]
-proj_plot$contrast <- factor(proj_plot$contrast, levels = names(contrast_labels),
-                             labels = unname(contrast_labels))
-proj_plot$pathway_label <- project_labels[proj_plot$pathway]
-proj_plot$pathway_label[is.na(proj_plot$pathway_label)] <- proj_plot$pathway[is.na(proj_plot$pathway_label)]
-proj_plot$pathway_label <- factor(proj_plot$pathway_label, levels = rev(unique(project_labels[project_labels %in% proj_plot$pathway_label])))
-
-ggplot(proj_plot, aes(contrast, pathway_label, fill = NES)) +
-  geom_tile(colour = "white", linewidth = 0.4) +
-  geom_point(data = proj_plot[proj_plot$padj < alpha, , drop = FALSE],
-             shape = 21, size = 2, stroke = 0.3, fill = "white", colour = "grey20") +
-  scale_fill_rwb(name = "NES", midpoint = 0) +
-  labs(x = NULL, y = NULL, title = "Project gene-set activity")
-```
 
 ```{r}
 #| label: fig-mechanism-project-pathway
@@ -308,25 +257,6 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
   labs(x = "ULM activity score", y = NULL,
        title = "Myc and NF-kB-family TF activities") +
   theme(legend.position = "bottom")
-```
-
-## NF-kB Attenuation
-
-```{r}
-#| label: fig-mechanism-nfkb-discordance
-#| fig-width: 7.2
-#| fig-height: 4.2
-#| fig-cap: "NF-kB attenuation gate is target-derived; support rows cannot override it."
-#| fig-alt: "Tile grid shows primary and supportive NF-kB attenuation rows with scores and FDRs."
-ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
-  geom_tile(colour = "white", linewidth = 0.5) +
-  geom_tile(data = nf_plot[nf_plot$primary_test, , drop = FALSE],
-            fill = NA, colour = "black", linewidth = 1) +
-  geom_text(aes(label = tile_label), size = 2.7, lineheight = 0.9) +
-  scale_fill_rwb(name = "score", midpoint = 0) +
-  labs(x = NULL, y = NULL,
-       title = paste("NF-kB attenuation gate:", nf_status)) +
-  theme(panel.grid = element_blank())
 ```
 
 ## Gsk3b And Kinase Activity

@@ -697,8 +697,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   modality tail headings were renamed to status headings. Future summary should
   live in chapter boards/captions, not a separate top section.
 
-## Figure expansion data contract (S1, built) -- `R/figures.R` -> `*_figures`
-- `figure_manifest()` pins the 25 inline figure contract with hyphenated `fig-*` ids (no underscores) and maps
+## Figure expansion data contract (S1, built; curated 2026-07-03) -- `R/figures.R` -> `*_figures`
+- `figure_manifest()` now pins 18 curated inline figure ids (no underscores) and maps
   each planned figure to a chapter/target/slot. Chapters use compact targets: `microglia_figures`,
   `trajectory_figures`, `mechanism_figures`,
   `crossmodality_figures`.
@@ -719,10 +719,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - S2 was render-layer wiring only: no new inference/targets. The former
   `_synthesis.qmd` / `fig-synthesis-*` part has since been deleted with the
   top-level synthesis section.
-- `_microglia.qmd` now tar_loads `microglia_figures` plus the prior compact P1 targets. New labelled chunks:
-  `fig-microglia-umap-substate`, `fig-microglia-score-triptych`, `fig-microglia-unit-composition`,
-  `fig-microglia-score-distribution`, `fig-microglia-composition-concordance`,
-  `fig-microglia-whole-volcano`, `fig-microglia-substate-audit`, `fig-microglia-substate-volcano`.
+- `_microglia.qmd` tar_loads `microglia_figures` plus the prior compact P1 targets. Retained expansion chunks:
+  genotype-faceted UMAP, score triptych, unit composition, score distributions,
+  whole/substate DE volcano summaries, and substate fit audit. The composition-concordance tile was removed by
+  the box-figure curation pass.
 - Claim guard: captions state robust amyloid-to-DAM activation, DAM composition interaction, under-powered
   interaction DE, and composition-not-progression. No figure claims rate/acceleration/progression support.
 - Forced report render after S2 was warning-clean: 106 chunks, 9 new `fig-*` chunks visible. Full gate status lives in
@@ -739,9 +739,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   beyond composition. The prepared `trajectory_figures$kitagawa_forest` slot carries overall + within-state rows
   across all contrasts; the explicit composition/progression/cross rows still come from guarded
   `trajectory_report$interaction`.
-- `_mechanism.qmd` adds `fig-mechanism-project-pathway`, `fig-mechanism-go-dotplot`,
-  `fig-mechanism-tf-lollipop`, `fig-mechanism-nfkb-discordance`, `fig-mechanism-kinase-heatmap`. Claim guard:
-  Myc is visibly supported; NF-kB attenuation is a discordant/not-supported tile; Gsk3b is carried in the kinase
+- `_mechanism.qmd` retains project pathway, GO dotplot,
+  Myc/NF-kB-family TF lollipop, and kinase heatmap panels. Claim guard:
+  Myc is visibly supported; the separate NF-kB discordance tile was removed; Gsk3b is carried in the kinase
   heatmap without a primary-support marker unless the target actually makes it significant; kinase caveats remain
   24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.
 - Full gate after S3 was green: tests warn=2, forced 124-chunk report render, tar_meta/render-log clean; 9 new S3
@@ -751,10 +751,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - S4 is render-layer wiring only: no new inference/targets. `_crossmodality.qmd` now tar_loads compact
   `crossmodality_report` + `crossmodality_figures`; the cheap-render invariant still excludes raw GeoMx/proteome/
   phospho targets and the large harmonised evidence table from the qmd.
-- Added 8 labelled chunks: `fig-crossmodality-geomx-volcano`, `fig-crossmodality-geomx-sensitivity`,
-  `fig-crossmodality-bulk-run-index`, `fig-crossmodality-phospho-correction`,
-  `fig-crossmodality-anchor-heatmap`, `fig-crossmodality-clearance-grid`,
-  `fig-crossmodality-symbol-matrix`, `fig-crossmodality-pathway-heatmap`.
+- Retained cross-modality expansion chunks: GeoMx volcano/sensitivity and raw-vs-corrected phosphosite geometry.
+  Box/matrix audit chunks for bulk run-index, anchors, clearance, symbols, and pathway axes were removed by
+  the box-figure curation pass.
 - Claim guard: captions/encodings keep GeoMx AOIs as repeated/block-adjusted observations; SpatialDecon status is
   target-derived and now blocked after attempted fit; no full CCC; only Apoe-Trem2 in amyloid-on-P301S earns measured
   pair support; bulk layers remain 24M hippocampus,
@@ -785,17 +784,16 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `visual_slot_coverage(.agent/prose_replacement_manifest.tsv)` must report
   `n_missing=0` for `figure`/`schematic` dispositions before S3/S4 rewrites.
 - Compact QC target: `qc_figures` (modality table, GeoMx genotype tally,
-  genotype-batch grid, depth/fraction histograms, metric bounds, audit notes).
+  genotype-batch grid, depth/fraction histograms, metric bounds, audit notes). Visible report now uses only
+  depth/fraction histograms; the other slots remain hidden checks/source material.
 - Figure-polish convention: small count/tally panels should prefer horizontal,
   direct-labelled bars/lollipops with human-facing labels; reserve heatmaps for
   true matrix structure and avoid rotated x labels for contrast/genotype counts.
-- Existing chapter figure targets gained alias/board slots without heavy reads:
-  `microglia_figures` adds summary board, composition shift/forest, amyloid
-  volcano alias; `trajectory_figures` adds pseudotime-shift bundle,
-  decomposition, concordance bins, logic board; `mechanism_figures` adds status
-  board, project-set and interaction-TF aliases; `crossmodality_figures` adds
-  status board plus GeoMx/bulk count and axis aliases. These slots exist to let
-  S3/S4 move prose into figures/captions without recomputing in qmd chunks.
+- Current retained chapter figure aliases avoid board/status figures:
+  `microglia_figures` keeps composition shift/forest and amyloid volcano aliases;
+  `trajectory_figures` keeps pseudotime-shift, decomposition, and concordance bins;
+  `mechanism_figures` keeps interaction-TF aliases; `crossmodality_figures` keeps
+  GeoMx/bulk count aliases.
 - Test contract: `tests/test_figures.R` now covers compact QC builders,
   per-chapter alias slots, manifest coverage, and finite geom guards.
   Real build command: `Rscript -e 'targets::tar_make(qc_figures)'`.
@@ -812,11 +810,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `linewidth=` because report chunks run under `options(warn=2)`.
 
 ## Prose-to-figures result conversion (S4, built) -- result `_*.qmd`
-- S4 is render-layer conversion only: no new inference/targets. Result chapters
-  now replace prose/table-heavy audit blocks with compact visual boards and
-  one-line captions: `fig-microglia-summary-board`, `fig-trajectory-logic-board`,
-  `fig-mechanism-status-board`, `fig-crossmodality-status-board`; microglia also
-  adds `fig-microglia-dropout-audit` for genotype-skewed low-DAM pruning.
+- S4 was render-layer conversion only: no new inference/targets. It introduced
+  compact visual boards and one-line captions; those boards were later removed by
+  the box-figure curation pass. Microglia keeps the pruning audit panel for
+  genotype-skewed low-DAM pruning.
 - Counted prose after S4: total report 1,164 words (S1 baseline 5,111; floor
   <=2,300; stretch <=1,800). Result chapter local counts: microglia 251,
   trajectory 186, mechanism 148, cross-modality 195. S4 preserved visible
@@ -965,8 +962,8 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`, `_crossmodality.qmd` have
   zero paragraph/list/table blockers outside headings/captions. Microglia sccomp
   diagnostics are hidden as a finite-check chunk (`microglia-provenance-check`);
-  trajectory provenance/per-cell status is visible as `fig-trajectory-method-status`
-  instead of stdout. Strict rendered HTML after S3 has only the title-block author
+  trajectory provenance/per-cell status was moved out of stdout into a figure
+  later removed by curation. Strict rendered HTML after S3 had only the title-block author
   paragraph (`Emir Turkes`) remaining for S4; no result-body paragraphs, tables,
   text-only outputs, or stdout provenance remain. Caption rule: 53 source captions,
   max 12 words, median 8. Full gate green after a forced 109-chunk render.
@@ -992,6 +989,19 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   duplicate IDs, 0 external refs, 0 code UI. Keep `fig-alt` as source-level
   accessibility text; visible report prose stays limited to headings, figure text
   and captions.
+- Box-figure curation (2026-07-03, CURRENT report surface): supersedes the
+  board-heavy 48-figure caption-only endpoint. Visible report now has 31 figures /
+  31 captions and keeps data-rich journal-relevant panels: QC distributions,
+  microglia UMAP/composition/DE/pruning panels, trajectory pseudotime/decomposition/
+  scatter/concordance/audit panels, mechanism pathway/GO/TF/kinase panels, and
+  cross-modality GeoMx/bulk/phospho panels. Removed pure box/status/checklist
+  figures: QC modality/design/bounds boxes; microglia summary + composition
+  concordance tiles; trajectory logic + method boards; mechanism status/project-set/
+  NF-kB-discordance boxes; cross-modality status/run-index/anchor/clearance/
+  integrated-divergence matrices. `figure_manifest()` now pins 18 curated expansion
+  ids; `visual_slot_coverage()` handles the valid empty figure/schematic
+  prose-replacement manifest after regeneration. Latest QA: strict caption-only
+  source+HTML pass, 0 removed-label hits, full `scripts/check.sh` green.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

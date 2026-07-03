@@ -21,9 +21,6 @@ comp <- composition_results
 pbm  <- pb_de_microglia
 pbs  <- pb_de_substate
 mf   <- microglia_figures
-mf_board <- mf$summary_board
-mf_board$panel <- factor(mf_board$panel, levels = rev(mf_board$panel))
-mf_board$status <- factor(mf_board$status, levels = c("descriptive", "available"))
 
 substate_levels <- c(microglia_substate_levels, "ambiguous", "unassigned")
 present_sub <- intersect(substate_levels, as.character(unique(cf$substate)))
@@ -117,19 +114,6 @@ mf_dist$substate <- factor(as.character(mf_dist$substate), levels = present_sub)
 mf_dist$genotype <- factor(as.character(mf_dist$genotype), levels = genotype_levels)
 mf_dist$score_name <- factor(as.character(mf_dist$score_name), levels = names(score_labels),
                              labels = unname(score_labels))
-mf_conc <- mf$composition_concordance
-mf_conc$contrast <- fmt_contrast(mf_conc$contrast)
-mf_conc$substate <- factor(mf_conc$substate, levels = present_sub)
-mf_conc$status <- ifelse(
-  mf_conc$flag, "method flag",
-  ifelse(mf_conc$sig_logit,
-         ifelse(mf_conc$dir_logit > 0, "primary up", "primary down"),
-         "not significant")
-)
-mf_conc$status <- factor(mf_conc$status,
-                         levels = c("primary up", "primary down", "not significant", "method flag"))
-mf_conc$label <- ifelse(mf_conc$flag, "flag",
-                        ifelse(mf_conc$sig_logit, "FDR", ""))
 mf_wv_bins <- mf$whole_de_volcano$bins
 mf_wv_bins$contrast <- fmt_contrast(mf_wv_bins$contrast)
 mf_wv_bins$log_n <- log10(mf_wv_bins$n + 1)
@@ -156,20 +140,6 @@ mf_ss_signed <- rbind(
              n_genes = -mf_ss_counts$n_down_fdr_0_10, stringsAsFactors = FALSE)
 )
 mf_ss_signed$direction <- factor(mf_ss_signed$direction, levels = c("down", "up"))
-```
-
-```{r}
-#| label: fig-microglia-summary-board
-#| fig-width: 7.2
-#| fig-height: 2.4
-#| fig-cap: "Microglia chapter board: all four evidence panels are available."
-#| fig-alt: "Tile board lists microglia evidence slots and marks all panels available."
-ggplot(mf_board, aes(status, panel, fill = status)) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = slot), size = 3.1) +
-  scale_fill_discrete(guide = "none") +
-  labs(x = NULL, y = NULL, title = "Microglia evidence board") +
-  theme(panel.grid = element_blank())
 ```
 
 ## Substate landscape
@@ -314,21 +284,6 @@ if (!is.null(comp$sccomp)) {
 }
 ```
 
-```{r}
-#| label: fig-microglia-composition-concordance
-#| fig-width: 8.8
-#| fig-height: 3.8
-#| fig-cap: "Propeller primary calls and predeclared method flags."
-#| fig-alt: "Tile grid compares propeller primary calls with predeclared method flags."
-ggplot(mf_conc, aes(contrast, substate, fill = status)) +
-  geom_tile(colour = "white", linewidth = 0.5) +
-  geom_text(aes(label = label), size = 3) +
-  scale_fill_discrete(name = "primary call") +
-  labs(x = NULL, y = NULL, title = "Composition calls are concordant where the DAM conclusion rests") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank())
-```
-
 ## The amyloid-to-DAM expression programme
 
 ```{r}
@@ -384,8 +339,6 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
        title = "Whole-microglia DE across all contrasts") +
   theme(panel.grid = element_blank())
 ```
-
-## The tau-by-amyloid interaction is under-powered, not absent
 
 ## Per-substate differential expression
 
