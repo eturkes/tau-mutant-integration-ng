@@ -30,9 +30,9 @@ spine_nodes <- rv$report_spine_schematic$nodes
 spine_edges <- rv$report_spine_schematic$edges
 spine_coords <- data.frame(
   node = c("inputs", "qc", "microglia", "trajectory", "mechanism",
-           "crossmodality", "synthesis", "environment"),
-  x = c(1, 2, 2, 3.4, 3.4, 3.4, 4.9, 3.4),
-  y = c(2.6, 3.25, 2.25, 2.95, 2.25, 1.55, 2.25, 0.85),
+           "crossmodality", "environment"),
+  x = c(1, 2, 2, 3.4, 3.4, 4.9, 3.4),
+  y = c(2.6, 3.25, 2.25, 2.95, 2.25, 2.6, 0.85),
   stringsAsFactors = FALSE
 )
 spine_nodes$x <- spine_coords$x[match(spine_nodes$node, spine_coords$node)]
@@ -59,13 +59,13 @@ spine_colours <- c(
 )
 ```
 
-Visual-first report: synthesis panels first, audit chapters after.
+Visual-first report: QC first, result chapters after.
 
 ```{r}
 #| label: fig-report-spine-schematic
 #| fig-width: 8.2
 #| fig-height: 3.8
-#| fig-cap: "Report spine: compact targets feed a visual-first audit."
+#| fig-cap: "Report spine: compact targets feed the visual audit."
 ggplot() +
   geom_segment(
     data = spine_edges,
@@ -87,8 +87,6 @@ ggplot() +
   theme_void() +
   theme(plot.margin = margin(6, 20, 6, 20))
 ```
-
-{{< include _synthesis.qmd >}}
 
 {{< include _qc.qmd >}}
 

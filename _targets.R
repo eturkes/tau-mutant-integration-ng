@@ -241,16 +241,11 @@ list(
                                        phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
-  # --- P5 synthesis ---
-  # S1 compact synthesis target. Reads only the existing compact report bundles and compresses
-  # their guarded anchors into descriptive claim/status rows; no new inference, no v1 ledger or
-  # contest scoring, no heavy Seurat / harmonised-evidence table read.
-  tar_target(synthesis_report,
-             synthesis_report_data(microglia_report, trajectory_report,
-                                   mechanism_report, crossmodality_report),
-             format = "qs"),
+  # --- report overview visuals ---
+  # Compact visual grammar for the rendered overview. Depends on the compact chapter figure
+  # bundles so source/manifest drift invalidates the rendered report without loading heavy data.
   tar_target(report_visuals,
-             report_visual_data(spine, synthesis_report, qc_figures,
+             report_visual_data(spine, qc_figures,
                                 microglia_figures, trajectory_figures,
                                 mechanism_figures, crossmodality_figures),
              format = "qs"),

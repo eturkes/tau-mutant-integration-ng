@@ -19,7 +19,6 @@ from pathlib import Path
 
 DEFAULT_QMDS = (
     "index.qmd",
-    "_synthesis.qmd",
     "_qc.qmd",
     "_microglia.qmd",
     "_trajectory.qmd",
@@ -43,7 +42,6 @@ HTML_RE = re.compile(r"<[^>]+>")
 
 SECTION_SLOTS = {
     ("index.qmd", "Overview"): "fig-report-spine-schematic",
-    ("_synthesis.qmd", "Synthesis: the compact answer"): "fig-synthesis-visual-abstract",
     ("_qc.qmd", "Quality control"): "collapsed-qc-audit",
     ("_qc.qmd", "Modalities loaded"): "qc-modality-table",
     ("_qc.qmd", "snRNAseq microglia: design balance"): "fig-qc-genotype-batch",
@@ -68,13 +66,13 @@ SECTION_SLOTS = {
     ("_mechanism.qmd", "TF Activity"): "fig-mechanism-tf-lollipop",
     ("_mechanism.qmd", "NF-kB Attenuation"): "fig-mechanism-nfkb-discordance",
     ("_mechanism.qmd", "Gsk3b And Kinase Activity"): "fig-mechanism-kinase-heatmap",
-    ("_mechanism.qmd", "Synthesis"): "fig-mechanism-status-board",
+    ("_mechanism.qmd", "Mechanism status"): "fig-mechanism-status-board",
     ("_crossmodality.qmd", "Cross-modality: spatial, bulk, and divergence checks"): "fig-crossmodality-status-board",
     ("_crossmodality.qmd", "GeoMx Spatial DE"): "fig-crossmodality-geomx-volcano;fig-crossmodality-geomx-sensitivity",
     ("_crossmodality.qmd", "Bulk Proteome And Phospho"): "fig-crossmodality-bulk-run-index;fig-crossmodality-phospho-correction",
     ("_crossmodality.qmd", "Spatial Composition And Clearance Axis"): "fig-crossmodality-clearance-grid",
     ("_crossmodality.qmd", "Integrated Divergence"): "fig-crossmodality-symbol-matrix;fig-crossmodality-pathway-heatmap",
-    ("_crossmodality.qmd", "P4 Synthesis"): "fig-crossmodality-status-board",
+    ("_crossmodality.qmd", "Cross-modality status"): "fig-crossmodality-status-board",
 }
 
 
@@ -221,7 +219,7 @@ def disposition(block: Block) -> tuple[str, str]:
         return "collapsed_audit", slot
     if "spatialdecon" in text_l or "blocked" in text_l or "not called" in text_l:
         return "figure", slot
-    if "synthesis" in block.section.lower() or block.qmd in {"index.qmd", "_synthesis.qmd"}:
+    if block.qmd == "index.qmd":
         return "schematic", slot
     if "sanity" in block.section.lower() or "quality control" in block.section.lower() or "sanity" in text_l:
         return "collapsed_audit", slot

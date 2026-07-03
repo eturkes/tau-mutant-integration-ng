@@ -281,13 +281,6 @@ earned_detail_sentence <- if (length(earned_details)) {
   "No measured pair earns a communication claim under the CCC-lite rule."
 }
 earned_pair_names <- unique(earned_pairs$pair)
-clearance_synthesis_phrase <- if (length(earned_pair_names)) {
-  paste0(paste(fmt_pair(earned_pair_names), collapse = ", "),
-         if (length(earned_pair_names) == 1L) " earns" else " earn",
-         " focused measured clearance support")
-} else {
-  "no clearance pair earns focused measured clearance support"
-}
 closing_support_phrase <- if (length(earned_pair_names)) {
   "DAM activation, synaptic suppression and the earned clearance-axis support"
 } else {
@@ -557,6 +550,6 @@ ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
         panel.grid = element_blank())
 ```
 
-## P4 Synthesis
+## Cross-modality status
 
 Cross-modality corroborates `r closing_support_phrase`; SpatialDecon, full CCC, progression, NF-kB and Gsk3b remain unsupported or blocked.

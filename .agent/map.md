@@ -213,22 +213,15 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
       symbol/pathway highlights, and axis-level pathway summaries. Guard layer validates every field _crossmodality.qmd
       reads; render target stays small and does not load GeoMx/proteome/phospho or the 10MB evidence table.
-   + (P5-S1) synthesis.R: synthesis_report_data -> synthesis_report compact closing bundle. Reads only
-      microglia_report, trajectory_report, mechanism_report, and crossmodality_report; builds headline strings,
-      a 10-row descriptive evidence table, status counts, unsupported/open rows, and tiny source highlights. Guard
-      layer checks the synthesis anchors (amyloid->DAM, DAM composition, trajectory comp/prog rows, Myc, NF-kB,
-      Gsk3b, GeoMx/bulk caveats, SpatialDecon, clearance pairs incl. empty earned set) and rejects ledger-like
-      score columns. `.synthesis_clean_text` normalises raw caveat strings before table output, so the compact
-      target itself stays free of stale phase-step wording.
-   + (Figure expansion S1) figures.R: figure_manifest (26 hyphenated fig-* ids) + compact inline
+   + (Figure expansion S1) figures.R: figure_manifest (25 hyphenated fig-* ids) + compact inline
       figure-data builders: microglia_figure_data / trajectory_figure_data / mechanism_figure_data /
       crossmodality_figure_data. Builders emit qmd-ready slots, finite geom guards, and pre-binned/top-row
       reductions for heavy shapes (whole/substate volcanoes, GeoMx volcanoes, raw-vs-corrected phospho) so
       later qmd chunks tar_load compact figure targets rather than raw/heavy analysis tables.
    + (Prose-to-figures S2) figures.R: visual_reduction_slot_map + visual_slot_coverage + qc_figure_data +
       report_visual_data. Adds compact visual-grammar contracts without qmd rewrites: QC slots from already
-      materialised modality targets, report-spine/synthesis/status/caveat/chapter-board slots from compact
-      report/figure bundles, and alias board slots inside the existing chapter figure targets. Coverage test =
+      materialised modality targets, report-spine slot from compact report/figure bundles, and alias board slots
+      inside the existing chapter figure targets. Coverage test =
       every S1 manifest `figure`/`schematic` slot has a compact source.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
@@ -272,7 +265,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        geomx_reference_profile <- geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)  # spatial-decon follow-up S1: full-snRNAseq compact broad/substate reference profile + QC; serialized 1.88MB live
        geomx_decon <- run_geomx_decon(geomx, geomx_reference_profile)  # spatial-decon follow-up S2: SpatialDecon broad/substate beta + proportions + residual QC; live blocked by 4 unresolved AOIs, no abundance claim
        geomx_abundance_de <- run_geomx_abundance_de(geomx_decon, geomx)  # spatial-decon follow-up S3: abundance-DE pass-through + residual audit; live blocked, 5.93KB compact target
-       spatial_decon_report <- spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)  # S4: tiny compact handoff for report/synthesis; status blocked/action attempted; no beta matrices
+       spatial_decon_report <- spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)  # S4: tiny compact handoff for report; status blocked/action attempted; no beta matrices
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
        phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
        bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
@@ -282,17 +275,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m)  # Figure expansion S1 + Prose-to-figures S2: GeoMx/phospho heavy tables reduced to binned/top-row plot data + status/count aliases; ~60KB qs live
-  - P5 synthesis:
-       synthesis_report <- synthesis_report_data(microglia_report, trajectory_report, mechanism_report, crossmodality_report)  # S1 compact read-only synthesis (~4.8KB live); no crossmodality_divergence/heavy targets; descriptive status rows only
-       report_visuals <- report_visual_data(spine, synthesis_report, qc_figures, microglia_figures, trajectory_figures, mechanism_figures, crossmodality_figures)  # Prose-to-figures S2 visual grammar / spine / source matrix / status boards; qmd-safe 4.28KB live
+  - Report overview visuals:
+       report_visuals <- report_visual_data(spine, qc_figures, microglia_figures, trajectory_figures, mechanism_figures, crossmodality_figures)  # visual spine + manifest/source-target contract; no synthesis_report dependency
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; S3 overview setup
                 tar_loads compact `report_visuals` -> `fig-report-spine-schematic` visual report spine)
-                                                          --{{< include >}}--> `_synthesis.qmd`
-               (P5/S3 synthesis chapter, {#sec-synthesis}: setup `options(warn=2)`; tar_load synthesis_report +
-                compact report_visuals -> one source-derived answer sentence + visual abstract + source matrix +
-                unsupported status grid; no heavy target reads, no kable evidence table, no ledger scoring)
                                                           --{{< include >}}--> `_qc.qmd`
                (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
                 modalities + sample_key -> dims, 16x16 design bijection, bounds)
@@ -385,8 +373,6 @@ from project root: `Rscript tests/test_<x>.R`.
                     run-index sensitivity design + duplicate biological-site collapse + KSN coverage gate +
                     explicit Gsk3b summary carry-through; (P3-S4) mechanism_report_data compact bundle shape +
                     top-row capping + no heavy cell_frame + fail-loud dropped Myc/Gsk3b/trajectory anchors
-  - test_synthesis.R : (P5-S1) synthesis_report_data compact bundle shape + status enum validation +
-                    missing-anchor failures + empty earned-pair handling + no-ledger-column invariant
 
 ### Quality gate (S5; review-hardened)
 `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
@@ -401,7 +387,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _synthesis.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md .agents/skills/** .codex/prompts/*.md
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + read-economy skip);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

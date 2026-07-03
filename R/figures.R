@@ -12,7 +12,6 @@
 figure_manifest <- function(chapter = NULL) {
   out <- data.frame(
     figure_id = c(
-      "fig-synthesis-evidence-map",
       "fig-microglia-umap-substate",
       "fig-microglia-score-triptych",
       "fig-microglia-unit-composition",
@@ -40,21 +39,18 @@ figure_manifest <- function(chapter = NULL) {
       "fig-crossmodality-pathway-heatmap"
     ),
     chapter = c(
-      "synthesis",
       rep("microglia", 8),
       rep("trajectory", 4),
       rep("mechanism", 5),
       rep("crossmodality", 8)
     ),
     target = c(
-      "synthesis_report",
       rep("microglia_figures", 8),
       rep("trajectory_figures", 4),
       rep("mechanism_figures", 5),
       rep("crossmodality_figures", 8)
     ),
     slot = c(
-      "evidence_map",
       "umap_by_substate",
       "score_triptych",
       "unit_composition",
@@ -93,9 +89,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
   out <- data.frame(
     manifest_slot = c(
       "fig-report-spine-schematic",
-      "fig-synthesis-visual-abstract",
-      "fig-synthesis-status",
-      "fig-synthesis-evidence-map",
       "qc-modality-table",
       "fig-qc-genotype-batch",
       "fig-qc-depth",
@@ -146,9 +139,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "collapsed-trajectory-audit"
     ),
     target = c(
-      "report_visuals",
-      "report_visuals",
-      "report_visuals",
       "report_visuals",
       "qc_figures",
       "qc_figures",
@@ -201,9 +191,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
     ),
     slot = c(
       "report_spine_schematic",
-      "synthesis_visual_abstract",
-      "synthesis_visual_abstract$status_grid",
-      "synthesis_visual_abstract$source_matrix",
       "modality_table",
       "genotype_batch",
       "depth_distribution",
@@ -255,9 +242,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
     ),
     disposition = c(
       "figure;schematic",
-      "figure;schematic",
-      "caption",
-      "caption",
       "figure",
       "figure;caption",
       "figure;caption",
@@ -481,147 +465,29 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   out
 }
 
-.fig_claim_labels <- function() {
-  c(
-    amyloid_dam_activation = "amyloid-to-DAM",
-    tau_amyloid_dam_composition = "DAM composition interaction",
-    progression_beyond_composition = "progression beyond composition",
-    myc_rna_interaction = "Myc RNA interaction",
-    nfkb_attenuation = "NF-kB attenuation",
-    gsk3b_kinase = "Gsk3b kinase",
-    crossmodality_amyloid_axes = "cross-modality amyloid axes",
-    clearance_axis = "clearance axis",
-    spatial_decon_full_ccc = "SpatialDecon / full CCC",
-    bulk_run_index_sensitivity = "bulk run-index caveat"
-  )
-}
-
-.fig_status_labels <- function() {
-  c(
-    core_supported = "core supported",
-    corroborated = "corroborated",
-    focused_support = "focused support",
-    not_supported = "not supported",
-    not_earned = "not earned",
-    open_caveat = "open caveat"
-  )
-}
-
-.fig_anchor_sources <- function() {
-  c(
-    `#sec-microglia` = "microglia_report",
-    `#sec-trajectory` = "trajectory_report",
-    `#sec-mechanism` = "mechanism_report",
-    `#sec-crossmodality` = "crossmodality_report"
-  )
-}
-
-.fig_source_matrix <- function(evidence_table) {
-  .fig_require_cols(evidence_table, c("claim_id", "axis", "status", "direction",
-                                      "primary_sources", "supporting_sources", "report_anchor"),
-                    "synthesis evidence_table")
-  sources <- c("microglia_report", "trajectory_report", "mechanism_report", "crossmodality_report")
-  source_labels <- c(microglia_report = "microglia", trajectory_report = "trajectory",
-                     mechanism_report = "mechanism", crossmodality_report = "cross-modality")
-  anchor_sources <- .fig_anchor_sources()
-  out <- .fig_bind(lapply(seq_len(nrow(evidence_table)), function(i) {
-    row <- evidence_table[i, , drop = FALSE]
-    .fig_bind(lapply(sources, function(src) {
-      primary <- grepl(src, row$primary_sources, fixed = TRUE) ||
-        identical(unname(anchor_sources[row$report_anchor]), src)
-      supporting <- grepl(src, row$supporting_sources, fixed = TRUE)
-      data.frame(
-        claim_id = row$claim_id,
-        claim = unname(.fig_claim_labels()[row$claim_id] %||% row$claim_id),
-        axis = row$axis,
-        status = row$status,
-        source = src,
-        source_label = unname(source_labels[src]),
-        role = if (primary) "primary" else if (supporting) "supporting" else "none",
-        stringsAsFactors = FALSE
-      )
-    }))
-  }))
-  out$role <- factor(out$role, levels = c("none", "supporting", "primary"))
-  out
-}
-
-report_visual_data <- function(spine, synthesis_report, qc_figures,
-                               microglia_figures, trajectory_figures,
+report_visual_data <- function(spine, qc_figures, microglia_figures, trajectory_figures,
                                mechanism_figures, crossmodality_figures) {
-  stopifnot(is.data.frame(spine), is.list(synthesis_report), is.list(qc_figures),
-            is.list(microglia_figures), is.list(trajectory_figures),
+  stopifnot(is.data.frame(spine), is.list(qc_figures), is.list(microglia_figures),
+            is.list(trajectory_figures),
             is.list(mechanism_figures), is.list(crossmodality_figures))
-  ev <- synthesis_report$evidence_table
-  ss <- synthesis_report$status_summary
-  .fig_require_cols(ev, c("claim_id", "axis", "status", "direction", "evidence",
-                          "primary_sources", "supporting_sources", "caveat", "report_anchor"),
-                    "synthesis_report$evidence_table")
-  .fig_require_cols(ss, c("status", "n"), "synthesis_report$status_summary")
-
-  claim_labels <- .fig_claim_labels()
-  status_labels <- .fig_status_labels()
-  chapter_labels <- c(`#sec-microglia` = "microglia", `#sec-trajectory` = "trajectory",
-                      `#sec-mechanism` = "mechanism", `#sec-crossmodality` = "cross-modality")
-  source_matrix <- .fig_source_matrix(ev)
-  status_grid <- data.frame(
-    claim_id = ev$claim_id,
-    claim = unname(claim_labels[ev$claim_id] %||% ev$claim_id),
-    axis = ev$axis,
-    status = ev$status,
-    status_label = unname(status_labels[ev$status] %||% ev$status),
-    chapter = unname(chapter_labels[ev$report_anchor] %||% ev$report_anchor),
-    direction = ev$direction,
-    stringsAsFactors = FALSE
-  )
-  unsupported <- status_grid[status_grid$status %in% c("not_supported", "not_earned", "open_caveat"),
-                             , drop = FALSE]
-  caveats <- data.frame(
-    claim_id = ev$claim_id,
-    claim = status_grid$claim,
-    chapter = status_grid$chapter,
-    status = ev$status,
-    glyph = c(core_supported = "support", corroborated = "corroborate",
-              focused_support = "focused", not_supported = "not supported",
-              not_earned = "not earned", open_caveat = "caveat")[ev$status],
-    caveat = ev$caveat,
-    stringsAsFactors = FALSE
-  )
-
-  board <- .fig_bind(lapply(split(status_grid, status_grid$chapter, drop = TRUE), function(d) {
-    data.frame(
-      chapter = d$chapter,
-      status = d$status,
-      status_label = d$status_label,
-      claim_id = d$claim_id,
-      claim = d$claim,
-      n_primary_sources = vapply(d$claim_id, function(id) {
-        sum(source_matrix$claim_id == id & source_matrix$role == "primary")
-      }, integer(1)),
-      n_supporting_sources = vapply(d$claim_id, function(id) {
-        sum(source_matrix$claim_id == id & source_matrix$role == "supporting")
-      }, integer(1)),
-      stringsAsFactors = FALSE
-    )
-  }))
 
   nodes <- data.frame(
     node = c("inputs", "qc", "microglia", "trajectory", "mechanism",
-             "crossmodality", "synthesis", "environment"),
+             "crossmodality", "environment"),
     label = c("4 modalities", "QC", "microglia state", "trajectory",
-              "mechanism", "cross-modality", "compact answer", "pinned env"),
+              "mechanism", "cross-modality", "pinned env"),
     kind = c("input", "gate", "chapter", "chapter", "chapter", "chapter",
-             "summary", "reproducibility"),
+             "reproducibility"),
     stringsAsFactors = FALSE
   )
   edges <- data.frame(
     from = c("inputs", "inputs", "microglia", "microglia", "trajectory",
-             "mechanism", "crossmodality", "environment"),
-    to = c("qc", "microglia", "trajectory", "mechanism", "synthesis",
-           "synthesis", "synthesis", "synthesis"),
+             "mechanism", "environment"),
+    to = c("qc", "microglia", "trajectory", "mechanism", "crossmodality",
+           "crossmodality", "qc"),
     relation = c("loaded by", "state inference", "composition question",
                  "candidate mechanisms", "interaction resolution", "mechanism status",
-                 "modality audit", "reproducible artifact"),
+                 "reproducibility gate"),
     stringsAsFactors = FALSE
   )
   mermaid <- paste(
@@ -630,10 +496,9 @@ report_visual_data <- function(spine, synthesis_report, qc_figures,
     "  inputs --> microglia[microglia state]",
     "  microglia --> trajectory[composition vs progression]",
     "  microglia --> mechanism[mechanism tests]",
-    "  trajectory --> synthesis[compact answer]",
-    "  mechanism --> synthesis",
-    "  crossmodality[cross-modality audit] --> synthesis",
-    "  environment[pinned rv/uv/targets/Quarto] --> synthesis",
+    "  trajectory --> crossmodality[cross-modality audit]",
+    "  mechanism --> crossmodality",
+    "  environment[pinned rv/uv/targets/Quarto] --> qc",
     sep = "\n"
   )
 
@@ -641,38 +506,24 @@ report_visual_data <- function(spine, synthesis_report, qc_figures,
   out <- list(
     manifest = slot_map,
     report_spine_schematic = list(nodes = nodes, edges = edges, mermaid = mermaid),
-    synthesis_visual_abstract = list(
-      status_grid = status_grid,
-      source_matrix = source_matrix,
-      unsupported_status_grid = unsupported,
-      status_summary = ss
-    ),
-    caveat_status_glyphs = caveats,
-    chapter_evidence_boards = board,
     source_target_contract = data.frame(
       target = c("report_visuals", "qc_figures", "microglia_figures", "trajectory_figures",
-                 "mechanism_figures", "crossmodality_figures", "synthesis_report"),
+                 "mechanism_figures", "crossmodality_figures"),
       qmd_safe = TRUE,
       n_manifest_slots = as.integer(table(factor(slot_map$target,
                                                  levels = c("report_visuals", "qc_figures",
                                                             "microglia_figures", "trajectory_figures",
-                                                            "mechanism_figures", "crossmodality_figures",
-                                                            "synthesis_report")))),
+                                                            "mechanism_figures",
+                                                            "crossmodality_figures")))),
       stringsAsFactors = FALSE
     ),
     provenance = list(
-      source_targets = c("spine", "synthesis_report", "qc_figures",
-                         "microglia_figures", "trajectory_figures",
+      source_targets = c("spine", "qc_figures", "microglia_figures", "trajectory_figures",
                          "mechanism_figures", "crossmodality_figures"),
       spine_rows = nrow(spine),
       contract = "visual grammar and manifest coverage over compact report/figure targets"
     )
   )
-  .fig_assert_finite(out$synthesis_visual_abstract$status_summary, "n",
-                     "synthesis visual status_summary")
-  .fig_assert_finite(out$chapter_evidence_boards,
-                     c("n_primary_sources", "n_supporting_sources"),
-                     "chapter_evidence_boards")
   out
 }
 

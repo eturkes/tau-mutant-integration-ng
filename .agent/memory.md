@@ -580,23 +580,23 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   inference, not a new biological claim axis.
 - Live S3 (warning-clean/tar_meta clean, target 5.93KB; full `scripts/check.sh` green): broad/substate/
   microglia-substate abundance DE all blocked by the same 4 unresolved AOIs from S2; residual audit is available for
-  broad and substate arms over 91 AOIs x 4 slides (median RMS residual ~0.821 for both). S4 report/synthesis replaced
+  broad and substate arms over 91 AOIs x 4 slides (median RMS residual ~0.821 for both). S4 report wiring replaced
   the old missing-reference negative with this actual blocked-fit state, while still making no abundance claim.
 
-## Spatial decon report integration (follow-up S4, built) -- `spatial_decon_report` + report/synthesis rewiring
+## Spatial decon report integration (follow-up S4, built) -- `spatial_decon_report` + report rewiring
 - `spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)` is the compact handoff:
   no beta matrices, only reference QC, decon arm status, abundance arm status, unresolved AOIs, residual-audit summary,
   nuclei policy, and provenance. Live target is tiny (~1.5KB qs): status=`blocked`, action=`attempted`, reason =
   SpatialDecon beta has 4 unresolved AOIs with near-zero total abundance; broad/substate abundance arms have empty
   5-contrast top tables; residual audit remains fit-QC only.
 - `clearance_axis_data(..., spatial_decon_report=)` now accepts the earned-preflight follow-up state instead of
-  failing loud. With the S4 target wired, `clearance_axis`, `crossmodality_report`, and `synthesis_report` derive
-  SpatialDecon status from `geomx_decon`/`geomx_abundance_de`, not the historical P4 preflight. Full CCC remains
-  absent (`ccc_called=FALSE`).
+  failing loud. With the S4 target wired, `clearance_axis` and `crossmodality_report` derive SpatialDecon status
+  from `geomx_decon`/`geomx_abundance_de`, not the historical P4 preflight. Full CCC remains absent
+  (`ccc_called=FALSE`).
 - `_crossmodality.qmd` still loads only compact report bundles, but the Spatial Composition section now says
   SpatialDecon was attempted and blocked, gives the unresolved-AOI reason, states nuclei-rescaled absolute counts are
-  disabled, and keeps residual QC as descriptive fit QC. `_synthesis.qmd`/`index.qmd` now say SpatialDecon abundance
-  is blocked and full CCC is not called. Targeted live build + forced 142-chunk render were warning-clean.
+  disabled, and keeps residual QC as descriptive fit QC. Report text says SpatialDecon abundance is blocked and
+  full CCC is not called. Targeted live build + forced render were warning-clean.
 - S5 QA wording fixes: GeoMx figure captions say "bio-unit-blocked" for the primary DE model so that statistical
   blocking is not confused with the blocked SpatialDecon abundance state; the historical decon preflight reason points
   readers to `geomx_reference_profile` / `geomx_decon` for the follow-up fit. No new figures were added in the
@@ -683,50 +683,24 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   target-derived from the follow-up fit: attempted, blocked by 4 unresolved AOIs with beta_total=0, residual QC
   available descriptively, and no spatial abundance/cell-count claim earned. CCC-lite earns only Apoe_Trem2 in
   `nlgf_in_p301s`; no full CCC method is called. Bulk hippocampus run-index sensitivity remains severe, so the final
-  synthesis uses P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance,
+  report uses P4 as corroboration for DAM activation, synaptic suppression, and measured Apoe-Trem2 clearance,
   not as a stand-alone microglial kinase or spatial-abundance claim.
 
-## Synthesis target (P5-S1, built) -- `R/synthesis.R::synthesis_report_data` -> `synthesis_report`
-- S1 is read-only synthesis, not new inference. `synthesis_report_data` reads ONLY the compact report bundles
-  `microglia_report`, `trajectory_report`, `mechanism_report`, and `crossmodality_report` (no
-  `crossmodality_divergence`, no pseudobulk tables, no Seurat/heavy evidence table). Live target is ~4.8KB qs.
-- Output contract: `headline` strings; `evidence_table` = 10 rows with fields
-  `{claim_id, axis, status, direction, evidence, primary_sources, supporting_sources, caveat, report_anchor}`;
-  `status_summary`; `open_questions`; tiny `source_highlights`; `provenance`. Allowed statuses only:
-  `core_supported`, `corroborated`, `focused_support`, `not_supported`, `not_earned`, `open_caveat`.
-  Forbidden ledger/contest columns (`support`, `contradict`, `net_score`, `ledger_id`, etc.) fail loud.
-- Guarded anchors are intentionally build-fatal: amyloid->DAM support, DAM composition interaction, trajectory
-  `comp_cf` / `progression_cf` / `within_homeostatic`, whole-microglia Myc interaction, NF-kB verdict + 2 primary
-  rows, Gsk3b all canonical contrasts, GeoMx sensitivity, bulk run-index summary, SpatialDecon status, CCC verdict,
-  and clearance pair-support rows including the empty/no-earned case. If a future target drift breaks the closed
-  story, the synthesis target should stop and be revised rather than silently table a stale claim.
-- Current live synthesis statuses: core_supported={amyloid_dam_activation, tau_amyloid_dam_composition};
-  focused_support={myc_rna_interaction, clearance_axis}; not_supported={progression_beyond_composition,
-  nfkb_attenuation, gsk3b_kinase}; not_earned={spatial_decon_full_ccc}; open_caveat={bulk_run_index_sensitivity};
-  corroborated={crossmodality_amyloid_axes}. The SpatialDecon row's synthesis status remains `not_earned`, but its
-  direction/evidence/caveat now say abundance is blocked after fitting by the unresolved-AOI state. S2 qmd should
-  tar_load only `synthesis_report`.
-- P5-S3 review hardening: source-level caveat cleanup lives in `synthesis_report_data`, not the qmd.
-  It normalises cross-modality raw strings (`value(s)` -> values; `deconvolution deferred to S3` ->
-  deconvolution deferred) before they enter the compact evidence table. `tests/test_synthesis.R`
-  guards this so future consumers of `synthesis_report` do not inherit stale phase-step wording.
-
-## Synthesis report chapter (P5-S2, built) -- `_synthesis.qmd`
-- `_synthesis.qmd` is included immediately after `index.qmd` Overview and before QC. It tar_loads ONLY
-  `synthesis_report`, with `options(warn=2)` and `tar_source()` like the other report sections.
-- Chapter shape: answer-first paragraph from `synthesis_report$headline`, status-count bar plot from
-  `status_summary`, S2 claim-source evidence map from `evidence_table` source fields, compact evidence table, and
-  unsupported/unearned paragraph from `open_questions`. It formats display labels locally (e.g. Apoe-Trem2, amyloid
-  on P301S) without adding target deps.
-- `index.qmd` is now final-report wording: synthesis first, P1-P4 chapters as audit trail; no "final synthesis still
-  open" phrasing.
-- P5-S3 lean pass removed stale P3/P4 forward pointers and tightened rate/progression language; report-source
-  search is clean for `P5`, `final synthesis`, `still open`, and `before the final synthesis`.
+## Report synthesis removal (2026-07-03)
+- User rejected the top-level synthesis section as useless. Current report order =
+  Overview -> QC -> Microglia -> Trajectory -> Mechanism -> Cross-modality.
+- Removed the unused layer, not just the include: `_synthesis.qmd`,
+  `R/synthesis.R`, `tests/test_synthesis.R`, and the `synthesis_report` target are
+  gone. `report_visuals` now depends on `spine` + compact chapter figure targets
+  only; it emits the overview spine + manifest/source-target contract.
+- Report TOC has no synthesis-labelled section. Mechanism/Cross-modality tail
+  headings were renamed to status headings. Future report summary should live in
+  chapter boards/captions, not a separate synthesis chapter.
 
 ## Figure expansion data contract (S1, built) -- `R/figures.R` -> `*_figures`
-- `figure_manifest()` pins the +26 inline figure contract with hyphenated `fig-*` ids (no underscores) and maps
-  each planned figure to a chapter/target/slot. Synthesis figure 1 can still read `synthesis_report` directly;
-  the other chapters use compact targets: `microglia_figures`, `trajectory_figures`, `mechanism_figures`,
+- `figure_manifest()` pins the 25 inline figure contract with hyphenated `fig-*` ids (no underscores) and maps
+  each planned figure to a chapter/target/slot. Chapters use compact targets: `microglia_figures`,
+  `trajectory_figures`, `mechanism_figures`,
   `crossmodality_figures`.
 - Builders are qmd-data contracts, not plotting functions. They validate required fields and finite geom inputs,
   then return pre-shaped slots for later qmd chunks. Heavy scatter shapes are pre-binned/top-row reduced:
@@ -741,10 +715,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   fraction join, unsupported mechanism rows, and cross-modality heavy-table binning. Add any new figure slot here
   before wiring it into qmd prose.
 
-## Figure expansion report figures (S2, built) -- `_synthesis.qmd` + `_microglia.qmd`
-- S2 is render-layer wiring only: no new inference/targets. `_synthesis.qmd` still tar_loads ONLY
-  `synthesis_report`; new `fig-synthesis-evidence-map` is a claim x compact-source tile with P/S labels and status
-  colours, including unsupported/unearned rows as first-class outcomes.
+## Figure expansion report figures (S2, built; synthesis part removed 2026-07-03) -- `_microglia.qmd`
+- S2 was render-layer wiring only: no new inference/targets. The former
+  `_synthesis.qmd` / `fig-synthesis-*` part has since been deleted with the
+  top-level synthesis section.
 - `_microglia.qmd` now tar_loads `microglia_figures` plus the prior compact P1 targets. New labelled chunks:
   `fig-microglia-umap-substate`, `fig-microglia-score-triptych`, `fig-microglia-unit-composition`,
   `fig-microglia-score-distribution`, `fig-microglia-composition-concordance`,
@@ -797,10 +771,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   figures use their `fig-cap` metadata.
 - Captioned figure chunks are now consistently cross-reference-ready: every source
   chunk with `fig-cap` has a hyphenated `fig-*` label, and no `fig-*` label contains
-  underscores. This includes the pre-expansion QC/P1-P4 figures, not only the 26
+  underscores. This includes the pre-expansion QC/P1-P4 figures, not only the 25
   new figure-expansion chunks.
 - Final rendered-HTML QA after S5: 42 `<figure>` blocks, 42 `<figcaption>` blocks,
-  42 source `fig-*` labels, expected synthesis/trajectory/mechanism/cross-modality
+  42 source `fig-*` labels, expected trajectory/mechanism/cross-modality
   sections present, lightbox markers present, 0 external resource refs, and 0
   warning/error markers. Full `scripts/check.sh` stayed green after the forced render.
 
@@ -812,10 +786,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `n_missing=0` for `figure`/`schematic` dispositions before S3/S4 rewrites.
 - New compact targets: `qc_figures` (modality table, GeoMx genotype tally,
   genotype-batch grid, depth/fraction histograms, metric bounds, audit notes)
-  and `report_visuals` (report spine schematic incl. Mermaid text, synthesis
-  source matrix/status grid, unsupported status grid, caveat glyphs, chapter
-  evidence boards, source-target contract). Live build sizes were tiny:
-  `qc_figures` 4.37 KB, `report_visuals` 4.28 KB.
+  and `report_visuals` (report spine schematic incl. Mermaid text plus
+  source-target contract). Live build sizes are tiny.
 - Existing chapter figure targets gained alias/board slots without heavy reads:
   `microglia_figures` adds summary board, composition shift/forest, amyloid
   volcano alias; `trajectory_figures` adds pseudotime-shift bundle,
@@ -827,20 +799,16 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   builders, per-chapter alias slots, manifest coverage, and finite geom guards.
   Real build command used for S2: `Rscript -e 'targets::tar_make(c(qc_figures, report_visuals))'`.
 
-## Prose-to-figures overview/synthesis conversion (S3, built) -- `index.qmd` + `_synthesis.qmd`
-- S3 is render-layer conversion only: no new inference/targets. `index.qmd`
-  tar_loads compact `report_visuals` and draws `fig-report-spine-schematic` from
-  `report_visuals$report_spine_schematic`; `_synthesis.qmd` tar_loads
-  `synthesis_report` + `report_visuals`, keeps one source-derived answer sentence,
-  and replaces the synthesis kable/status paragraph with `fig-synthesis-visual-abstract`,
-  `fig-synthesis-evidence-map`, and `fig-synthesis-status`.
-- Local prose result: S1 baseline for `index.qmd` + `_synthesis.qmd` = 305
-  counted words; S3 = 46 counted words (85% reduction, clears the selected
-  >=55% floor). Whole-report counted words after S3 = 4,852; S4 still carries
-  the main chapter-prose reduction load.
-- Claim guard: all S3 panels are compact-target-derived (`report_visuals` /
-  `synthesis_report`), and unsupported/not-earned/open-caveat states remain
-  plotted rather than moved to prose.
+## Prose-to-figures overview conversion (S3, built; synthesis part removed 2026-07-03) -- `index.qmd`
+- Current `index.qmd` tar_loads compact `report_visuals` and draws
+  `fig-report-spine-schematic` from `report_visuals$report_spine_schematic`.
+  The former `_synthesis.qmd` conversion and `fig-synthesis-*` panels were
+  deleted with the top-level synthesis section.
+- Current prose inventory: no `_synthesis.qmd`; `index.qmd` has 3 blocks / 16
+  counted words, and the full report source inventory has 1,135 counted words.
+- Claim guard: overview panels are compact-target-derived from `report_visuals`;
+  unsupported/not-earned/open-caveat states remain visible in the relevant
+  result chapters rather than a separate synthesis page.
 - Render gotcha: ggplot2 4.x deprecates `geom_label(label.size=)`; use
   `linewidth=` because report chunks run under `options(warn=2)`.
 
@@ -915,7 +883,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 - Committed tests `tests/test_*.R` = plain `stopifnot` fail-loud scripts (zero new deps), source the R/ files they
   exercise + `tests/helpers.R` (deterministic synthetic fixtures, NO RNG/clock; expect_error[+pattern]), print
   `ok - <x>`, non-zero exit on fail. Set: test_design, test_de_pb, test_io, test_plot, test_composition,
-  test_microglia, test_trajectory, test_mechanism, test_crossmodality, test_synthesis, test_figures. Data-free; per-module
+  test_microglia, test_trajectory, test_mechanism, test_crossmodality, test_figures. Data-free; per-module
   live-data smoke-test still happens once before commit.
 - Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 

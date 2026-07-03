@@ -8,13 +8,13 @@ contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "i
 focus <- c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
 
 manifest <- figure_manifest()
-stopifnot(nrow(manifest) == 26L,
+stopifnot(nrow(manifest) == 25L,
           !anyDuplicated(manifest$figure_id),
           all(grepl("^fig-", manifest$figure_id)),
           !any(grepl("_", manifest$figure_id, fixed = TRUE)),
-          all(c("synthesis", "microglia", "trajectory", "mechanism", "crossmodality") %in%
+          all(c("microglia", "trajectory", "mechanism", "crossmodality") %in%
                 manifest$chapter))
-cat("ok - figure_manifest pins 26 hyphenated inline figure ids\n")
+cat("ok - figure_manifest pins 25 hyphenated inline figure ids\n")
 
 symbol_map <- data.frame(
   ensembl = paste0("ENSMUSG", sprintf("%08d", 1:80)),
@@ -340,41 +340,15 @@ stopifnot(all(c("modality_table", "genotype_batch", "depth_distribution",
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")
 
-claim_ids <- names(.fig_claim_labels())
-evidence_table <- data.frame(
-  claim_id = claim_ids,
-  axis = rep(c("microglia_state", "interaction", "mechanism", "cross_modality", "unearned"),
-             length.out = length(claim_ids)),
-  status = c("core_supported", "core_supported", "not_supported", "focused_support",
-             "not_supported", "not_supported", "corroborated", "focused_support",
-             "not_earned", "open_caveat"),
-  direction = paste("direction", seq_along(claim_ids)),
-  evidence = paste("evidence", seq_along(claim_ids)),
-  primary_sources = rep(c("microglia_report", "trajectory_report", "mechanism_report",
-                          "crossmodality_report"), length.out = length(claim_ids)),
-  supporting_sources = rep(c("trajectory_report", "mechanism_report", "crossmodality_report",
-                             "microglia_report"), length.out = length(claim_ids)),
-  caveat = paste("caveat", seq_along(claim_ids)),
-  report_anchor = rep(c("#sec-microglia", "#sec-trajectory", "#sec-mechanism",
-                        "#sec-crossmodality"), length.out = length(claim_ids)),
-  stringsAsFactors = FALSE
-)
-synthesis_report <- list(
-  evidence_table = evidence_table,
-  status_summary = data.frame(status = names(table(evidence_table$status)),
-                              n = as.integer(table(evidence_table$status)),
-                              stringsAsFactors = FALSE)
-)
 rv <- report_visual_data(data.frame(component = "R", version = "test"),
-                         synthesis_report, qc, mf, tf, mecf, cmf)
-stopifnot(all(c("report_spine_schematic", "synthesis_visual_abstract",
-                "caveat_status_glyphs", "chapter_evidence_boards") %in% names(rv)),
-          nrow(rv$synthesis_visual_abstract$source_matrix) ==
-            length(claim_ids) * 4L,
-          nrow(rv$synthesis_visual_abstract$unsupported_status_grid) > 0L,
+                         qc, mf, tf, mecf, cmf)
+stopifnot("report_spine_schematic" %in% names(rv),
+          !"synthesis" %in% rv$report_spine_schematic$nodes$node,
+          all(c("inputs", "qc", "microglia", "trajectory", "mechanism",
+                "crossmodality", "environment") %in% rv$report_spine_schematic$nodes$node),
           rv$source_target_contract$n_manifest_slots[
             rv$source_target_contract$target == "report_visuals"] > 0L)
-cat("ok - report_visual_data builds visual abstract, spine, status, and caveat boards\n")
+cat("ok - report_visual_data builds overview spine without synthesis chapter dependency\n")
 
 replacement_manifest <- utils::read.delim(".agent/prose_replacement_manifest.tsv",
                                           stringsAsFactors = FALSE, check.names = FALSE)

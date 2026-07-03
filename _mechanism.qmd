@@ -363,6 +363,6 @@ ggplot(kin_plot, aes(contrast, source, fill = score)) +
         panel.grid = element_blank())
 ```
 
-## Synthesis
+## Mechanism status
 
 Mechanism result: DAM/Myc strengthened; NF-kB attenuation and Gsk3b stay unsupported here.
