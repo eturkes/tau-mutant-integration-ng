@@ -132,36 +132,41 @@ pc_lab <- do.call(rbind, lapply(split(pc_lab, pc_lab$contrast, drop = TRUE), fun
 pc_lab$contrast <- plot_contrast(pc_lab$contrast)
 pc_lab$site_label <- wrap_label(gsub("_", " ", pc_lab$site_id, fixed = TRUE), 14L)
 
-four_counts <- cmf$four_modality_counts
-four_counts$contrast <- plot_contrast(four_counts$contrast)
-four_counts$modality <- factor(four_counts$modality, levels = rev(modality_levels))
-four_counts$label <- fmt_int(four_counts$n_sig)
+amyloid_plate <- cmf$amyloid_response_plate$effects
+amyloid_measured <- amyloid_plate[amyloid_plate$measured_state_chr == "measured", , drop = FALSE]
+amyloid_missing <- amyloid_plate[amyloid_plate$measured_state_chr != "measured", , drop = FALSE]
 
-four_paths <- cmf$four_modality_pathways
-four_paths$contrast <- plot_contrast(four_paths$contrast)
-four_paths$axis_label <- fmt_axis(four_paths$axis)
-path_rank <- stats::aggregate(cbind(n_modalities_sig, n_modalities_present, rank_score) ~ axis_label,
-                              data = four_paths, FUN = max)
-path_rank <- path_rank[order(-path_rank$n_modalities_sig, -path_rank$n_modalities_present,
-                             -path_rank$rank_score, path_rank$axis_label,
-                             method = "radix", na.last = TRUE), , drop = FALSE]
-four_paths$axis_label <- factor(four_paths$axis_label, levels = rev(path_rank$axis_label))
-four_paths$direction <- factor(as.character(four_paths$direction),
-                               levels = c("positive", "negative", "mixed", "none"))
-four_paths$label <- ifelse(four_paths$n_modalities_sig > 0L,
-                           four_paths$n_modalities_sig, "")
-four_path_max_sig <- max(4L, max(four_paths$n_modalities_sig, na.rm = TRUE))
+synclr_plate <- cmf$synaptic_clearance_plate$effects
+synclr_measured <- synclr_plate[synclr_plate$measured_state_chr == "measured", , drop = FALSE]
+synclr_missing <- synclr_plate[synclr_plate$measured_state_chr != "measured", , drop = FALSE]
+synclr_pairs <- cmf$synaptic_clearance_plate$pairs
+synclr_pairs$label <- ifelse(synclr_pairs$plot_effect > 0, fmt_num(synclr_pairs$plot_effect, 0), "")
+synclr_pair_max <- max(2, max(synclr_pairs$plot_effect, na.rm = TRUE))
 
-four_symbols <- cmf$four_modality_symbols
-four_symbols$contrast <- plot_contrast(four_symbols$contrast)
-four_symbols$modality <- factor(four_symbols$modality, levels = modality_levels)
-four_symbols$symbol_label <- wrap_label(gsub(";", " / ", four_symbols$symbol_axis, fixed = TRUE), 18L)
-sym_rank <- unique(four_symbols[order(match(four_symbols$contrast, levels(four_symbols$contrast)),
-                                      -four_symbols$n_modalities_present,
-                                      -four_symbols$n_modalities_sig,
-                                      four_symbols$symbol_label,
-                                      method = "radix", na.last = TRUE), "symbol_label"])
-four_symbols$symbol_label <- factor(four_symbols$symbol_label, levels = rev(sym_rank))
+interaction_plate <- cmf$interaction_boundary_plate$effects
+interaction_measured <- interaction_plate[interaction_plate$measured_state_chr == "measured", , drop = FALSE]
+interaction_missing <- interaction_plate[interaction_plate$measured_state_chr != "measured", , drop = FALSE]
+
+plate_status_fill <- c(`supported/earned` = "#A63A50",
+                       `measured, not supported` = "#F8F5ED",
+                       `not observed` = "#D7D3CA",
+                       blocked = "#C8841C",
+                       `not applicable` = "#D7D3CA")
+plate_status_shape <- c(`supported/earned` = 21,
+                        `measured, not supported` = 21,
+                        `not observed` = 4,
+                        blocked = 24,
+                        `not applicable` = 3)
+plate_modality_colours <- c(
+  `snRNAseq microglia` = "#3F5F7F",
+  `GeoMx spatial` = "#0B7A75",
+  `bulk proteome` = "#C8841C",
+  `bulk phosphoproteome` = "#A63A50",
+  `TF activity` = "#7D5CB8",
+  `kinase activity` = "#8A6A32",
+  `cross-modality pathway` = "#6F7782",
+  `clearance pair` = "#2F7EA8"
+)
 
 geo_int <- one_row(geom_counts, geom_counts$contrast == "interaction", "GeoMx interaction counts")
 geo_amy_k <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_maptki", "GeoMx amyloid MAPTKI counts")
@@ -255,103 +260,134 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 }
 ```
 
-## Integrated Four-Modality Views
+## Axis Evidence Plates
 
 ```{r}
-#| label: fig-crossmodality-four-modality-counts
-#| fig-width: 9.2
-#| fig-height: 4.7
-#| fig-cap: "FDR support spans the four assay families."
-#| fig-alt: "A four by four heatmap shows significant symbol counts by contrast across snRNAseq microglia, GeoMx spatial, bulk proteome and bulk phosphoproteome."
-ggplot(four_counts, aes(contrast, modality)) +
-  geom_tile(aes(fill = log_n_sig), colour = "#F8F6F1", linewidth = 0.25,
-            width = 0.94, height = 0.94) +
-  geom_text(aes(label = label), size = 3.0, colour = "#262B2F") +
-  scale_fill_rwb(name = "log10(n + 1)") +
-  labs(x = NULL, y = NULL, title = "Four-modality FDR support by contrast") +
-  coord_equal(ratio = 0.82) +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_text(angle = 28, hjust = 1),
+#| label: fig-crossmodality-amyloid-response
+#| fig-width: 10.5
+#| fig-height: 6.2
+#| fig-cap: "Amyloid-response effects align across DAM and antigen-presentation axes."
+#| fig-alt: "Effect-size plate for DAM and antigen-presentation symbols across snRNAseq, GeoMx, proteome and phosphoproteome in the two amyloid contrasts."
+ggplot() +
+  geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
+  geom_segment(data = amyloid_measured,
+               aes(x = 0, xend = plot_effect,
+                   y = feature_label_plot, yend = feature_label_plot,
+                   colour = modality_label),
+               linewidth = 0.45, alpha = 0.48) +
+  geom_point(data = amyloid_measured,
+             aes(plot_effect, feature_label_plot, fill = plot_status,
+                 size = neg_log10_fdr, colour = modality_label),
+             shape = 21, stroke = 0.32) +
+  geom_point(data = amyloid_missing,
+             aes(plot_effect, feature_label_plot, shape = plot_status),
+             colour = "#77746C", size = 1.8, stroke = 0.45) +
+  facet_grid(axis_label ~ contrast_label, scales = "free_y", space = "free_y") +
+  scale_colour_manual(values = plate_modality_colours, name = "modality") +
+  scale_fill_manual(values = plate_status_fill, name = "support") +
+  scale_shape_manual(values = plate_status_shape, name = "state") +
+  scale_size_continuous(range = c(1.3, 4.2), name = "-log10 FDR") +
+  labs(x = "effect size", y = NULL,
+       title = "Amyloid response: DAM and antigen-presentation anchors") +
+  guides(colour = guide_legend(override.aes = list(size = 2.4, alpha = 1)),
+         fill = guide_legend(override.aes = list(size = 2.4)),
+         shape = guide_legend(override.aes = list(size = 2.4)),
+         size = "none") +
+  theme(panel.grid.major.y = element_blank(),
         legend.position = "bottom")
 ```
 
 ```{r}
-#| label: fig-crossmodality-four-modality-pathways
-#| fig-width: 9.4
-#| fig-height: 5.4
-#| fig-cap: "Pathway axes summarize four-modality support."
-#| fig-alt: "A heatmap shows pathway axes by contrast, with labels encoding the number of significant modalities and fill encoding direction."
-ggplot(four_paths, aes(contrast, axis_label)) +
-  geom_tile(aes(fill = direction), colour = "#F8F6F1", linewidth = 0.25,
-            width = 0.94, height = 0.94) +
-  geom_text(aes(label = label), size = 2.35, colour = "#F8F5ED", fontface = "bold") +
-  scale_fill_manual(values = c(positive = "#A63A50", negative = "#2F78A0",
-                               mixed = "#C8841C", none = "#D7D3CA"),
-                    drop = FALSE, name = "direction") +
-  labs(x = NULL, y = NULL, title = "Pathway-level support across assay families") +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_text(angle = 28, hjust = 1),
+#| label: fig-crossmodality-synaptic-clearance
+#| fig-width: 10.5
+#| fig-height: 7
+#| fig-cap: "Synaptic loss and clearance support remain axis-bounded."
+#| fig-alt: "Composite plate showing synaptic and clearance marker effects across modalities plus clearance-pair support counts."
+p_synclr <- ggplot() +
+  geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
+  geom_segment(data = synclr_measured,
+               aes(x = 0, xend = plot_effect,
+                   y = feature_label_plot, yend = feature_label_plot,
+                   colour = modality_label),
+               linewidth = 0.42, alpha = 0.46) +
+  geom_point(data = synclr_measured,
+             aes(plot_effect, feature_label_plot, fill = plot_status,
+                 size = neg_log10_fdr, colour = modality_label),
+             shape = 21, stroke = 0.30) +
+  geom_point(data = synclr_missing,
+             aes(plot_effect, feature_label_plot, shape = plot_status),
+             colour = "#77746C", size = 1.6, stroke = 0.42) +
+  facet_grid(axis_label ~ contrast_label, scales = "free_y", space = "free_y") +
+  scale_colour_manual(values = plate_modality_colours, name = "modality") +
+  scale_fill_manual(values = plate_status_fill, name = "support") +
+  scale_shape_manual(values = plate_status_shape, name = "state") +
+  scale_size_continuous(range = c(1.15, 3.8), name = "-log10 FDR") +
+  labs(x = "effect size", y = NULL,
+       title = "Synaptic and clearance markers in amyloid contrasts") +
+  guides(colour = guide_legend(override.aes = list(size = 2.2, alpha = 1)),
+         fill = guide_legend(override.aes = list(size = 2.2)),
+         shape = guide_legend(override.aes = list(size = 2.2)),
+         size = "none") +
+  theme(panel.grid.major.y = element_blank(),
         legend.position = "bottom")
+
+p_pairs <- ggplot(synclr_pairs, aes(plot_effect, feature_label_plot)) +
+  geom_segment(aes(x = 0, xend = plot_effect, yend = feature_label_plot),
+               linewidth = 0.5, colour = "#B7B1A5") +
+  geom_point(aes(fill = plot_status), shape = 21, size = 2.5,
+             colour = "#262B2F", stroke = 0.28) +
+  geom_text(aes(label = label, x = plot_effect + 0.12),
+            hjust = 0, size = 2.45, colour = "#333333") +
+  facet_wrap(~ contrast_label, nrow = 1) +
+  scale_fill_manual(values = plate_status_fill, name = NULL) +
+  scale_x_continuous(breaks = 0:ceiling(synclr_pair_max),
+                     limits = c(0, synclr_pair_max + 0.7)) +
+  labs(x = "coherent supported modalities", y = NULL,
+       title = "Measured clearance pairs, not full CCC") +
+  guides(fill = "none") +
+  theme(panel.grid.major.y = element_blank())
+
+p_synclr / p_pairs +
+  plot_layout(heights = c(1, 0.36), guides = "collect") &
+  theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: fig-crossmodality-four-modality-symbols
-#| fig-width: 10
-#| fig-height: 7.2
-#| fig-cap: "Axis genes show measured and significant modalities."
-#| fig-alt: "Faceted heatmaps show selected axis genes against the four assay families; fill distinguishes absent, measured and FDR-significant support."
-ggplot(four_symbols, aes(modality, symbol_label, fill = status)) +
-  geom_tile(aes(fill = status), colour = "#F8F6F1", linewidth = 0.25,
-            width = 0.94, height = 0.94) +
-  facet_wrap(~ contrast, ncol = 2, scales = "free_y") +
-  scale_fill_manual(values = c(`not observed` = "#D7D3CA",
-                               measured = "#3F5F7F",
-                               `FDR < 0.10` = "#A63A50"),
-                    drop = FALSE, name = NULL) +
-  labs(x = NULL, y = NULL, title = "Selected axis symbols across modalities") +
-  coord_cartesian(clip = "off") +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_text(angle = 28, hjust = 1),
+#| label: fig-crossmodality-interaction-boundary
+#| fig-width: 10.5
+#| fig-height: 6.5
+#| fig-cap: "Interaction support narrows outside microglia composition."
+#| fig-alt: "Interaction-boundary plate showing measured effects for selected axes and mechanism rows, with blocked SpatialDecon abundance called out."
+ggplot() +
+  geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
+  geom_segment(data = interaction_measured,
+               aes(x = 0, xend = plot_effect,
+                   y = feature_label_plot, yend = feature_label_plot,
+                   colour = modality_label),
+               linewidth = 0.45, alpha = 0.5) +
+  geom_point(data = interaction_measured,
+             aes(plot_effect, feature_label_plot, fill = plot_status,
+                 size = neg_log10_fdr, colour = modality_label),
+             shape = 21, stroke = 0.32) +
+  geom_point(data = interaction_missing,
+             aes(plot_effect, feature_label_plot, shape = plot_status),
+             colour = "#77746C", size = 2.0, stroke = 0.48) +
+  facet_wrap(~ axis_label, ncol = 2, scales = "free_y") +
+  scale_colour_manual(values = plate_modality_colours, name = "modality") +
+  scale_fill_manual(values = plate_status_fill, name = "support") +
+  scale_shape_manual(values = plate_status_shape, name = "state") +
+  scale_size_continuous(range = c(1.25, 4.2), name = "-log10 FDR") +
+  labs(x = "interaction effect", y = NULL,
+       title = "Interaction evidence boundary across modalities") +
+  guides(colour = guide_legend(override.aes = list(size = 2.3, alpha = 1)),
+         fill = guide_legend(override.aes = list(size = 2.3)),
+         shape = guide_legend(override.aes = list(size = 2.3)),
+         size = "none") +
+  theme(panel.grid.major.y = element_blank(),
         legend.position = "bottom")
 ```
 
 ## GeoMx Spatial DE
-
-```{r}
-#| label: fig-crossmodality-geomx-counts
-#| fig-width: 8.8
-#| fig-height: 4.2
-#| fig-cap: "GeoMx DE counts are largest in amyloid contrasts."
-#| fig-alt: "Direct-labelled diverging point stems show GeoMx up and down DE counts for focal contrasts."
-geo_plot <- geom_counts[geom_counts$contrast %in% focus, , drop = FALSE]
-geo_long <- rbind(
-  data.frame(contrast = geo_plot$contrast, direction = "up", n = geo_plot$n_up_fdr_0_10),
-  data.frame(contrast = geo_plot$contrast, direction = "down", n = geo_plot$n_down_fdr_0_10)
-)
-geo_long$contrast <- plot_contrast(geo_long$contrast, reverse = TRUE)
-geo_long$direction <- factor(geo_long$direction, levels = c("up", "down"))
-geo_long$n_signed <- ifelse(geo_long$direction == "down", -geo_long$n, geo_long$n)
-geo_max <- max(1, max(abs(geo_long$n_signed), na.rm = TRUE))
-geo_pad <- geo_max * 0.04
-geo_long$label <- ifelse(geo_long$n == 0, "", fmt_int(geo_long$n))
-geo_long$label_x <- geo_long$n_signed + ifelse(geo_long$n_signed < 0, -geo_pad, geo_pad)
-geo_long$label_hjust <- ifelse(geo_long$n_signed < 0, 1, 0)
-
-ggplot(geo_long, aes(n_signed, contrast, colour = direction)) +
-  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.4) +
-  geom_segment(aes(x = 0, xend = n_signed, yend = contrast),
-               linewidth = 0.62, alpha = 0.86) +
-  geom_point(size = 2.8) +
-  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
-            size = 3.0, colour = "#333333") +
-  scale_colour_manual(values = tau_direction_colours, name = "direction") +
-  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
-  labs(x = "GeoMx rows at FDR < 0.10", y = NULL,
-       title = "Spatial DE is strongest for amyloid") +
-  coord_cartesian(xlim = c(-geo_max * 1.22, geo_max * 1.22), clip = "off") +
-  theme(panel.grid.major.y = element_blank(),
-        legend.position = "bottom")
-```
 
 ```{r}
 #| label: fig-crossmodality-geomx-volcano
@@ -420,36 +456,6 @@ ggplot(geo_sens_plot, aes(n, contrast, colour = metric)) +
 ```
 
 ## Bulk Proteome And Phospho
-
-```{r}
-#| label: fig-crossmodality-bulk-counts
-#| fig-width: 9
-#| fig-height: 4.4
-#| fig-cap: "Bulk omics FDR counts are corroborative, not microglia-sorted."
-#| fig-alt: "Direct-labelled point stems show bulk proteome and phospho FDR counts by focal contrast."
-bp <- bulk_counts[bulk_counts$contrast %in% focus, , drop = FALSE]
-bp$contrast <- plot_contrast(bp$contrast, reverse = TRUE)
-bp$layer <- factor(bp$layer, levels = names(layer_labels), labels = unname(layer_labels))
-bp_max <- max(1, max(bp$n_fdr_0_10, na.rm = TRUE))
-bp_pad <- bp_max * 0.03
-bp$label <- ifelse(bp$n_fdr_0_10 == 0, "", fmt_int(bp$n_fdr_0_10))
-
-ggplot(bp, aes(n_fdr_0_10, contrast, colour = layer)) +
-  geom_segment(aes(x = 0, xend = n_fdr_0_10, yend = contrast),
-               linewidth = 0.62, alpha = 0.86) +
-  geom_point(size = 2.8) +
-  geom_text(aes(x = n_fdr_0_10 + bp_pad, label = label),
-            hjust = 0, size = 2.95, colour = "#333333") +
-  facet_wrap(~ layer, nrow = 1) +
-  scale_colour_manual(values = c(proteome = "#3F5F7F",
-                                 `raw phospho` = "#0B7A75",
-                                 `corrected phospho` = "#7D5CB8"),
-                      guide = "none") +
-  labs(x = "features at FDR < 0.10", y = NULL,
-       title = "Bulk significance is largest in amyloid contrasts") +
-  coord_cartesian(xlim = c(0, bp_max * 1.16), clip = "off") +
-  theme(panel.grid.major.y = element_blank())
-```
 
 ```{r}
 #| label: fig-crossmodality-phospho-correction

@@ -361,18 +361,27 @@ stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
           all(c("geomx_counts", "bulk_counts", "phospho_raw_corrected",
                 "four_modality_counts", "four_modality_pathways",
                 "four_modality_symbols", "axis_effect_spine",
-                "axis_effect_selection") %in% names(cmf)),
+                "axis_effect_selection", "amyloid_response_plate",
+                "synaptic_clearance_plate",
+                "interaction_boundary_plate") %in% names(cmf)),
           nrow(cmf$four_modality_counts) == length(focus) * length(four_modalities),
           nrow(cmf$four_modality_pathways) > 0L,
           nrow(cmf$four_modality_symbols) > 0L,
           is.data.frame(cmf$axis_effect_spine),
           is.data.frame(cmf$axis_effect_selection),
+          is.list(cmf$amyloid_response_plate),
+          is.list(cmf$synaptic_clearance_plate),
+          is.list(cmf$interaction_boundary_plate),
+          nrow(cmf$amyloid_response_plate$effects) > 0L,
+          nrow(cmf$synaptic_clearance_plate$effects) > 0L,
+          nrow(cmf$synaptic_clearance_plate$pairs) > 0L,
+          nrow(cmf$interaction_boundary_plate$effects) > 0L,
           nrow(cmf$geomx_volcano$points) > 0L,
           nrow(cmf$geomx_volcano$bins) > 0L,
           nrow(cmf$geomx_sensitivity) == length(focus) * 2L,
           nrow(cmf$phospho_raw_corrected$points) > 0L,
           nrow(cmf$phospho_raw_corrected$labels) > 0L)
-cat("ok - crossmodality_figure_data exposes conventional point and matrix plotting tables\n")
+cat("ok - crossmodality_figure_data exposes evidence-plate and audit plotting tables\n")
 
 spine <- cmf$axis_effect_spine
 selection <- cmf$axis_effect_selection
@@ -444,7 +453,8 @@ story <- story_figure_data(qc, composition_results, pb_de_microglia,
                            crossmodality_report, cmf)
 stopifnot(all(figure_manifest("story")$slot %in% names(story)),
           all(c("sample_counts", "dam_response", "de_counts", "trajectory",
-                "mechanism", "pathway_axes", "clearance") %in% names(story)),
+                "mechanism", "pathway_axes", "clearance",
+                "clearance_effects") %in% names(story)),
           nrow(story$dam_response$unit) == length(units16),
           nrow(story$de_counts$signed) == length(contrasts) * 2L,
           all(c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic") %in%
@@ -452,7 +462,10 @@ stopifnot(all(figure_manifest("story")$slot %in% names(story)),
           any(story$mechanism$track == "Myc TF"),
           any(story$mechanism$track == "Gsk3b kinase"),
           nrow(story$pathway_axes) > 0L,
-          nrow(story$clearance) > 0L)
+          nrow(story$clearance) > 0L,
+          nrow(story$clearance_effects) > 0L,
+          all(c("mechanism", "clearance", "clearance_effects") %in%
+                names(story$mechanism_crossmodality)))
 cat("ok - story_figure_data assembles compact publication story plates\n")
 
 replacement_manifest <- utils::read.delim(".agent/prose_replacement_manifest.tsv",

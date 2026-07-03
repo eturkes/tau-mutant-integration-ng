@@ -29,9 +29,9 @@ figure_manifest <- function(chapter = NULL) {
       "fig-mechanism-go-dotplot",
       "fig-mechanism-tf-focus",
       "fig-mechanism-kinase-heatmap",
-      "fig-crossmodality-four-modality-counts",
-      "fig-crossmodality-four-modality-pathways",
-      "fig-crossmodality-four-modality-symbols",
+      "fig-crossmodality-amyloid-response",
+      "fig-crossmodality-synaptic-clearance",
+      "fig-crossmodality-interaction-boundary",
       "fig-crossmodality-geomx-volcano",
       "fig-crossmodality-geomx-sensitivity",
       "fig-crossmodality-phospho-correction"
@@ -68,9 +68,9 @@ figure_manifest <- function(chapter = NULL) {
       "go_top_dotplot",
       "tf_focus",
       "kinase_heatmap",
-      "four_modality_counts",
-      "four_modality_pathways",
-      "four_modality_symbols",
+      "amyloid_response_plate",
+      "synaptic_clearance_plate",
+      "interaction_boundary_plate",
       "geomx_volcano",
       "geomx_sensitivity",
       "phospho_raw_corrected"
@@ -269,6 +269,20 @@ figure_manifest <- function(chapter = NULL) {
   x
 }
 
+.fig_story_clearance_effects <- function(crossmodality_figures) {
+  stopifnot(is.list(crossmodality_figures),
+            is.data.frame(crossmodality_figures$axis_effect_spine))
+  x <- .fig_axis_effect_plot_rows(
+    crossmodality_figures$axis_effect_spine,
+    axes = "clearance",
+    contrasts = c("nlgf_in_maptki", "nlgf_in_p301s"),
+    feature_ids = c("clearance:Apoe", "clearance:Trem2"),
+    modality_classes = names(.fig_four_modality_classes())
+  )
+  stopifnot(nrow(x) > 0L)
+  x
+}
+
 story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
                               trajectory_report, mechanism_report,
                               crossmodality_report, crossmodality_figures,
@@ -286,6 +300,7 @@ story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
   mech <- .fig_story_mechanism(mechanism_report, alpha)
   path <- .fig_story_pathways(crossmodality_figures)
   clr <- .fig_story_clearance(crossmodality_report)
+  clr_effects <- .fig_story_clearance_effects(crossmodality_figures)
   out <- list(
     manifest = figure_manifest("story"),
     sample_counts = sample_counts,
@@ -295,8 +310,10 @@ story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
     mechanism = mech,
     pathway_axes = path,
     clearance = clr,
+    clearance_effects = clr_effects,
     core_story = list(dam_response = dam, de_counts = de, trajectory = traj),
-    mechanism_crossmodality = list(pathway_axes = path, mechanism = mech, clearance = clr),
+    mechanism_crossmodality = list(mechanism = mech, clearance = clr,
+                                   clearance_effects = clr_effects),
     provenance = list(
       source_targets = c("qc_figures", "composition_results", "pb_de_microglia",
                          "trajectory_report", "mechanism_report",
@@ -331,8 +348,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "fig-trajectory-decomposition",
       "fig-trajectory-concordance",
       "fig-mechanism-tf-interaction",
-      "fig-crossmodality-geomx-counts",
-      "fig-crossmodality-bulk-counts",
       "collapsed-qc-audit",
       "collapsed-microglia-audit",
       "collapsed-trajectory-audit",
@@ -350,8 +365,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "trajectory_figures",
       "trajectory_figures",
       "mechanism_figures",
-      "crossmodality_figures",
-      "crossmodality_figures",
       "qc_figures",
       "microglia_report",
       "trajectory_figures",
@@ -369,8 +382,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "decomposition",
       "concordance",
       "tf_interaction",
-      "geomx_counts",
-      "bulk_counts",
       "audit_notes",
       "prune",
       "trajectory_audit",
@@ -387,8 +398,6 @@ visual_reduction_slot_map <- function(disposition = NULL) {
       "figure;caption",
       "figure;caption",
       "figure;caption",
-      "caption",
-      "caption",
       "caption",
       "collapsed_audit",
       "collapsed_audit",
@@ -1784,6 +1793,170 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
   list(spine = out, selection = selection)
 }
 
+.fig_axis_effect_plot_rows <- function(spine, axes = NULL, contrasts = NULL,
+                                       feature_types = NULL, feature_ids = NULL,
+                                       modality_classes = NULL,
+                                       keep_not_applicable = FALSE) {
+  .fig_require_cols(spine, c("axis", "feature_id", "feature_label", "feature_type",
+                             "modality_class", "contrast", "effect", "effect_scale",
+                             "fdr", "support_status", "direction", "measured_state",
+                             "selection_rank", "selection_rule"),
+                    "axis_effect_spine")
+  x <- spine
+  if (!is.null(axes)) {
+    x <- x[as.character(x$axis) %in% axes, , drop = FALSE]
+  }
+  if (!is.null(contrasts)) {
+    x <- x[as.character(x$contrast) %in% contrasts, , drop = FALSE]
+  }
+  if (!is.null(feature_types)) {
+    x <- x[as.character(x$feature_type) %in% feature_types, , drop = FALSE]
+  }
+  if (!is.null(feature_ids)) {
+    x <- x[as.character(x$feature_id) %in% feature_ids, , drop = FALSE]
+  }
+  if (!is.null(modality_classes)) {
+    x <- x[as.character(x$modality_class) %in% modality_classes, , drop = FALSE]
+  }
+  if (!keep_not_applicable) {
+    x <- x[as.character(x$measured_state) != "not_applicable", , drop = FALSE]
+  }
+  stopifnot(nrow(x) > 0L)
+
+  axis_labs <- c(
+    DAM = "DAM",
+    antigen_presentation = "antigen presentation",
+    synaptic = "synaptic",
+    clearance = "clearance",
+    interaction_boundary = "interaction boundary",
+    mechanism_boundary = "mechanism boundary"
+  )
+  contrast_labs <- c(
+    nlgf_in_maptki = "amyloid on MAPTKI",
+    nlgf_in_p301s = "amyloid on P301S",
+    tau_in_nlgf = "tau in NLGF",
+    interaction = "interaction"
+  )
+  modality_labs <- .fig_axis_effect_modalities()
+
+  x$axis_chr <- as.character(x$axis)
+  x$contrast_chr <- as.character(x$contrast)
+  x$modality_chr <- as.character(x$modality_class)
+  x$axis_label_chr <- unname(axis_labs[x$axis_chr])
+  x$axis_label_chr[is.na(x$axis_label_chr)] <- gsub("_", " ", x$axis_chr[is.na(x$axis_label_chr)],
+                                                    fixed = TRUE)
+  x$contrast_label_chr <- unname(contrast_labs[x$contrast_chr])
+  x$contrast_label_chr[is.na(x$contrast_label_chr)] <- x$contrast_chr[is.na(x$contrast_label_chr)]
+  x$modality_label_chr <- unname(modality_labs[x$modality_chr])
+  x$modality_label_chr[is.na(x$modality_label_chr)] <- x$modality_chr[is.na(x$modality_label_chr)]
+  x$feature_label_chr <- gsub("_", " ", as.character(x$feature_label), fixed = TRUE)
+  x$feature_label_chr <- gsub(" axis$", "", x$feature_label_chr)
+  x$plot_effect <- ifelse(is.finite(x$effect), x$effect, 0)
+  x$effect_abs <- ifelse(is.finite(x$effect), abs(x$effect), NA_real_)
+  x$neg_log10_fdr <- ifelse(is.finite(x$fdr), -log10(pmax(x$fdr, 1e-300)), NA_real_)
+  x$measured_state_chr <- as.character(x$measured_state)
+  support_chr <- as.character(x$support_status)
+  x$plot_status_chr <- ifelse(
+    support_chr %in% c("supported", "earned"),
+    "supported/earned",
+    ifelse(x$measured_state_chr == "measured", "measured, not supported",
+           ifelse(x$measured_state_chr == "blocked", "blocked",
+                  ifelse(x$measured_state_chr == "not_observed", "not observed",
+                         "not applicable")))
+  )
+  x$effect_sign_chr <- ifelse(as.character(x$direction) %in% c("positive", "negative", "mixed"),
+                              as.character(x$direction), "none")
+
+  axis_order <- .fig_axis_effect_axes()
+  if (!is.null(axes)) axis_order <- axis_order[axis_order %in% axes]
+  contrast_order <- .fig_axis_effect_contrasts()
+  if (!is.null(contrasts)) contrast_order <- contrast_order[contrast_order %in% contrasts]
+  modality_order <- names(.fig_axis_effect_modalities())
+  if (!is.null(modality_classes)) {
+    modality_order <- modality_order[modality_order %in% modality_classes]
+  }
+  feature_order <- unique(x$feature_label_chr[order(match(x$axis_chr, axis_order),
+                                                    x$selection_rank, x$feature_id,
+                                                    method = "radix", na.last = TRUE)])
+
+  x$axis_label <- factor(x$axis_label_chr, levels = unname(axis_labs[axis_order]))
+  x$contrast_label <- factor(x$contrast_label_chr, levels = unname(contrast_labs[contrast_order]))
+  x$modality_label <- factor(x$modality_label_chr, levels = unname(modality_labs[modality_order]))
+  x$feature_label_plot <- factor(x$feature_label_chr, levels = rev(feature_order))
+  x$plot_status <- factor(x$plot_status_chr,
+                          levels = c("supported/earned", "measured, not supported",
+                                     "not observed", "blocked", "not applicable"))
+  x$effect_sign <- factor(x$effect_sign_chr, levels = c("negative", "positive", "mixed", "none"))
+  x <- x[order(match(x$axis_chr, axis_order), x$selection_rank, x$feature_id,
+               match(x$contrast_chr, contrast_order),
+               match(x$modality_chr, modality_order),
+               method = "radix", na.last = TRUE), , drop = FALSE]
+  rownames(x) <- NULL
+  measured <- x[x$measured_state_chr == "measured", , drop = FALSE]
+  if (nrow(measured)) {
+    .fig_assert_finite(measured, "plot_effect", "axis effect plot measured rows")
+  }
+  x
+}
+
+.fig_crossmodality_amyloid_response_plate <- function(spine) {
+  effects <- .fig_axis_effect_plot_rows(
+    spine,
+    axes = c("DAM", "antigen_presentation"),
+    contrasts = c("nlgf_in_maptki", "nlgf_in_p301s"),
+    feature_types = "symbol",
+    modality_classes = names(.fig_four_modality_classes())
+  )
+  stopifnot(any(effects$measured_state_chr == "measured"),
+            any(effects$axis_chr == "DAM"),
+            any(effects$axis_chr == "antigen_presentation"))
+  list(effects = effects)
+}
+
+.fig_crossmodality_synaptic_clearance_plate <- function(spine) {
+  effects <- .fig_axis_effect_plot_rows(
+    spine,
+    axes = c("synaptic", "clearance"),
+    contrasts = c("nlgf_in_maptki", "nlgf_in_p301s"),
+    feature_types = "symbol",
+    modality_classes = names(.fig_four_modality_classes())
+  )
+  pairs <- .fig_axis_effect_plot_rows(
+    spine,
+    axes = "clearance",
+    contrasts = .fig_axis_effect_contrasts(),
+    feature_types = "pair",
+    modality_classes = "clearance_pair"
+  )
+  stopifnot(any(effects$axis_chr == "synaptic"),
+            any(effects$axis_chr == "clearance"),
+            any(pairs$feature_type == "pair"))
+  list(effects = effects, pairs = pairs)
+}
+
+.fig_crossmodality_interaction_boundary_plate <- function(spine) {
+  feature_ids <- c(
+    "DAM:Apoe", "DAM:Cst7",
+    "antigen_presentation:Cd74",
+    "synaptic:Syn1", "synaptic:Syp",
+    "clearance:Apoe", "clearance:Trem2",
+    "boundary:Myc_TF", "boundary:Nfkb1_TF", "boundary:Rela_TF",
+    "boundary:Gsk3b_kinase", "boundary:SpatialDecon_abundance"
+  )
+  effects <- .fig_axis_effect_plot_rows(
+    spine,
+    axes = c("DAM", "antigen_presentation", "synaptic", "clearance",
+             "interaction_boundary", "mechanism_boundary"),
+    contrasts = "interaction",
+    feature_ids = feature_ids,
+    modality_classes = names(.fig_axis_effect_modalities())
+  )
+  stopifnot(any(effects$axis_chr == "mechanism_boundary"),
+            any(effects$measured_state_chr == "blocked"),
+            any(effects$measured_state_chr == "measured"))
+  list(effects = effects)
+}
+
 crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics_summary,
                                       phospho_de_24m, phospho_corrected_24m,
                                       crossmodality_table = NULL,
@@ -1817,11 +1990,17 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   four_symbols <- .fig_four_modality_symbols(crossmodality_report, contrasts)
   axis_effect <- .fig_axis_effect_spine(crossmodality_report, crossmodality_table,
                                         alpha)
+  amyloid_response <- .fig_crossmodality_amyloid_response_plate(axis_effect$spine)
+  synaptic_clearance <- .fig_crossmodality_synaptic_clearance_plate(axis_effect$spine)
+  interaction_boundary <- .fig_crossmodality_interaction_boundary_plate(axis_effect$spine)
 
   out <- list(
     manifest = figure_manifest("crossmodality"),
     axis_effect_spine = axis_effect$spine,
     axis_effect_selection = axis_effect$selection,
+    amyloid_response_plate = amyloid_response,
+    synaptic_clearance_plate = synaptic_clearance,
+    interaction_boundary_plate = interaction_boundary,
     four_modality_counts = four_counts,
     four_modality_pathways = four_pathways,
     four_modality_symbols = four_symbols,

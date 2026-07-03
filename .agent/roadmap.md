@@ -83,7 +83,7 @@ S2 Cross-modality evidence spine [DONE 2026-07-03]
   complete selection-key x contrast rows, finite measured effects, deterministic
   axis order, and measured / not-observed / blocked / not-applicable states.
 
-S3 Replace dashboard panels with journal-style evidence plates [OPEN]
+S3 Replace dashboard panels with journal-style evidence plates [DONE 2026-07-03]
 - Primary candidates:
   1. Amyloid-response concordance plate: snRNAseq / GeoMx / bulk rows shown as
      aligned effect-size or volcano/scatter panels for DAM / antigen-presentation
@@ -99,6 +99,17 @@ S3 Replace dashboard panels with journal-style evidence plates [OPEN]
 - Acceptance: caption-only HTML has fewer dashboard/tile-first cross-modality
   panels; each remaining integration figure can be understood as one biological
   sentence from figure+caption.
+  Closed by `crossmodality_figures$amyloid_response_plate`,
+  `$synaptic_clearance_plate`, and `$interaction_boundary_plate` from the tested
+  `axis_effect_spine`: the visible cross-modality chapter now opens with named
+  effect-size plates for amyloid-response, synaptic/clearance context, and
+  interaction boundaries. Generic four-modality count/pathway/symbol dashboards,
+  standalone GeoMx counts, and standalone bulk counts are removed from the visible
+  path; GeoMx volcano/sensitivity and phospho correction remain as conventional
+  evidence/boundary panels. Story Figure 5 is redrawn as Myc forest + NF-kB/Gsk3b
+  boundary + focused Apoe/Trem2 clearance-effect strip. Targeted render DOM QA:
+  36 figures / 36 captions / 36 nonblank alts, no old dashboard ids, no external
+  or local figure refs; full `scripts/check.sh` green.
 
 S4 Closing model + report flow [PENDING]
 - Add final graphical model / closing synthesis after cross-modality: amyloid
@@ -119,8 +130,9 @@ S5 QA + close [PENDING]
   legends or unreadable cross-modality labels, full gate green, roadmap/history
   updated, one scoped commit.
 
-Next `$session-prompt` mode = EXECUTE S3. Last closed = Cross-modality narrative
-S2 (2026-07-03; added tested axis-effect spine for replacement evidence plates).
+Next `$session-prompt` mode = EXECUTE S4. Last closed = Cross-modality narrative
+S3 (2026-07-03; replaced dashboard-first integration panels with named evidence
+plates and redrew the front mechanism/cross-modality story plate).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

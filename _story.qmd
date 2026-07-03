@@ -51,23 +51,29 @@ de_signed$label_hjust <- ifelse(de_signed$n_signed < 0, 1, 0)
 traj <- sf$trajectory
 traj$supported <- factor(traj$supported, levels = c(FALSE, TRUE))
 
-path_axes <- sf$pathway_axes
-path_axes <- path_axes[path_axes$contrast %in% focus, , drop = FALSE]
-path_axes$contrast <- plot_contrast(path_axes$contrast)
-path_axes$direction <- factor(as.character(path_axes$direction),
-                              levels = c("positive", "negative", "mixed", "none"))
-path_axes$label <- ifelse(path_axes$n_modalities_sig > 0L, path_axes$n_modalities_sig, "")
-max_path_sig <- max(4L, max(path_axes$n_modalities_sig, na.rm = TRUE))
-
 mech <- sf$mechanism
 mech$item <- factor(mech$item, levels = rev(unique(mech$item)))
 mech$supported <- factor(mech$supported, levels = c(FALSE, TRUE))
+mech_myc <- mech[mech$track == "Myc TF", , drop = FALSE]
+mech_bounds <- mech[mech$track != "Myc TF", , drop = FALSE]
 
 clearance <- sf$clearance
 clearance <- clearance[clearance$contrast %in% focus, , drop = FALSE]
 clearance$contrast <- plot_contrast(clearance$contrast)
 clearance$pair_label <- factor(clearance$pair_label, levels = rev(unique(clearance$pair_label)))
 clearance$supported <- factor(clearance$supported, levels = c(FALSE, TRUE))
+clearance_pair <- clearance[clearance$pair == "Apoe_Trem2", , drop = FALSE]
+clearance_pair$label <- ifelse(clearance_pair$n_supported_modalities > 0L,
+                               clearance_pair$n_supported_modalities, "")
+clearance_pair_max <- max(2, max(clearance_pair$n_supported_modalities, na.rm = TRUE))
+
+clearance_effects <- sf$mechanism_crossmodality$clearance_effects
+clearance_effects <- clearance_effects[clearance_effects$measured_state_chr == "measured", , drop = FALSE]
+clearance_effects$plot_status <- factor(clearance_effects$plot_status,
+                                        levels = c("supported/earned",
+                                                   "measured, not supported",
+                                                   "not observed", "blocked",
+                                                   "not applicable"))
 ```
 
 ## Core evidence
@@ -126,47 +132,68 @@ p_traj <- ggplot(traj, aes(coef, measure_label, colour = supported)) +
 ```{r}
 #| label: fig-story-mechanism-crossmodality
 #| fig-width: 11
-#| fig-height: 7.1
+#| fig-height: 6.4
 #| fig-cap: "Cross-modality support narrows the mechanism to Myc and clearance context."
-#| fig-alt: "Composite figure with pathway-axis modality support heatmap, mechanism triage, and measured clearance-pair support heatmap."
-p_path <- ggplot(path_axes, aes(contrast, axis_label)) +
-  geom_tile(aes(fill = direction), colour = "#F8F6F1", linewidth = 0.25,
-            width = 0.94, height = 0.94) +
-  geom_text(aes(label = label), size = 2.35, colour = "#F8F5ED", fontface = "bold") +
-  scale_fill_manual(values = c(positive = "#A63A50", negative = "#2F78A0",
-                               mixed = "#C8841C", none = "#D7D3CA"),
-                    drop = FALSE, name = "direction") +
-  labs(x = NULL, y = NULL, title = "Pathway axes across assay families") +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_text(angle = 28, hjust = 1),
-        legend.position = "bottom")
-
-p_mech <- ggplot(mech, aes(score, item, fill = supported)) +
+#| fig-alt: "Composite figure with Myc TF effects, NF-kB and Gsk3b boundary effects, and focused Apoe-Trem2 clearance evidence."
+p_myc <- ggplot(mech_myc, aes(score, item, fill = supported)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_segment(aes(x = 0, xend = score, yend = item),
                colour = "#B7B1A5", linewidth = 0.66) +
   geom_point(aes(size = neg_log10_fdr), shape = 21, colour = "#262B2F", stroke = 0.28) +
-  facet_wrap(~ track, ncol = 1, scales = "free_y") +
   scale_fill_tau_binary(name = "FDR < 0.10") +
   scale_size_continuous(range = c(1.4, 4.8), name = "-log10 FDR") +
   guides(fill = "none", size = "none") +
-  labs(x = "signed score", y = NULL, title = "Mechanism triage") +
+  labs(x = "signed TF score", y = NULL, title = "Myc interaction signal") +
   theme(panel.grid.major.y = element_blank(),
         legend.position = "none")
 
-p_clearance <- ggplot(clearance, aes(contrast, pair_label, fill = supported)) +
-  geom_tile(aes(fill = supported), colour = "#F8F6F1", linewidth = 0.25,
-            width = 0.94, height = 0.94) +
-  geom_text(aes(label = ifelse(n_supported_modalities > 0L, n_supported_modalities, "")),
-            size = 2.2, colour = "#F8F5ED", fontface = "bold") +
-  scale_fill_tau_binary(name = "earned") +
-  guides(fill = "none") +
-  labs(x = NULL, y = NULL, title = "Measured clearance pairs") +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_text(angle = 28, hjust = 1),
+p_bounds <- ggplot(mech_bounds, aes(score, item, fill = supported)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_segment(aes(x = 0, xend = score, yend = item),
+               colour = "#B7B1A5", linewidth = 0.58) +
+  geom_point(aes(size = neg_log10_fdr), shape = 21, colour = "#262B2F", stroke = 0.28) +
+  facet_wrap(~ track, ncol = 1, scales = "free_y") +
+  scale_fill_tau_binary(name = "FDR < 0.10") +
+  scale_size_continuous(range = c(1.3, 4.2), name = "-log10 FDR") +
+  guides(fill = "none", size = "none") +
+  labs(x = "signed score", y = NULL, title = "Unsupported boundaries") +
+  theme(panel.grid.major.y = element_blank(),
         legend.position = "none")
 
-p_path / (p_mech | p_clearance) +
-  plot_layout(heights = c(1.08, 1)) +
+p_clear_effect <- ggplot(clearance_effects,
+                         aes(plot_effect, feature_label_plot, colour = modality_label)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_segment(aes(x = 0, xend = plot_effect, yend = feature_label_plot),
+               linewidth = 0.48, alpha = 0.55) +
+  geom_point(aes(shape = plot_status), size = 2.0, stroke = 0.45) +
+  facet_wrap(~ contrast_label, nrow = 1) +
+  scale_colour_manual(values = tau_discrete_colours, name = NULL) +
+  scale_shape_manual(values = c(`supported/earned` = 16,
+                                `measured, not supported` = 1,
+                                `not observed` = 4,
+                                blocked = 17,
+                                `not applicable` = 3),
+                     drop = FALSE, name = NULL) +
+  labs(x = "log2 effect", y = NULL, title = "Apoe-Trem2 effect context") +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "bottom")
+
+p_pair <- ggplot(clearance_pair, aes(n_supported_modalities, contrast)) +
+  geom_segment(aes(x = 0, xend = n_supported_modalities, yend = contrast),
+               linewidth = 0.58, colour = "#B7B1A5") +
+  geom_point(aes(fill = supported), shape = 21, size = 2.7,
+             colour = "#262B2F", stroke = 0.28) +
+  geom_text(aes(label = label, x = n_supported_modalities + 0.12),
+            hjust = 0, size = 2.6, colour = "#333333") +
+  scale_fill_tau_binary(name = "earned") +
+  scale_x_continuous(breaks = 0:ceiling(clearance_pair_max),
+                     limits = c(0, clearance_pair_max + 0.6)) +
+  labs(x = "supported modalities", y = NULL, title = "CCC-lite boundary") +
+  guides(fill = "none") +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "none")
+
+(p_myc | p_bounds | (p_clear_effect / p_pair)) +
+  plot_layout(widths = c(0.95, 1.0, 1.35)) +
   plot_annotation(tag_levels = "A")
 ```

@@ -216,23 +216,29 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
       symbol/pathway highlights, and axis-level pathway summaries. Guard layer validates every field _crossmodality.qmd
       reads; render target stays small and does not load GeoMx/proteome/phospho or the 10MB evidence table.
-   + (Figure curation 2026-07-03) figures.R: figure_manifest (21 curated hyphenated fig-* ids) + compact inline
+   + (Figure curation 2026-07-03) figures.R: figure_manifest (23 current hyphenated fig-* ids) + compact inline
       figure-data builders: microglia_figure_data / trajectory_figure_data / mechanism_figure_data /
       crossmodality_figure_data. Builders emit qmd-ready slots, finite geom guards, and pre-binned/top-row
       reductions for heavy shapes (whole/substate volcanoes, GeoMx volcanoes, raw-vs-corrected phospho) so
       qmd chunks tar_load compact figure targets rather than raw/heavy analysis tables. Pure status/logic/checklist
       board slots were removed from the visible report contract.
    + (Four-modality integration figures 2026-07-03) figures.R: crossmodality_figure_data now also consumes
-      crossmodality_table during target build (not render) and reduces the harmonised evidence table to three compact
-      visible slots: four_modality_counts (contrast x assay-family FDR counts), four_modality_pathways
+      crossmodality_table during target build (not render) and reduces the harmonised evidence table to compact
+      audit slots: four_modality_counts (contrast x assay-family FDR counts), four_modality_pathways
       (axis x contrast n_modalities_sig/direction), and four_modality_symbols (selected axis genes x four assay
-      families: not observed / measured / FDR<0.10). Render still loads only crossmodality_report +
+      families: not observed / measured / FDR<0.10). These dashboard reductions are retained in the target but
+      no longer visible after Cross-modality narrative S3. Render still loads only crossmodality_report +
       crossmodality_figures.
    + (Cross-modality narrative S2 2026-07-03) figures.R: crossmodality_figure_data also emits
       axis_effect_spine + axis_effect_selection. The spine is the S3/S4 replacement-plate data contract:
       fixed named axes x selected features x focal contrasts x declared modalities, with effect/FDR/support/direction
       and explicit measured / not_observed / blocked / not_applicable states. Selection rules are stored alongside
       the rows; live target build remains compact enough for report use.
+   + (Cross-modality narrative S3 2026-07-03) figures.R: crossmodality_figure_data emits visible plate slots
+      amyloid_response_plate, synaptic_clearance_plate, and interaction_boundary_plate from axis_effect_spine.
+      _crossmodality.qmd uses those effect-size plates instead of the generic four-modality dashboards and standalone
+      GeoMx/bulk count panels. story_figure_data adds clearance_effects and _story.qmd redraws Figure 5 as Myc
+      effect forest + NF-kB/Gsk3b boundary + Apoe/Trem2 clearance-effect strip.
    + (Figure-caption-only S4) report.R: render_report (-> report target) calls quarto::quarto_render
       with quiet=FALSE, then repair_embedded_lightbox. Repair rewrites Quarto embedded-lightbox anchors from
       absent local `index_files/figure-html/*.png` hrefs to the already embedded data-URI img src values; fails
@@ -296,8 +302,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
-       crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible four-modality slots plus tested axis_effect_spine/selection for S3 evidence plates; no status/clearance grids; ~3.6MB live after S2
-       story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact front-of-report story plates; no new inference; ~4KB live
+       crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible named evidence plates + conventional GeoMx/phospho boundary slots; generic dashboard reductions retained as audit data; ~3.6MB live after S3
+       story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact front-of-report story plates; no new inference; ~5.7KB live after S3
   - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation
     `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures, story_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
@@ -313,8 +319,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                                                           --{{< include >}}--> `_story.qmd`
                (caption-only story chapter: setup `options(warn=2)`; tar_load story_figures [compact] ->
                 two composite publication plates. Core evidence = replicate DAM response, signed
-                whole-MG DE counts, and interaction decomposition. Mechanism/integration = selected
-                pathway-axis modality support, Myc/NF-kB/Gsk3b triage, and measured clearance-pair support.)
+                whole-MG DE counts, and interaction decomposition. Mechanism/integration = Myc effect forest,
+                unsupported NF-kB/Gsk3b boundary rows, and focused Apoe/Trem2 clearance-effect + CCC-lite support.)
                                                           --{{< include >}}--> `_microglia.qmd`
                (caption-only microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
                 composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->
@@ -339,8 +345,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                                                           --{{< include >}}--> `_crossmodality.qmd`
                (caption-only cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
                 tar_load crossmodality_report + crossmodality_figures [compact targets] ->
-                four-modality count/pathway/symbol dot matrices, GeoMx counts/volcano/sensitivity,
-                24M bulk proteome/phospho counts + phospho correction.
+                named evidence plates for amyloid-response DAM/AP anchors, synaptic/clearance context,
+                and interaction boundaries, followed by GeoMx volcano/sensitivity and phospho correction.
+                Generic four-modality dashboards and standalone count panels stay out of the visible path.
                 Modality wording keeps bulk
                 hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
                 unresolved AOIs, and CCC-lite != full CCC.)

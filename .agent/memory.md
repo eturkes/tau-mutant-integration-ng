@@ -1040,16 +1040,14 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   QA: visual PDF pages inspected (opening + mechanism panels), rendered DOM =
   33 figures / 33 captions / 33 nonblank alts / 0 duplicate IDs, full
   `scripts/check.sh` green across 52 current targets/branches.
-- Four-modality integration figures (2026-07-03, CURRENT report surface):
+- Four-modality integration figures (2026-07-03, demoted audit slots):
   crossmodality_figures now consumes crossmodality_table at target-build time
-  to reduce the harmonised evidence table into compact plot slots. Visible
-  cross-modality chapter begins with three integrated panels over the four assay
-  families (snRNAseq microglia, GeoMx spatial, bulk proteome, bulk
-  phosphoproteome): FDR support counts, pathway-axis support/direction, and
-  selected axis-symbol modality tiles. Render contract unchanged: qmd loads only
-  crossmodality_report + crossmodality_figures. QA: rendered DOM = 36 figures /
-  36 captions / 36 nonblank alts / 0 duplicate IDs; visual PDF pages inspected
-  for the new panels; full `scripts/check.sh` green.
+  to reduce the harmonised evidence table into compact audit slots:
+  four_modality_counts, four_modality_pathways, and four_modality_symbols. These
+  generic dashboard reductions are no longer visible after the cross-modality
+  narrative S3 pass; keep them as target-side audit data unless a later
+  supplemental section explicitly needs them. Render contract unchanged: qmd
+  loads only crossmodality_report + crossmodality_figures.
 - Cross-modality narrative data spine (2026-07-03, S2 built):
   `crossmodality_figures$axis_effect_spine` is the compact contract for replacing
   dashboard integration panels. Fixed axes = DAM, antigen_presentation, synaptic,
@@ -1062,8 +1060,22 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   not_applicable are explicit states with NA effects, never coerced to
   non-significant. Current live target rebuild warning-clean; tests lock complete
   selection-key x contrast rows and deterministic axis order.
+- Cross-modality narrative plates (2026-07-03, S3 built):
+  `crossmodality_figures` now exposes visible plate slots
+  `amyloid_response_plate`, `synaptic_clearance_plate`, and
+  `interaction_boundary_plate`, all derived from `axis_effect_spine`. The visible
+  cross-modality chapter starts with effect-size plates for named biological
+  sentences: amyloid -> DAM/AP, synaptic-clearance context, and interaction
+  boundaries. Removed from visible path: generic four-modality dashboards,
+  standalone GeoMx count stems, standalone bulk count stems. Kept as conventional
+  evidence/boundary panels: GeoMx volcano + sensitivity and raw-vs-parent-corrected
+  phosphosite scatter. Story Figure 5 no longer uses pathway/clearance heatmaps:
+  it is Myc effect forest + NF-kB/Gsk3b boundary + focused Apoe/Trem2
+  clearance-effect strip. Targeted render DOM QA: 36 figures / 36 captions /
+  36 nonblank alts, no old dashboard ids, no external/local figure refs; full
+  `scripts/check.sh` green.
 - Story plate synthesis (2026-07-03, CURRENT report surface): report now opens
-  QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~4KB)
+  QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~5.7KB)
   and does no new inference; it assembles existing result bundles into two
   publication-style composite plates. Coherent story distilled from the live
   targets = amyloid drives DAM activation; P301S amplifies DAM-cell composition;
