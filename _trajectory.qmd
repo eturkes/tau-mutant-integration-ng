@@ -32,6 +32,8 @@ ctr_labels <- c(
   tau_in_nlgf = "tau in NLGF",
   interaction = "tau x amyloid"
 )
+genotype_print_labels <- c(MAPTKI = "MAPTKI", P301S = "P301S",
+                           NLGF_MAPTKI = "NLGF/MAPTKI", NLGF_P301S = "NLGF/P301S")
 fmt_contrast <- function(x, rev = FALSE) {
   lv <- if (rev) rev(ctr_levels) else ctr_levels
   factor(x, levels = lv, labels = unname(ctr_labels[lv]))
@@ -195,11 +197,15 @@ p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
 ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
   geom_point(aes(shape = batch), size = 2.1, alpha = 0.85) +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE, linewidth = 0.55) +
-  scale_colour_genotype(name = "genotype") +
+  scale_colour_genotype(name = NULL, labels = genotype_print_labels) +
   scale_x_continuous(labels = function(x) paste0(round(x), "%")) +
   labs(x = "DAM fraction in unit", y = "mean pseudotime",
        title = "Unit position is coupled to DAM composition") +
-  theme(legend.position = "bottom")
+  guides(shape = "none",
+         colour = guide_legend(nrow = 1, override.aes = list(size = 2.4, alpha = 1))) +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 8),
+        legend.margin = margin(t = 2, r = 0, b = 0, l = 0))
 ```
 
 ```{r}

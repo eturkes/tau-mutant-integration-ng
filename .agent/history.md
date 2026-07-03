@@ -358,3 +358,39 @@ Verification (honest): claim-parity review accepted no blockers. Strict gate gre
 48 figures / 48 captions / 48 nonblank alts, 48 data-URI lightbox hrefs, 0 local figure refs, 0 duplicate IDs,
 0 external refs, 0 code UI. Final `scripts/check.sh` green (tests warn=2, forced 109-chunk render, tar_meta clean
 across 52 current targets/branches, render-log clean).
+
+## Cross-modality narrative figure pass -- closed 2026-07-03
+
+Closed the user's feedback that integrated cross-modality figures were useful but too dashboard-like. This was a
+report-figure grammar pass over the closed claim set, not new inference. It kept the caption-only report contract and
+replaced generic assay/contrast summaries with field-conventional evidence plates.
+
+- ROUTE: demote broad "assay x contrast" dashboards from the visible path and use named biological evidence plates
+  instead. The manifest (`.agent/crossmodality_narrative_manifest.md`) set figure-level dispositions: generic
+  four-modality count/pathway/symbol dashboards, standalone GeoMx counts and standalone bulk counts were removed or
+  retained only as target-side audit data; GeoMx volcano/sensitivity and raw-vs-corrected phospho stayed as
+  conventional evidence/boundary panels.
+- DATA CONTRACT: `crossmodality_figures$axis_effect_spine` is the compact selection spine for axis-centric plotting.
+  It carries fixed axes, focal contrasts, selected features, modality labels, effect/FDR/support direction, and explicit
+  measured / not-observed / blocked / not-applicable states. Tests lock complete selection-key coverage, deterministic
+  axis order, finite measured effects, and explicit missing-state encoding.
+- REPORT SHAPE: `_crossmodality.qmd` now opens with three journal-style plates:
+  amyloid-response DAM/AP effects, synaptic/clearance context including measured pair support, and interaction-boundary
+  effects including SpatialDecon blocked abundance. `_story.qmd`'s mechanism/integration plate is redrawn as Myc
+  effect forest + NF-kB/Gsk3b boundary + focused Apoe/Trem2 clearance-effect strip. The chapter ends with
+  `fig-crossmodality-closing-model`, a compact node/edge synthesis over existing compact targets.
+- CLAIM CONTRACT: no new biological claim was added. Boundaries remain visible: bulk is 24M hippocampus, not
+  microglia-sorted; SpatialDecon abundance is blocked; full CCC is absent; progression beyond composition is not
+  supported; NF-kB attenuation and Gsk3b are not recovered. Apoe-Trem2 remains focused measured support, not a full
+  communication model.
+- PRINT QA FIXES: the final pass removed the clipped trajectory DAM-fraction scatter legend by hiding the
+  nonessential batch-shape legend and shortening genotype labels. Cross-modality plate legends were shortened and
+  vertically stacked, eliminating print overrun while preserving modality/support/state keys. The closing model height
+  was tightened slightly and remained legible.
+
+Verification (honest): strict caption-only HTML QA after the final render = 37 figures / 37 captions / 37 nonblank
+alts, zero source or rendered body-prose/table/stdout blockers, 0 duplicate ids, 0 local/external refs, 0 stale
+dashboard ids. Chromium PDF content-page QA inspected the trajectory legend, cross-modality plates, GeoMx volcano,
+phospho correction and closing model; no clipped legends or unreadable cross-modality labels remain. Chromium still
+emits one trailing blank PDF page. Final `scripts/check.sh` green (sync, tests warn=2, forced 89-chunk report render,
+tar_meta clean across 53 current targets/branches, render-log clean).

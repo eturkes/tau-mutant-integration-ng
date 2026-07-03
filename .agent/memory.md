@@ -1084,6 +1084,15 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   and full CCC absent. No new inference. QA: target rebuild warning-clean,
   strict caption-only HTML = 37 figures / 37 captions / 37 nonblank alts, and
   Chromium PDF spot check shows the closing model present/unclipped.
+- Cross-modality narrative close QA (2026-07-03, S5 built):
+  final print fixes are render-layer only. `fig-trajectory-unit-pt-dam` hides the
+  nonessential batch-shape legend and uses short genotype labels to avoid PDF
+  legend clipping. Cross-modality evidence plates use short support labels and
+  vertically stacked legends to avoid print overrun. Final strict HTML/DOM QA =
+  37 figures / 37 captions / 37 nonblank alts, no body prose/tables/stdout,
+  duplicate ids, stale dashboard ids, or local/external refs. Chromium content
+  pages are clean for the trajectory, cross-modality plates, GeoMx, phospho, and
+  closing model; Chromium still emits one trailing blank PDF page.
 - Story plate synthesis (2026-07-03, CURRENT report surface): report now opens
   QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~6.9KB)
   and does no new inference; it assembles existing result bundles into two
