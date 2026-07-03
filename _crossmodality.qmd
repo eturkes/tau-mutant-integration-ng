@@ -1,12 +1,6 @@
 # Cross-modality: spatial, bulk, and divergence checks {#sec-crossmodality}
 
-P4 asks what the non-snRNAseq modalities add to the rebuilt microglia story. The
-spatial and bulk layers are not treated as independent winners: GeoMx AOIs are repeated
-tissue observations, and the 24-month proteome and phosphoproteome are bulk hippocampus,
-not microglia-sorted. The chapter therefore reads them as concordance, caveat and
-divergence checks around the P1-P3 spine: amyloid-to-DAM activation, a DAM-composition
-tau-amyloid interaction, Myc-linked RNA support, and unsupported NF-kB/Gsk3b mechanism
-claims.
+Cross-modality audit: amyloid response corroborated; interaction support remains microglia-composition-centred.
 
 ```{r}
 #| label: crossmodality-setup
@@ -299,26 +293,43 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 } else {
   "DAM activation and synaptic suppression, with clearance kept descriptive"
 }
+cross_board <- cmf$status_board
+cross_board$axis <- factor(cross_board$axis, levels = rev(cross_board$axis))
+cross_board$status <- factor(cross_board$status,
+                             levels = c("corroborative", "focused support", "blocked",
+                                        "open caveat", "descriptive"))
+cross_board$label <- ifelse(is.finite(cross_board$n),
+                            paste0(cross_board$status, "\n", fmt_int(cross_board$n)),
+                            as.character(cross_board$status))
+```
+
+```{r}
+#| label: fig-crossmodality-status-board
+#| fig-width: 8.4
+#| fig-height: 3.4
+#| fig-cap: "Cross-modality status board: SpatialDecon blocked, CCC-lite focused."
+ggplot(cross_board, aes(status, axis, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = label), size = 3, lineheight = 0.9) +
+  scale_fill_manual(
+    values = c(corroborative = "#B0344D", `focused support` = "#6B7A3F",
+               blocked = "#3F5A6B", `open caveat` = "#E08754",
+               descriptive = "#D8D8D8"),
+    guide = "none"
+  ) +
+  labs(x = NULL, y = NULL, title = "Cross-modality evidence board") +
+  theme(panel.grid = element_blank())
 ```
 
 ## GeoMx Spatial DE
 
-The GeoMx layer contributes a tissue-spatial transcriptomic readout over
-`r fmt_int(cmr$geomx$provenance$n_aoi)` AOIs and
-`r fmt_int(cmr$geomx$provenance$n_bio_units)` biological units. Its primary model uses
-slide fixed effects plus duplicate-correlation blocking by biological unit, so the AOIs are not
-read as independent animals. Amyloid produces large spatial DE counts in both backgrounds
-(`r fmt_int(geo_amy_k$n_fdr_0_10)` rows at FDR < `r alpha` on MAPTKI,
-`r fmt_int(geo_amy_p$n_fdr_0_10)` on P301S), while the tau-amyloid interaction is much
-smaller (`r fmt_int(geo_int$n_fdr_0_10)` rows). That fits the broader story: GeoMx strongly
-corroborates the amyloid tissue response, but interaction claims still lean on the microglia
-composition and trajectory layers.
+GeoMx uses `r fmt_int(cmr$geomx$provenance$n_aoi)` AOIs with bio-unit blocking: amyloid DE is large, interaction DE smaller.
 
 ```{r}
 #| label: fig-crossmodality-geomx-counts
 #| fig-width: 8.8
 #| fig-height: 4.2
-#| fig-cap: "GeoMx spatial DE counts under the primary AOI model with bio-unit blocking. Bars count primary GeoMx rows with FDR < 0.10, split by logFC direction. The amyloid contrasts dominate; the interaction has far fewer spatial transcriptomic hits."
+#| fig-cap: "GeoMx DE counts are largest in amyloid contrasts."
 geo_plot <- geom_counts[geom_counts$contrast %in% focus, , drop = FALSE]
 geo_long <- rbind(
   data.frame(contrast = geo_plot$contrast, direction = "up", n = geo_plot$n_up_fdr_0_10),
@@ -338,7 +349,7 @@ ggplot(geo_long, aes(contrast, n, fill = direction)) +
 #| label: fig-crossmodality-geomx-volcano
 #| fig-width: 10
 #| fig-height: 6
-#| fig-cap: "GeoMx primary-model volcanoes across the P4 focus contrasts. Points are pre-binned from the AOI model with bio-unit blocking, and labels mark the strongest rows per contrast. The amyloid contrasts have dense high-significance structure; the interaction is visibly smaller."
+#| fig-cap: "GeoMx primary volcanoes show dense amyloid structure."
 ggplot(geo_volc_bins) +
   geom_rect(aes(xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max,
                 fill = log_n),
@@ -362,29 +373,10 @@ ggplot(geo_volc_bins) +
 ```
 
 ```{r}
-#| label: crossmodality-geomx-top
-gt <- cmr$geomx$top
-gt <- gt[gt$contrast %in% focus, , drop = FALSE]
-gt <- gt[order(match(gt$contrast, focus), gt$fdr, -abs(gt$statistic), gt$symbol,
-               method = "radix", na.last = TRUE), , drop = FALSE]
-gt <- head(gt, 12L)
-gtab <- data.frame(
-  contrast = contrast_labels[gt$contrast],
-  symbol = gt$symbol,
-  logFC = fmt_num(gt$effect),
-  t = fmt_num(gt$statistic),
-  FDR = fmt_p(gt$fdr),
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(gtab, row.names = FALSE,
-             caption = "Top GeoMx primary rows across the P4 focus contrasts. These are tissue/AOI DE rows, not cell-type-specific microglia effects.")
-```
-
-```{r}
 #| label: fig-crossmodality-geomx-sensitivity
 #| fig-width: 9.2
 #| fig-height: 4.8
-#| fig-cap: "GeoMx bio-unit-blocked primary calls against the two sensitivity fits. Positive bars are rows gained by a sensitivity fit, negative bars are primary rows lost. The collapsed biological-unit fit loses many primary rows, so the chapter privileges the duplicate-correlation primary model rather than reading AOIs as independent animals."
+#| fig-cap: "GeoMx sensitivity marks rows gained or lost versus the primary model."
 ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
   geom_hline(yintercept = 0, colour = "grey65") +
   geom_col(width = 0.68) +
@@ -401,21 +393,13 @@ ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
 
 ## Bulk Proteome And Phospho
 
-The bulk layers use the same 16-run, 24-month hippocampus sample set: total protein, raw
-phosphosite and parent-protein-corrected phosphosite. The feature universes are compact enough
-to report directly (`r paste(paste(layer_labels[bulk_features$layer], fmt_int(bulk_features$n_features), sep = ": "), collapse = "; ")`).
-The run-index sensitivity is load-bearing. Across bulk layers,
-`r fmt_int(bulk_primary_sig)` primary FDR < `r alpha` rows are checked, and
-`r fmt_int(bulk_lost)` (`r bulk_loss_pct`%) lose support or flip under the additive run-index
-sensitivity. The most affected cell is `r layer_labels[worst_run$layer]` in
-`r contrast_labels[worst_run$contrast]` (`r fmt_int(worst_run$n_lost_or_flipped)` rows), so
-bulk signals below are treated as support only when they survive that caveat.
+Bulk layers are 24-month hippocampus, not microglia-sorted; `r fmt_int(bulk_lost)` of `r fmt_int(bulk_primary_sig)` primary hits lose or flip under run-index sensitivity.
 
 ```{r}
 #| label: fig-crossmodality-bulk-counts
 #| fig-width: 9
 #| fig-height: 4.4
-#| fig-cap: "Bulk omics feature counts at FDR < 0.10. Proteome, raw phosphosite and parent-protein-corrected phosphosite layers are 24-month bulk hippocampus, not microglia-sorted. Many primary hits are sensitive to genotype-blocked run order."
+#| fig-cap: "Bulk omics FDR counts are corroborative, not microglia-sorted."
 bp <- bulk_counts[bulk_counts$contrast %in% focus, , drop = FALSE]
 bp$contrast <- factor(bp$contrast, levels = focus, labels = contrast_labels[focus])
 bp$layer <- factor(bp$layer, levels = names(layer_labels), labels = unname(layer_labels))
@@ -434,7 +418,7 @@ ggplot(bp, aes(contrast, n_fdr_0_10, fill = layer)) +
 #| label: fig-crossmodality-bulk-run-index
 #| fig-width: 9.2
 #| fig-height: 4.8
-#| fig-cap: "Run-index sensitivity across the 24-month bulk hippocampus layers. Tile fill is the fraction of primary FDR < 0.10 rows that lose support or flip sign after additive run-index adjustment; text is lost or flipped over primary hits. Most bulk signal is run-order-sensitive, so it is corroborative rather than a stand-alone microglial mechanism claim."
+#| fig-cap: "Run-index sensitivity downgrades many bulk hits."
 ggplot(bulk_run_plot, aes(contrast, layer_label, fill = loss_fraction)) +
   geom_tile(colour = "white", linewidth = 0.45) +
   geom_text(aes(label = cell_label), size = 3) +
@@ -446,26 +430,10 @@ ggplot(bulk_run_plot, aes(contrast, layer_label, fill = loss_fraction)) +
 ```
 
 ```{r}
-#| label: crossmodality-run-index-table
-ri <- run_index[run_index$contrast %in% focus, , drop = FALSE]
-ri <- ri[order(match(ri$contrast, focus), ri$layer, method = "radix", na.last = TRUE), , drop = FALSE]
-ritab <- data.frame(
-  layer = layer_labels[ri$layer],
-  contrast = contrast_labels[ri$contrast],
-  status = ri$status,
-  `primary FDR<0.10` = fmt_int(ri$n_primary_sig),
-  `lost or flipped` = fmt_int(ri$n_lost_or_flipped),
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(ritab, row.names = FALSE,
-             caption = "Run-index sensitivity for bulk layers. Rows losing support or flipping sign are downgraded in the synthesis.")
-```
-
-```{r}
 #| label: fig-crossmodality-phospho-correction
 #| fig-width: 10
 #| fig-height: 7
-#| fig-cap: "Raw versus parent-protein-corrected phosphosite effects in the 24-month bulk hippocampus layer. Points are pre-binned by site-level log2 fold-change, with selected top sites labelled. Parent correction changes effect geometry but does not turn this bulk phospho layer into a microglia-sorted mechanism assay."
+#| fig-cap: "Parent correction changes bulk phosphosite effect geometry."
 ggplot(pc_bins) +
   geom_abline(slope = 1, intercept = 0, colour = "grey65", linewidth = 0.35) +
   geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
@@ -495,7 +463,7 @@ ggplot(pc_bins) +
 #| label: fig-crossmodality-anchor-heatmap
 #| fig-width: 10
 #| fig-height: 6
-#| fig-cap: "Bulk anchor coverage and effects for clearance, synaptic, complement and Gsk3b-related rows. Each tile is the best available row per anchor symbol, layer and contrast, selected by FDR then absolute t-statistic; outlined points mark FDR < 0.10. Blank cells are unmeasured or filtered in that bulk layer."
+#| fig-cap: "Bulk anchor rows are sparse and layer-dependent."
 ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_point(data = anchor_plot[anchor_plot$supported, , drop = FALSE],
@@ -510,63 +478,13 @@ ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
 
 ## Spatial Composition And Clearance Axis
 
-SpatialDecon is no longer a skipped preflight. The follow-up built compact full-reference
-profiles (`r decon_ref_sentence`) and attempted GeoMx deconvolution. The target-derived
-status is `r decon$status` with action `r decon$action`: `r decon_unresolved_sentence`.
-The blocking reasons are: `r decon_reasons`. `r decon_nuclei_sentence`, and
-`r decon_audit_sentence`. The report therefore makes no spatial-abundance or cell-count
-claim from GeoMx; it keeps the residual audit as fit QC and reports only GeoMx DE plus the
-measured clearance-axis evidence.
-
-```{r}
-#| label: crossmodality-spatial-decon-status
-da <- if (is.list(decon$abundance) && is.data.frame(decon$abundance$arms)) {
-  decon$abundance$arms
-} else {
-  data.frame()
-}
-if (nrow(da)) {
-  dtab <- data.frame(
-    arm = gsub("_", " ", da$arm, fixed = TRUE),
-    status = da$status,
-    `source status` = da$source_status,
-    `attempted profiles` = da$n_attempted_profiles,
-    `unresolved AOIs` = da$unresolved_aoi_count,
-    reason = ifelse(da$reason == "", "-", da$reason),
-    check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-  )
-  knitr::kable(dtab, row.names = FALSE,
-               caption = "SpatialDecon abundance status by arm. Empty top tables are deliberate blocked outputs, not abundance tests.")
-}
-```
-
-The targeted CCC-lite rule earns `r earned_sentence`; `ccc_called` stays
-`r cmr$clearance$verdict$ccc_called`, because no CellChat, LIANA or MultiNicheNet model is run.
-`r earned_detail_sentence` Pairs that remain measured but unearned are not promoted to
-communication claims.
-
-```{r}
-#| label: crossmodality-clearance-table
-pt <- pairs[pairs$contrast %in% focus, , drop = FALSE]
-pt <- pt[order(pt$pair, match(pt$contrast, focus), method = "radix", na.last = TRUE), , drop = FALSE]
-ptab <- data.frame(
-  pair = pt$pair,
-  contrast = contrast_labels[pt$contrast],
-  status = pt$status,
-  `supported modalities` = ifelse(pt$coherent_supported_modalities == "",
-                                  "-", pt$coherent_supported_modalities),
-  `microglia strong` = pt$microglia_strong,
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(ptab, row.names = FALSE,
-             caption = "Clearance-axis CCC-lite verdicts. This is measured pair support only; full cell-cell communication was not run.")
-```
+SpatialDecon abundance is attempted but blocked (`r decon_unresolved_sentence`); CCC-lite earns `r earned_sentence`, with no full CCC call.
 
 ```{r}
 #| label: fig-crossmodality-clearance-grid
 #| fig-width: 8.4
 #| fig-height: 3.8
-#| fig-cap: "Clearance-pair CCC-lite support across the focus contrasts. Tile fill marks the conservative earned/not-earned verdict; text is the number of coherent supported broad modality classes, and the point marks a strong whole-microglia anchor. Only Apoe-Trem2 in amyloid on P301S earns measured pair support; no full CCC model is called."
+#| fig-cap: "CCC-lite earns focused measured support; full CCC is absent."
 ggplot(clear_plot, aes(contrast, pair_label, fill = status_label)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_text(aes(label = support_label), size = 3.2) +
@@ -582,19 +500,13 @@ ggplot(clear_plot, aes(contrast, pair_label, fill = status_label)) +
 
 ## Integrated Divergence
 
-The integration target keeps nulls and mixed signs rather than compressing them into a v1-style
-claims ledger. Across the four focus contrasts it carries
-`r fmt_int(sum(contrast_summary$n_multimodality))` symbol-contrast rows observed in at least two
-broad modality classes, `r fmt_int(sum(contrast_summary$n_any_significant))` rows with any
-significant modality, and `r fmt_int(sum(contrast_summary$n_mixed_sign))` mixed-sign rows. Mixed
-signs are expected in this design because microglia RNA, spatial tissue RNA, total protein and
-phosphosite statistics answer related but non-identical questions.
+Integration keeps nulls and mixed signs visible instead of scoring convergence.
 
 ```{r}
 #| label: fig-crossmodality-axis-heatmap
 #| fig-width: 9.2
 #| fig-height: 5.2
-#| fig-cap: "Axis-level pathway integration. Each tile is the best selected pathway row for an axis and contrast; fill counts broad modality classes with FDR-level support, while text gives the dominant direction or mixed-sign call. Rank score is descriptive only."
+#| fig-cap: "Axis-level support is descriptive and strongest in amyloid contrasts."
 pa <- path_axis
 pa$contrast <- factor(pa$contrast, levels = focus, labels = contrast_labels[focus])
 pa$axis_label <- axis_labels[pa$axis]
@@ -616,7 +528,7 @@ ggplot(pa, aes(contrast, axis_label, fill = n_modalities_sig)) +
 #| label: fig-crossmodality-symbol-matrix
 #| fig-width: 9.4
 #| fig-height: 7
-#| fig-cap: "Top named-axis symbols across the focus contrasts. Fill counts broad modality classes with FDR-level support, not layer-level evidence groups; text gives the dominant direction, mixed sign, or 0 when no broad modality class clears FDR. Interaction rows are mostly 0, reinforcing that cross-modality interaction support is limited outside microglia composition."
+#| fig-cap: "Symbol matrix uses broad modality classes and keeps interaction nulls visible."
 ggplot(sym_plot, aes(contrast, symbol, fill = n_modalities_sig)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_text(aes(label = dir_label), size = 2.8) +
@@ -629,34 +541,10 @@ ggplot(sym_plot, aes(contrast, symbol, fill = n_modalities_sig)) +
 ```
 
 ```{r}
-#| label: crossmodality-axis-symbols
-sx <- cmr$divergence$axis_symbols
-sx <- sx[sx$contrast %in% focus & (sx$n_modalities_sig > 0 | sx$contrast == "interaction"),
-         , drop = FALSE]
-sx <- sx[order(match(sx$contrast, focus), -sx$n_modalities_sig,
-               -sx$n_modalities_present, sx$min_fdr, sx$symbol,
-               method = "radix", na.last = TRUE), , drop = FALSE]
-sx <- head(sx, 18L)
-sxtab <- data.frame(
-  symbol = sx$symbol,
-  contrast = contrast_labels[sx$contrast],
-  axis = sx$axis,
-  `modalities present` = sx$n_modalities_present,
-  `modalities significant` = sx$n_modalities_sig,
-  direction = sx$direction_call,
-  `minimum FDR` = fmt_p(sx$min_fdr),
-  `significant modalities` = ifelse(sx$modalities_sig == "", "-", sx$modalities_sig),
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(sxtab, row.names = FALSE,
-             caption = "Named-axis symbol highlights. Interaction anchors are carried even when no modality clears FDR, so nulls stay visible.")
-```
-
-```{r}
 #| label: fig-crossmodality-pathway-heatmap
 #| fig-width: 10
 #| fig-height: 7.2
-#| fig-cap: "Selected pathway-axis rows by contrast. Fill counts broad modality classes with FDR-level support; text reports the sign call, including mixed signs. These rows are descriptive integration summaries, not a formal meta-analysis or a v1-style convergence score."
+#| fig-cap: "Pathway-axis summaries are descriptive, not formal meta-analysis."
 ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_text(aes(label = direction_label), size = 2.7) +
@@ -669,35 +557,6 @@ ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
         panel.grid = element_blank())
 ```
 
-```{r}
-#| label: crossmodality-pathway-table
-ph <- cmr$pathway$highlights
-ph <- ph[order(match(ph$contrast, focus), -ph$rank_score, -ph$n_modalities_sig,
-               ph$axis, ph$collection, ph$set,
-               method = "radix", na.last = TRUE), , drop = FALSE]
-ph <- head(ph, 12L)
-phtab <- data.frame(
-  contrast = contrast_labels[ph$contrast],
-  axis = ph$axis,
-  set = short_label(ph$set),
-  direction = ph$consistent_direction,
-  `modalities present` = ph$n_modalities_present,
-  `modalities significant` = ph$n_modalities_sig,
-  `mixed sign` = ph$mixed_sign,
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(phtab, row.names = FALSE,
-             caption = "Top pathway rows feeding the integrated view. These rows are descriptive summaries of ranked modality statistics, not a formal meta-analysis.")
-```
-
 ## P4 Synthesis
 
-Cross-modality evidence strengthens the amyloid-response spine. GeoMx and bulk layers both
-show their largest effects in amyloid contrasts, pathway rows reproduce antigen-presentation,
-phagocytic/clearance and synaptic axes, and `r clearance_synthesis_phrase`. The same evidence
-narrows the claims: the tau-amyloid interaction is
-not broadly spatial or bulk-omics significant, SpatialDecon abundance is blocked after fitting,
-full CCC is not called, and genotype-blocked bulk run order downgrades many proteome/phosphosite rows. In the
-closing synthesis, this chapter therefore corroborates `r closing_support_phrase`, while keeping
-progression, NF-kB attenuation, Gsk3b and spatial abundance unresolved or unsupported in the
-rebuilt data.
+Cross-modality corroborates `r closing_support_phrase`; SpatialDecon, full CCC, progression, NF-kB and Gsk3b remain unsupported or blocked.

@@ -1,16 +1,6 @@
 # Microglia: amyloid drives a homeostatic-to-DAM programme {#sec-microglia}
 
-This chapter is the single-nucleus core of the study. From the reprocessed, batch-integrated
-microglia (SCT normalisation, Harmony over batch only) it places each nucleus into a canonical
-substate, tests whether substate composition shifts across the genotype contrasts, and runs
-pseudobulk differential expression to characterise the activation programme and to weigh the
-tau-by-amyloid interaction. The headline, supported three complementary ways below, is that
-amyloid (NLGF) drives microglia out of a homeostatic state into disease-associated microglia
-(DAM); mutant tau scales the size of that response without, on its own, redrawing the
-programme. One measurement caveat frames everything that follows: single-nucleus capture
-under-detects a sizeable share of DAM activation transcripts (Thrupp and colleagues, 2020), so
-DAM is read as a scored programme rather than thresholded gene by gene, and every differential
-test runs on raw counts.
+Single-nucleus core: amyloid expands DAM microglia; mutant tau scales that expansion.
 
 ```{r}
 #| label: microglia-setup
@@ -33,6 +23,9 @@ comp <- composition_results
 pbm  <- pb_de_microglia
 pbs  <- pb_de_substate
 mf   <- microglia_figures
+mf_board <- mf$summary_board
+mf_board$panel <- factor(mf_board$panel, levels = rev(mf_board$panel))
+mf_board$status <- factor(mf_board$status, levels = c("descriptive", "available"))
 
 # substate colours reuse the genotype palette hues -> cohesive with the report identity.
 sub_cols <- c(Homeostatic = "#7FA8C1", DAM = "#B0344D", IFN = "#E08754",
@@ -99,6 +92,11 @@ fit_subs <- names(Filter(function(p) identical(p$status, "fit"), pbs$per_substat
 # against the DAM-ENRICHED ceiling (kept_dam_max): no dropped cluster reaches the DAM compartment.
 qcr      <- mrd$prune$qc_rationale
 dbg      <- mrd$prune$dropped_by_genotype
+drop_df <- as.data.frame(as.table(dbg), stringsAsFactors = FALSE)
+names(drop_df) <- c("genotype", "cluster", "n")
+drop_df$n <- as.numeric(drop_df$n)
+drop_df$DAM_med <- qcr[as.character(drop_df$cluster), "DAM_med"]
+drop_df$genotype <- factor(drop_df$genotype, levels = genotype_levels)
 drp_by_geno <- rowSums(dbg)                                       # absolute nuclei dropped per genotype
 drop_frac   <- drp_by_geno / (drp_by_geno + as.integer(table(cf$genotype)[names(drp_by_geno)]))
 drop_geno   <- names(which.max(drop_frac))                       # genotype losing the largest FRACTION (here also the largest count)
@@ -165,25 +163,28 @@ mf_ss_signed <- rbind(
 mf_ss_signed$direction <- factor(mf_ss_signed$direction, levels = c("down", "up"))
 ```
 
+```{r}
+#| label: fig-microglia-summary-board
+#| fig-width: 7.2
+#| fig-height: 2.4
+#| fig-cap: "Microglia chapter board: all four evidence panels are available."
+ggplot(mf_board, aes(status, panel, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = slot), size = 3.1) +
+  scale_fill_manual(values = c(descriptive = "#B7A06A", available = "#6B7A3F"), guide = "none") +
+  labs(x = NULL, y = NULL, title = "Microglia evidence board") +
+  theme(panel.grid = element_blank())
+```
+
 ## Substate landscape
 
-UCell scores each nucleus against the canonical homeostatic, DAM, interferon-response (IFN) and
-proliferative signatures; a per-signature calibration then assigns a primary substate at the
-cluster level (the per-cell argmax is noisier and kept only as a diagnostic). After dropping
-`r mrd$prune$n_dropped` contaminant or doublet nuclei (clusters
-`r paste(mrd$prune$dropped, collapse = ", ")`), `r format(mrd$n_cells, big.mark = ",")` nuclei
-remain. They resolve into `r format(sum(cf$substate == "Homeostatic"), big.mark = ",")`
-homeostatic, `r format(sum(cf$substate == "DAM"), big.mark = ",")` DAM and
-`r sum(cf$substate == "IFN")` IFN nuclei; no cluster is proliferative-dominant, so that level
-carries no cells (sparse cycling markers average out at the cluster level rather than forming a
-coherent population). Each substate signature is scored on its genes found in the assay
-(`r paste(sprintf("%s %s", names(mrd$provenance$n_used), mrd$provenance$n_used)[2:5], collapse = ", ")` genes used).
+Cluster-primary substates over `r format(mrd$n_cells, big.mark = ",")` retained nuclei; DAM is scored, not thresholded.
 
 ```{r}
 #| label: fig-microglia-umap
 #| fig-width: 10
 #| fig-height: 4.5
-#| fig-cap: "Microglia substate landscape on the batch-integrated UMAP. Left: primary substate label. Right: the calibrated DAM activation score, which forms a continuous homeostatic-to-DAM gradient rather than a discrete switch."
+#| fig-cap: "Primary substates and DAM score on the batch-integrated UMAP."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
   scale_colour_manual(values = sub_cols, breaks = present_sub, name = "substate") +
@@ -202,7 +203,7 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 #| label: fig-microglia-umap-substate
 #| fig-width: 9.2
 #| fig-height: 6.4
-#| fig-cap: "Genotype-faceted substate map on the same batch-integrated UMAP. Amyloid-bearing genotypes occupy much more of the DAM-labelled region, with NLGF_P301S showing the largest DAM compartment. Labels are cluster-primary substates, not a per-cell hard threshold."
+#| fig-cap: "Amyloid genotypes fill more of the DAM-labelled UMAP region."
 ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.18, alpha = 0.55) +
   facet_wrap(~ genotype, ncol = 2) +
@@ -216,7 +217,7 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 #| label: fig-microglia-score-triptych
 #| fig-width: 10
 #| fig-height: 3.5
-#| fig-cap: "Binned UMAP score maps for the three plotted signatures. Homeostatic and DAM scores form opposing regions of the activation manifold, while the MHC-APC score marks the antigen-presentation arm within the broader DAM programme."
+#| fig-cap: "Homeostatic, DAM and MHC-APC score gradients across the manifold."
 ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
   geom_point(aes(size = pmin(n, 6)), shape = 15, alpha = 0.85) +
   facet_wrap(~ score_name, nrow = 1) +
@@ -229,20 +230,13 @@ ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
 
 ## Amyloid expands the DAM compartment
 
-The compositional shift is unambiguous. Without amyloid the microglia are overwhelmingly
-homeostatic (DAM `r dam_pct["MAPTKI"]`% in MAPTKI, `r dam_pct["P301S"]`% in P301S); with amyloid
-the DAM compartment swells to `r dam_pct["NLGF_MAPTKI"]`% on the tau-knockout background and
-`r dam_pct["NLGF_P301S"]`% on the mutant-tau background, with the homeostatic fraction falling
-in step (`r homeo_pct["MAPTKI"]`% and `r homeo_pct["P301S"]`% down to
-`r homeo_pct["NLGF_MAPTKI"]`% and `r homeo_pct["NLGF_P301S"]`%). The same shift is visible per
-nucleus as a rightward move in the DAM activation score, and it is steeper on the mutant-tau
-background, the first hint of the tau-by-amyloid interaction tested below.
+DAM rises from `r dam_pct["MAPTKI"]`-`r dam_pct["P301S"]`% without amyloid to `r dam_pct["NLGF_MAPTKI"]`-`r dam_pct["NLGF_P301S"]`% with amyloid.
 
 ```{r}
 #| label: fig-microglia-composition-shift
 #| fig-width: 10
 #| fig-height: 4.5
-#| fig-cap: "Amyloid drives the homeostatic-to-DAM shift. Left: substate proportions per genotype (cluster-level labels). Right: per-nucleus DAM activation score by genotype; the amyloid-bearing genotypes carry the heavier upper tail."
+#| fig-cap: "Amyloid shifts composition and DAM score upward."
 prop_df <- as.data.frame(prop.table(st, 1))                       # genotype, substate, Freq(=within-genotype proportion)
 prop_df <- prop_df[prop_df$substate %in% present_sub, ]
 prop_df$genotype <- factor(prop_df$genotype, levels = genotype_levels)
@@ -264,19 +258,10 @@ p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
 ```
 
 ```{r}
-#| label: substate-table
-counts_tab <- as.data.frame.matrix(st[, present_sub, drop = FALSE])
-counts_tab <- cbind(genotype = rownames(counts_tab), counts_tab,
-                    `DAM %` = dam_pct[rownames(counts_tab)])
-knitr::kable(counts_tab, row.names = FALSE,
-             caption = "Microglia per genotype and substate (primary cluster-level labels).")
-```
-
-```{r}
 #| label: fig-microglia-unit-composition
 #| fig-width: 9.5
 #| fig-height: 4.6
-#| fig-cap: "Composition by the 16 genotype-by-batch replicate units. Each bar is one replicate unit, preserving the inference unit behind the composition and pseudobulk tests. The DAM expansion is visible in every amyloid-bearing background rather than being driven by one batch."
+#| fig-cap: "Replicate-unit composition shows the DAM expansion across batches."
 ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   geom_col(width = 0.78) +
   facet_grid(. ~ genotype) +
@@ -291,7 +276,7 @@ ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
 #| label: fig-microglia-score-distribution
 #| fig-width: 10
 #| fig-height: 6.2
-#| fig-cap: "Score distributions by genotype within each primary substate. Amyloid shifts the DAM score upward and the homeostatic score downward while retaining overlap, consistent with a scored activation programme rather than a binary marker threshold."
+#| fig-cap: "Score distributions show a graded activation programme."
 ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
   geom_line(linewidth = 0.45, alpha = 0.9) +
   facet_grid(score_name ~ substate, scales = "free_y") +
@@ -303,23 +288,13 @@ ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
 
 ## Composition is tested across the genotype contrasts
 
-Composition is tested formally with propeller (the locked, reproducible primary, on the logit
-transform) and cross-checked with sccomp, a Bayesian beta-binomial model run off-lock when its
-Stan backend is present. Both amyloid contrasts move DAM strongly up and the homeostatic
-fraction strongly down, with very small tail probabilities (table below). The tau-by-amyloid
-`interaction` on DAM is positive and significant under propeller
-(FDR `r fmt_p(int_prop_fdr)`); `r int_sentence`,
-so it is flagged rather than asserted. A static compositional interaction of this size raises a
-further question - does mutant tau also push microglia further along the same activation
-programme, or does it simply enlarge the DAM endpoint? The trajectory chapter (@sec-trajectory)
-takes that up directly and finds the latter: the synergy is carried by compartment size, not by
-cells advancing further along the axis.
+Propeller-logit is primary; sccomp is supportive. DAM interaction FDR = `r fmt_p(int_prop_fdr)`.
 
 ```{r}
 #| label: fig-microglia-composition-forest
 #| fig-width: 8
 #| fig-height: 4.5
-#| fig-cap: "Substate composition effects for DAM and homeostatic microglia across the five contrasts (sccomp posterior on the logit proportion with 95% credible intervals where the Bayesian arm ran, otherwise the propeller t-statistic). DAM and homeostatic move as mirror images; both amyloid contrasts are far from zero, the interaction is small."
+#| fig-cap: "DAM and homeostatic composition effects across contrasts."
 ctr_levels <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
 if (!is.null(comp$sccomp)) {
   fdf <- comp$sccomp[comp$sccomp$substate %in% c("Homeostatic", "DAM"), ]
@@ -344,38 +319,10 @@ if (!is.null(comp$sccomp)) {
 ```
 
 ```{r}
-#| label: composition-table
-pl  <- comp$propeller_logit
-dam_pl <- pl[pl$substate == "DAM", ]
-dam_pl <- dam_pl[match(ctr_levels, dam_pl$contrast), ]
-ctab <- data.frame(
-  contrast        = ctr_levels,
-  `propeller t`   = round(dam_pl$t, 2),
-  `propeller FDR` = fmt_p(dam_pl$fdr_global),
-  check.names = FALSE, stringsAsFactors = FALSE)
-if (!is.null(comp$sccomp)) {
-  sc <- comp$sccomp[comp$sccomp$substate == "DAM", ]
-  sc <- sc[match(ctr_levels, sc$contrast), ]
-  ctab$`sccomp effect` <- round(sc$c_effect, 2)
-  ctab$`sccomp 95% CI` <- sprintf("[%.2f, %.2f]", sc$c_lower, sc$c_upper)
-  ctab$`sccomp FDR`    <- fmt_p(sc$c_fdr)
-}
-knitr::kable(ctab, row.names = FALSE,
-             caption = "DAM composition across the five contrasts: propeller (primary, batch-fixed) and, where its Stan backend is present, sccomp (cross-check, random batch). Direction is read from the t-statistic / effect, not the marginal proportion ratio.")
-
-flagged <- comp$concordance[comp$concordance$flag, c("contrast", "substate")]
-```
-
-Cross-method concordance flags `r nrow(flagged)` of `r nrow(comp$concordance)`
-contrast-by-substate cells (`r paste(sprintf("%s/%s", flagged$contrast, flagged$substate), collapse = "; ")`)`r if (nrow(flagged) > 0 && all(flagged$substate == "IFN")) ", all on the sparse IFN compartment, where a few hundred nuclei let the two methods split on sign or significance" else ""`.
-`r if (!any(flagged$contrast == "interaction" & flagged$substate == "DAM")) "The DAM interaction is concordant here - both methods call it significant - so its borderline element is the sccomp effect size (above), not the cross-method agreement. " else ""`Per the pre-declared rule the propeller-logit call stands; the
-disagreements are reported, never averaged away.
-
-```{r}
 #| label: fig-microglia-composition-concordance
 #| fig-width: 8.8
 #| fig-height: 3.8
-#| fig-cap: "Composition method concordance grid. Colour shows the locked propeller-logit direction and significance; text marks cells pre-declared as cross-method flags. The DAM interaction is a primary positive composition call, while sparse IFN cells carry the main method flags."
+#| fig-cap: "Propeller primary calls and predeclared method flags."
 ggplot(mf_conc, aes(contrast, substate, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_text(aes(label = label), size = 3) +
@@ -391,23 +338,13 @@ ggplot(mf_conc, aes(contrast, substate, fill = status)) +
 
 ## The amyloid-to-DAM expression programme
 
-Pseudobulk differential expression (limma-voom with quality weights, aggregated to the 16
-genotype-by-batch replicate units) confirms the activation programme at the transcript level.
-Of `r format(pbm$kept, big.mark = ",")` expressed genes, `r format(pbm$stageR$n_screened, big.mark = ",")`
-pass the stageR family screen. The canonical DAM markers move up coherently under amyloid: of
-the `r pbm$dam_concordance$nlgf_in_p301s$n_markers_in_fit` markers in the fit,
-`r round(100 * pbm$dam_concordance$nlgf_in_maptki$frac_up)`% rise on the tau-knockout background
-(mean log2 fold-change `r round(pbm$dam_concordance$nlgf_in_maptki$mean_logFC, 2)`) and
-`r round(100 * pbm$dam_concordance$nlgf_in_p301s$frac_up)`% on the mutant-tau background
-(mean `r round(pbm$dam_concordance$nlgf_in_p301s$mean_logFC, 2)`), reproducing the original
-study's direction. The volcano below shows the strongest amyloid contrast with the DAM markers
-picked out.
+Pseudobulk DE confirms the DAM programme: `r format(pbm$stageR$n_screened, big.mark = ",")` genes pass the stageR screen.
 
 ```{r}
 #| label: fig-microglia-amyloid-volcano
 #| fig-width: 8
 #| fig-height: 5.5
-#| fig-cap: "Pseudobulk differential expression for amyloid on the mutant-tau background (NLGF_P301S vs P301S). Canonical DAM markers (crimson) are concentrated among the up-regulated, significant genes; the most significant are labelled. Dashed lines mark the log2 fold-change threshold."
+#| fig-cap: "Amyloid on P301S up-regulates canonical DAM markers."
 lfc <- pbm$thresholds$lfc; fdr <- pbm$thresholds$fdr
 vol <- pbm$top$nlgf_in_p301s
 vol$symbol    <- to_symbol(vol$gene)
@@ -429,25 +366,10 @@ ggplot(mapping = aes(logFC, neglog10p)) +
 ```
 
 ```{r}
-#| label: de-counts
-sig_tab <- do.call(rbind, lapply(names(pbm$top), function(cn) {
-  tt <- pbm$top[[cn]]
-  data.frame(
-    contrast            = cn,
-    `up (large effect)` = sum(tt$logFC >  lfc & tt$adj.P.Val < fdr),
-    `down (large effect)` = sum(tt$logFC < -lfc & tt$adj.P.Val < fdr),
-    `stageR-confirmed`  = sum(pbm$stageR$stage_padj[, cn] <= pbm$stageR$alpha, na.rm = TRUE),
-    check.names = FALSE, stringsAsFactors = FALSE)
-}))
-knitr::kable(sig_tab, row.names = FALSE,
-             caption = sprintf("Differentially expressed genes per contrast. Large-effect = |log2FC| > %.1f and FDR < %.2f; stageR-confirmed counts the family-screen confirmations at any effect size.", lfc, fdr))
-```
-
-```{r}
 #| label: fig-microglia-whole-volcano
 #| fig-width: 10
 #| fig-height: 6.5
-#| fig-cap: "Whole-microglia pseudobulk volcanoes across the five genotype contrasts. Points are pre-binned for compact rendering; labelled genes are the strongest rows per contrast. Amyloid contrasts carry thousands of FDR < 0.10 rows, whereas the interaction has real stageR-confirmed genes but no standalone large-effect FDR hits."
+#| fig-cap: "Whole-microglia DE is dominated by amyloid contrasts."
 ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
   geom_tile(width = median(diff(sort(unique(mf_wv_bins$x_mid)))),
             height = median(diff(sort(unique(mf_wv_bins$y_mid))))) +
@@ -470,57 +392,17 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 
 ## The tau-by-amyloid interaction is under-powered, not absent
 
-No gene clears the large-effect bar on the `interaction` contrast (0 up, 0 down at
-|log2FC| > `r lfc`, FDR < `r fdr`), yet the stageR family screen still confirms
-`r n_int_stageR` interaction genes - every one with a substantial fold-change (all above the `r lfc`
-log2 effect bar, median `r round(med_int_lfc, 1)`) that the stricter standalone per-contrast test
-cannot individually resolve (its most significant gene sits at FDR `r round(min_int_adjp, 2)`), so
-this is not an empty result. The difference-of-differences carries roughly
-twice the standard error of a main effect, and the pseudobulk design leaves few replicate degrees
-of freedom - eBayes moderation lifts the effective total to `r round(pbm$interaction$df)`: the
-minimum log2 fold-change detectable at a nominal 80% per-test power for the median gene is
-`r round(pbm$interaction$mde, 2)` (median posterior SE `r round(pbm$interaction$median_se, 3)`). The honest reading is therefore that a per-gene
-interaction below about `r round(pbm$interaction$mde, 1)` log2 units falls under this design's
-nominal detection floor - and the multiple-testing-corrected discovery floor is higher still - so
-absence of large-effect genes is not evidence of no interaction. Crucially, the
-compositional interaction on DAM *is* significant, which points to a synergy expressed through
-compartment size rather than per-gene fold-change. The trajectory chapter (@sec-trajectory) then
-separates the two ways that synergy could act - more DAM cells, or cells advancing further along
-the activation axis - and resolves it as the former: the tau-amyloid interaction adds DAM cells,
-with no statistically supported signal that it advances them further.
+Interaction DE is under-powered, not absent: 0 large-effect FDR hits, but `r n_int_stageR` stageR-confirmed genes and MDE `r round(pbm$interaction$mde, 2)`.
 
 ## Per-substate differential expression
 
-Repeating the pseudobulk fit within each substate is only valid where every replicate unit
-carries enough cells. Under a floor of `r pbs$min_cells` cells per unit, the substates that clear
-it on every unit (`r knitr::combine_words(fit_subs)`) are fitted; IFN (as few as
-`r min(pbs$cell_counts["IFN", ])` cells in a unit) and the empty proliferative level are left
-descriptive-only. Within the DAM compartment alone, amyloid still moves `r dam_amyloid_de` genes
-past the large-effect bar (NLGF_P301S vs P301S), confirming the programme is graded - a shift in
-what DAM cells express, not merely how many cells are DAM.
-
-```{r}
-#| label: substate-de
-sub_rows <- lapply(names(pbs$per_substate), function(s) {
-  p <- pbs$per_substate[[s]]
-  data.frame(
-    substate        = s,
-    status          = p$status,
-    nuclei          = p$n_cells,
-    `min cells/unit` = min(pbs$cell_counts[s, ]),
-    `genes kept`    = if (identical(p$status, "fit")) p$kept else NA_integer_,
-    `interaction MDE` = if (identical(p$status, "fit")) round(p$interaction$mde, 2) else NA_real_,
-    check.names = FALSE, stringsAsFactors = FALSE)
-})
-knitr::kable(do.call(rbind, sub_rows), row.names = FALSE,
-             caption = "Per-substate pseudobulk DE under the min-cell floor. Fewer cells give a larger minimum detectable effect (interaction MDE, log2 units), reported honestly.")
-```
+Substate DE fits only where every replicate unit clears `r pbs$min_cells` cells; DAM retains `r dam_amyloid_de` amyloid DE genes.
 
 ```{r}
 #| label: fig-microglia-substate-audit
 #| fig-width: 7.8
 #| fig-height: 4.2
-#| fig-cap: "Per-substate DE fit audit. Bars show the minimum cells in any replicate unit, with the dashed line marking the pre-set floor for fitting. Homeostatic and DAM pass; IFN and the empty proliferative level remain descriptive."
+#| fig-cap: "Homeostatic and DAM pass the per-unit cell floor; IFN/proliferative stay descriptive."
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
   geom_col(width = 0.68) +
   geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#B0344D") +
@@ -535,7 +417,7 @@ ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
 #| label: fig-microglia-substate-volcano
 #| fig-width: 9.2
 #| fig-height: 4.4
-#| fig-cap: "Within-substate DE summary for the fitted homeostatic and DAM compartments. Bars are signed counts of FDR < 0.10 rows (up positive, down negative) for each contrast. Amyloid effects persist within states; the interaction remains much smaller than the amyloid main responses."
+#| fig-cap: "Within-state DE keeps amyloid larger than the interaction."
 ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
   geom_hline(yintercept = 0, colour = "grey65") +
   geom_col(width = 0.72) +
@@ -549,23 +431,20 @@ ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
 
 ## Caveats and provenance
 
-Three caveats travel with these results. First, the Thrupp under-detection already noted: DAM is
-scored, not thresholded, and the differential tests run on raw counts, so the attenuation biases
-against the DAM signal rather than inventing it. Second, contaminant pruning removed proportionally
-more low-quality nuclei from the `r drop_geno` background (about `r drop_geno_pct`% of it, mostly
-cluster `r drop_clu`) than from the others. Because every dropped cluster scores low on DAM - the
-highest dropped-cluster median (`r round(drop_dam_max, 2)`) falls well short of the DAM-enriched
-clusters that drive the headline (medians up to `r round(kept_dam_max, 2)`, all retained) - the
-pruning cannot have manufactured the amyloid-to-DAM signal by discarding DAM-high nuclei. Removing
-low-DAM nuclei can only nudge a genotype's DAM fraction upward, so this genotype-skewed dropout is
-reported in full below rather than hidden. Third,
-`r if (!is.null(comp$sccomp)) "the sccomp cross-check is a supportive, off-lock arm: its sampler showed a small number of divergent transitions with otherwise healthy diagnostics, so it corroborates direction and magnitude but the locked propeller call is the primary inference." else "the sccomp Bayesian cross-check did not run on this build (its Stan backend was absent), so the locked propeller call stands alone as the primary inference."`
+Key caveats: DAM under-detection, genotype-skewed low-DAM pruning, and propeller as the locked primary composition call.
 
 ```{r}
-#| label: dropout
-knitr::kable(as.data.frame.matrix(mrd$prune$dropped_by_genotype),
-             caption = sprintf("Dropped contaminant/doublet nuclei by genotype and cluster (%d of %d nuclei pruned). Reported to show the genotype-associated QC dropout; no dropped cluster was DAM-high.",
-                               mrd$prune$n_dropped, mrd$prune$n_dropped + mrd$n_cells))
+#| label: fig-microglia-dropout-audit
+#| fig-width: 8.2
+#| fig-height: 4.2
+#| fig-cap: "Pruned nuclei are genotype-skewed but low-DAM; labels show cluster DAM medians."
+ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n, fill = genotype)) +
+  geom_col(width = 0.72) +
+  geom_text(aes(label = sprintf("%.2f", DAM_med)), vjust = -0.3, size = 2.7) +
+  facet_wrap(~ genotype, nrow = 1, scales = "free_y") +
+  scale_fill_genotype(guide = "none") +
+  labs(x = "dropped cluster", y = "nuclei dropped", title = "Pruning audit") +
+  theme(panel.grid.major.x = element_blank())
 ```
 
 ```{r}

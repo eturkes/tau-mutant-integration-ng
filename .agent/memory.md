@@ -844,6 +844,25 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Render gotcha: ggplot2 4.x deprecates `geom_label(label.size=)`; use
   `linewidth=` because report chunks run under `options(warn=2)`.
 
+## Prose-to-figures result conversion (S4, built) -- result `_*.qmd`
+- S4 is render-layer conversion only: no new inference/targets. Result chapters
+  now replace prose/table-heavy audit blocks with compact visual boards and
+  one-line captions: `fig-microglia-summary-board`, `fig-trajectory-logic-board`,
+  `fig-mechanism-status-board`, `fig-crossmodality-status-board`; microglia also
+  adds `fig-microglia-dropout-audit` for genotype-skewed low-DAM pruning.
+- Counted prose after S4: total report 1,164 words (S1 baseline 5,111; floor
+  <=2,300; stretch <=1,800). Result chapter local counts: microglia 251,
+  trajectory 186, mechanism 148, cross-modality 195. S4 preserved visible
+  negative/blocked states in boards/captions: progression beyond composition not
+  supported, NF-kB attenuation discordant/not supported, Gsk3b not recovered,
+  SpatialDecon abundance blocked, full CCC absent, bulk run-index caveat.
+- `scripts/prose_inventory.py` manifest writer emits `.` for empty label/text
+  cells. This avoids trailing-tab whitespace in `.agent/prose_replacement_manifest.tsv`
+  while keeping the TSV column count stable for `visual_slot_coverage()`.
+- Full S4 `scripts/check.sh` was green after the conversion. S5 still must rerun
+  rendered HTML QA (figure count/captions/labels/lightbox/external refs) before
+  close-out/archival.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

@@ -296,20 +296,19 @@ def write_manifest(blocks: list[Block], path: Path | None) -> None:
         writer.writeheader()
         for block in blocks:
             disp, slot = disposition(block)
-            writer.writerow(
-                {
-                    "qmd": block.qmd,
-                    "block_id": block.block_id,
-                    "line": block.line,
-                    "kind": block.kind,
-                    "section": block.section,
-                    "words": block.words,
-                    "disposition": disp,
-                    "target_slot": slot,
-                    "label": block.label,
-                    "text": clean_text(block.text).strip(),
-                }
-            )
+            row = {
+                "qmd": block.qmd,
+                "block_id": block.block_id,
+                "line": block.line,
+                "kind": block.kind,
+                "section": block.section,
+                "words": block.words,
+                "disposition": disp,
+                "target_slot": slot,
+                "label": block.label,
+                "text": clean_text(block.text).strip(),
+            }
+            writer.writerow({k: ("." if v == "" else v) for k, v in row.items()})
     finally:
         if path:
             out.close()

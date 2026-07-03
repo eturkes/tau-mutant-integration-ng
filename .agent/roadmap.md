@@ -33,7 +33,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
-Next `$session-prompt` mode = EXECUTE S4 result chapter conversion. Route
+Next `$session-prompt` mode = EXECUTE S5 visual QA and close-out. Route
 selected = aggressive inline visual conversion over the existing report. S1
 measured baseline = 5,111 prose-only words / 119 human-facing blocks across
 `index.qmd` + `_*.qmd`; 33 headings are kept navigation, and all 86
@@ -43,7 +43,10 @@ prose/caption blocks have non-keep dispositions in
 without claim loss. S2 built compact visual grammar contracts: `qc_figures` +
 `report_visuals`, manifest slot coverage, and chapter status/logic board aliases.
 S3 converted Overview + synthesis to visual-first panels (305 -> 46 counted
-words, 85% local reduction) using compact `report_visuals`; full gate green.
+words, 85% local reduction) using compact `report_visuals`. S4 converted result
+chapters to visual boards/short captions (result chapters 4,468 -> 780 counted
+words; full report 1,164 words), preserving progression/NF-kB/Gsk3b/SpatialDecon/
+CCC/run-index nulls and caveats; full gate green.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -82,8 +85,9 @@ words, 85% local reduction) using compact `report_visuals`; full gate green.
   expansion. Plan opens a visual-first reduction pass: prose inventory,
   replacement manifest, compact visual data slots/schematics, chapter conversion,
   and before/after prose-density QA. S0 chose aggressive inline visual conversion;
-  S1 measured the baseline and replacement manifest; S2 visual grammar / compact
-  data slots are next.
+  S1 measured the baseline and replacement manifest; S2 built visual grammar /
+  compact data slots; S3 converted overview+synthesis; S4 converted result
+  chapters. Next = S5 visual QA and close-out.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -615,6 +619,17 @@ words, 85% local reduction) using compact `report_visuals`; full gate green.
   `fig-synthesis-status`. Local counted prose: Overview+synthesis 305 -> 46
   words (85% reduction, clears >=55% floor). Forced render + full
   `scripts/check.sh` green. Next = S4 result chapter conversion.
+- 2026-07-03 Prose-to-figures reduction S4 DONE -> result chapter conversion.
+  `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`, and
+  `_crossmodality.qmd` now use compact visual boards, existing figure targets,
+  and one-line captions instead of table-heavy explanatory prose. Counted words:
+  microglia 1,438 -> 251, trajectory 1,317 -> 186, mechanism 755 -> 148,
+  cross-modality 958 -> 195; whole report now 1,164 words (77% below S1).
+  Preserved visible null/blocked states: progression not supported, NF-kB
+  discordant/not supported, Gsk3b not recovered, SpatialDecon abundance blocked,
+  full CCC absent, bulk run-index caveat. Manifest writer now emits `.` for
+  empty cells to avoid trailing whitespace. Full `scripts/check.sh` green. Next =
+  S5 visual QA and close-out.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

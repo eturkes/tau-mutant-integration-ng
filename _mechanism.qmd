@@ -1,12 +1,6 @@
 # Mechanism: Myc signal, NF-kB check, and bulk kinase support {#sec-mechanism}
 
-P3 reframes the mechanism question around the rebuilt P1/P2 result. Amyloid drives a
-microglial homeostatic-to-DAM programme, and mutant tau modulates that amyloid response
-mainly by expanding the DAM compartment, not by a supported further advance along the
-activation ordering. The analyses below ask which RNA pathway, TF and kinase signals
-plausibly sit under that state expansion. They are treated as tests, not as assumed winners:
-Myc and Gsk3b can be supported or not by the rebuilt data, and NF-kB attenuation is only
-called if its predeclared transcript-level gate clears.
+Mechanism audit: Myc RNA support; NF-kB attenuation and Gsk3b kinase support not recovered.
 
 ```{r}
 #| label: mechanism-setup
@@ -196,24 +190,40 @@ kin_order <- kin_plot[order(kin_plot$source != "Gsk3b", kin_plot$fdr,
                             -abs(kin_plot$score), kin_plot$source,
                             method = "radix", na.last = TRUE), "source"]
 kin_plot$source <- factor(kin_plot$source, levels = rev(unique(kin_order)))
+mech_board <- mfg$status_board
+mech_board$mechanism <- factor(mech_board$mechanism, levels = rev(mech_board$mechanism))
+mech_board$status <- factor(mech_board$status,
+                            levels = c("context", "focused support", "discordant",
+                                       "not supported", "open caveat"))
+```
+
+```{r}
+#| label: fig-mechanism-status-board
+#| fig-width: 8.2
+#| fig-height: 3.2
+#| fig-cap: "Mechanism status board: Myc supported; NF-kB and Gsk3b not recovered."
+ggplot(mech_board, aes(status, mechanism, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = source_slot), size = 3) +
+  scale_fill_manual(
+    values = c(context = "#D8D8D8", `focused support` = "#B0344D",
+               discordant = "#B7A06A", `not supported` = "#3F5A6B",
+               `open caveat` = "#E08754"),
+    guide = "none"
+  ) +
+  labs(x = NULL, y = NULL, title = "Mechanism evidence board") +
+  theme(panel.grid = element_blank())
 ```
 
 ## Pathway Survey
 
-The project gene sets recapitulate the upstream story in RNA. The whole-microglia DAM set is
-positive in the tau-amyloid interaction (NES `r fmt_num(proj_dam_int$NES)`, FDR
-`r fmt_p(proj_dam_int$padj)`), aligning with the P1 DAM-composition interaction (DAM propeller
-ratio `r fmt_num(dam_int$prop_ratio)`, FDR `r fmt_p(dam_int$fdr_global)`) and the P2
-composition channel (effect `r fmt_num(traj_comp$coef)`, FDR `r fmt_p(traj_comp$fdr)`). The
-progression channel remains non-significant (effect `r fmt_num(traj_prog$coef)`, FDR
-`r fmt_p(traj_prog$fdr)`), so the mechanism target is DAM-cell expansion and amyloid-response
-modulation, not proven further activation of cells already on the trajectory.
+DAM pathway signal aligns with DAM composition (`r fmt_p(dam_int$fdr_global)`) and trajectory composition (`r fmt_p(traj_comp$fdr)`), not progression (`r fmt_p(traj_prog$fdr)`).
 
 ```{r}
 #| label: fig-mechanism-project-sets
 #| fig-width: 9.5
 #| fig-height: 4.8
-#| fig-cap: "Focused project gene sets in whole microglia. Tile colour is fgsea NES over the pseudobulk t-statistic ranks; outlined points mark FDR < 0.10 within the project collection and contrast. The DAM set stays positive in the interaction, while the NF-kB target arms are read through the formal gate below."
+#| fig-cap: "Focused project gene sets in whole microglia."
 proj_plot <- pp[pp$population == "whole_microglia", , drop = FALSE]
 proj_plot$contrast <- factor(proj_plot$contrast, levels = names(contrast_labels),
                              labels = unname(contrast_labels))
@@ -234,7 +244,7 @@ ggplot(proj_plot, aes(contrast, pathway_label, fill = NES)) +
 #| label: fig-mechanism-project-pathway
 #| fig-width: 10
 #| fig-height: 6.2
-#| fig-cap: "Project gene-set survey across populations. Tile colour is fgsea NES; outlined points mark FDR < 0.10 within population and contrast. The interaction pattern is read against the closed P1/P2 result: DAM-cell expansion, not supported progression beyond composition."
+#| fig-cap: "Project gene sets across RNA populations."
 ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_point(data = m_project[m_project$fdr < alpha, , drop = FALSE],
@@ -248,28 +258,10 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
 ```
 
 ```{r}
-#| label: mechanism-go-table
-go_whole_int <- go[go$population == "whole_microglia" & go$contrast == "interaction", , drop = FALSE]
-go_whole_int <- go_whole_int[order(go_whole_int$padj, -abs(go_whole_int$NES), go_whole_int$pathway,
-                                   method = "radix", na.last = TRUE), , drop = FALSE]
-go_tab <- head(go_whole_int, 8L)
-go_tab <- data.frame(
-  collection = go_tab$collection,
-  pathway = gsub("^GO[A-Z]*_", "", go_tab$pathway),
-  NES = fmt_num(go_tab$NES),
-  FDR = fmt_p(go_tab$padj),
-  size = go_tab$size,
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(go_tab, row.names = FALSE,
-             caption = "Top GO rows for the whole-microglia tau-amyloid interaction. These are survey rows from the bounded fgsea layer, not a separate mechanism claim.")
-```
-
-```{r}
 #| label: fig-mechanism-go-dotplot
 #| fig-width: 10
 #| fig-height: 7
-#| fig-cap: "Compact GO survey from the bounded fgsea layer. Each population-contrast panel contributes its top two GO rows; colour is NES, size is gene-set size, and filled points mark FDR < 0.10. These rows are exploratory context, not a new mechanism call."
+#| fig-cap: "GO survey rows are exploratory context, not new mechanism calls."
 ggplot(go_select, aes(contrast, pathway_label)) +
   geom_point(aes(size = size, colour = NES, alpha = supported)) +
   facet_wrap(~ population_label, nrow = 1, scales = "free_y") +
@@ -284,17 +276,13 @@ ggplot(go_select, aes(contrast, pathway_label)) +
 
 ## TF Activity
 
-The strongest TF result is Myc repression in the interaction. In whole microglia, Myc has
-ULM score `r fmt_num(myc_whole$score)` (FDR `r fmt_p(myc_whole$fdr)`); in the DAM substate it is
-also negative (score `r fmt_num(myc_dam$score)`, FDR `r fmt_p(myc_dam$fdr)`). This is the
-cleanest rebuilt support for the v1 Myc mechanism thread. It should still be read as a
-regulatory-activity estimate from static pseudobulk RNA ranks, not as a perturbation experiment.
+Myc is the cleanest mechanism signal: whole-microglia FDR `r fmt_p(myc_whole$fdr)`, DAM FDR `r fmt_p(myc_dam$fdr)`.
 
 ```{r}
 #| label: fig-mechanism-tf-interaction
 #| fig-width: 9.5
 #| fig-height: 4.8
-#| fig-cap: "Top TF activities for the tau-amyloid interaction. Scores are decoupleR ULM activities over CollecTRI, FDR-adjusted within population and contrast. Myc is highlighted because it is a predeclared v1 mechanism candidate and is the strongest rebuilt TF signal."
+#| fig-cap: "Interaction TF activity highlights Myc."
 tf_int <- tf[tf$contrast == "interaction" &
                tf$population %in% c("whole_microglia", "DAM") &
                tf$selection == "top", , drop = FALSE]
@@ -317,7 +305,7 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
 #| label: fig-mechanism-tf-lollipop
 #| fig-width: 10
 #| fig-height: 5.8
-#| fig-cap: "Focused TF candidates across the interaction and tau-in-NLGF contrasts. Myc is consistently negative and supported, while NF-kB-family members do not form a concordant negative attenuation pattern. Filled points mark FDR < 0.10 within population and contrast."
+#| fig-cap: "Myc is supported; NF-kB-family rows lack concordant attenuation."
 ggplot(tf_focus, aes(score, source, colour = class)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_segment(aes(x = 0, xend = score, yend = source), linewidth = 0.45) +
@@ -333,28 +321,13 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
 
 ## NF-kB Attenuation
 
-`r nf_sentence` `r nf_detail_sentence` `r nf_conclusion_sentence` Supportive rows, including
-tau-in-NLGF and substates, remain descriptive and cannot override the whole-microglia interaction
-gate.
-
-```{r}
-#| label: mechanism-nfkb-table
-nf_tab <- nf[, c("population", "contrast", "test", "score", "p_value", "primary_family_fdr",
-                 "detail", "primary_test", "supportive_only"), drop = FALSE]
-nf_tab$score <- fmt_num(nf_tab$score)
-nf_tab$p_value <- fmt_p(nf_tab$p_value)
-nf_tab$primary_family_fdr <- fmt_p(nf_tab$primary_family_fdr)
-names(nf_tab) <- c("population", "contrast", "test", "score", "p", "primary FDR",
-                   "detail", "primary", "supportive only")
-knitr::kable(nf_tab, row.names = FALSE,
-             caption = "NF-kB attenuation gate. Only the two whole-microglia interaction rows are primary; all other rows are supportive-only.")
-```
+`r nf_sentence` Supportive rows cannot override the whole-microglia interaction gate.
 
 ```{r}
 #| label: fig-mechanism-nfkb-discordance
 #| fig-width: 7.2
 #| fig-height: 4.2
-#| fig-cap: "NF-kB attenuation verdict from the guarded mechanism target. The two whole-microglia interaction rows are primary, and the plot title prints the current target status. Tau-in-NLGF rows are supportive-only and cannot override the primary gate."
+#| fig-cap: "NF-kB attenuation gate is target-derived; support rows cannot override it."
 ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_tile(data = nf_plot[nf_plot$primary_test, , drop = FALSE],
@@ -369,48 +342,13 @@ ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
 
 ## Gsk3b And Kinase Activity
 
-`r gsk_sentence` The KSN layer has adequate coverage for the specific candidate:
-`r mrd$kinase$coverage$gsk3b$matched_sites` Gsk3b substrate sites pass the min-size rule, from
-`r format(mrd$kinase$coverage$n_matched_sites, big.mark = ",")` matched KSN sites and
-`r mrd$kinase$coverage$kinases_passing_minsize` kinases passing min-size overall. But the rebuilt
-Gsk3b interaction score is `r fmt_num(gsk_int$score)` (FDR `r fmt_p(gsk_int$fdr)`) and the
-tau-in-NLGF score is `r fmt_num(gsk_tau_nlgf$score)` (FDR `r fmt_p(gsk_tau_nlgf$fdr)`), so the
-v1 Gsk3b interaction headline is not recovered here.
-
-The kinase rows that do pass the primary FDR threshold are concentrated in tau-in-NLGF
-(`r nrow(sig_tau)` non-Gsk3b kinases at FDR < `r alpha`). None are supported by the additive
-run-index sensitivity (`r run_supported_tau` retain FDR support with concordant sign), so the
-bulk phosphosite layer is hypothesis-generating. It is 24-month bulk hippocampus
-phosphoproteomics, not microglia-sorted, and its 16 runs are genotype-blocked, so it should not
-be used as a stand-alone microglial mechanism claim.
-
-```{r}
-#| label: mechanism-kinase-table
-kin_tab <- kin[kin$contrast %in% c("interaction", "tau_in_nlgf") &
-                 (kin$source == "Gsk3b" | kin$significant %in% TRUE), , drop = FALSE]
-kin_tab <- kin_tab[order(match(kin_tab$contrast, c("interaction", "tau_in_nlgf")),
-                         kin_tab$source != "Gsk3b", kin_tab$fdr, -abs(kin_tab$score),
-                         kin_tab$source, method = "radix", na.last = TRUE), , drop = FALSE]
-kin_tab <- data.frame(
-  kinase = kin_tab$source,
-  contrast = kin_tab$contrast,
-  score = fmt_num(kin_tab$score),
-  FDR = fmt_p(kin_tab$fdr),
-  `run-index score` = fmt_num(kin_tab$run_index_score),
-  `run-index FDR` = fmt_p(kin_tab$run_index_fdr),
-  `run-index supports` = kin_tab$run_index_supports,
-  reason = kin_tab$include_reason,
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE
-)
-knitr::kable(kin_tab, row.names = FALSE,
-             caption = "Focal kinase rows. Gsk3b is carried whether significant or not; other rows are primary FDR < 0.10. Run-index columns are an additive sensitivity for genotype-blocked acquisition order.")
-```
+`r gsk_sentence` This is 24-month bulk hippocampus phospho, not microglia-sorted.
 
 ```{r}
 #| label: fig-mechanism-kinase-heatmap
 #| fig-width: 9.5
 #| fig-height: 6.2
-#| fig-cap: "Kinase activity rows from the 24-month bulk hippocampus phosphosite layer. Gsk3b is carried in every contrast whether significant or not; other kinases appear because they pass primary FDR < 0.10. White circles mark primary support and crosses mark additive run-index support when present."
+#| fig-cap: "Bulk hippocampus kinase rows: Gsk3b carried, not recovered."
 ggplot(kin_plot, aes(contrast, source, fill = score)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_point(data = kin_plot[kin_plot$primary_sig, , drop = FALSE],
@@ -427,11 +365,4 @@ ggplot(kin_plot, aes(contrast, source, fill = score)) +
 
 ## Synthesis
 
-The rebuilt mechanism evidence is asymmetric. The RNA layer strongly supports a Myc-linked,
-DAM-centred interaction signal, and the pathway layer ties that signal back to the compositional
-state expansion established in P1/P2. The targeted NF-kB attenuation check is discordant rather
-than supported, and the 24-month bulk phosphosite kinase layer does not recover a significant
-Gsk3b interaction. P3 therefore strengthens the DAM/Myc mechanism hypothesis while downgrading
-Gsk3b and NF-kB attenuation to unresolved or unsupported within the rebuilt data. The closing
-synthesis treats those negatives as part of the result, while the cross-modality chapter audits
-whether spatial, total-proteome and broader phosphoproteome views add corroborating context.
+Mechanism result: DAM/Myc strengthened; NF-kB attenuation and Gsk3b stay unsupported here.

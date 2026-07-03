@@ -1,18 +1,6 @@
 # The tau-amyloid synergy adds DAM cells rather than advancing them {#sec-trajectory}
 
-The microglia chapter left one question open. Amyloid drives the homeostatic-to-DAM shift, and
-the compositional interaction on DAM is significant: on a mutant-tau background amyloid produces
-*more* DAM cells than additivity predicts. But a larger DAM compartment and cells that have
-travelled *further* into activation are two different claims, and the pseudobulk interaction was
-under-powered to separate them. This chapter orders the same nuclei along an activation
-pseudotime and asks the distinct question the composition test cannot: beyond making more DAM
-cells, does mutant tau push microglia further along the activation axis? Read three ways below,
-it does not detectably - no channel gives statistically supported evidence of further advance, and
-the tau-amyloid synergy is expressed almost entirely as compartment size rather than as cells
-sitting further along the axis. Two framings travel with every number here: pseudotime is an activation
-*ordering* (position and extent of advance), not developmental time or potency, and because the
-data are a single cross-sectional snapshot, "advance" is a position statement, never a measured
-rate.
+Trajectory resolves the tau-amyloid synergy as more DAM cells, not supported further progression.
 
 ```{r}
 #| label: trajectory-setup
@@ -113,28 +101,35 @@ tr_sens$variant_label <- factor(tr_sens$variant_label,
 tr_lineage <- trf$trajectory_audit$lineage_per_unit
 tr_lineage$genotype <- factor(as.character(tr_lineage$genotype), levels = genotype_levels)
 tr_lineage$omitted_pct <- 100 * tr_lineage$omitted_frac
+tr_logic <- trf$logic_board
+tr_logic$endpoint <- factor(tr_logic$endpoint, levels = rev(tr_logic$endpoint))
+tr_logic$status <- factor(tr_logic$status, levels = c("context", "supported", "not supported"))
+tr_logic$label <- paste0(sprintf("%+.2f", tr_logic$coef), "\nFDR ", sprintf("%.2f", tr_logic$fdr))
+```
+
+```{r}
+#| label: fig-trajectory-logic-board
+#| fig-width: 7.8
+#| fig-height: 3
+#| fig-cap: "Logic board: composition supported; progression endpoints not supported."
+ggplot(tr_logic, aes(status, endpoint, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = label), size = 3.2, lineheight = 0.9) +
+  scale_fill_manual(values = c(context = "#D8D8D8", supported = "#B0344D",
+                               `not supported` = "#3F5A6B"), guide = "none") +
+  labs(x = NULL, y = NULL, title = "Trajectory inference logic") +
+  theme(panel.grid = element_blank())
 ```
 
 ## Amyloid drives a large shift along the activation axis
 
-Slingshot orders the homeostatic and DAM nuclei along a single rooted lineage on the
-batch-integrated harmony space (the interferon and proliferative nuclei are off this axis and
-omitted, recovered as a conditioning check below). Rooting is validated after the fact, not
-assumed: pseudotime rises with the DAM score (Spearman
-`r round(prov$dam_pt_rho, 2)`) and falls with the homeostatic score
-(`r round(prov$homeo_pt_rho, 2)`), so low pseudotime is the homeostatic end and high pseudotime
-the DAM end. Against that ordering the amyloid effect is unmistakable and large: it moves mean
-pseudotime up by `r round(amy_k$coef, 1)` units on the tau-knockout background
-(NLGF_MAPTKI vs MAPTKI, p `r fmt_p(amy_k$p_value)`) and `r round(amy_p$coef, 1)` units on the
-mutant-tau background (NLGF_P301S vs P301S, p `r fmt_p(amy_p$p_value)`). Tau on its own moves it
-little (`r round(mp_ctr("tau_alone")$coef, 1)`). These amyloid main effects dwarf everything that
-follows; the interaction is a second-order adjustment on top of them.
+Slingshot pseudotime is rooted homeostatic to DAM; amyloid shifts mean position by `r round(amy_k$coef, 1)` and `r round(amy_p$coef, 1)` units.
 
 ```{r}
 #| label: fig-trajectory-pseudotime-shift
 #| fig-width: 10
 #| fig-height: 4.5
-#| fig-cap: "Amyloid advances microglia along the activation pseudotime. Left: per-nucleus pseudotime distribution by genotype (on-lineage nuclei), with the pooled DAM-onset landmark dashed; the amyloid-bearing genotypes carry far more mass at the DAM end. Right: the interaction in context - the genotype effects on mean pseudotime across the five canonical contrasts (point and 95% CI); the two amyloid contrasts are large, the difference-of-differences interaction (crimson) is a modest positive adjustment."
+#| fig-cap: "Amyloid dominates pseudotime position; the interaction is smaller."
 p_dist <- ggplot(on, aes(genotype, pt_raw, fill = genotype)) +
   geom_violin(scale = "width", colour = "grey30", linewidth = 0.3) +
   geom_hline(yintercept = prov$dam_onset, linetype = "dashed", colour = "grey50") +
@@ -164,7 +159,7 @@ p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
 #| label: fig-trajectory-pt-density
 #| fig-width: 9.6
 #| fig-height: 5.6
-#| fig-cap: "Pseudotime distributions separated by genotype and substate. The amyloid-bearing genotypes carry much more DAM-state density at high pseudotime, while the homeostatic density remains concentrated nearer the root. The plot shows position along the activation ordering, not a rate."
+#| fig-cap: "High-pseudotime density is concentrated in DAM states."
 ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
   facet_grid(substate ~ genotype, scales = "free_y") +
@@ -177,27 +172,13 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
 
 ## The interaction is composition, not progression
 
-The difference-of-differences interaction raises mean pseudotime position by
-`r round(int_mpt$coef, 1)` units (95% CI [`r round(int_mpt$ci_l, 1)`, `r round(int_mpt$ci_r, 1)`],
-ordinary p `r fmt_p(int_mpt$p_value)`, Freedman-Lane permutation p `r round(int_mpt$perm_p, 2)`) -
-microglia on the amyloid-plus-mutant-tau background sit a little further along the axis than an
-additive model predicts. The exact three-channel shift-share decomposition (composition,
-progression, cross) says where that advance comes from, and the two channels point in opposite
-directions. The composition channel - the same per-state positions, with cells redistributed
-toward the DAM end - carries the whole effect (interaction `r round(int_comp$coef, 2)`,
-p `r fmt_p(int_comp$p_value)`; loading `r round(load_comp, 2)` of the position interaction). The
-progression channel - cells of a given state sitting further along, the genuinely
-abundance-independent quantity - is small, negative and not significant (`r round(int_prog$coef, 2)`,
-p `r fmt_p(int_prog$p_value)`, permutation p `r round(int_prog$perm_p, 2)`;
-loading `r round(load_prog, 2)`), and the cross term is minor (loading `r round(load_cross, 2)`).
-The three loadings sum to one by construction (reconstruction residual
-`r signif(prov$recon_resid_max, 2)`).
+Mean position interaction = `r round(int_mpt$coef, 1)` units; decomposition assigns it to composition (`r round(int_comp$coef, 2)`), not progression (`r round(int_prog$coef, 2)`).
 
 ```{r}
 #| label: fig-trajectory-decomposition
 #| fig-width: 10
 #| fig-height: 4.5
-#| fig-cap: "The position interaction is compositional. Left: the tau-amyloid interaction on each additive pseudotime channel (point and 95% CI, all in pseudotime units); the composition channel is positive and clears zero, while the progression and within-state channels do not. Right: the shift-share loadings - composition takes more than the whole position interaction, progression is negative, and they sum to one. Mutant tau enlarges the DAM compartment; it does not measurably advance cells within a state."
+#| fig-cap: "The position interaction is carried by composition, not progression."
 chan       <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam")
 chan_label <- c("mean position", "composition", "progression", "cross",
                 "within-homeostatic", "within-DAM")
@@ -225,42 +206,11 @@ p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
 (p_forest | p_load)
 ```
 
-The pre-registered primary endpoints - the progression channel and the within-homeostatic mean
-position, both designed to be insensitive to compartment size - are both non-significant
-(BH-adjusted FDR `r round(int_prog$fdr, 2)` and `r round(int_wh$fdr, 2)`). So the honest reading
-is that there is no statistically supported signal that mutant tau advances microglia further
-along the activation axis; what the interaction does, it does by enlarging the DAM compartment.
-That is the trajectory-level counterpart of P1's significant DAM-fraction interaction: the same
-synergy, now resolved as compositional. The full inference across every endpoint, including the
-bounded fraction-past-onset bridges, is tabulated below.
-
-```{r}
-#| label: interaction-table
-ord  <- c("progression_cf", "within_homeostatic", "mean_pt", "comp_cf", "cross", "within_dam",
-          "median_pt", "q90", "frac_past_logit", "frac_past_asin")
-nice <- c(progression_cf = "progression", within_homeostatic = "within-homeostatic",
-          mean_pt = "mean position", comp_cf = "composition", cross = "cross",
-          within_dam = "within-DAM", median_pt = "median position", q90 = "90th percentile",
-          frac_past_logit = "fraction past onset (logit)", frac_past_asin = "fraction past onset (asin)")
-it <- inter[match(ord, inter$measure), ]
-itab <- data.frame(
-  endpoint   = nice[it$measure],
-  family     = it$family,
-  effect     = round(it$coef, 2),
-  `95% CI`   = sprintf("[%.2f, %.2f]", it$ci_l, it$ci_r),
-  p          = fmt_p(it$p_value),
-  `perm p`   = ifelse(is.na(it$perm_p), "-", sprintf("%.2f", it$perm_p)),
-  FDR        = round(it$fdr, 3),
-  check.names = FALSE, row.names = NULL, stringsAsFactors = FALSE)
-knitr::kable(itab, row.names = FALSE,
-  caption = "Tau-amyloid interaction on every trajectory endpoint (ordinary t at 9 residual degrees of freedom; Freedman-Lane permutation p where run). The additive channels (progression, composition, cross, mean/median/percentile position, within-state) are in pseudotime units; the fraction-past-onset rows are on the logit and arcsine bridges. BH FDR is computed within the pre-registered primary family and within the exploratory family separately.")
-```
-
 ```{r}
 #| label: fig-trajectory-unit-pt-dam
 #| fig-width: 7.8
 #| fig-height: 5.2
-#| fig-cap: "Replicate-level mean pseudotime tracks the DAM fraction. Each point is one genotype-by-batch unit; batch labels show that the high-position units are also high-DAM units. This is why the decomposition is load-bearing: a position interaction can be created by changing compartment size."
+#| fig-cap: "Replicate mean position tracks DAM fraction."
 ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
   geom_point(size = 2.6) +
   geom_text(aes(label = batch), size = 2.4, nudge_y = 0.35, check_overlap = TRUE) +
@@ -275,7 +225,7 @@ ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
 #| label: fig-trajectory-kitagawa-forest
 #| fig-width: 10
 #| fig-height: 5.6
-#| fig-cap: "Channel audit for the trajectory inference. Left: prepared overall and within-state rows across the five contrasts; amyloid moves mean position, but the interaction's within-state rows do not clear zero. Right: the explicit interaction decomposition rows; composition is positive, progression is negative and not supported."
+#| fig-cap: "Channel audit: amyloid shifts position; interaction within-state rows do not clear zero."
 decomp_rows <- inter[match(c("comp_cf", "progression_cf", "cross"), inter$measure), , drop = FALSE]
 decomp_rows$channel <- factor(c("composition", "progression", "cross"),
                               levels = rev(c("composition", "progression", "cross")))
@@ -299,37 +249,17 @@ p_all_channels | p_decomp
 
 ## A per-cell model corroborates the position shift
 
-The summary-level test aggregates each of the `r glmm$n_units` genotype-by-batch units to one
-number, which is the right scale for the interaction inference but discards the per-cell distribution. As a
-supportive cross-check, a per-cell beta generalised linear mixed model
-(`pt01 ~ tau * amyloid + batch + (1 | unit)`, `r format(glmm$n_cells, big.mark = ",")` on-lineage
-nuclei over `r glmm$n_units` replicate units) `r glmm_sentence`. This agrees that the interaction
-raises position. But it models per-cell position directly, so it is the per-cell analogue of mean
-pseudotime and is itself composition-conflated: it supports that position rises, not that
-progression does. It is reported as supportive only - the summary-level decomposition carries the
-composition-versus-progression inference, and there both concordance and discordance with this arm
-would be acceptable.
+Per-cell sensitivity `r glmm_sentence`; it supports position shift only, not progression.
 
 ## Reconciliation, robustness and concordance
 
-This re-baselines a v1 result rather than reproducing it. v1's point estimate had loaded the same
-interaction mostly onto progression (about `r prov$v1_progression_loading` of the effect) at a
-suggestive significance (FDR about `r prov$v1_progression_fdr`); on R `r prov$r_version` the
-decomposition attributes it mainly to composition instead, and neither the progression nor the within-state
-channel clears significance. The qualitative headline - a real, modest tau-amyloid synergy carried
-by the DAM compartment - is unchanged; its mechanistic reading shifts from "further-progressed
-cells" toward "more cells". The ordering itself is stable and marker-concordant: refitting on 10 and 20 harmony
-dimensions and on all retained nuclei reproduces the primary pseudotime at Spearman
-`r round(dims_min, 3)` or better, and the slingshot ordering agrees with the marker score-axis at
-Spearman `r round(prov$concordance_rho, 2)` (a moderate-to-large concordance, expected below one
-because the transcriptome geometry and the DAM-minus-homeostatic marker contrast are related, not
-identical).
+Versus v1, the synergy remains but the loading moves from progression to composition; refits stay concordant at rho >= `r round(dims_min, 3)`.
 
 ```{r}
 #| label: fig-trajectory-concordance
 #| fig-width: 6.5
 #| fig-height: 4.5
-#| fig-cap: "The slingshot pseudotime and the assumption-light marker score-axis (DAM minus homeostatic UCell) order the on-lineage nuclei concordantly; the binned density runs along the diagonal. This shares the marker system that defines the substates, so it guards against gross ordering failure rather than acting as an independent check."
+#| fig-cap: "Slingshot pseudotime and marker score-axis are concordant."
 ggplot(on, aes(pt_raw, score_axis_pt)) +
   geom_bin2d(bins = 60) +
   scale_fill_gradient(low = "grey88", high = "#3F5A6B", name = "nuclei", transform = "log10") +
@@ -341,7 +271,7 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| label: fig-trajectory-audit
 #| fig-width: 9.6
 #| fig-height: 4.2
-#| fig-cap: "Trajectory robustness and lineage-conditioning audit. Left: refits using fewer or more harmony dimensions, and all retained nuclei, remain strongly concordant with the primary pseudotime. Right: the off-lineage omitted fraction is low within every genotype, so conditioning on the homeostatic-to-DAM lineage does not drive the interaction."
+#| fig-cap: "Refits are stable and lineage omission is low across genotypes."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
   geom_col(fill = "#3F5A6B", width = 0.66) +
   geom_text(aes(label = sprintf("%.3f", spearman_vs_primary)), vjust = -0.35, size = 3) +
@@ -361,32 +291,7 @@ p_sens | p_omit
 
 ## Caveats and provenance
 
-Five caveats frame this chapter. First, pseudotime is an activation ordering, not developmental
-time or cellular potency: direction rests on slingshot rooting and the validated DAM-marker
-monotonicity above, never on a potency proxy. Second, and for the same reason, every effect here
-is a statement about position and extent of advance in a cross-sectional snapshot; the rate or
-acceleration reading would need longitudinal sampling or RNA velocity, which this design does not
-have. Third, the lineage conditions on the homeostatic-to-DAM cells, omitting the interferon and
-proliferative nuclei (`r omit_pct`% of microglia overall); were that omission genotype-skewed it
-could bias the interaction, so the per-genotype omitted fraction is reported below and is balanced
-across genotypes. Fourth, the within-state and composition channels are anchored on cell-weighted
-pooled positions, so the decomposition is conditional on that anchoring. Fifth, the substates are
-transcriptionally close, which is why
-the marker score-axis concordance is moderate rather than near-perfect and is read as a guard, not
-an independent validation.
-
-```{r}
-#| label: conditioning
-knitr::kable(
-  data.frame(
-    genotype          = as.character(cond$genotype),
-    nuclei            = cond$n_cells,
-    `on-lineage`      = cond$n_on_lineage,
-    `omitted %`       = cond$`omitted %`,
-    check.names = FALSE, stringsAsFactors = FALSE),
-  row.names = FALSE,
-  caption = "Lineage-conditioning audit: nuclei omitted from the homeostatic-to-DAM lineage (interferon and proliferative substates) by genotype. The omitted fraction is low and balanced across genotypes, so conditioning on the lineage barely skews the interaction.")
-```
+Caveats: pseudotime is position, not rate; lineage omits `r omit_pct`% off-axis nuclei; decomposition uses pooled within-state anchors.
 ```{r}
 #| label: trajectory-provenance
 #| echo: true

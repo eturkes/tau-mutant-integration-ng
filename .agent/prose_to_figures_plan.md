@@ -230,23 +230,46 @@ Acceptance:
 - Forced render is warning-clean. DONE: forced render plus `scripts/check.sh`
   green.
 
-### S4 - Result Chapter Conversion
+### S4 - Result Chapter Conversion [DONE 2026-07-03]
 
 Work:
 - Apply the S1 manifest to `_microglia.qmd`, `_trajectory.qmd`,
-  `_mechanism.qmd`, and `_crossmodality.qmd`.
+  `_mechanism.qmd`, and `_crossmodality.qmd`. DONE: all four result qmds were
+  regenerated through the S4 manifest and visual-first report path.
 - Replace explanatory paragraphs with annotated multi-panel figures, status
-  boards, and schematic logic panels.
+  boards, and schematic logic panels. DONE: added result status/logic boards
+  (`fig-microglia-summary-board`, `fig-trajectory-logic-board`,
+  `fig-mechanism-status-board`, `fig-crossmodality-status-board`), shortened
+  captions, and removed table-heavy audit chunks from the main path.
 - Preserve explicit nulls/blocked states: no supported progression beyond
   composition, NF-kB attenuation not supported, Gsk3b not recovered,
   SpatialDecon abundance blocked, full CCC absent, and bulk run-index caveats.
+  DONE: these states remain encoded in logic/status boards and figure captions.
 
 Acceptance:
 - Each result chapter meets or beats the selected prose-reduction target unless
-  an accepted review note records why not.
+  an accepted review note records why not. DONE:
+
+  | qmd | S1 words | S4 words | reduction |
+  |---|---:|---:|---:|
+  | `_microglia.qmd` | 1,438 | 251 | 83% |
+  | `_trajectory.qmd` | 1,317 | 186 | 86% |
+  | `_mechanism.qmd` | 755 | 148 | 80% |
+  | `_crossmodality.qmd` | 958 | 195 | 80% |
+  | total report | 5,111 | 1,164 | 77% |
+
 - Figure captions are short and factual; no caption becomes a paragraph surrogate.
+  DONE: result captions were compressed to one-line factual claims.
 - All figure labels remain hyphenated `fig-*`; no duplicate labels.
-- Full `scripts/check.sh` green.
+  DONE: `rg` found no underscored `fig-*` labels and duplicate-label check was empty.
+- Full `scripts/check.sh` green. DONE.
+
+Output:
+- Result qmds now use compact visual boards + existing chapter figure targets:
+  microglia summary/pruning audit, trajectory logic board, mechanism status
+  board, and cross-modality status board.
+- `scripts/prose_inventory.py` now writes `.` for empty manifest cells, avoiding
+  trailing whitespace in `.agent/prose_replacement_manifest.tsv`.
 
 ### S5 - Visual QA and Close-Out
 

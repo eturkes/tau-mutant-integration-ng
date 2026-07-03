@@ -297,38 +297,34 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
                 modalities + sample_key -> dims, 16x16 design bijection, bounds)
                                                           --{{< include >}}--> `_microglia.qmd`
-               (P1 microglia chapter: setup `options(warn=2)`; tar_load microglia_report + composition_results +
-                pb_de_microglia + pb_de_substate + symbol_map + microglia_figures -> original substate UMAP,
-                composition forest/table, amyloid->DAM volcano + S2 inline figures {genotype-faceted UMAP, score
-                triptych/distributions, 16-unit composition, concordance grid, all-contrast volcanoes, substate
-                fit audit, within-substate DE counts}, under-powered interaction + @sec-trajectory pointer, Thrupp
-                + dropout caveats)
+               (P1/S4 visual-first microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
+                composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->
+                summary board, substate UMAPs/score maps, composition shift + unit composition, composition
+                forest/concordance, amyloid + all-contrast volcanoes, substate fit/DE audit, pruning audit.
+                Claims remain source-derived: amyloid->DAM, DAM composition interaction, interaction DE
+                under-powered not absent.)
                                                           --{{< include >}}--> `_trajectory.qmd`
-               (P2 trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_report +
-                trajectory_figures [compact targets] -> pseudotime-shift + composition-not-progression 3-channel
-                decomposition + per-cell glmmTMB supportive + score-axis concordance + S3 inline figures
-                {pseudotime density, unit DAM-fraction/mean-pt scatter, channel/decomposition forest,
-                robustness/omission audit} + 5 caveats/provenance; headline = synergy adds DAM cells, no
-                supported further-advance; inference numbers inline-computed from trajectory_report, never hardcoded
-                [fixed design constants -- resid df, sensitivity dims -- stated as text])
+               (P2/S4 visual-first trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load
+                trajectory_report + trajectory_figures [compact targets] -> logic board, pseudotime shift/density,
+                3-channel decomposition, unit DAM-fraction/mean-pt scatter, Kitagawa forest, score-axis
+                concordance, robustness/omission audit + compact provenance. Headline = synergy adds DAM cells;
+                progression and within-homeostatic advance are explicitly not supported.)
                                                           --{{< include >}}--> `_mechanism.qmd`
-               (P3 mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load mechanism_report +
-                mechanism_figures [compact targets] -> pathway survey + TF activity + NF-kB attenuation gate +
-                Gsk3b/kinase support + S3 inline figures {all-population project pathway heatmap, GO dot plot,
-                Myc/NF-kB-family TF lollipop, NF-kB discordance tile, kinase/run-index heatmap} + synthesis/caveats.
+               (P3/S4 visual-first mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
+                mechanism_report + mechanism_figures [compact targets] -> mechanism status board, project/GO
+                pathway panels, Myc/NF-kB-family TF panels, NF-kB discordance tile, kinase/run-index heatmap.
                 Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
-               (P4 cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`; tar_load
-                crossmodality_report + crossmodality_figures [compact targets] -> GeoMx spatial DE, 24M bulk
-                proteome/phospho + run-index caveats, decon blocked status + clearance-axis CCC-lite, integrated pathway/
-                symbol divergence, and S4 inline figures {GeoMx volcanoes, sensitivity/loss, bulk run-index,
-                raw-vs-corrected phospho, anchor heatmap, clearance grid, symbol matrix, pathway heatmap}.
-                Modality wording keeps bulk hippocampus != microglia-sorted, GeoMx AOIs repeated,
-                SpatialDecon attempted but blocked by unresolved AOIs, and CCC-lite != full CCC.)
+               (P4/S4 visual-first cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
+                tar_load crossmodality_report + crossmodality_figures [compact targets] -> status board,
+                GeoMx counts/volcano/sensitivity, 24M bulk proteome/phospho counts + run-index + correction,
+                anchor heatmap, clearance grid, symbol matrix, pathway heatmap. Modality wording keeps bulk
+                hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
+                unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
-       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id; S5 rendered HTML QA =
-       42 figure blocks / 42 captions, lightbox embedded, 0 external resource refs.
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA was
+       Figure expansion S5 (42 figure blocks); Prose-to-figures S5 must rerun count/caption/lightbox/external-ref QA.
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):

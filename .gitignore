@@ -35,6 +35,10 @@ omnipathr-log/
 Rplots.pdf
 /*.html
 
+# generic Python artefacts
+__pycache__/
+*.py[cod]
+
 # retired non-Codex agent state
 /CLAUDE.md
 /.claude/
