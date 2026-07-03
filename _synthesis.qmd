@@ -9,13 +9,16 @@ suppressPackageStartupMessages({
 options(warn = 2)                                    # warning-fatal render contract
 targets::tar_source()                                # constants + report theme helpers
 targets::tar_load(synthesis_report)                  # ONE compact target, no heavy inputs
+targets::tar_load(report_visuals)                    # compact visual grammar over report targets
 knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
 sr <- synthesis_report
-ev <- sr$evidence_table
-ss <- sr$status_summary
-oq <- sr$open_questions
+rv <- report_visuals
+sv <- rv$synthesis_visual_abstract
+status_grid <- sv$status_grid
+source_matrix <- sv$source_matrix
+unsupported_grid <- sv$unsupported_status_grid
 
 status_labels <- c(
   core_supported = "core supported",
@@ -25,14 +28,6 @@ status_labels <- c(
   not_earned = "not earned",
   open_caveat = "open caveat"
 )
-axis_labels <- c(
-  microglia_state = "microglia state",
-  interaction = "interaction",
-  mechanism = "mechanism",
-  cross_modality = "cross-modality",
-  unearned = "unearned",
-  caveat = "caveat"
-)
 status_colours <- c(
   core_supported = "#B0344D",
   corroborated = "#3F5A6B",
@@ -41,124 +36,53 @@ status_colours <- c(
   not_earned = "#B7A06A",
   open_caveat = "#7C5A86"
 )
-anchor_labels <- c(
-  `#sec-microglia` = "microglia",
-  `#sec-trajectory` = "trajectory",
-  `#sec-mechanism` = "mechanism",
-  `#sec-crossmodality` = "cross-modality"
-)
-
-display_text <- function(x) {
-  x <- gsub("Apoe_Trem2", "Apoe-Trem2", x, fixed = TRUE)
-  x <- gsub("nlgf_in_maptki", "amyloid on MAPTKI", x, fixed = TRUE)
-  x <- gsub("nlgf_in_p301s", "amyloid on P301S", x, fixed = TRUE)
-  x <- gsub("tau_in_nlgf", "tau in NLGF", x, fixed = TRUE)
-  x <- gsub("comp_cf", "composition channel", x, fixed = TRUE)
-  x <- gsub("progression_cf", "progression channel", x, fixed = TRUE)
-  x <- gsub("ccc_called", "full CCC called", x, fixed = TRUE)
-  x
-}
-fmt_int <- function(x) format(as.integer(round(x)), big.mark = ",", trim = TRUE)
 
 answer_sentence <- paste(sr$headline, collapse = " ")
-status_sentence <- paste(
-  sprintf("%s %s", fmt_int(ss$n), status_labels[ss$status]),
-  collapse = "; "
-)
-open_sentence <- paste(
-  sprintf("%s (%s)", display_text(oq$direction), status_labels[oq$status]),
-  collapse = "; "
-)
-
-ev_table <- data.frame(
-  axis = unname(axis_labels[ev$axis]),
-  status = unname(status_labels[ev$status]),
-  claim = display_text(ev$direction),
-  evidence = display_text(ev$evidence),
-  caveat = display_text(ev$caveat),
-  chapter = unname(anchor_labels[ev$report_anchor]),
-  check.names = FALSE,
-  row.names = NULL,
-  stringsAsFactors = FALSE
-)
-stopifnot(!anyNA(ev_table$axis), !anyNA(ev_table$status), !anyNA(ev_table$chapter))
-
-ss_plot <- ss
-ss_plot$status <- factor(ss_plot$status, levels = rev(names(status_labels)),
-                         labels = rev(unname(status_labels)))
-ss_plot$status_key <- factor(ss$status, levels = rev(names(status_labels)))
-
-claim_labels <- c(
-  amyloid_dam_activation = "amyloid-to-DAM",
-  tau_amyloid_dam_composition = "DAM composition interaction",
-  progression_beyond_composition = "progression beyond composition",
-  myc_rna_interaction = "Myc RNA interaction",
-  nfkb_attenuation = "NF-kB attenuation",
-  gsk3b_kinase = "Gsk3b kinase",
-  crossmodality_amyloid_axes = "cross-modality amyloid axes",
-  clearance_axis = "clearance axis",
-  spatial_decon_full_ccc = "SpatialDecon / full CCC",
-  bulk_run_index_sensitivity = "bulk run-index caveat"
-)
-source_labels <- c(
-  microglia_report = "microglia",
-  trajectory_report = "trajectory",
-  mechanism_report = "mechanism",
-  crossmodality_report = "cross-modality"
-)
-anchor_sources <- c(
-  `#sec-microglia` = "microglia_report",
-  `#sec-trajectory` = "trajectory_report",
-  `#sec-mechanism` = "mechanism_report",
-  `#sec-crossmodality` = "crossmodality_report"
-)
-evidence_map <- do.call(rbind, lapply(seq_len(nrow(ev)), function(i) {
-  row <- ev[i, , drop = FALSE]
-  do.call(rbind, lapply(names(source_labels), function(src) {
-    primary <- grepl(src, row$primary_sources, fixed = TRUE) ||
-      identical(unname(anchor_sources[row$report_anchor]), src)
-    supporting <- grepl(src, row$supporting_sources, fixed = TRUE)
-    role <- if (primary) "primary" else if (supporting) "supporting" else "not cited"
-    data.frame(
-      claim_id = row$claim_id,
-      claim = unname(claim_labels[row$claim_id]),
-      source = unname(source_labels[src]),
-      status = row$status,
-      source_status = if (identical(role, "not cited")) "not cited" else row$status,
-      role = role,
-      role_label = c(primary = "P", supporting = "S", `not cited` = "")[role],
-      stringsAsFactors = FALSE
-    )
-  }))
-}))
-evidence_map$claim <- factor(evidence_map$claim, levels = rev(unname(claim_labels[ev$claim_id])))
-evidence_map$source <- factor(evidence_map$source, levels = unname(source_labels))
+claim_order <- rev(status_grid$claim)
+status_order <- names(status_labels)
+status_grid$claim <- factor(status_grid$claim, levels = claim_order)
+status_grid$status_label <- factor(status_grid$status_label,
+                                   levels = unname(status_labels[status_order]))
+source_matrix$claim <- factor(source_matrix$claim, levels = claim_order)
+source_matrix$source_label <- factor(source_matrix$source_label,
+                                     levels = c("microglia", "trajectory",
+                                                "mechanism", "cross-modality"))
+source_matrix$source_status <- ifelse(source_matrix$role == "none", "not cited",
+                                      source_matrix$status)
+source_matrix$role_label <- c(none = "", supporting = "S", primary = "P")[
+  as.character(source_matrix$role)
+]
+unsupported_grid$claim <- factor(unsupported_grid$claim,
+                                 levels = rev(unsupported_grid$claim))
+unsupported_grid$status_label <- factor(unsupported_grid$status_label,
+                                        levels = unname(status_labels[status_order]))
 ```
 
-`r answer_sentence` The synthesis table has `r fmt_int(nrow(ev))` claim rows:
-`r status_sentence`. The supported core is narrow by design, and the negative rows are part of
-the result rather than a supplement.
+`r answer_sentence`
 
 ```{r}
-#| label: fig-synthesis-status
-#| fig-width: 7.2
-#| fig-height: 3.2
-#| fig-cap: "Synthesis status counts. Labels are descriptive categories over the closed P1-P4 analyses; they are not a scored convergence ledger."
-ggplot(ss_plot, aes(status, n, fill = status_key)) +
-  geom_col(width = 0.72) +
-  coord_flip() +
-  scale_fill_manual(values = status_colours, guide = "none") +
-  scale_y_continuous(breaks = seq(0, max(ss_plot$n), by = 1)) +
-  labs(x = NULL, y = "claim rows", title = "Closed synthesis status") +
-  theme(panel.grid.major.y = element_blank())
+#| label: fig-synthesis-visual-abstract
+#| fig-width: 8.8
+#| fig-height: 4.8
+#| fig-cap: "Visual abstract: claim rows stay status-coloured and chapter-tied."
+ggplot(status_grid, aes(status_label, claim, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.5) +
+  geom_text(aes(label = chapter), size = 2.8, colour = "white") +
+  scale_fill_manual(values = status_colours, guide = "none", drop = FALSE) +
+  scale_x_discrete(drop = FALSE) +
+  labs(x = NULL, y = NULL, title = "Closed claim state") +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 28, hjust = 1)
+  )
 ```
 
 ```{r}
 #| label: fig-synthesis-evidence-map
 #| fig-width: 8.4
 #| fig-height: 4.8
-#| fig-cap: "Evidence map for the compact synthesis. Filled tiles show which compact chapter source is primary (P) or supporting (S) for each claim row; grey cells are not cited. Colours keep the closed claim status visible, including unsupported and unearned outcomes."
-ggplot(evidence_map, aes(source, claim, fill = source_status)) +
+#| fig-cap: "Source matrix: P primary, S supporting compact target."
+ggplot(source_matrix, aes(source_label, claim, fill = source_status)) +
   geom_tile(colour = "white", linewidth = 0.45) +
   geom_text(aes(label = role_label), size = 3.1, fontface = "bold") +
   scale_fill_manual(
@@ -167,7 +91,7 @@ ggplot(evidence_map, aes(source, claim, fill = source_status)) +
     labels = c(status_labels, `not cited` = "not cited"),
     name = "claim status"
   ) +
-  labs(x = NULL, y = NULL, title = "Claim rows are tied to compact chapter sources") +
+  labs(x = NULL, y = NULL, title = "Compact target provenance") +
   theme(
     panel.grid = element_blank(),
     axis.text.x = element_text(angle = 30, hjust = 1),
@@ -176,16 +100,18 @@ ggplot(evidence_map, aes(source, claim, fill = source_status)) +
 ```
 
 ```{r}
-#| label: synthesis-evidence-table
-knitr::kable(
-  ev_table,
-  row.names = FALSE,
-  caption = "Compact evidence table for the closing synthesis. Each row is derived from the compact P1-P4 report targets and points to the detailed chapter that audits it."
-)
+#| label: fig-synthesis-status
+#| fig-width: 8.2
+#| fig-height: 2.8
+#| fig-cap: "Unsupported grid: nulls, blocked states and caveats remain visible."
+ggplot(unsupported_grid, aes(status_label, claim, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.5) +
+  geom_text(aes(label = chapter), size = 2.8, colour = "white") +
+  scale_fill_manual(values = status_colours, guide = "none", drop = FALSE) +
+  scale_x_discrete(drop = FALSE) +
+  labs(x = NULL, y = NULL, title = "Unsupported, not-earned and caveat rows") +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 25, hjust = 1)
+  )
 ```
-
-What remains unsupported or unearned is also explicit: `r open_sentence`. These limits keep the
-closed report focused on the rebuilt evidence: DAM activation and DAM-cell composition are the
-central interaction story; Myc is the focused RNA mechanism signal; NF-kB attenuation, Gsk3b,
-progression beyond composition, blocked SpatialDecon abundance, full CCC and run-order-sensitive
-bulk hits stay outside the supported claim set.

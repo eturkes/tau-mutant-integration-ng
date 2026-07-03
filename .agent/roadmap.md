@@ -33,7 +33,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
-Next `$session-prompt` mode = EXECUTE S3 synthesis + overview conversion. Route
+Next `$session-prompt` mode = EXECUTE S4 result chapter conversion. Route
 selected = aggressive inline visual conversion over the existing report. S1
 measured baseline = 5,111 prose-only words / 119 human-facing blocks across
 `index.qmd` + `_*.qmd`; 33 headings are kept navigation, and all 86
@@ -42,6 +42,8 @@ prose/caption blocks have non-keep dispositions in
 (final counted prose <=2,300 words), stretch <=1,800 if S2 slots cover caveats
 without claim loss. S2 built compact visual grammar contracts: `qc_figures` +
 `report_visuals`, manifest slot coverage, and chapter status/logic board aliases.
+S3 converted Overview + synthesis to visual-first panels (305 -> 46 counted
+words, 85% local reduction) using compact `report_visuals`; full gate green.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -604,6 +606,15 @@ without claim loss. S2 built compact visual grammar contracts: `qc_figures` +
   Live build warning-clean and compact: `qc_figures` 4.37 KB, `report_visuals`
   4.28 KB; enriched chapter targets remain small. Focused figure test green.
   Next = S3 synthesis and overview conversion.
+- 2026-07-03 Prose-to-figures reduction S3 DONE -> `index.qmd` + `_synthesis.qmd`
+  visual-first conversion. Overview now draws `fig-report-spine-schematic` from
+  compact `report_visuals` instead of prose chapter previews. Synthesis now loads
+  `synthesis_report` + `report_visuals`, keeps one source-derived answer
+  sentence, replaces the compact evidence table/status prose with
+  `fig-synthesis-visual-abstract`, `fig-synthesis-evidence-map`, and
+  `fig-synthesis-status`. Local counted prose: Overview+synthesis 305 -> 46
+  words (85% reduction, clears >=55% floor). Forced render + full
+  `scripts/check.sh` green. Next = S4 result chapter conversion.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

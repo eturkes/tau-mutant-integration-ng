@@ -287,11 +287,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        report_visuals <- report_visual_data(spine, synthesis_report, qc_figures, microglia_figures, trajectory_figures, mechanism_figures, crossmodality_figures)  # Prose-to-figures S2 visual grammar / spine / source matrix / status boards; qmd-safe 4.28KB live
   - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
-            -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss)
+            -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; S3 overview setup
+                tar_loads compact `report_visuals` -> `fig-report-spine-schematic` visual report spine)
                                                           --{{< include >}}--> `_synthesis.qmd`
-               (P5 synthesis chapter, {#sec-synthesis}: setup `options(warn=2)`; tar_load synthesis_report [ONE
-                compact target] -> answer-first paragraph + status-count figure + S2 claim-source evidence map +
-                compact evidence table + unsupported/unearned paragraph; no heavy target reads, no ledger scoring)
+               (P5/S3 synthesis chapter, {#sec-synthesis}: setup `options(warn=2)`; tar_load synthesis_report +
+                compact report_visuals -> one source-derived answer sentence + visual abstract + source matrix +
+                unsupported status grid; no heavy target reads, no kable evidence table, no ledger scoring)
                                                           --{{< include >}}--> `_qc.qmd`
                (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
                 modalities + sample_key -> dims, 16x16 design bijection, bounds)

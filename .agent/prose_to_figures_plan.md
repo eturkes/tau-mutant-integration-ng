@@ -205,20 +205,30 @@ Output:
 - Live build command:
   `Rscript -e 'targets::tar_make(c(qc_figures, report_visuals))'`.
 
-### S3 - Synthesis and Overview Conversion
+### S3 - Synthesis and Overview Conversion [DONE 2026-07-03]
 
 Work:
 - Rewrite `index.qmd` and `_synthesis.qmd` so the first reading path is visual:
   visual abstract, claim-source matrix, status grid, and minimal connective text.
+  DONE: `index.qmd` now loads compact `report_visuals` and draws the report
+  spine schematic; `_synthesis.qmd` loads `synthesis_report` + `report_visuals`
+  and uses the target-shaped visual abstract, source matrix, and unsupported
+  status grid.
 - Replace the compact evidence table if a matrix/board can carry the same audit
-  content more tersely.
+  content more tersely. DONE: removed the synthesis kable and long status prose.
 - Keep one short answer sentence if needed; remove repeated chapter previews.
+  DONE: one source-derived answer sentence remains, with short figure captions.
 
 Acceptance:
 - Prose-only word count for Overview + synthesis drops by the selected target or
-  better.
+  better. DONE: S1 baseline `index.qmd` + `_synthesis.qmd` = 305 words; S3 =
+  46 words by `scripts/prose_inventory.py --summary-only` (85% reduction).
 - Claims and caveats remain source-target-derived, not hand-waved by diagrams.
-- Forced render is warning-clean.
+  DONE: all S3 panels read `report_visuals` / `synthesis_report`; null,
+  not-earned, blocked, and open-caveat rows stay visible in the status/source
+  matrices.
+- Forced render is warning-clean. DONE: forced render plus `scripts/check.sh`
+  green.
 
 ### S4 - Result Chapter Conversion
 

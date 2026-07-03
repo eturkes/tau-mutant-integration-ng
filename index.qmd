@@ -13,21 +13,80 @@ format:
 
 # Overview
 
-This report presents an integrative analysis of single-nucleus RNA-seq, GeoMx spatial
-transcriptomics, and bulk proteomics and phosphoproteomics across four mouse models of
-Alzheimer's disease. It asks how amyloid reshapes microglia under different tau
-backgrounds, reading the tau-amyloid interaction across all four modalities.
+```{r}
+#| label: overview-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+})
+options(warn = 2)
+targets::tar_source()
+targets::tar_load(report_visuals)
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau())
 
-The synthesis comes first because the rebuilt answer is compact: amyloid drives a
-homeostatic-to-DAM microglial programme; mutant tau modulates that response mainly as extra
-DAM-cell composition rather than supported further trajectory progression; Myc has focused RNA
-support; NF-kB attenuation and Gsk3b are not recovered; SpatialDecon abundance is blocked and full
-CCC is not called. The remaining chapters are the audit trail. QC checks the modality shapes and the
-single-nucleus genotype-by-batch design, then the microglia, trajectory, mechanism and
-cross-modality chapters show the evidence behind each synthesis row.
+rv <- report_visuals
+spine_nodes <- rv$report_spine_schematic$nodes
+spine_edges <- rv$report_spine_schematic$edges
+spine_coords <- data.frame(
+  node = c("inputs", "qc", "microglia", "trajectory", "mechanism",
+           "crossmodality", "synthesis", "environment"),
+  x = c(1, 2, 2, 3.4, 3.4, 3.4, 4.9, 3.4),
+  y = c(2.6, 3.25, 2.25, 2.95, 2.25, 1.55, 2.25, 0.85),
+  stringsAsFactors = FALSE
+)
+spine_nodes$x <- spine_coords$x[match(spine_nodes$node, spine_coords$node)]
+spine_nodes$y <- spine_coords$y[match(spine_nodes$node, spine_coords$node)]
+spine_edges$x <- spine_coords$x[match(spine_edges$from, spine_coords$node)]
+spine_edges$y <- spine_coords$y[match(spine_edges$from, spine_coords$node)]
+spine_edges$xend <- spine_coords$x[match(spine_edges$to, spine_coords$node)]
+spine_edges$yend <- spine_coords$y[match(spine_edges$to, spine_coords$node)]
+stopifnot(
+  all(is.finite(spine_nodes$x)),
+  all(is.finite(spine_nodes$y)),
+  all(is.finite(spine_edges$x)),
+  all(is.finite(spine_edges$y)),
+  all(is.finite(spine_edges$xend)),
+  all(is.finite(spine_edges$yend))
+)
 
-The analysis is built on a reproducible spine: a pinned R environment (rv), a pinned Python
-environment (uv), a targets pipeline, and this single self-contained Quarto report.
+spine_colours <- c(
+  input = "#3F5A6B",
+  gate = "#6B7A3F",
+  chapter = "#B0344D",
+  summary = "#7C5A86",
+  reproducibility = "#777777"
+)
+```
+
+Visual-first report: synthesis panels first, audit chapters after.
+
+```{r}
+#| label: fig-report-spine-schematic
+#| fig-width: 8.2
+#| fig-height: 3.8
+#| fig-cap: "Report spine: compact targets feed a visual-first audit."
+ggplot() +
+  geom_segment(
+    data = spine_edges,
+    aes(x = x, y = y, xend = xend, yend = yend),
+    colour = "#777777",
+    linewidth = 0.45,
+    arrow = grid::arrow(length = grid::unit(0.08, "inches"))
+  ) +
+  geom_label(
+    data = spine_nodes,
+    aes(x, y, label = label, fill = kind),
+    linewidth = 0.25,
+    label.r = grid::unit(0.08, "lines"),
+    size = 3.2,
+    colour = "white"
+  ) +
+  scale_fill_manual(values = spine_colours, guide = "none") +
+  coord_equal(xlim = c(0.6, 5.25), ylim = c(0.55, 3.5), clip = "off") +
+  theme_void() +
+  theme(plot.margin = margin(6, 20, 6, 20))
+```
 
 {{< include _synthesis.qmd >}}
 

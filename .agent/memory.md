@@ -827,6 +827,23 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   builders, per-chapter alias slots, manifest coverage, and finite geom guards.
   Real build command used for S2: `Rscript -e 'targets::tar_make(c(qc_figures, report_visuals))'`.
 
+## Prose-to-figures overview/synthesis conversion (S3, built) -- `index.qmd` + `_synthesis.qmd`
+- S3 is render-layer conversion only: no new inference/targets. `index.qmd`
+  tar_loads compact `report_visuals` and draws `fig-report-spine-schematic` from
+  `report_visuals$report_spine_schematic`; `_synthesis.qmd` tar_loads
+  `synthesis_report` + `report_visuals`, keeps one source-derived answer sentence,
+  and replaces the synthesis kable/status paragraph with `fig-synthesis-visual-abstract`,
+  `fig-synthesis-evidence-map`, and `fig-synthesis-status`.
+- Local prose result: S1 baseline for `index.qmd` + `_synthesis.qmd` = 305
+  counted words; S3 = 46 counted words (85% reduction, clears the selected
+  >=55% floor). Whole-report counted words after S3 = 4,852; S4 still carries
+  the main chapter-prose reduction load.
+- Claim guard: all S3 panels are compact-target-derived (`report_visuals` /
+  `synthesis_report`), and unsupported/not-earned/open-caveat states remain
+  plotted rather than moved to prose.
+- Render gotcha: ggplot2 4.x deprecates `geom_label(label.size=)`; use
+  `linewidth=` because report chunks run under `options(warn=2)`.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).
