@@ -218,6 +218,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       crossmodality_figure_data. Builders emit qmd-ready slots, finite geom guards, and pre-binned/top-row
       reductions for heavy shapes (whole/substate volcanoes, GeoMx volcanoes, raw-vs-corrected phospho) so
       later qmd chunks tar_load compact figure targets rather than raw/heavy analysis tables.
+   + (Figure-caption-only S4) report.R: render_report (-> report target) calls quarto::quarto_render
+      with quiet=FALSE, then repair_embedded_lightbox. Repair rewrites Quarto embedded-lightbox anchors from
+      absent local `index_files/figure-html/*.png` hrefs to the already embedded data-URI img src values; fails
+      loud if a local lightbox href has no embedded image shape.
    + (Prose-to-figures S2) figures.R: visual_reduction_slot_map + visual_slot_coverage + qc_figure_data.
       Adds compact visual-grammar contracts without qmd rewrites: QC slots from already materialised modality
       targets and alias board slots inside the existing chapter figure targets. Coverage test =
@@ -274,9 +278,12 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m)  # Figure expansion S1 + Prose-to-figures S2: GeoMx/phospho heavy tables reduced to binned/top-row plot data + status/count aliases; ~60KB qs live
-  - `report` <- tar_quarto(path=".", quiet=FALSE, extra_files=c("theme.scss", assets/fonts/*.woff2))  # ONE offline HTML; quiet=FALSE -> Quarto/Pandoc warnings reach the gate log
+  - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
+    report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation
+    `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
+                no author metadata; execute.echo=false keeps visible path code-free;
                 immediately includes report chapters)
                                                           --{{< include >}}--> `_qc.qmd`
                (caption-only QC chapter: setup `options(warn=2)` -> chunk warnings fail the render;
@@ -311,9 +318,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       Figure-caption-only S3, 2026-07-03 (result qmd source strict pass; 53 source captions, max 12 words,
-       median 8; full gate green after forced 109-chunk render; strict rendered HTML has one remaining
-       known blocker, the YAML author paragraph, for S4).
+       Figure-caption-only S4, 2026-07-03 (strict rendered main path pass; 48 figures / 48 captions /
+       48 nonblank alts; 48 data-URI lightbox hrefs; 0 local figure refs, duplicate IDs, visible body
+       paragraphs/tables/stdout/text outputs, code UI blocks, or warning/error markers; full gate green
+       after forced 109-chunk render; tar_meta clean across 52 current targets/branches).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):
@@ -366,6 +374,8 @@ from project root: `Rscript tests/test_<x>.R`.
                     trajectory / mechanism / cross-modality; (Prose-to-figures S2) QC/report-visual builders,
                     per-chapter board aliases, S1 manifest figure/schematic slot coverage; synthetic finite guards
                     for qmd geom inputs
+  - test_report.R  : (Figure-caption-only S4) repair_embedded_lightbox rewrite/no-op/fail-loud cases for
+                    embedded Quarto lightbox anchors
   - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity: beta success (glmmTMB_beta, n_units=16) / singular->failed / non-estimable->failed (fail_reason + captured messages) / unknown-genotype fail-loud; (P2-S4a) trajectory_report_data field/measure/contrast presence + finite interaction inference on the jitter>0 fixture (per-unit DAM composition VARIED so comp_cf/cross fdr stay non-degenerate) + a positive finite-bundle assertion + 13 malformed-input expect_error cases (up-front schema + assembled-bundle postconditions: col-drop/measure/weighted-p/per_unit/sensitivity/glmm-enum/provenance-scalar/NaN-endpoint; fixed=TRUE patterns match the TRUNCATED stopifnot deparse prefix)
   - test_mechanism.R  : (P3-S1) symbol mapping/drop counts + duplicate max-|stat| collapse + decoupleR ULM schema +
                     cache/TZ preflight + prior fingerprint determinism + synthetic CollecTRI/KSN standardisers +
@@ -383,7 +393,7 @@ from project root: `Rscript tests/test_<x>.R`.
   1. `rv sync` + `uv sync`  2. loop `tests/test_*.R` (each `options(warn=2)` -> stray warnings = errors)
   3. FORCE-render report (`tar_invalidate(any_of("report")); tar_make()`, tee'd to a log, `if !`-wrapped) ->
      two render-time catches in the SOURCES: every included `_*.qmd` setup `options(warn=2)`
-     (R chunk warning -> render error) + `_targets.R` `tar_quarto(quiet=FALSE)` (Quarto/Pandoc `[WARNING]` -> log)
+     (R chunk warning -> render error) + `render_report()` uses `quarto_render(quiet=FALSE)` (Quarto/Pandoc `[WARNING]` -> log)
   4. enforce zero-fault: (a) `tar_meta(error,warnings)` all-NA scoped to manifest names + dynamic branches;
      (b) anchored render-log grep (`^[WARNING]`/`^Warning:`/...), exit 0=fault / 1=clean / >=2=infra.
 Any error/warning/log-hit -> non-zero exit. Detail (force-render rationale, warn=2, scoping, anchored grep,

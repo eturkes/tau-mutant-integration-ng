@@ -166,6 +166,7 @@ mf_ss_signed$direction <- factor(mf_ss_signed$direction, levels = c("down", "up"
 #| fig-width: 7.2
 #| fig-height: 2.4
 #| fig-cap: "Microglia chapter board: all four evidence panels are available."
+#| fig-alt: "Tile board lists microglia evidence slots and marks all panels available."
 ggplot(mf_board, aes(status, panel, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = slot), size = 3.1) +
@@ -181,6 +182,7 @@ ggplot(mf_board, aes(status, panel, fill = status)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "Primary substates and DAM score on the batch-integrated UMAP."
+#| fig-alt: "Two UMAP panels show primary substate labels and DAM activation score."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
   scale_colour_manual(values = sub_cols, breaks = present_sub, name = "substate") +
@@ -200,6 +202,7 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 #| fig-width: 9.2
 #| fig-height: 6.4
 #| fig-cap: "Amyloid genotypes fill more of the DAM-labelled UMAP region."
+#| fig-alt: "Genotype-faceted UMAPs show amyloid samples occupying more DAM-labelled cells."
 ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.18, alpha = 0.55) +
   facet_wrap(~ genotype, ncol = 2) +
@@ -214,6 +217,7 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 #| fig-width: 10
 #| fig-height: 3.5
 #| fig-cap: "Homeostatic, DAM and MHC-APC score gradients across the manifold."
+#| fig-alt: "Binned UMAP panels show homeostatic, DAM and MHC-APC signature gradients."
 ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
   geom_point(aes(size = pmin(n, 6)), shape = 15, alpha = 0.85) +
   facet_wrap(~ score_name, nrow = 1) +
@@ -231,6 +235,7 @@ ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "Amyloid shifts composition and DAM score upward."
+#| fig-alt: "Stacked bars and violin plot show amyloid-linked DAM composition and score increases."
 prop_df <- as.data.frame(prop.table(st, 1))                       # genotype, substate, Freq(=within-genotype proportion)
 prop_df <- prop_df[prop_df$substate %in% present_sub, ]
 prop_df$genotype <- factor(prop_df$genotype, levels = genotype_levels)
@@ -256,6 +261,7 @@ p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
 #| fig-width: 9.5
 #| fig-height: 4.6
 #| fig-cap: "Replicate-unit composition shows the DAM expansion across batches."
+#| fig-alt: "Replicate-unit bars show DAM expansion across batches and genotypes."
 ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   geom_col(width = 0.78) +
   facet_grid(. ~ genotype) +
@@ -271,6 +277,7 @@ ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
 #| fig-width: 10
 #| fig-height: 6.2
 #| fig-cap: "Score distributions show a graded activation programme."
+#| fig-alt: "Faceted density lines show graded signature-score shifts by substate and genotype."
 ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
   geom_line(linewidth = 0.45, alpha = 0.9) +
   facet_grid(score_name ~ substate, scales = "free_y") +
@@ -287,6 +294,7 @@ ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
 #| fig-width: 8
 #| fig-height: 4.5
 #| fig-cap: "DAM and homeostatic composition effects across contrasts."
+#| fig-alt: "Forest or bar plot shows homeostatic and DAM composition effects for all contrasts."
 ctr_levels <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
 if (!is.null(comp$sccomp)) {
   fdf <- comp$sccomp[comp$sccomp$substate %in% c("Homeostatic", "DAM"), ]
@@ -315,6 +323,7 @@ if (!is.null(comp$sccomp)) {
 #| fig-width: 8.8
 #| fig-height: 3.8
 #| fig-cap: "Propeller primary calls and predeclared method flags."
+#| fig-alt: "Tile grid compares propeller primary calls with predeclared method flags."
 ggplot(mf_conc, aes(contrast, substate, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_text(aes(label = label), size = 3) +
@@ -335,6 +344,7 @@ ggplot(mf_conc, aes(contrast, substate, fill = status)) +
 #| fig-width: 8
 #| fig-height: 5.5
 #| fig-cap: "Amyloid on P301S up-regulates canonical DAM markers."
+#| fig-alt: "Volcano plot highlights canonical DAM markers up-regulated by amyloid on P301S."
 lfc <- pbm$thresholds$lfc; fdr <- pbm$thresholds$fdr
 vol <- pbm$top$nlgf_in_p301s
 vol$symbol    <- to_symbol(vol$gene)
@@ -360,6 +370,7 @@ ggplot(mapping = aes(logFC, neglog10p)) +
 #| fig-width: 10
 #| fig-height: 6.5
 #| fig-cap: "Whole-microglia DE is dominated by amyloid contrasts."
+#| fig-alt: "Faceted binned volcanoes show amyloid contrasts dominating whole-microglia DE."
 ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
   geom_tile(width = median(diff(sort(unique(mf_wv_bins$x_mid)))),
             height = median(diff(sort(unique(mf_wv_bins$y_mid))))) +
@@ -389,6 +400,7 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 #| fig-width: 7.8
 #| fig-height: 4.2
 #| fig-cap: "Homeostatic and DAM pass the per-unit cell floor; IFN/proliferative stay descriptive."
+#| fig-alt: "Bar plot marks substates that pass or miss the replicate-unit cell floor."
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
   geom_col(width = 0.68) +
   geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#B0344D") +
@@ -404,6 +416,7 @@ ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
 #| fig-width: 9.2
 #| fig-height: 4.4
 #| fig-cap: "Within-state DE keeps amyloid larger than the interaction."
+#| fig-alt: "Signed bar plot compares within-state DE counts across contrasts."
 ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
   geom_hline(yintercept = 0, colour = "grey65") +
   geom_col(width = 0.72) +
@@ -422,6 +435,7 @@ ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
 #| fig-width: 8.2
 #| fig-height: 4.2
 #| fig-cap: "Pruned nuclei are genotype-skewed but low-DAM; labels show cluster DAM medians."
+#| fig-alt: "Dropped-cluster bars show genotype skew and low DAM medians for pruned nuclei."
 ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n, fill = genotype)) +
   geom_col(width = 0.72) +
   geom_text(aes(label = sprintf("%.2f", DAM_med)), vjust = -0.3, size = 2.7) +

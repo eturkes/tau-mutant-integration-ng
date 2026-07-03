@@ -409,9 +409,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   uses transform="log10". Every other trajectory geom already renders clean under _microglia.qmd's 4.0.3 pass.
 - WIRING: index.qmd includes _trajectory.qmd AFTER _microglia.qmd; the Overview names it. `@sec-trajectory` cross-refs
   resolve across the full rendered doc regardless of include order. _microglia.qmd's 2 forward-pointers rewritten (P2
-  BUILT; synergy = DAM composition, NO supported further-advance; cross-ref @sec-trajectory). tar_quarto auto-detects the
-  trajectory_report tar_load edge THROUGH the include; NO new extra_files (theme/fonts shared), NO new dep (patchwork
-  already used by _microglia.qmd/_qc.qmd).
+  BUILT; synergy = DAM composition, NO supported further-advance; cross-ref @sec-trajectory). The report target now
+  declares `trajectory_report` / `trajectory_figures` explicitly through `render_report()` args; theme/fonts stay in
+  `report_extra_files`, and patchwork was already used by `_microglia.qmd` / `_qc.qmd`.
 - CHAPTER (title "The tau-amyloid synergy adds DAM cells rather than advancing them"): amyloid-axis-shift ->
   composition-not-progression 3-channel decomposition -> per-cell glmmTMB supportive (composition-conflated) ->
   reconciliation/robustness/concordance -> 5 caveats+provenance (activation-ordering not time; position not rate;
@@ -866,8 +866,8 @@ knitr/Quarto render. Layered: env (`rv sync`+`uv sync`; skip `CHECK_SKIP_SYNC=1`
 report tee'd to a log | `tar_meta` error+warnings all-NA (scoped to current targets+branches) | anchored render-log
 grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_snrnaseq build). Durable lessons:
 - EVERY section qmd setup carries `options(warn=2)` -> a chunk warning halts the render (else it renders SILENTLY
-  into the HTML, never reaching the log/tar_meta). `tar_quarto(report, quiet=FALSE)` lets Quarto/Pandoc `[WARNING]`
-  lines reach the log (default quiet=TRUE hid them).
+  into the HTML, never reaching the log/tar_meta). The `report` target calls `render_report()` ->
+  `quarto::quarto_render(quiet=FALSE)`, so Quarto/Pandoc `[WARNING]` lines reach the log.
 - CACHED-TARGET BLIND SPOT (load-bearing): check.sh force-invalidates ONLY `report`; every other target stays
   CACHED during the gate -> a heavy/off-lock arm's warnings never re-surface unless forced. Any "RECORDED not
   gated" claim MUST be re-verified on a FRESH build of that target (tar_invalidate it + report), not a cached one
@@ -920,17 +920,17 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 - Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
   `embed-resources: true` inlines CSS/JS/fonts) + modular `{{< include _section.qmd >}}` (leading
   `_` -> not rendered standalone). NOT a Quarto book (multi-file + `Could not fetch resource
-  ./<sibling>.html` nav warnings under embed-resources -> caught by the gate's render-log scan once quiet=FALSE). tar_quarto
-  still detects `tar_load`s inside EACH included `_*.qmd` (verified: edges through both `_qc.qmd` and `_microglia.qmd`
-  -- the latter pulls microglia_report/composition_results/pb_de_microglia/pb_de_substate/symbol_map; the gate's
-  force-render + tar_meta scope exercise them); list the theme/css in `tar_quarto(extra_files=)` (inspection misses them).
+  ./<sibling>.html` nav warnings under embed-resources -> caught by the gate's render-log scan once quiet=FALSE).
+  The `report` target uses explicit compact-target arguments plus `report_sources` / `report_extra_files`
+  file targets; do not rely on automatic qmd dependency inspection. The gate's force-render + tar_meta scope
+  exercise the declared dependencies; list theme/css/fonts in `report_extra_files` (inspection misses them).
 - Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29):
   scss:defaults COLOUR vars ($primary/$link-color #B0344D, $code-color #3F5A6B) + the IBM Plex stack
   ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)
   with a relative `url("assets/fonts/<n>.woff2") format("woff2")`. Quarto base64-INLINES each woff2 into
   the embedded CSS under embed-resources -> ONE offline file (render PROVED: 9 faces inlined, magic d09GMg,
   0 external). The 9 woff2 are COMMITTED (assets/fonts/; avoid direct reads via `AGENTS.md` read economy);
-  list them in `tar_quarto(extra_files=)` -- inspection misses them, `list.files("assets/fonts",
+  list them in `report_extra_files` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
   (device font) so figures stay decoupled from this chrome + warning-free.
 - Theme-CSS DETECTION gotcha: with an `@font-face url()` in the theme, Quarto URL-encodes the WHOLE compiled
@@ -963,6 +963,21 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   paragraph (`Emir Turkes`) remaining for S4; no result-body paragraphs, tables,
   text-only outputs, or stdout provenance remain. Caption rule: 53 source captions,
   max 12 words, median 8. Full gate green after a forced 109-chunk render.
+- Figure-caption-only S4 (2026-07-03): rendered main path is headings + figures +
+  captions only. `index.qmd` has no author metadata, visible code UI is disabled
+  (`execute.echo: false`; no code-fold/code-tools/source-code blocks), and every
+  captioned figure has source `fig-alt`: 48 `fig-cap` + 48 `fig-alt`, visible
+  caption max 12 words. Quarto gotcha: with `embed-resources: true` +
+  `lightbox: auto`, figure `img src` values become data URIs but lightbox `href`
+  values can remain `index_files/figure-html/*.png`; `_report/index_files` is
+  absent in the embedded artifact, so raw lightbox links break. The `report`
+  target now uses `R/report.R::render_report()` and post-render
+  `repair_embedded_lightbox()` to rewrite local lightbox hrefs to embedded data
+  URIs, with `tests/test_report.R` locking rewrite/no-op/fail-loud cases. S4
+  rendered QA: 48 figures/captions/nonblank alts, 48 data-URI lightbox hrefs,
+  0 local figure refs, 0 duplicate IDs, 0 visible paragraphs/tables/stdout/text
+  outputs, 0 warning/error markers. Full gate green; tar_meta clean across 52
+  current targets/branches.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

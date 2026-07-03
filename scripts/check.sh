@@ -6,7 +6,7 @@
 #   2  unit tests at warn=2      -- a stray R warning in any test -> error
 #   3  tar_make, report FORCE-RENDERED each run (cheap: reads cached targets, no heavy rebuild)
 #        - the report qmd sets options(warn=2) -> any R chunk warning -> render error -> tar_make fails
-#        - tar_quarto(quiet=FALSE) -> Quarto/Pandoc [WARNING] lines reach the captured log for 4c
+#        - render_report(... quiet=FALSE) -> Quarto/Pandoc [WARNING] lines reach the captured log for 4c
 #   4a tar_meta(error,warnings) all-NA across current targets + their dynamic branches
 #   4c render-log scan for ANCHORED Quarto / Pandoc / R warning lines
 # Any fault -> non-zero exit.
@@ -74,8 +74,8 @@ Rscript -e '
   cat("ok - tar_meta clean across", nrow(m), "current targets/branches\n")
 '
 
-# 4c. Zero-fault: no Quarto / Pandoc / R warning line in the render log. quiet=FALSE (set on the
-#     tar_quarto target) lets Quarto/Pandoc [WARNING] lines reach $LOG. Match ONLY anchored
+# 4c. Zero-fault: no Quarto / Pandoc / R warning line in the render log. quiet=FALSE (set in the
+#     report render target) lets Quarto/Pandoc [WARNING] lines reach $LOG. Match ONLY anchored
 #     warning forms so benign chatter containing the substring "warn" (paths, labels, progress)
 #     cannot false-red. command grep -> the real GNU binary, not the rg-fff shell shadow.
 #     Discriminate grep's exit: 0 = match (fault), 1 = clean, >=2 = grep infrastructure error.

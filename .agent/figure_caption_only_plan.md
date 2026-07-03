@@ -192,7 +192,7 @@ Outcome:
 - Caption rule passes: 53 source captions, max 12 words, median 8. Full
   `scripts/check.sh` green after a forced 109-chunk render.
 
-### S4 - Caption, Alt, and HTML QA
+### S4 - Caption, Alt, and HTML QA [DONE 2026-07-03]
 
 Work:
 - Compress captions to claim/caveat microcopy.
@@ -206,6 +206,24 @@ Acceptance:
 - Caption length rule passes.
 - Accessibility text coverage recorded.
 - Full `scripts/check.sh` green.
+
+Outcome:
+- Removed visible title-block author metadata and disabled visible code UI
+  (`execute.echo: false`; no code folding/tools buttons).
+- Added/verified `fig-alt` for every captioned figure: 48 `fig-cap` and 48
+  `fig-alt` entries across QC + result chapters; visible caption max = 12 words.
+- Replaced the report target with `render_report()` so the DAG renders through
+  Quarto and then repairs embedded lightbox anchors. Under `embed-resources: true`,
+  Quarto embeds figure `src` values as data URIs but leaves lightbox `href` values
+  pointing at absent `index_files/figure-html/*.png`; `repair_embedded_lightbox()`
+  rewrites those `href`s to the embedded data URIs and fails loud on unknown
+  shapes.
+- Rendered HTML QA green: 48 figures / 48 captions / 48 nonblank alt attributes,
+  48 data-URI lightbox links, 0 local figure hrefs, 0 duplicate IDs, 0 visible
+  paragraphs/tables/stdout/text-only outputs, 0 code-fold/code-tools/source-code
+  blocks, and 0 visible warning/error markers.
+- Full `scripts/check.sh` green after a forced 109-chunk render; `tar_meta`
+  clean across 52 current targets/branches.
 
 ### S5 - Close-Out
 

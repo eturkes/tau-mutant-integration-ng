@@ -34,7 +34,7 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Figure-caption-only report
 Plan file: `.agent/figure_caption_only_plan.md`.
-Next `$session-prompt` mode = EXECUTE S4.
+Next `$session-prompt` mode = EXECUTE S5.
 Goal = visible report path becomes headings + figures + captions only: zero
 body prose, zero visible tables, zero visible provenance text; accessibility
 `fig-alt` stays source-level.
@@ -42,7 +42,7 @@ Steps:
 - S1 strict inventory gate [DONE 2026-07-03]: count/fail non-heading/non-caption visible blocks.
 - S2 QC conversion [DONE 2026-07-03]: replace QC prose/tables with figure panels.
 - S3 result conversion [DONE 2026-07-03]: remove chapter openers/status tails/provenance text.
-- S4 caption/alt/HTML QA: caption length, `fig-alt`, DOM checks, full gate.
+- S4 caption/alt/HTML QA [DONE 2026-07-03]: caption length, `fig-alt`, DOM checks, full gate.
 - S5 close-out: claim parity, docs/history/archive, reset Active plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -90,9 +90,9 @@ Steps:
   user requested the extreme endpoint: no prose, just figures and captions.
   Plan target = rendered main path with headings + figures + captions only;
   paragraphs/tables/provenance text removed or figure-encoded; `fig-alt`
-  retained for accessibility. Current post-removal baseline = 1,119 counted
-  words / 109 blocks; 33 paragraph blocks / 594 words remain; S1 opens a strict
-  inventory gate before report-source edits.
+  retained for accessibility. S1-S4 done: rendered main path has 48 figures /
+  48 captions / 48 alt attributes, no visible body prose/tables/provenance/code
+  UI, and full gate green. Next = S5 claim-parity close-out.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -678,6 +678,16 @@ Steps:
   median 8). Strict rendered HTML is down to the known YAML author paragraph only;
   no result-body paragraphs, tables, text-only outputs, or stdout provenance remain.
   Full `scripts/check.sh` green. Next = S4 caption/alt/HTML QA + author metadata.
+- 2026-07-03 Figure-caption-only S4 DONE: removed YAML author metadata and visible
+  code UI, added/verified `fig-alt` for every captioned figure (48 `fig-cap` /
+  48 `fig-alt`; caption max 12 words), and replaced the report target with
+  `render_report()` so Quarto renders quietly-false through the DAG then repairs
+  embedded lightbox anchors from missing local `index_files/figure-html/*.png`
+  hrefs to data URIs. Rendered strict HTML QA green: 48 figures/captions/img alts,
+  48 data-URI lightbox links, 0 local figure refs, 0 duplicate IDs, 0 visible
+  paragraphs/tables/stdout/text-only outputs, 0 code UI, 0 warning/error markers.
+  Full `scripts/check.sh` green across 52 current targets/branches. Next = S5
+  claim-parity close-out.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

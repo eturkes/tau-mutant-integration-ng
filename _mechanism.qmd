@@ -200,6 +200,7 @@ mech_board$status <- factor(mech_board$status,
 #| fig-width: 8.2
 #| fig-height: 3.2
 #| fig-cap: "Mechanism status board: Myc supported; NF-kB and Gsk3b not recovered."
+#| fig-alt: "Tile board summarises Myc support, NF-kB discordance, Gsk3b status and caveats."
 ggplot(mech_board, aes(status, mechanism, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = source_slot), size = 3) +
@@ -220,6 +221,7 @@ ggplot(mech_board, aes(status, mechanism, fill = status)) +
 #| fig-width: 9.5
 #| fig-height: 4.8
 #| fig-cap: "Focused project gene sets in whole microglia."
+#| fig-alt: "Heatmap shows focused project gene-set activity in whole microglia."
 proj_plot <- pp[pp$population == "whole_microglia", , drop = FALSE]
 proj_plot$contrast <- factor(proj_plot$contrast, levels = names(contrast_labels),
                              labels = unname(contrast_labels))
@@ -241,6 +243,7 @@ ggplot(proj_plot, aes(contrast, pathway_label, fill = NES)) +
 #| fig-width: 10
 #| fig-height: 6.2
 #| fig-cap: "Project gene sets across RNA populations."
+#| fig-alt: "Faceted heatmap shows project gene-set activity across RNA populations."
 ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_point(data = m_project[m_project$fdr < alpha, , drop = FALSE],
@@ -258,6 +261,7 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
 #| fig-width: 10
 #| fig-height: 7
 #| fig-cap: "GO survey rows are exploratory context, not new mechanism calls."
+#| fig-alt: "Dot plot shows exploratory GO rows by population, contrast, NES and set size."
 ggplot(go_select, aes(contrast, pathway_label)) +
   geom_point(aes(size = size, colour = NES, alpha = supported)) +
   facet_wrap(~ population_label, nrow = 1, scales = "free_y") +
@@ -277,6 +281,7 @@ ggplot(go_select, aes(contrast, pathway_label)) +
 #| fig-width: 9.5
 #| fig-height: 4.8
 #| fig-cap: "Interaction TF activity highlights Myc."
+#| fig-alt: "Lollipop plot highlights Myc among top interaction TF activity rows."
 tf_int <- tf[tf$contrast == "interaction" &
                tf$population %in% c("whole_microglia", "DAM") &
                tf$selection == "top", , drop = FALSE]
@@ -300,6 +305,7 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
 #| fig-width: 10
 #| fig-height: 5.8
 #| fig-cap: "Myc is supported; NF-kB-family rows lack concordant attenuation."
+#| fig-alt: "Faceted lollipop plot contrasts Myc and NF-kB-family TF activity rows."
 ggplot(tf_focus, aes(score, source, colour = class)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_segment(aes(x = 0, xend = score, yend = source), linewidth = 0.45) +
@@ -320,6 +326,7 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
 #| fig-width: 7.2
 #| fig-height: 4.2
 #| fig-cap: "NF-kB attenuation gate is target-derived; support rows cannot override it."
+#| fig-alt: "Tile grid shows primary and supportive NF-kB attenuation rows with scores and FDRs."
 ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
   geom_tile(colour = "white", linewidth = 0.5) +
   geom_tile(data = nf_plot[nf_plot$primary_test, , drop = FALSE],
@@ -339,6 +346,7 @@ ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
 #| fig-width: 9.5
 #| fig-height: 6.2
 #| fig-cap: "Bulk hippocampus kinase rows: Gsk3b carried, not recovered."
+#| fig-alt: "Heatmap shows kinase activity scores, primary hits and run-index support markers."
 ggplot(kin_plot, aes(contrast, source, fill = score)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_point(data = kin_plot[kin_plot$primary_sig, , drop = FALSE],

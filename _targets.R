@@ -1,9 +1,8 @@
 # targets pipeline entrypoint. Pure functions in R/ load via tar_source() (the DAG orders
 # execution -- no manual loader). Data + heavy producers store format="qs" (qs2 backend).
 library(targets)
-library(tarchetypes)
 
-# Point the `quarto` R package (used by tar_quarto / quarto_inspect) at the pinned,
+# Point the `quarto` R package (used by render_report -> quarto_render) at the pinned,
 # project-local Quarto CLI. Resolve the bin DIR (real) but leave the `quarto` symlink
 # unresolved -> stable handle across version bumps. Fail loud if absent: a missing path
 # lets the quarto pkg silently fall back to a PATH binary (unpinned) -> repro hole.
@@ -241,14 +240,41 @@ list(
                                        phospho_de_24m, phospho_corrected_24m),
              format = "qs"),
 
-  # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which
-  # pulls in _qc.qmd via {{< include >}}). extra_files: quarto inspection tracks the .qmd target
-  # deps but NOT the theme or its inlined fonts -> list theme.scss + the IBM Plex woff2 so editing
-  # either reinvalidates the report (list.files keeps the 9 faces in sync with assets/fonts/).
-  tar_quarto(
-    report, path = ".",
-    quiet = FALSE,   # surface Quarto/Pandoc warnings to the render log so the gate can scan them; default TRUE hides them
-    extra_files = c("theme.scss",
-                    list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE))
+  # Standalone HTML report render. Source-file targets make report invalidation explicit so
+  # caption-only post-render repair can run inside the same `report` target. The render still
+  # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
+  # warnings in the gate log. repair_embedded_lightbox() rewrites Quarto's local lightbox
+  # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
+  tar_target(
+    report_sources,
+    c("_quarto.yml", "index.qmd", "_qc.qmd", "_microglia.qmd", "_trajectory.qmd",
+      "_mechanism.qmd", "_crossmodality.qmd"),
+    format = "file"
+  ),
+  tar_target(
+    report_extra_files,
+    c("theme.scss", list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
+    format = "file"
+  ),
+  tar_target(
+    report,
+    render_report(
+      report_sources = report_sources,
+      report_extra_files = report_extra_files,
+      qc_figures = qc_figures,
+      microglia_report = microglia_report,
+      composition_results = composition_results,
+      pb_de_microglia = pb_de_microglia,
+      pb_de_substate = pb_de_substate,
+      symbol_map = symbol_map,
+      microglia_figures = microglia_figures,
+      trajectory_report = trajectory_report,
+      trajectory_figures = trajectory_figures,
+      mechanism_report = mechanism_report,
+      mechanism_figures = mechanism_figures,
+      crossmodality_report = crossmodality_report,
+      crossmodality_figures = crossmodality_figures
+    ),
+    format = "file"
   )
 )

@@ -128,6 +128,7 @@ method_status$status <- factor(method_status$status,
 #| fig-width: 7.8
 #| fig-height: 3
 #| fig-cap: "Logic board: composition supported; progression endpoints not supported."
+#| fig-alt: "Tile board shows composition supported while progression endpoints are not supported."
 ggplot(tr_logic, aes(status, endpoint, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = label), size = 3.2, lineheight = 0.9) +
@@ -144,6 +145,7 @@ ggplot(tr_logic, aes(status, endpoint, fill = status)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "Amyloid dominates pseudotime position; the interaction is smaller."
+#| fig-alt: "Violin and forest panels show amyloid pseudotime shifts and the smaller interaction."
 p_dist <- ggplot(on, aes(genotype, pt_raw, fill = genotype)) +
   geom_violin(scale = "width", colour = "grey30", linewidth = 0.3) +
   geom_hline(yintercept = prov$dam_onset, linetype = "dashed", colour = "grey50") +
@@ -174,6 +176,7 @@ p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
 #| fig-width: 9.6
 #| fig-height: 5.6
 #| fig-cap: "High-pseudotime density is concentrated in DAM states."
+#| fig-alt: "Faceted area plots show high pseudotime concentrated in DAM states."
 ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
   facet_grid(substate ~ genotype, scales = "free_y") +
@@ -191,6 +194,7 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "The position interaction is carried by composition, not progression."
+#| fig-alt: "Forest and loading panels decompose the interaction into composition, progression and cross channels."
 chan       <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam")
 chan_label <- c("mean position", "composition", "progression", "cross",
                 "within-homeostatic", "within-DAM")
@@ -223,6 +227,7 @@ p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
 #| fig-width: 7.8
 #| fig-height: 5.2
 #| fig-cap: "Replicate mean position tracks DAM fraction."
+#| fig-alt: "Scatter plot shows replicate mean pseudotime increasing with DAM fraction."
 ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
   geom_point(size = 2.6) +
   geom_text(aes(label = batch), size = 2.4, nudge_y = 0.35, check_overlap = TRUE) +
@@ -238,6 +243,7 @@ ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
 #| fig-width: 10
 #| fig-height: 5.6
 #| fig-cap: "Channel audit: amyloid shifts position; interaction within-state rows do not clear zero."
+#| fig-alt: "Forests show contrast effects and interaction channel estimates with zero reference lines."
 decomp_rows <- inter[match(c("comp_cf", "progression_cf", "cross"), inter$measure), , drop = FALSE]
 decomp_rows$channel <- factor(c("composition", "progression", "cross"),
                               levels = rev(c("composition", "progression", "cross")))
@@ -268,6 +274,7 @@ p_all_channels | p_decomp
 #| fig-width: 6.5
 #| fig-height: 4.5
 #| fig-cap: "Slingshot pseudotime and marker score-axis are concordant."
+#| fig-alt: "Binned scatter shows positive concordance between slingshot pseudotime and marker score-axis."
 ggplot(on, aes(pt_raw, score_axis_pt)) +
   geom_bin2d(bins = 60) +
   scale_fill_gradient(low = "grey88", high = "#3F5A6B", name = "nuclei", transform = "log10") +
@@ -280,6 +287,7 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| fig-width: 9.6
 #| fig-height: 4.2
 #| fig-cap: "Refits are stable and lineage omission is low across genotypes."
+#| fig-alt: "Bar and point panels show stable refits and low lineage omission by genotype."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
   geom_col(fill = "#3F5A6B", width = 0.66) +
   geom_text(aes(label = sprintf("%.3f", spearman_vs_primary)), vjust = -0.35, size = 3) +
@@ -304,6 +312,7 @@ p_sens | p_omit
 #| fig-width: 7.6
 #| fig-height: 2.7
 #| fig-cap: "Method board: lineage passes; per-cell fit is position-only."
+#| fig-alt: "Tile board shows lineage, factorial and per-cell model status."
 ggplot(method_status, aes(status, check, fill = status)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = label), size = 3, lineheight = 0.9) +

@@ -1,14 +1,13 @@
 ---
 title: "Tau Mutant Integration"
-author: "Emir Turkes"
 format:
   html:
     theme: theme.scss        # crimson primary + links + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)
     embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
     lightbox: auto           # dense figures are clickable in the offline HTML
     toc: true
-    code-fold: true          # analysis code present but collapsed (v1's code_folding: hide)
-    code-tools: true
+execute:
+  echo: false                # visible path stays figures, captions, and headings
 ---
 
 {{< include _qc.qmd >}}
