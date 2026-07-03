@@ -333,3 +333,28 @@ Verification (honest): final `scripts/check.sh` green (tests warn=2, forced 125-
 no >32-word captions, no duplicate IDs, no broken internal anchors, no external `href`/`src` refs, lightbox present,
 no visible warning/error markers, rendered `fig-*` IDs have no underscores. Close-out claim-parity review found no
 unsupported visual overclaim.
+
+## Figure-caption-only report -- closed 2026-07-03 (-> `.agent/completed/figure_caption_only_plan_2026-07-03.md`)
+
+Closed the user's extreme endpoint for the final artifact: visible main path is headings, figures and captions only.
+This was a report-shape pass, not a biology pass; it preserves the closed P1-P5 claim set and keeps accessibility
+text in source `fig-alt`.
+
+- ROUTE: strict visible-path conversion. Removed markdown body prose, visible `knitr::kable()` tables, visible
+  `cat()`/stdout provenance, YAML author metadata, and visible code UI. REJECTED: hiding prose in collapsed audit,
+  one-page figure wall, and putting all text inside figures with no captions.
+- INVENTORY/GATE: `scripts/prose_inventory.py --strict --html _report/index.html` is the caption-only gate. It
+  counts qmd source blocks and rendered main-content blockers, ignoring script/style/code and figure outputs.
+  Final strict run: source paragraphs/lists/tables = 0; rendered HTML body prose/tables/stdout/text-only outputs = 0.
+- REPORT SHAPE: QC became five figure panels backed by `qc_figures`; result chapter openers, tails and provenance
+  prose were removed or converted to status/logic boards. Null/blocked/not-earned states stay visible:
+  under-powered interaction DE, composition-not-progression, NF-kB discordance, Gsk3b not recovered,
+  SpatialDecon abundance blocked, full CCC absent, and run-index sensitivity.
+- ACCESSIBILITY/HTML: every captioned figure has `fig-alt` (48 `fig-cap` / 48 `fig-alt`; caption max 12 words).
+  `R/report.R::render_report()` now owns Quarto rendering and repairs embedded-lightbox links that Quarto leaves
+  pointing at absent local PNGs under `embed-resources: true`, rewriting them to embedded data URIs.
+
+Verification (honest): claim-parity review accepted no blockers. Strict gate green. Rendered DOM QA:
+48 figures / 48 captions / 48 nonblank alts, 48 data-URI lightbox hrefs, 0 local figure refs, 0 duplicate IDs,
+0 external refs, 0 code UI. Final `scripts/check.sh` green (tests warn=2, forced 109-chunk render, tar_meta clean
+across 52 current targets/branches, render-log clean).

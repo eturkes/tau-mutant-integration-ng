@@ -978,6 +978,13 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   0 local figure refs, 0 duplicate IDs, 0 visible paragraphs/tables/stdout/text
   outputs, 0 warning/error markers. Full gate green; tar_meta clean across 52
   current targets/branches.
+- Figure-caption-only close (2026-07-03): claim-parity review accepted no
+  blockers. Final strict gate = source 0 paragraphs/lists/tables; rendered main
+  path 0 body prose/tables/stdout/text-only outputs. DOM QA = 48 figures /
+  captions / nonblank alts, 48 data-URI lightbox hrefs, 0 local figure refs, 0
+  duplicate IDs, 0 external refs, 0 code UI. Keep `fig-alt` as source-level
+  accessibility text; visible report prose stays limited to headings, figure text
+  and captions.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

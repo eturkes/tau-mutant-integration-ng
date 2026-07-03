@@ -32,18 +32,10 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: Figure-caption-only report
-Plan file: `.agent/figure_caption_only_plan.md`.
-Next `$session-prompt` mode = EXECUTE S5.
-Goal = visible report path becomes headings + figures + captions only: zero
-body prose, zero visible tables, zero visible provenance text; accessibility
-`fig-alt` stays source-level.
-Steps:
-- S1 strict inventory gate [DONE 2026-07-03]: count/fail non-heading/non-caption visible blocks.
-- S2 QC conversion [DONE 2026-07-03]: replace QC prose/tables with figure panels.
-- S3 result conversion [DONE 2026-07-03]: remove chapter openers/status tails/provenance text.
-- S4 caption/alt/HTML QA [DONE 2026-07-03]: caption length, `fig-alt`, DOM checks, full gate.
-- S5 close-out: claim parity, docs/history/archive, reset Active plan.
+## Active plan: none
+Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
+user before writing a plan. Last closed = Figure-caption-only report
+(`.agent/completed/figure_caption_only_plan_2026-07-03.md`).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -86,13 +78,14 @@ Steps:
   compact data slots; S3 converted overview+synthesis; S4 converted result
   chapters; S5 closed with final report prose 5,111 -> 1,164 words (77%
   reduction), rendered HTML QA green, and full gate green.
-- Figure-caption-only report [ACTIVE 2026-07-03 -> `.agent/figure_caption_only_plan.md`]:
+- Figure-caption-only report [DONE 2026-07-03 -> `.agent/completed/figure_caption_only_plan_2026-07-03.md`]:
   user requested the extreme endpoint: no prose, just figures and captions.
   Plan target = rendered main path with headings + figures + captions only;
   paragraphs/tables/provenance text removed or figure-encoded; `fig-alt`
-  retained for accessibility. S1-S4 done: rendered main path has 48 figures /
+  retained for accessibility. S1-S5 closed: rendered main path has 48 figures /
   48 captions / 48 alt attributes, no visible body prose/tables/provenance/code
-  UI, and full gate green. Next = S5 claim-parity close-out.
+  UI, strict gate green, claim-parity review no accepted blockers, and full gate
+  green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -688,6 +681,15 @@ Steps:
   paragraphs/tables/stdout/text-only outputs, 0 code UI, 0 warning/error markers.
   Full `scripts/check.sh` green across 52 current targets/branches. Next = S5
   claim-parity close-out.
+- 2026-07-03 Figure-caption-only S5 CLOSED: adversarial claim-parity review
+  found no accepted blockers (removed prose was redundant with headings, encoded
+  in plotted boards/status panels/captions, or intentionally dropped audit text).
+  Strict gate green: source has 0 paragraphs/lists/tables and rendered HTML has
+  0 body prose/tables/stdout/text-only outputs. DOM QA: 48 figures / 48 captions /
+  48 nonblank alts, 48 data-URI lightbox hrefs, 0 local figure hrefs, 0 duplicate
+  IDs, 0 external refs, 0 code UI. Full `scripts/check.sh` green. Archived plan
+  to `.agent/completed/figure_caption_only_plan_2026-07-03.md`; reset Active plan
+  to none. Next = PLAN only after user confirms a new roadmap direction.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
