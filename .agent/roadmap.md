@@ -34,8 +34,8 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Visual maturity pass (ad hoc,
-2026-07-03; restrained palette + less juvenile figure grammar, 33
+user before writing a plan. Last closed = Color saturation pass (ad hoc,
+2026-07-03; richer professional palette on the matured figure grammar, 33
 caption-only figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -111,6 +111,14 @@ caption-only figures).
   from the trajectory scatter, and muted binary/direction count panels. Rendered
   main path remains 33 figures / 33 captions / 33 nonblank alts, duplicate IDs
   0; full gate green.
+- Color saturation pass [DONE 2026-07-03]:
+  user feedback: the matured palette was too dull. Raised chroma without
+  returning to toy-like defaults: deep-blue/teal/slate HTML chrome,
+  steel-blue/teal/amber/cranberry genotype accents, blue/cranberry/amber/violet
+  substate accents, stronger blue/paper/cranberry signed fills, and a richer
+  blue-teal sequential count gradient. Figure grammar from the visual maturity
+  pass is unchanged. Rendered main path remains 33 figures / 33 captions / 33
+  nonblank alts, duplicate IDs 0; full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -748,6 +756,12 @@ caption-only figures).
   muted. Visual PDF QA inspected opening + mechanism pages; focused tests green;
   DOM QA = 33 figures / 33 captions / 33 nonblank alts / 0 duplicate IDs; full
   `scripts/check.sh` green across 52 targets/branches.
+- 2026-07-03 Color saturation pass DONE (ad hoc user task): addressed user
+  feedback that the visual maturity pass went too dull. Palette raised to
+  steel-blue / teal / amber / cranberry / violet accents while preserving the
+  report's journal-style plot grammar. Visual PDF QA inspected opening +
+  mechanism pages; DOM QA = 33 figures / 33 captions / 33 nonblank alts /
+  0 duplicate IDs; full `scripts/check.sh` green across 52 targets/branches.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

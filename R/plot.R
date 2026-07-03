@@ -5,46 +5,46 @@
 # chrome lives in theme.scss and stays decoupled.
 
 tau_discrete_colours <- c(
-  "#56616D",  # graphite
-  "#3F6F6A",  # deep teal
-  "#9B7A3C",  # muted ochre
-  "#7A4052",  # wine
-  "#647C8A",  # blue-grey
-  "#8A6F83",  # muted mauve
-  "#7C745F",  # umber-grey
-  "#8A8A84"   # warm grey
+  "#3F5F7F",  # steel blue
+  "#0B7A75",  # teal
+  "#C8841C",  # amber
+  "#A63A50",  # cranberry
+  "#2F7EA8",  # azure
+  "#7D5CB8",  # violet
+  "#8A6A32",  # bronze
+  "#6F7782"   # cool grey
 )
 tau_discrete_scale_types <- lapply(seq_along(tau_discrete_colours), function(i) {
   tau_discrete_colours[seq_len(i)]
 })
 
 genotype_colours <- c(
-  MAPTKI      = "#56616D",
-  P301S       = "#3F6F6A",
-  NLGF_MAPTKI = "#9B7A3C",
-  NLGF_P301S  = "#7A4052"
+  MAPTKI      = "#3F5F7F",
+  P301S       = "#0B7A75",
+  NLGF_MAPTKI = "#C8841C",
+  NLGF_P301S  = "#A63A50"
 )
 
 substate_colours <- c(
-  Homeostatic   = "#5E7483",
-  DAM           = "#7A4052",
-  IFN           = "#9B7A3C",
-  Proliferative = "#8A6F83"
+  Homeostatic   = "#2F78A0",
+  DAM           = "#A63A50",
+  IFN           = "#C8841C",
+  Proliferative = "#7D5CB8"
 )
 
 tau_binary_colours <- c(
-  `FALSE` = "#8A8A84",
-  `TRUE`  = "#315E6F"
+  `FALSE` = "#7C838A",
+  `TRUE`  = "#0B6F7E"
 )
 
 tau_direction_colours <- c(
-  down = "#5E7483",
-  up   = "#7A4052"
+  down = "#2F78A0",
+  up   = "#A63A50"
 )
 
 tau_background_colours <- c(
-  MAPTKI = "#56616D",
-  P301S  = "#3F6F6A"
+  MAPTKI = "#3F5F7F",
+  P301S  = "#0B7A75"
 )
 
 set_tau_plot_defaults <- function() {
@@ -76,7 +76,7 @@ theme_tau <- function(base_size = 11, base_family = "") {
     )
 }
 
-# Genotype colour/fill scales: map the canonical 4 genotypes to a stable muted palette
+# Genotype colour/fill scales: map the canonical 4 genotypes to a stable saturated palette
 # while pinning the domain and legend order. limits/breaks = genotype_levels include all
 # genotypes even when a subset is plotted (drop = FALSE alone does so only for a complete
 # factor); `...` forwards name/labels/guide to the underlying manual scale. The data column
@@ -126,8 +126,8 @@ scale_fill_direction <- function(..., values = tau_direction_colours) {
 
 # Diverging/sequential heatmap scales. Signed effects pass `midpoint=0` so zero is the
 # paper tone; count-density panels pass midpoint=NULL and get a neutral sequential scale.
-rwb_colours <- c(low = "#4F6D7A", mid = "#F7F5F0", high = "#7A4052")
-tau_sequential_colours <- c(low = "#F0EEE8", high = "#3F5F6F")
+rwb_colours <- c(low = "#2F78A0", mid = "#F8F5ED", high = "#A63A50")
+tau_sequential_colours <- c(low = "#F1EEE5", high = "#1F6F8B")
 scale_fill_rwb <- function(..., midpoint = NULL, colours = rwb_colours) {
   stopifnot(is.character(colours), length(colours) == 3L)
   if (is.null(midpoint)) {

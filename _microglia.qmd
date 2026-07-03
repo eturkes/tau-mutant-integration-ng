@@ -384,7 +384,7 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
   geom_col(width = 0.62, colour = "#F8F6F1", linewidth = 0.4) +
   geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#4A4A45") +
-  scale_fill_manual(values = c(fit = "#315E6F", skipped = "#B2ABA0"), guide = "none") +
+  scale_fill_manual(values = c(fit = "#0B6F7E", skipped = "#B7B1A5"), guide = "none") +
   labs(x = NULL, y = "minimum cells per replicate unit",
        title = "Substate fits are limited by replicate-unit cell floors") +
   theme(panel.grid.major.x = element_blank())

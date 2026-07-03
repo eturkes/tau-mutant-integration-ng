@@ -18,18 +18,18 @@ stopifnot(inherits(theme_tau(), "theme"), inherits(theme_tau(), "gg"),
           inherits(theme_tau(base_size = 14, base_family = "serif"), "theme"),
           theme_tau(base_size = 14)$text$size == 14)   # base_size plumbs through (value, not just class)
 
-# --- palette contract: muted defaults + genotype domain pinned to the canonical four ----
+# --- palette contract: saturated defaults + genotype domain pinned to the canonical four -
 sc <- scale_colour_genotype()
 sf <- scale_fill_genotype()
 sc_default <- ggplot2::scale_colour_discrete()
 sf_default <- ggplot2::scale_fill_discrete()
 stopifnot(
   identical(tau_discrete_colours,
-            c("#56616D", "#3F6F6A", "#9B7A3C", "#7A4052",
-              "#647C8A", "#8A6F83", "#7C745F", "#8A8A84")),
+            c("#3F5F7F", "#0B7A75", "#C8841C", "#A63A50",
+              "#2F7EA8", "#7D5CB8", "#8A6A32", "#6F7782")),
   identical(genotype_colours,
-            c(MAPTKI = "#56616D", P301S = "#3F6F6A",
-              NLGF_MAPTKI = "#9B7A3C", NLGF_P301S = "#7A4052")),
+            c(MAPTKI = "#3F5F7F", P301S = "#0B7A75",
+              NLGF_MAPTKI = "#C8841C", NLGF_P301S = "#A63A50")),
   identical(getOption("ggplot2.discrete.colour"), tau_discrete_scale_types),
   identical(getOption("ggplot2.discrete.fill"), tau_discrete_scale_types),
   identical(sc$aesthetics, "colour"), identical(sf$aesthetics, "fill"),
@@ -42,13 +42,13 @@ stopifnot(
   identical(scale_color_genotype, scale_colour_genotype)                          # US-spelling alias = same fn
 )
 
-# --- substate scales: muted biology colours, canonical domain pinned --------------------
+# --- substate scales: saturated biology colours, canonical domain pinned ----------------
 ss_c <- scale_colour_substate(breaks = c("Homeostatic", "DAM", "IFN"))
 ss_f <- scale_fill_substate(breaks = c("DAM", "IFN"))
 stopifnot(
   identical(substate_colours,
-            c(Homeostatic = "#5E7483", DAM = "#7A4052",
-              IFN = "#9B7A3C", Proliferative = "#8A6F83")),
+            c(Homeostatic = "#2F78A0", DAM = "#A63A50",
+              IFN = "#C8841C", Proliferative = "#7D5CB8")),
   identical(ss_c$aesthetics, "colour"), identical(ss_f$aesthetics, "fill"),
   identical(ss_c$limits, microglia_substate_levels),
   identical(ss_f$limits, microglia_substate_levels),
@@ -59,15 +59,15 @@ stopifnot(
   identical(scale_color_substate, scale_colour_substate)
 )
 
-# --- binary/direction helpers: stable muted states, no ggplot bright defaults -----------
+# --- binary/direction helpers: stable states, no ggplot bright defaults -----------------
 bg_c <- scale_colour_tau_background()
 bin_c <- scale_colour_tau_binary()
 bin_f <- scale_fill_tau_binary()
 dir_f <- scale_fill_direction()
 stopifnot(
-  identical(tau_background_colours, c(MAPTKI = "#56616D", P301S = "#3F6F6A")),
-  identical(tau_binary_colours, c(`FALSE` = "#8A8A84", `TRUE` = "#315E6F")),
-  identical(tau_direction_colours, c(down = "#5E7483", up = "#7A4052")),
+  identical(tau_background_colours, c(MAPTKI = "#3F5F7F", P301S = "#0B7A75")),
+  identical(tau_binary_colours, c(`FALSE` = "#7C838A", `TRUE` = "#0B6F7E")),
+  identical(tau_direction_colours, c(down = "#2F78A0", up = "#A63A50")),
   identical(bg_c$limits, names(tau_background_colours)),
   identical(bin_c$palette(2), tau_binary_colours),
   identical(bin_f$palette(2), tau_binary_colours),
@@ -81,8 +81,8 @@ rwb_fill_seq <- scale_fill_rwb(name = "x")
 rwb_fill_mid <- scale_fill_rwb(name = "x", midpoint = 0)
 rwb_col_mid <- scale_colour_rwb(name = "x", midpoint = 0)
 stopifnot(
-  identical(unname(rwb_colours), c("#4F6D7A", "#F7F5F0", "#7A4052")),
-  identical(tau_sequential_colours, c(low = "#F0EEE8", high = "#3F5F6F")),
+  identical(unname(rwb_colours), c("#2F78A0", "#F8F5ED", "#A63A50")),
+  identical(tau_sequential_colours, c(low = "#F1EEE5", high = "#1F6F8B")),
   inherits(rwb_fill_seq, "ScaleContinuous"), inherits(rwb_fill_mid, "ScaleContinuous"),
   inherits(rwb_col_mid, "ScaleContinuous"),
   identical(rwb_fill_seq$aesthetics, "fill"), identical(rwb_fill_mid$aesthetics, "fill"),

@@ -305,8 +305,8 @@ ggplot(geo_sens_plot, aes(n, contrast, fill = metric)) +
   geom_text(aes(x = label_x, label = label, hjust = label_hjust),
             size = 2.95, colour = "#333333") +
   facet_wrap(~ fit_label, nrow = 1) +
-  scale_fill_manual(values = c(`lost from primary` = "#7A4052",
-                               `gained in sensitivity` = "#315E6F"),
+  scale_fill_manual(values = c(`lost from primary` = "#A63A50",
+                               `gained in sensitivity` = "#0B6F7E"),
                     name = NULL) +
   scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
   labs(x = "GeoMx rows changed at FDR < 0.10", y = NULL,
@@ -336,9 +336,9 @@ ggplot(bp, aes(n_fdr_0_10, contrast, fill = layer)) +
   geom_text(aes(x = n_fdr_0_10 + bp_pad, label = label),
             hjust = 0, size = 2.95, colour = "#333333") +
   facet_wrap(~ layer, nrow = 1) +
-  scale_fill_manual(values = c(proteome = "#56616D",
-                               `raw phospho` = "#3F6F6A",
-                               `corrected phospho` = "#8A6F83"),
+  scale_fill_manual(values = c(proteome = "#3F5F7F",
+                               `raw phospho` = "#0B7A75",
+                               `corrected phospho` = "#7D5CB8"),
                     guide = "none") +
   labs(x = "features at FDR < 0.10", y = NULL,
        title = "Bulk significance is largest in amyloid contrasts") +

@@ -175,7 +175,7 @@ ld <- data.frame(
 p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
   geom_col(width = 0.64, colour = "#F8F6F1", linewidth = 0.4) +
   geom_hline(yintercept = 0, colour = "grey50") +
-  scale_fill_manual(values = c(composition = "#315E6F", progression = "#7A4052", cross = "#8A8A84"),
+  scale_fill_manual(values = c(composition = "#0B6F7E", progression = "#A63A50", cross = "#7C838A"),
                     guide = "none") +
   labs(x = NULL, y = "loading (fraction of position interaction)",
        title = "Decomposition loadings")
@@ -250,8 +250,8 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| fig-alt: "Bar and point panels show stable refits and low lineage omission by genotype."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
   geom_hline(yintercept = 1, colour = "grey70", linewidth = 0.3) +
-  geom_linerange(aes(ymin = 0.95, ymax = spearman_vs_primary), linewidth = 0.5, colour = "#315E6F") +
-  geom_point(size = 2.2, colour = "#315E6F") +
+  geom_linerange(aes(ymin = 0.95, ymax = spearman_vs_primary), linewidth = 0.5, colour = "#0B6F7E") +
+  geom_point(size = 2.2, colour = "#0B6F7E") +
   coord_cartesian(ylim = c(0.95, 1.01)) +
   labs(x = NULL, y = "Spearman vs primary", title = "Pseudotime refit concordance") +
   theme(panel.grid.major.x = element_blank())

@@ -250,7 +250,7 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
   geom_point(size = 2.2) +
   facet_wrap(~ population, scales = "free_y") +
   scale_colour_tau_binary(guide = "none",
-                          values = c(`FALSE` = "#8A8A84", `TRUE` = "#7A4052")) +
+                          values = c(`FALSE` = "#7C838A", `TRUE` = "#A63A50")) +
   labs(x = "ULM activity score", y = NULL, title = "Interaction TF activity")
 ```
 

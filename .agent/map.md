@@ -37,9 +37,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       subset pre-aggregation), fit_limma_voom (voomWQW default + confint) / fit_limma_log (log-intensity),
       median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free; installs
-      restrained ggplot discrete defaults for the render session) + manual muted scale_colour/fill_genotype
+      saturated-but-controlled ggplot discrete defaults for the render session) + manual scale_colour/fill_genotype
       (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate /
-      tau-background / binary / direction scales + muted continuous scales (`scale_fill_rwb`,
+      tau-background / binary / direction scales + richer continuous scales (`scale_fill_rwb`,
       `scale_colour_rwb`; signed panels pass midpoint=0; count panels use a neutral sequential gradient) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
@@ -322,9 +322,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 Modality wording keeps bulk
                 hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
                 unresolved AOIs, and CCC-lite != full CCC.)
-       `theme.scss` = deep-ink/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
+       `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       visual maturity pass, 2026-07-03 (33 figures / 33 captions / 33 nonblank alts,
+       color saturation pass, 2026-07-03 (33 figures / 33 captions / 33 nonblank alts,
        0 duplicate IDs; full gate green after forced 79-chunk render; tar_meta clean across
        52 current targets/branches).
 
