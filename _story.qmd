@@ -63,9 +63,21 @@ clearance$contrast <- plot_contrast(clearance$contrast)
 clearance$pair_label <- factor(clearance$pair_label, levels = rev(unique(clearance$pair_label)))
 clearance$supported <- factor(clearance$supported, levels = c(FALSE, TRUE))
 clearance_pair <- clearance[clearance$pair == "Apoe_Trem2", , drop = FALSE]
-clearance_pair$label <- ifelse(clearance_pair$n_supported_modalities > 0L,
-                               clearance_pair$n_supported_modalities, "")
 clearance_pair_max <- max(2, max(clearance_pair$n_supported_modalities, na.rm = TRUE))
+clearance_pair_slots <- seq_len(ceiling(clearance_pair_max))
+clearance_pair_dots <- do.call(rbind, lapply(seq_len(nrow(clearance_pair)), function(i) {
+  data.frame(contrast = clearance_pair$contrast[i],
+             supported = clearance_pair$supported[i],
+             slot = clearance_pair_slots,
+             filled = clearance_pair_slots <= clearance_pair$n_supported_modalities[i],
+             stringsAsFactors = FALSE)
+}))
+clearance_pair_dots$dot_state <- factor(
+  ifelse(clearance_pair_dots$filled,
+         ifelse(as.character(clearance_pair_dots$supported) == "TRUE", "earned", "partial"),
+         "not counted"),
+  levels = c("not counted", "partial", "earned")
+)
 
 clearance_effects <- sf$mechanism_crossmodality$clearance_effects
 clearance_effects <- clearance_effects[clearance_effects$measured_state_chr == "measured", , drop = FALSE]
@@ -97,14 +109,13 @@ p_dam <- ggplot(dam_unit, aes(amyloid, proportion, colour = tau_background,
   theme(legend.position = "bottom",
         panel.grid.major.x = element_blank())
 
-p_de <- ggplot(de_signed, aes(n_signed, contrast, colour = direction)) +
+p_de <- ggplot(de_signed, aes(n_signed, contrast)) +
   geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.35) +
-  geom_segment(aes(x = 0, xend = n_signed, yend = contrast),
-               linewidth = 0.58, alpha = 0.86) +
-  geom_point(size = 2.5) +
+  geom_col(aes(fill = direction), width = 0.58, alpha = 0.88,
+           colour = "#F8F6F1", linewidth = 0.18) +
   geom_text(aes(x = label_x, label = label, hjust = label_hjust),
             size = 2.75, colour = "#333333") +
-  scale_colour_manual(values = tau_direction_colours, name = "direction") +
+  scale_fill_manual(values = tau_direction_colours, name = "direction") +
   scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
   labs(x = "genes at FDR < 0.10", y = NULL,
        title = "Amyloid DE dominates") +
@@ -137,8 +148,6 @@ p_traj <- ggplot(traj, aes(coef, measure_label, colour = supported)) +
 #| fig-alt: "Composite figure with Myc TF effects, NF-kB and Gsk3b boundary effects, and focused Apoe-Trem2 clearance evidence."
 p_myc <- ggplot(mech_myc, aes(score, item, fill = supported)) +
   geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = score, yend = item),
-               colour = "#B7B1A5", linewidth = 0.66) +
   geom_point(aes(size = neg_log10_fdr), shape = 21, colour = "#262B2F", stroke = 0.28) +
   scale_fill_tau_binary(name = "FDR < 0.10") +
   scale_size_continuous(range = c(1.4, 4.8), name = "-log10 FDR") +
@@ -149,8 +158,6 @@ p_myc <- ggplot(mech_myc, aes(score, item, fill = supported)) +
 
 p_bounds <- ggplot(mech_bounds, aes(score, item, fill = supported)) +
   geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = score, yend = item),
-               colour = "#B7B1A5", linewidth = 0.58) +
   geom_point(aes(size = neg_log10_fdr), shape = 21, colour = "#262B2F", stroke = 0.28) +
   facet_wrap(~ track, ncol = 1, scales = "free_y") +
   scale_fill_tau_binary(name = "FDR < 0.10") +
@@ -163,8 +170,6 @@ p_bounds <- ggplot(mech_bounds, aes(score, item, fill = supported)) +
 p_clear_effect <- ggplot(clearance_effects,
                          aes(plot_effect, feature_label_plot, colour = modality_label)) +
   geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = plot_effect, yend = feature_label_plot),
-               linewidth = 0.48, alpha = 0.55) +
   geom_point(aes(shape = plot_status), size = 2.0, stroke = 0.45) +
   facet_wrap(~ contrast_label, nrow = 1) +
   scale_colour_manual(values = tau_discrete_colours, name = NULL) +
@@ -178,16 +183,13 @@ p_clear_effect <- ggplot(clearance_effects,
   theme(panel.grid.major.y = element_blank(),
         legend.position = "bottom")
 
-p_pair <- ggplot(clearance_pair, aes(n_supported_modalities, contrast)) +
-  geom_segment(aes(x = 0, xend = n_supported_modalities, yend = contrast),
-               linewidth = 0.58, colour = "#B7B1A5") +
-  geom_point(aes(fill = supported), shape = 21, size = 2.7,
-             colour = "#262B2F", stroke = 0.28) +
-  geom_text(aes(label = label, x = n_supported_modalities + 0.12),
-            hjust = 0, size = 2.6, colour = "#333333") +
-  scale_fill_tau_binary(name = "earned") +
-  scale_x_continuous(breaks = 0:ceiling(clearance_pair_max),
-                     limits = c(0, clearance_pair_max + 0.6)) +
+p_pair <- ggplot(clearance_pair_dots, aes(slot, contrast, fill = dot_state)) +
+  geom_point(shape = 21, size = 3.1, colour = "#262B2F", stroke = 0.28) +
+  scale_fill_manual(values = c(`not counted` = "#F8F5ED",
+                               partial = "#B7B1A5",
+                               earned = "#0B6F7E"),
+                    name = NULL) +
+  scale_x_continuous(breaks = clearance_pair_slots, limits = c(0.6, clearance_pair_max + 0.4)) +
   labs(x = "supported modalities", y = NULL, title = "CCC-lite boundary") +
   guides(fill = "none") +
   theme(panel.grid.major.y = element_blank(),

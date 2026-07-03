@@ -67,7 +67,7 @@ SECTION_SLOTS = {
     ("_trajectory.qmd", "Caveats and provenance"): "collapsed-trajectory-audit",
     ("_mechanism.qmd", "Mechanism: Myc signal, NF-kB check, and bulk kinase support"): "fig-mechanism-status-board",
     ("_mechanism.qmd", "Pathway Survey"): "fig-mechanism-project-pathway;fig-mechanism-go-dotplot",
-    ("_mechanism.qmd", "TF Activity"): "fig-mechanism-tf-lollipop",
+    ("_mechanism.qmd", "TF Activity"): "fig-mechanism-tf-interaction;fig-mechanism-tf-focus",
     ("_mechanism.qmd", "NF-kB Attenuation"): "fig-mechanism-nfkb-discordance",
     ("_mechanism.qmd", "Gsk3b And Kinase Activity"): "fig-mechanism-kinase-heatmap",
     ("_mechanism.qmd", "Mechanism status"): "fig-mechanism-status-board",

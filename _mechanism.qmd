@@ -186,8 +186,7 @@ nf_plot$test_label <- factor(nf_plot$test_label,
                              levels = rev(c("TF-family ULM", "signed target GSEA")))
 nf_plot$supported <- nf_plot$primary_family_fdr < alpha
 nf_plot$fdr_label <- paste0("FDR ", fmt_p(nf_plot$primary_family_fdr))
-nf_plot$label_x <- nf_plot$score
-nf_plot$label_hjust <- ifelse(nf_plot$score >= 0, 1.08, -0.08)
+nf_plot$tile_label <- paste0(fmt_num(nf_plot$score), "\n", nf_plot$fdr_label)
 ```
 
 ## Pathway Survey
@@ -234,7 +233,7 @@ ggplot(go_select, aes(contrast, pathway_label)) +
 #| fig-width: 9.5
 #| fig-height: 4.8
 #| fig-cap: "Interaction TF activity highlights Myc."
-#| fig-alt: "Lollipop plot highlights Myc among top interaction TF activity rows."
+#| fig-alt: "Dot plot highlights Myc among top interaction TF activity rows."
 tf_int <- tf[tf$contrast == "interaction" &
                tf$population %in% c("whole_microglia", "DAM") &
                tf$selection == "top", , drop = FALSE]
@@ -276,19 +275,15 @@ ggplot(tf_focus, aes(contrast, source, fill = score)) +
 #| fig-width: 7.4
 #| fig-height: 3.8
 #| fig-cap: "NF-kB primary rows do not form a supported attenuation signal."
-#| fig-alt: "Signed point-stem plot shows NF-kB TF-family and signed target-GSEA scores with FDR labels."
-ggplot(nf_plot, aes(score, test_label, fill = supported)) +
-  geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = score, yend = test_label),
-               colour = "#B7B1A5", linewidth = 0.85) +
-  geom_point(shape = 21, size = 4.2, colour = "#262B2F", stroke = 0.35) +
-  geom_text(aes(x = label_x, label = fdr_label, hjust = label_hjust),
-            nudge_y = 0.12, vjust = 0, size = 3) +
-  scale_fill_tau_binary(guide = "none") +
-  scale_x_continuous(expand = expansion(mult = 0.16)) +
-  labs(x = "primary score", y = NULL, title = "Predeclared NF-kB attenuation gate") +
-  coord_cartesian(clip = "off") +
-  theme(panel.grid.major.y = element_blank())
+#| fig-alt: "Two-cell signed score strip shows NF-kB TF-family and signed target-GSEA scores with FDR labels."
+ggplot(nf_plot, aes(test_label, "primary row", fill = score)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.35, width = 0.88, height = 0.72) +
+  geom_text(aes(label = tile_label), size = 3.05, lineheight = 0.9, colour = "#262B2F") +
+  scale_fill_rwb(name = "score", midpoint = 0) +
+  labs(x = NULL, y = NULL, title = "Predeclared NF-kB attenuation gate") +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 18, hjust = 1),
+        axis.text.y = element_blank())
 ```
 
 ## Gsk3b And Kinase Activity

@@ -141,8 +141,23 @@ synclr_plate <- cmf$synaptic_clearance_plate$effects
 synclr_measured <- synclr_plate[synclr_plate$measured_state_chr == "measured", , drop = FALSE]
 synclr_missing <- synclr_plate[synclr_plate$measured_state_chr != "measured", , drop = FALSE]
 synclr_pairs <- cmf$synaptic_clearance_plate$pairs
-synclr_pairs$label <- ifelse(synclr_pairs$plot_effect > 0, fmt_num(synclr_pairs$plot_effect, 0), "")
 synclr_pair_max <- max(2, max(synclr_pairs$plot_effect, na.rm = TRUE))
+synclr_pair_slots <- seq_len(ceiling(synclr_pair_max))
+synclr_pair_dots <- do.call(rbind, lapply(seq_len(nrow(synclr_pairs)), function(i) {
+  data.frame(contrast_label = synclr_pairs$contrast_label[i],
+             feature_label_plot = synclr_pairs$feature_label_plot[i],
+             plot_status = synclr_pairs$plot_status[i],
+             slot = synclr_pair_slots,
+             filled = synclr_pair_slots <= synclr_pairs$plot_effect[i],
+             stringsAsFactors = FALSE)
+}))
+synclr_pair_dots$dot_state <- factor(
+  ifelse(synclr_pair_dots$filled,
+         as.character(synclr_pair_dots$plot_status),
+         "not counted"),
+  levels = c("not counted", "supported/earned", "measured, not supported",
+             "not observed", "blocked", "not applicable")
+)
 
 interaction_plate <- cmf$interaction_boundary_plate$effects
 interaction_measured <- interaction_plate[interaction_plate$measured_state_chr == "measured", , drop = FALSE]
@@ -297,11 +312,6 @@ closing_edge_lty <- c(supported = "solid",
 #| fig-alt: "Effect-size plate for DAM and antigen-presentation symbols across snRNAseq, GeoMx, proteome and phosphoproteome in the two amyloid contrasts."
 ggplot() +
   geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
-  geom_segment(data = amyloid_measured,
-               aes(x = 0, xend = plot_effect,
-                   y = feature_label_plot, yend = feature_label_plot,
-                   colour = modality_label),
-               linewidth = 0.45, alpha = 0.48) +
   geom_point(data = amyloid_measured,
              aes(plot_effect, feature_label_plot, fill = plot_status,
                  size = neg_log10_fdr, colour = modality_label),
@@ -336,11 +346,6 @@ ggplot() +
 #| fig-alt: "Composite plate showing synaptic and clearance marker effects across modalities plus clearance-pair support counts."
 p_synclr <- ggplot() +
   geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
-  geom_segment(data = synclr_measured,
-               aes(x = 0, xend = plot_effect,
-                   y = feature_label_plot, yend = feature_label_plot,
-                   colour = modality_label),
-               linewidth = 0.42, alpha = 0.46) +
   geom_point(data = synclr_measured,
              aes(plot_effect, feature_label_plot, fill = plot_status,
                  size = neg_log10_fdr, colour = modality_label),
@@ -366,17 +371,11 @@ p_synclr <- ggplot() +
         legend.text = element_text(size = 7.5),
         legend.spacing.y = grid::unit(0.02, "lines"))
 
-p_pairs <- ggplot(synclr_pairs, aes(plot_effect, feature_label_plot)) +
-  geom_segment(aes(x = 0, xend = plot_effect, yend = feature_label_plot),
-               linewidth = 0.5, colour = "#B7B1A5") +
-  geom_point(aes(fill = plot_status), shape = 21, size = 2.5,
-             colour = "#262B2F", stroke = 0.28) +
-  geom_text(aes(label = label, x = plot_effect + 0.12),
-            hjust = 0, size = 2.45, colour = "#333333") +
+p_pairs <- ggplot(synclr_pair_dots, aes(slot, feature_label_plot, fill = dot_state)) +
+  geom_point(shape = 21, size = 2.75, colour = "#262B2F", stroke = 0.25) +
   facet_wrap(~ contrast_label, nrow = 1) +
-  scale_fill_manual(values = plate_status_fill, name = NULL) +
-  scale_x_continuous(breaks = 0:ceiling(synclr_pair_max),
-                     limits = c(0, synclr_pair_max + 0.7)) +
+  scale_fill_manual(values = c(`not counted` = "#F8F5ED", plate_status_fill), name = NULL) +
+  scale_x_continuous(breaks = synclr_pair_slots, limits = c(0.6, synclr_pair_max + 0.4)) +
   labs(x = "coherent supported modalities", y = NULL,
        title = "Measured clearance pairs, not full CCC") +
   guides(fill = "none") +
@@ -395,11 +394,6 @@ p_synclr / p_pairs +
 #| fig-alt: "Interaction-boundary plate showing measured effects for selected axes and mechanism rows, with blocked SpatialDecon abundance called out."
 ggplot() +
   geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
-  geom_segment(data = interaction_measured,
-               aes(x = 0, xend = plot_effect,
-                   y = feature_label_plot, yend = feature_label_plot,
-                   colour = modality_label),
-               linewidth = 0.45, alpha = 0.5) +
   geom_point(data = interaction_measured,
              aes(plot_effect, feature_label_plot, fill = plot_status,
                  size = neg_log10_fdr, colour = modality_label),
@@ -465,32 +459,21 @@ ggplot(geo_volc_points, aes(effect, neg_log10_fdr)) +
 #| fig-width: 9.2
 #| fig-height: 4.8
 #| fig-cap: "GeoMx sensitivity marks rows gained or lost versus the primary model."
-#| fig-alt: "Direct-labelled diverging point stems show GeoMx rows lost from or gained versus the primary model."
+#| fig-alt: "Signed heatmaps show GeoMx rows lost from or gained versus the primary model."
 geo_sens_plot <- geo_sens_long
 geo_sens_plot$contrast <- factor(as.character(geo_sens_plot$contrast),
                                  levels = rev(levels(geo_sens_long$contrast)))
-geo_sens_max <- max(1, max(abs(geo_sens_plot$n), na.rm = TRUE))
-geo_sens_pad <- geo_sens_max * 0.04
 geo_sens_plot$label <- ifelse(abs(geo_sens_plot$n) == 0, "", fmt_int(abs(geo_sens_plot$n)))
-geo_sens_plot$label_x <- geo_sens_plot$n + ifelse(geo_sens_plot$n < 0, -geo_sens_pad, geo_sens_pad)
-geo_sens_plot$label_hjust <- ifelse(geo_sens_plot$n < 0, 1, 0)
 
-ggplot(geo_sens_plot, aes(n, contrast, colour = metric)) +
-  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.4) +
-  geom_segment(aes(x = 0, xend = n, yend = contrast),
-               linewidth = 0.62, alpha = 0.86) +
-  geom_point(size = 2.8) +
-  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
-            size = 2.95, colour = "#333333") +
+ggplot(geo_sens_plot, aes(metric, contrast, fill = n)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.28, width = 0.92, height = 0.88) +
+  geom_text(aes(label = label), size = 2.95, colour = "#262B2F") +
   facet_wrap(~ fit_label, nrow = 1) +
-  scale_colour_manual(values = c(`lost from primary` = "#A63A50",
-                                 `gained in sensitivity` = "#0B6F7E"),
-                      name = NULL) +
-  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
+  scale_fill_rwb(name = "signed rows", midpoint = 0) +
   labs(x = "GeoMx rows changed at FDR < 0.10", y = NULL,
        title = "Spatial DE support depends on the replicate treatment") +
-  coord_cartesian(xlim = c(-geo_sens_max * 1.22, geo_sens_max * 1.22), clip = "off") +
-  theme(panel.grid.major.y = element_blank(),
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(angle = 18, hjust = 1),
         legend.position = "bottom")
 ```
 

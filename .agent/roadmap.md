@@ -154,6 +154,12 @@ user before writing a new plan.
   Chromium PDF content-page QA, and full `scripts/check.sh` green. Residual:
   Chromium emits a trailing blank PDF page, but content pages have no clipped
   legends or unreadable cross-modality labels.
+- Plot variety pass [DONE 2026-07-03]:
+  user feedback: too many repeated stem-style charts. Replaced repeated visible stem
+  grammars with a mixed set of diverging count bars, point-only effect plates,
+  dot-matrix support counts, signed heatmaps, bubble audit, and signed loading
+  bars. Remaining visible `geom_segment` use is the closing-model arrows. Full
+  `scripts/check.sh` green; Chromium PDF QA checked changed pages.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset

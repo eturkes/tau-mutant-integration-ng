@@ -141,6 +141,9 @@ mf_ss_signed <- rbind(
              n_genes = -mf_ss_counts$n_down_fdr_0_10, stringsAsFactors = FALSE)
 )
 mf_ss_signed$direction <- factor(mf_ss_signed$direction, levels = c("down", "up"))
+mf_ss_signed$label <- format(abs(round(mf_ss_signed$n_genes)), big.mark = ",", trim = TRUE)
+mf_ss_signed$label[mf_ss_signed$n_genes == 0] <- ""
+mf_audit$label <- format(round(mf_audit$min_cells_unit), big.mark = ",", trim = TRUE)
 ```
 
 ## Substate landscape
@@ -390,11 +393,10 @@ ggplot(mf_wv_points, aes(effect, neg_log10_fdr)) +
 #| fig-width: 7.8
 #| fig-height: 4.2
 #| fig-cap: "Homeostatic and DAM pass the per-unit cell floor; IFN/proliferative stay descriptive."
-#| fig-alt: "Point-stem plot marks substates that pass or miss the replicate-unit cell floor."
+#| fig-alt: "Dot plot marks substates that pass or miss the replicate-unit cell floor."
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
-  geom_segment(aes(xend = substate, y = 0, yend = min_cells_unit),
-               colour = "#B7B1A5", linewidth = 0.7) +
   geom_point(shape = 21, size = 4.2, colour = "#262B2F", stroke = 0.35) +
+  geom_text(aes(label = label), vjust = -0.8, size = 2.7, colour = "#333333") +
   geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#4A4A45") +
   scale_fill_manual(values = c(fit = "#0B6F7E", skipped = "#B7B1A5"), guide = "none") +
   labs(x = NULL, y = "minimum cells per replicate unit",
@@ -407,19 +409,15 @@ ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
 #| fig-width: 9.2
 #| fig-height: 4.4
 #| fig-cap: "Within-state DE keeps amyloid larger than the interaction."
-#| fig-alt: "Signed point-stem plots compare within-state DE counts across contrasts."
-ggplot(mf_ss_signed, aes(n_genes, contrast, colour = direction)) +
-  geom_vline(xintercept = 0, colour = "grey65") +
-  geom_segment(aes(x = 0, xend = n_genes, yend = contrast),
-               linewidth = 0.55, alpha = 0.82) +
-  geom_point(size = 2.5) +
+#| fig-alt: "Signed heatmaps compare within-state DE counts across contrasts."
+ggplot(mf_ss_signed, aes(direction, contrast, fill = n_genes)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.28, width = 0.92, height = 0.88) +
+  geom_text(aes(label = label), size = 2.85, colour = "#262B2F") +
   facet_wrap(~ substate, nrow = 1) +
-  scale_colour_manual(values = tau_direction_colours, name = "direction") +
-  scale_x_continuous(labels = function(x) format(abs(round(x)), big.mark = ",", trim = TRUE)) +
+  scale_fill_rwb(name = "signed count", midpoint = 0) +
   labs(x = "signed FDR < 0.10 gene count", y = NULL,
        title = "Within-substate expression shifts keep the amyloid programme visible") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid.major.x = element_blank())
+  theme(panel.grid.major = element_blank())
 ```
 
 ## Caveats and provenance
@@ -429,14 +427,14 @@ ggplot(mf_ss_signed, aes(n_genes, contrast, colour = direction)) +
 #| fig-width: 8.2
 #| fig-height: 4.2
 #| fig-cap: "Pruned nuclei are genotype-skewed but low-DAM; labels show cluster DAM medians."
-#| fig-alt: "Dropped-cluster point stems show genotype skew and low DAM medians for pruned nuclei."
-ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n, fill = genotype)) +
-  geom_segment(aes(xend = cluster, y = 0, yend = n),
-               colour = "#B7B1A5", linewidth = 0.55) +
-  geom_point(shape = 21, size = 3.2, colour = "#262B2F", stroke = 0.3) +
-  geom_text(aes(label = sprintf("%.2f", DAM_med)), vjust = -0.3, size = 2.7) +
+#| fig-alt: "Bubble plot shows dropped-cluster counts by genotype, with fill encoding low DAM medians."
+ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n)) +
+  geom_point(aes(size = n, fill = DAM_med), shape = 21,
+             colour = "#262B2F", stroke = 0.3, alpha = 0.9) +
+  geom_text(aes(label = sprintf("%.2f", DAM_med)), size = 2.45, colour = "#262B2F") +
   facet_wrap(~ genotype, nrow = 1, scales = "free_y") +
-  scale_fill_genotype(guide = "none") +
+  scale_fill_rwb(name = "DAM median", midpoint = NULL) +
+  scale_size_area(max_size = 7, name = "nuclei") +
   labs(x = "dropped cluster", y = "nuclei dropped", title = "Pruning audit") +
   theme(panel.grid.major.x = element_blank())
 ```

@@ -95,6 +95,7 @@ tr_sens$variant_label <- c(dims_10 = "10 dims", dims_20 = "20 dims",
 tr_sens$variant_label[is.na(tr_sens$variant_label)] <- tr_sens$variant[is.na(tr_sens$variant_label)]
 tr_sens$variant_label <- factor(tr_sens$variant_label,
                                 levels = c("10 dims", "20 dims", "all retained"))
+tr_sens$label <- sprintf("%.3f", tr_sens$spearman_vs_primary)
 tr_lineage <- trf$trajectory_audit$lineage_per_unit
 tr_lineage$genotype <- factor(as.character(tr_lineage$genotype), levels = genotype_levels)
 tr_lineage$omitted_pct <- 100 * tr_lineage$omitted_frac
@@ -157,7 +158,7 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "The position interaction is carried by composition, not progression."
-#| fig-alt: "Forest and point-stem loading panels decompose the interaction into composition, progression and cross channels."
+#| fig-alt: "Forest and signed loading-bar panels decompose the interaction into composition, progression and cross channels."
 chan       <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam")
 chan_label <- c("mean position", "composition", "progression", "cross",
                 "within-homeostatic", "within-DAM")
@@ -174,13 +175,15 @@ ld <- data.frame(
   channel = factor(c("composition", "progression", "cross"),
                    levels = c("composition", "progression", "cross")),
   loading = c(load_comp, load_prog, load_cross))
+ld$label <- paste0(round(100 * ld$loading), "%")
 p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
   geom_hline(yintercept = 0, colour = "grey50") +
-  geom_segment(aes(xend = channel, y = 0, yend = loading),
-               colour = "#B7B1A5", linewidth = 0.75) +
-  geom_point(shape = 21, size = 4.4, colour = "#262B2F", stroke = 0.35) +
+  geom_col(width = 0.6, colour = "#F8F6F1", linewidth = 0.24) +
+  geom_text(aes(label = label), vjust = -0.5, size = 2.9, colour = "#333333") +
   scale_fill_manual(values = c(composition = "#0B6F7E", progression = "#A63A50", cross = "#7C838A"),
                     guide = "none") +
+  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
+                     expand = expansion(mult = c(0.08, 0.16))) +
   labs(x = NULL, y = "loading (fraction of position interaction)",
        title = "Decomposition loadings")
 
@@ -255,11 +258,11 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| fig-width: 9.6
 #| fig-height: 4.2
 #| fig-cap: "Refits are stable and lineage omission is low across genotypes."
-#| fig-alt: "Point-stem and replicate-point panels show stable refits and low lineage omission by genotype."
+#| fig-alt: "Dot and replicate-point panels show stable refits and low lineage omission by genotype."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
   geom_hline(yintercept = 1, colour = "grey70", linewidth = 0.3) +
-  geom_linerange(aes(ymin = 0.95, ymax = spearman_vs_primary), linewidth = 0.5, colour = "#0B6F7E") +
   geom_point(size = 2.2, colour = "#0B6F7E") +
+  geom_text(aes(label = label), vjust = -0.7, size = 2.6, colour = "#333333") +
   coord_cartesian(ylim = c(0.95, 1.01)) +
   labs(x = NULL, y = "Spearman vs primary", title = "Pseudotime refit concordance") +
   theme(panel.grid.major.x = element_blank())
