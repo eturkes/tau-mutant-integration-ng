@@ -92,9 +92,10 @@ decon <- cmr$clearance$spatial_decon
 pairs <- cmr$clearance$pair_support
 contrast_summary <- cmr$divergence$contrast_summary
 
-geo_volc_bins <- cmf$geomx_volcano$bins
-geo_volc_bins$contrast <- plot_contrast(geo_volc_bins$contrast)
-geo_volc_bins$log_n <- log10(geo_volc_bins$n + 1)
+geo_volc_points <- cmf$geomx_volcano$points
+geo_volc_points$contrast <- plot_contrast(geo_volc_points$contrast)
+geo_volc_points$direction <- factor(as.character(geo_volc_points$direction),
+                                    levels = c("down", "not significant", "up"))
 geo_volc_lab <- cmf$geomx_volcano$labels
 geo_volc_lab$contrast <- plot_contrast(geo_volc_lab$contrast)
 
@@ -117,9 +118,10 @@ geo_sens_long <- rbind(
 geo_sens_long$metric <- factor(geo_sens_long$metric,
                                levels = c("lost from primary", "gained in sensitivity"))
 
-pc_bins <- cmf$phospho_raw_corrected$bins
-pc_bins$contrast <- plot_contrast(pc_bins$contrast)
-pc_bins$log_n <- log10(pc_bins$n + 1)
+pc_points <- cmf$phospho_raw_corrected$points
+pc_points$contrast <- plot_contrast(pc_points$contrast)
+pc_points$status <- factor(as.character(pc_points$status),
+                           levels = c("not significant", "raw only", "corrected only", "both"))
 pc_lab <- cmf$phospho_raw_corrected$labels
 pc_lab$best_fdr <- pmin(pc_lab$raw_fdr, pc_lab$corrected_fdr)
 pc_lab <- do.call(rbind, lapply(split(pc_lab, pc_lab$contrast, drop = TRUE), function(d) {
@@ -260,13 +262,12 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 #| fig-width: 9.2
 #| fig-height: 4.7
 #| fig-cap: "FDR support spans the four assay families."
-#| fig-alt: "A four by four bubble matrix shows significant symbol counts by contrast across snRNAseq microglia, GeoMx spatial, bulk proteome and bulk phosphoproteome."
+#| fig-alt: "A four by four heatmap shows significant symbol counts by contrast across snRNAseq microglia, GeoMx spatial, bulk proteome and bulk phosphoproteome."
 ggplot(four_counts, aes(contrast, modality)) +
-  geom_point(aes(size = n_sig, fill = log_n_sig), shape = 21,
-             colour = "#262B2F", stroke = 0.28, alpha = 0.92) +
+  geom_tile(aes(fill = log_n_sig), colour = "#F8F6F1", linewidth = 0.25,
+            width = 0.94, height = 0.94) +
   geom_text(aes(label = label), size = 3.0, colour = "#262B2F") +
   scale_fill_rwb(name = "log10(n + 1)") +
-  scale_size_area(max_size = 8.6, guide = "none") +
   labs(x = NULL, y = NULL, title = "Four-modality FDR support by contrast") +
   coord_equal(ratio = 0.82) +
   theme(panel.grid.major.x = element_blank(),
@@ -279,13 +280,11 @@ ggplot(four_counts, aes(contrast, modality)) +
 #| fig-width: 9.4
 #| fig-height: 5.4
 #| fig-cap: "Pathway axes summarize four-modality support."
-#| fig-alt: "A dot matrix shows pathway axes by contrast, with dot size encoding the number of significant modalities and fill encoding direction."
+#| fig-alt: "A heatmap shows pathway axes by contrast, with labels encoding the number of significant modalities and fill encoding direction."
 ggplot(four_paths, aes(contrast, axis_label)) +
-  geom_point(aes(size = n_modalities_sig, fill = direction),
-             shape = 21, colour = "#262B2F", stroke = 0.25) +
+  geom_tile(aes(fill = direction), colour = "#F8F6F1", linewidth = 0.25,
+            width = 0.94, height = 0.94) +
   geom_text(aes(label = label), size = 2.35, colour = "#F8F5ED", fontface = "bold") +
-  scale_size_continuous(name = "significant modalities", limits = c(0, four_path_max_sig),
-                        breaks = 0:four_path_max_sig, range = c(2.4, 8.2)) +
   scale_fill_manual(values = c(positive = "#A63A50", negative = "#2F78A0",
                                mixed = "#C8841C", none = "#D7D3CA"),
                     drop = FALSE, name = "direction") +
@@ -300,17 +299,14 @@ ggplot(four_paths, aes(contrast, axis_label)) +
 #| fig-width: 10
 #| fig-height: 7.2
 #| fig-cap: "Axis genes show measured and significant modalities."
-#| fig-alt: "Faceted dot matrices show selected axis genes against the four assay families; dots distinguish absent, measured and FDR-significant support."
-ggplot(four_symbols, aes(modality, symbol_label, fill = status, size = status)) +
-  geom_point(shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.92) +
+#| fig-alt: "Faceted heatmaps show selected axis genes against the four assay families; fill distinguishes absent, measured and FDR-significant support."
+ggplot(four_symbols, aes(modality, symbol_label, fill = status)) +
+  geom_tile(aes(fill = status), colour = "#F8F6F1", linewidth = 0.25,
+            width = 0.94, height = 0.94) +
   facet_wrap(~ contrast, ncol = 2, scales = "free_y") +
   scale_fill_manual(values = c(`not observed` = "#D7D3CA",
                                measured = "#3F5F7F",
                                `FDR < 0.10` = "#A63A50"),
-                    drop = FALSE, name = NULL) +
-  scale_size_manual(values = c(`not observed` = 1.2,
-                               measured = 2.7,
-                               `FDR < 0.10` = 4.3),
                     drop = FALSE, name = NULL) +
   labs(x = NULL, y = NULL, title = "Selected axis symbols across modalities") +
   coord_cartesian(clip = "off") +
@@ -362,14 +358,15 @@ ggplot(geo_long, aes(n_signed, contrast, colour = direction)) +
 #| fig-width: 10
 #| fig-height: 6
 #| fig-cap: "GeoMx primary volcanoes show dense amyloid structure."
-#| fig-alt: "Faceted circular density volcanoes show GeoMx effect and p-value structure by contrast."
-ggplot(geo_volc_bins, aes(x_mid, y_mid)) +
-  geom_point(aes(size = n, fill = log_n), shape = 21,
-             colour = "#F8F5ED", stroke = 0.05, alpha = 0.86) +
+#| fig-alt: "Faceted point volcanoes show GeoMx effect and FDR structure by contrast."
+ggplot(geo_volc_points, aes(effect, neg_log10_fdr)) +
+  geom_point(aes(colour = direction), size = 0.42, alpha = 0.58) +
   geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.3) +
+  geom_hline(yintercept = -log10(alpha), linetype = "dashed",
+             colour = "grey70", linewidth = 0.25) +
   ggrepel::geom_text_repel(
     data = geo_volc_lab,
-    aes(effect, neg_log10_p, label = label),
+    aes(effect, neg_log10_fdr, label = label),
     inherit.aes = FALSE,
     size = 2.25,
     seed = 42L,
@@ -378,11 +375,14 @@ ggplot(geo_volc_bins, aes(x_mid, y_mid)) +
     box.padding = 0.12
   ) +
   facet_wrap(~ contrast, ncol = 2) +
-  scale_fill_rwb(name = "log10(n + 1)") +
-  scale_size_continuous(range = c(0.25, 2.9), guide = "none") +
-  labs(x = "GeoMx log2 fold-change", y = "-log10 p-value",
+  scale_colour_manual(values = c(down = tau_direction_colours[["down"]],
+                                 `not significant` = "#B7B1A5",
+                                 up = tau_direction_colours[["up"]]),
+                      drop = FALSE, name = NULL) +
+  labs(x = "GeoMx log2 fold-change", y = "-log10 FDR",
        title = "GeoMx primary spatial DE by contrast") +
-  theme(panel.grid = element_blank())
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "bottom")
 ```
 
 ```{r}
@@ -456,13 +456,12 @@ ggplot(bp, aes(n_fdr_0_10, contrast, colour = layer)) +
 #| fig-width: 10
 #| fig-height: 7
 #| fig-cap: "Parent correction changes bulk phosphosite effect geometry."
-#| fig-alt: "Faceted circular density scatter compares raw and parent-corrected phosphosite effects."
-ggplot(pc_bins) +
+#| fig-alt: "Faceted scatter plots compare raw and parent-corrected phosphosite effects."
+ggplot(pc_points, aes(raw_logFC, corrected_logFC)) +
   geom_abline(slope = 1, intercept = 0, colour = "grey65", linewidth = 0.35) +
   geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
   geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
-  geom_point(aes(x_mid, y_mid, size = n, fill = log_n), shape = 21,
-             colour = "#F8F5ED", stroke = 0.05, alpha = 0.86) +
+  geom_point(aes(colour = status), size = 0.36, alpha = 0.42) +
   ggrepel::geom_text_repel(
     data = pc_lab,
     aes(raw_logFC, corrected_logFC, label = site_label),
@@ -474,10 +473,14 @@ ggplot(pc_bins) +
     box.padding = 0.12
   ) +
   facet_wrap(~ contrast, ncol = 2) +
-  scale_fill_rwb(name = "log10(n + 1)") +
-  scale_size_continuous(range = c(0.25, 2.9), guide = "none") +
+  scale_colour_manual(values = c(`not significant` = "#B7B1A5",
+                                 `raw only` = "#3F5F7F",
+                                 `corrected only` = "#0B7A75",
+                                 both = "#A63A50"),
+                      drop = FALSE, name = NULL) +
   labs(x = "raw phosphosite log2 fold-change",
        y = "parent-corrected phosphosite log2 fold-change",
        title = "Parent correction changes phosphosite effect geometry") +
-  theme(panel.grid = element_blank())
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "bottom")
 ```

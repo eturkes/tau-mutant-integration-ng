@@ -114,9 +114,10 @@ mf_dist$substate <- factor(as.character(mf_dist$substate), levels = present_sub)
 mf_dist$genotype <- factor(as.character(mf_dist$genotype), levels = genotype_levels)
 mf_dist$score_name <- factor(as.character(mf_dist$score_name), levels = names(score_labels),
                              labels = unname(score_labels))
-mf_wv_bins <- mf$whole_de_volcano$bins
-mf_wv_bins$contrast <- fmt_contrast(mf_wv_bins$contrast)
-mf_wv_bins$log_n <- log10(mf_wv_bins$n + 1)
+mf_wv_points <- mf$whole_de_volcano$points
+mf_wv_points$contrast <- fmt_contrast(mf_wv_points$contrast)
+mf_wv_points$direction <- factor(as.character(mf_wv_points$direction),
+                                 levels = c("down", "not significant", "up"))
 mf_wv_lab <- mf$whole_de_volcano$labels
 mf_wv_lab$contrast <- fmt_contrast(mf_wv_lab$contrast)
 mf_audit_counts <- mf$substate_fit_audit$cell_counts
@@ -202,17 +203,14 @@ ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
 #| fig-width: 11
 #| fig-height: 5.2
 #| fig-cap: "Amyloid expands DAM cells, with the largest response on the P301S background."
-#| fig-alt: "A substate proportion profile, an interaction plot, and a violin plot show amyloid-linked DAM composition and score increases."
+#| fig-alt: "A stacked substate proportion plot, an interaction plot, and a violin plot show amyloid-linked DAM composition and score increases."
 prop_df <- as.data.frame(prop.table(st, 1))                       # genotype, substate, Freq(=within-genotype proportion)
 prop_df <- prop_df[prop_df$substate %in% present_sub, ]
 prop_df$genotype <- factor(prop_df$genotype, levels = genotype_levels)
 prop_df$substate <- factor(as.character(prop_df$substate), levels = present_sub)
 
-p_prop <- ggplot(prop_df, aes(genotype, Freq, group = substate)) +
-  geom_line(aes(colour = substate), linewidth = 0.62, alpha = 0.9) +
-  geom_point(aes(fill = substate), shape = 21, size = 2.5,
-             colour = "#262B2F", stroke = 0.28) +
-  scale_colour_substate(breaks = present_sub, guide = "none") +
+p_prop <- ggplot(prop_df, aes(genotype, Freq, fill = substate)) +
+  geom_col(width = 0.72, colour = "#F8F6F1", linewidth = 0.2) +
   scale_fill_substate(breaks = present_sub, name = "substate") +
   scale_x_discrete(labels = genotype_labels) +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
@@ -264,15 +262,15 @@ p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
 #| fig-width: 9.5
 #| fig-height: 4.6
 #| fig-cap: "Replicate-unit composition shows the DAM expansion across batches."
-#| fig-alt: "Replicate-unit dot matrices show DAM expansion across batches and genotypes."
-ggplot(mf_unit, aes(batch, substate)) +
-  geom_point(aes(size = proportion, fill = substate),
-             shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.9) +
+#| fig-alt: "Replicate-unit stacked bars show DAM expansion across batches and genotypes."
+ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
+  geom_col(width = 0.72, colour = "#F8F6F1", linewidth = 0.18) +
   facet_grid(. ~ genotype) +
   scale_fill_substate(breaks = present_sub, name = "substate") +
-  scale_size_area(max_size = 7, labels = function(x) paste0(round(100 * x), "%"),
-                  name = "unit proportion") +
-  labs(x = "batch", y = NULL, title = "Substate composition at replicate-unit resolution") +
+  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
+                     expand = expansion(mult = c(0, 0.02))) +
+  labs(x = "batch", y = "unit proportion",
+       title = "Substate composition at replicate-unit resolution") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid.major.x = element_blank())
 ```
@@ -358,13 +356,15 @@ ggplot(vol, aes(logFC, neglog10p, colour = gene_class)) +
 #| fig-width: 10
 #| fig-height: 6.5
 #| fig-cap: "Whole-microglia DE is dominated by amyloid contrasts."
-#| fig-alt: "Faceted circular density volcanoes show amyloid contrasts dominating whole-microglia DE."
-ggplot(mf_wv_bins, aes(x_mid, y_mid)) +
-  geom_point(aes(size = n, fill = log_n), shape = 21,
-             colour = "#F8F5ED", stroke = 0.05, alpha = 0.86) +
+#| fig-alt: "Faceted point volcano plots show amyloid contrasts dominating whole-microglia DE."
+ggplot(mf_wv_points, aes(effect, neg_log10_fdr)) +
+  geom_point(aes(colour = direction), size = 0.34, alpha = 0.55) +
+  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.3) +
+  geom_hline(yintercept = -log10(fdr), linetype = "dashed",
+             colour = "grey70", linewidth = 0.25) +
   ggrepel::geom_text_repel(
     data = mf_wv_lab,
-    aes(effect, neg_log10_p, label = label),
+    aes(effect, neg_log10_fdr, label = label),
     inherit.aes = FALSE,
     size = 2.2,
     seed = 42L,
@@ -373,11 +373,14 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid)) +
     box.padding = 0.15
   ) +
   facet_wrap(~ contrast, ncol = 3) +
-  scale_fill_rwb(name = "log10(n + 1)") +
-  scale_size_continuous(range = c(0.25, 2.9), guide = "none") +
-  labs(x = "log2 fold-change", y = "-log10 p-value",
+  scale_colour_manual(values = c(down = tau_direction_colours[["down"]],
+                                 `not significant` = "#B7B1A5",
+                                 up = tau_direction_colours[["up"]]),
+                      drop = FALSE, name = NULL) +
+  labs(x = "log2 fold-change", y = "-log10 FDR",
        title = "Whole-microglia DE across all contrasts") +
-  theme(panel.grid = element_blank())
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "bottom")
 ```
 
 ## Per-substate differential expression

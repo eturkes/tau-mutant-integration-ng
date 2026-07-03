@@ -786,11 +786,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Compact QC target: `qc_figures` (modality table, GeoMx genotype tally,
   genotype-batch grid, depth/fraction distributions, metric bounds, audit notes). Visible report now uses
   design node/stem + depth/fraction trace panels; the other slots remain hidden checks/source material.
-- Figure-polish convention after the figure-elegance pass: prefer trace/ridge-like
-  distributions, forests, contours, circular density dots, bubble matrices, and point-stems. Avoid
-  bar-dominant displays, square/tile-heavy heatmaps, and status-board idioms unless a future task explicitly
-  reopens the grammar. QMD source should stay free of `geom_col`, `geom_tile`, `geom_rect`, and `geom_bin2d`
-  on the visible main path.
+- Figure-polish convention after the field-convention pass: prefer field-standard
+  grammar over decorative novelty. Single-cell panels = UMAP/FeaturePlot-like
+  point clouds, violins, stacked composition bars, ordinary point volcanoes, and
+  forest/dot summaries. Multi-omic/pathway/kinase support matrices = tile
+  heatmaps with text or `*` significance marks. Use circular-density/bubble
+  matrices only when overplotting forces aggregation and the caption says so.
 - Theme gotcha: Quarto can print scrollbar chrome around near-bound figure outputs; `theme.scss`
   intentionally forces figure-output overflow visible and hides print scrollbars. Keep this unless a later
   browser QA proves it harmful.

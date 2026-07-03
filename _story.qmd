@@ -128,13 +128,11 @@ p_traj <- ggplot(traj, aes(coef, measure_label, colour = supported)) +
 #| fig-width: 11
 #| fig-height: 7.1
 #| fig-cap: "Cross-modality support narrows the mechanism to Myc and clearance context."
-#| fig-alt: "Composite figure with pathway-axis modality support, mechanism triage, and measured clearance-pair support."
+#| fig-alt: "Composite figure with pathway-axis modality support heatmap, mechanism triage, and measured clearance-pair support heatmap."
 p_path <- ggplot(path_axes, aes(contrast, axis_label)) +
-  geom_point(aes(size = n_modalities_sig, fill = direction),
-             shape = 21, colour = "#262B2F", stroke = 0.25) +
+  geom_tile(aes(fill = direction), colour = "#F8F6F1", linewidth = 0.25,
+            width = 0.94, height = 0.94) +
   geom_text(aes(label = label), size = 2.35, colour = "#F8F5ED", fontface = "bold") +
-  scale_size_continuous(name = "significant modalities", limits = c(0, max_path_sig),
-                        breaks = 0:max_path_sig, range = c(2.2, 7.6)) +
   scale_fill_manual(values = c(positive = "#A63A50", negative = "#2F78A0",
                                mixed = "#C8841C", none = "#D7D3CA"),
                     drop = FALSE, name = "direction") +
@@ -156,15 +154,13 @@ p_mech <- ggplot(mech, aes(score, item, fill = supported)) +
   theme(panel.grid.major.y = element_blank(),
         legend.position = "none")
 
-p_clearance <- ggplot(clearance, aes(contrast, pair_label, fill = supported,
-                                     size = n_supported_modalities)) +
-  geom_point(shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.94) +
+p_clearance <- ggplot(clearance, aes(contrast, pair_label, fill = supported)) +
+  geom_tile(aes(fill = supported), colour = "#F8F6F1", linewidth = 0.25,
+            width = 0.94, height = 0.94) +
   geom_text(aes(label = ifelse(n_supported_modalities > 0L, n_supported_modalities, "")),
             size = 2.2, colour = "#F8F5ED", fontface = "bold") +
   scale_fill_tau_binary(name = "earned") +
-  scale_size_continuous(limits = c(0, 2), breaks = 0:2, range = c(1.6, 5.4),
-                        name = "supported modalities") +
-  guides(fill = "none", size = "none") +
+  guides(fill = "none") +
   labs(x = NULL, y = NULL, title = "Measured clearance pairs") +
   theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_text(angle = 28, hjust = 1),

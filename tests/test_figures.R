@@ -116,6 +116,7 @@ stopifnot(all(figure_manifest("microglia")$slot %in% names(mf)),
           nrow(mf$umap_by_substate) == nrow(cf),
           nrow(mf$score_triptych) > 0L,
           nrow(mf$unit_composition) == length(units16) * 3L,
+          nrow(mf$whole_de_volcano$points) > 0L,
           nrow(mf$whole_de_volcano$bins) > 0L,
           nrow(mf$substate_de_volcano$labels) > 0L)
 cat("ok - microglia_figure_data builds every microglia slot from compact inputs\n")
@@ -343,10 +344,12 @@ stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
           nrow(cmf$four_modality_counts) == length(focus) * length(four_modalities),
           nrow(cmf$four_modality_pathways) > 0L,
           nrow(cmf$four_modality_symbols) > 0L,
+          nrow(cmf$geomx_volcano$points) > 0L,
           nrow(cmf$geomx_volcano$bins) > 0L,
           nrow(cmf$geomx_sensitivity) == length(focus) * 2L,
+          nrow(cmf$phospho_raw_corrected$points) > 0L,
           nrow(cmf$phospho_raw_corrected$labels) > 0L)
-cat("ok - crossmodality_figure_data bins heavy contrasts into compact plotting tables\n")
+cat("ok - crossmodality_figure_data exposes conventional point and matrix plotting tables\n")
 
 qc_md <- data.frame(
   genotype = rep(genotype_levels, each = 8),

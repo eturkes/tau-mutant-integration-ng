@@ -197,16 +197,13 @@ nf_plot$label_hjust <- ifelse(nf_plot$score >= 0, 1.08, -0.08)
 #| fig-width: 10
 #| fig-height: 6.2
 #| fig-cap: "Project gene sets across RNA populations."
-#| fig-alt: "Faceted circular matrix shows project gene-set activity across RNA populations."
+#| fig-alt: "Faceted heatmap shows project gene-set activity across RNA populations."
 ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
-  geom_point(aes(size = -log10(pmax(fdr, 1e-300))),
-             shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.92) +
-  geom_point(data = m_project[m_project$fdr < alpha, , drop = FALSE],
-             aes(size = -log10(pmax(fdr, 1e-300))),
-             shape = 21, stroke = 0.75, fill = NA, colour = "#111111") +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.25, width = 0.94, height = 0.94) +
+  geom_text(data = m_project[m_project$fdr < alpha, , drop = FALSE],
+            label = "*", colour = "#111111", size = 4.2) +
   facet_wrap(~ population_label, nrow = 1) +
   scale_fill_rwb(name = "NES", midpoint = 0) +
-  scale_size_continuous(range = c(1.5, 5.6), name = "-log10 FDR") +
   labs(x = NULL, y = NULL, title = "Project gene sets across RNA populations") +
   theme(axis.text.x = element_text(angle = 35, hjust = 1),
         panel.grid.major.x = element_blank())
@@ -262,16 +259,13 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
 #| fig-width: 10
 #| fig-height: 5.8
 #| fig-cap: "Myc is supported; NF-kB-family rows lack concordant attenuation."
-#| fig-alt: "Faceted circular matrix contrasts Myc and NF-kB-family TF activity rows."
+#| fig-alt: "Faceted heatmap contrasts Myc and NF-kB-family TF activity rows."
 ggplot(tf_focus, aes(contrast, source, fill = score)) +
-  geom_point(aes(size = -log10(pmax(fdr, 1e-300))),
-             shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.92) +
-  geom_point(data = tf_focus[tf_focus$supported, , drop = FALSE],
-             aes(size = -log10(pmax(fdr, 1e-300))),
-             shape = 21, stroke = 0.75, fill = NA, colour = "#111111") +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.25, width = 0.94, height = 0.94) +
+  geom_text(data = tf_focus[tf_focus$supported, , drop = FALSE],
+            label = "*", colour = "#111111", size = 4.2) +
   facet_wrap(~ population_label, nrow = 1) +
   scale_fill_rwb(name = "ULM score", midpoint = 0) +
-  scale_size_continuous(range = c(1.6, 5.8), name = "-log10 FDR") +
   labs(x = NULL, y = NULL, title = "Myc and NF-kB-family TF activities") +
   theme(axis.text.x = element_text(angle = 35, hjust = 1),
         panel.grid.major.x = element_blank())
@@ -304,17 +298,15 @@ ggplot(nf_plot, aes(score, test_label, fill = supported)) +
 #| fig-width: 9.5
 #| fig-height: 6.2
 #| fig-cap: "Bulk hippocampus kinase rows: Gsk3b carried, not recovered."
-#| fig-alt: "Circular matrix shows kinase activity scores, primary hits and run-index support markers."
+#| fig-alt: "Heatmap shows kinase activity scores, primary hits and run-index support markers."
 ggplot(kin_plot, aes(contrast, source, fill = score)) +
-  geom_point(aes(size = -log10(pmax(fdr, 1e-300))),
-             shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.92) +
-  geom_point(data = kin_plot[kin_plot$primary_sig, , drop = FALSE],
-             aes(size = -log10(pmax(fdr, 1e-300))),
-             shape = 21, stroke = 0.78, fill = NA, colour = "#111111") +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.25, width = 0.94, height = 0.94) +
+  geom_text(data = kin_plot[kin_plot$primary_sig, , drop = FALSE],
+            label = "*", colour = "#111111", size = 4.2) +
   geom_point(data = kin_plot[kin_plot$run_supported, , drop = FALSE],
+             aes(contrast, source), inherit.aes = FALSE,
              shape = 4, size = 2.6, stroke = 0.8, colour = "black") +
   scale_fill_rwb(name = "ULM score", midpoint = 0) +
-  scale_size_continuous(range = c(1.5, 5.6), name = "-log10 FDR") +
   labs(x = NULL, y = NULL,
        title = "Kinase activity and run-index sensitivity") +
   theme(axis.text.x = element_text(angle = 35, hjust = 1),

@@ -729,11 +729,17 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
       label = lab[ok],
       effect = x[ok],
       neg_log10_p = y,
+      neg_log10_fdr = -log10(pmax(f[ok], 1e-300)),
       p_value = p[ok],
       fdr = f[ok],
       significant = sig,
       stringsAsFactors = FALSE
     )
+    raw_lab$direction <- ifelse(raw_lab$fdr < alpha & raw_lab$effect > 0, "up",
+                                ifelse(raw_lab$fdr < alpha & raw_lab$effect < 0,
+                                       "down", "not significant"))
+    raw_lab$direction <- factor(raw_lab$direction,
+                                levels = c("down", "not significant", "up"))
     ord <- order(raw_lab$fdr, raw_lab$p_value, -abs(raw_lab$effect),
                  raw_lab$label, method = "radix", na.last = TRUE)
     labels <- raw_lab[utils::head(ord, n_label), , drop = FALSE]
@@ -745,17 +751,21 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
       n_down_fdr_0_10 = sum(raw_lab$fdr < alpha & raw_lab$effect < 0),
       stringsAsFactors = FALSE
     )
-    list(bins = bins, labels = labels, counts = counts)
+    list(points = raw_lab, bins = bins, labels = labels, counts = counts)
   })
   out <- list(
+    points = .fig_bind(lapply(pieces, `[[`, "points")),
     bins = .fig_bind(lapply(pieces, `[[`, "bins")),
     labels = .fig_bind(lapply(pieces, `[[`, "labels")),
     counts = .fig_bind(lapply(pieces, `[[`, "counts"))
   )
+  .fig_assert_nonempty(out$points, "volcano points")
   .fig_assert_nonempty(out$bins, "volcano bins")
   .fig_assert_nonempty(out$labels, "volcano labels")
+  .fig_assert_finite(out$points, c("effect", "neg_log10_p", "neg_log10_fdr", "p_value", "fdr"),
+                     "volcano points")
   .fig_assert_finite(out$bins, c("x_mid", "y_mid", "n"), "volcano bins")
-  .fig_assert_finite(out$labels, c("effect", "neg_log10_p", "p_value", "fdr"),
+  .fig_assert_finite(out$labels, c("effect", "neg_log10_p", "neg_log10_fdr", "p_value", "fdr"),
                      "volcano labels")
   out
 }
@@ -1126,6 +1136,22 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
                  -abs(m$logFC_raw) - abs(m$logFC_corrected),
                  m$site_id, method = "radix", na.last = TRUE)
     labels <- m[utils::head(ord, 12L), , drop = FALSE]
+    points <- data.frame(
+      contrast = cn,
+      site_id = m$site_id,
+      raw_logFC = m$logFC_raw,
+      corrected_logFC = m$logFC_corrected,
+      raw_fdr = m$adj.P.Val_raw,
+      corrected_fdr = m$adj.P.Val_corrected,
+      status = ifelse(m$adj.P.Val_raw < alpha & m$adj.P.Val_corrected < alpha, "both",
+                      ifelse(m$adj.P.Val_raw < alpha, "raw only",
+                             ifelse(m$adj.P.Val_corrected < alpha, "corrected only",
+                                    "not significant"))),
+      stringsAsFactors = FALSE
+    )
+    points$status <- factor(points$status,
+                            levels = c("not significant", "raw only",
+                                       "corrected only", "both"))
     data <- data.frame(
       contrast = cn,
       site_id = labels$site_id,
@@ -1142,13 +1168,16 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
       n_both = sum(m$adj.P.Val_raw < alpha & m$adj.P.Val_corrected < alpha),
       stringsAsFactors = FALSE
     )
-    list(bins = bins, labels = data, counts = counts)
+    list(points = points, bins = bins, labels = data, counts = counts)
   })
   out <- list(
+    points = .fig_bind(lapply(pieces, `[[`, "points")),
     bins = .fig_bind(lapply(pieces, `[[`, "bins")),
     labels = .fig_bind(lapply(pieces, `[[`, "labels")),
     counts = .fig_bind(lapply(pieces, `[[`, "counts"))
   )
+  .fig_assert_finite(out$points, c("raw_logFC", "corrected_logFC", "raw_fdr", "corrected_fdr"),
+                     "phospho correction points")
   .fig_assert_finite(out$bins, c("x_mid", "y_mid", "n"), "phospho correction bins")
   .fig_assert_finite(out$labels, c("raw_logFC", "corrected_logFC", "raw_fdr", "corrected_fdr"),
                      "phospho correction labels")
@@ -1358,7 +1387,7 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
                          "bulk_omics_summary", "phospho_de_24m",
                          "phospho_corrected_24m", "crossmodality_table"),
       alpha = alpha,
-      contract = "compact cross-modality figure data; heavy top tables reduced to bins"
+      contract = "compact cross-modality figure data; heavy top tables reduced to points and bins"
     )
   )
   .fig_assert_finite(out$geomx_sensitivity,

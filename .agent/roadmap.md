@@ -144,6 +144,12 @@ caption-only figures).
   mechanism/integration plate (pathway-axis modality support, Myc/NF-kB/Gsk3b
   triage, measured clearance-pair support). Strict caption-only gate counts the
   new chapter; Chromium PDF story-page QA clean; full gate green.
+- Field-convention figure pass [DONE 2026-07-03]:
+  user feedback: some figures did not look conventional for the field. Web/literature
+  check supported point volcanoes/scatters, stacked composition bars, and tile
+  heatmaps over the prior circular-density/bubble grammar. Revised visible
+  design/composition/matrix/volcano/scatter panels accordingly, while retaining
+  compact target-backed figure data.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset

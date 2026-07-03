@@ -26,6 +26,7 @@ omnipathr-log/
 
 # optional code-graph index; regenerable, never source
 /.tokensave/
+/.agent/qa/
 
 # generic R artefacts
 .Rhistory
