@@ -8,13 +8,13 @@ contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "i
 focus <- c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
 
 manifest <- figure_manifest()
-stopifnot(nrow(manifest) == 23L,
+stopifnot(nrow(manifest) == 24L,
           !anyDuplicated(manifest$figure_id),
           all(grepl("^fig-", manifest$figure_id)),
           !any(grepl("_", manifest$figure_id, fixed = TRUE)),
           all(c("story", "microglia", "trajectory", "mechanism", "crossmodality") %in%
                 manifest$chapter))
-cat("ok - figure_manifest pins 23 hyphenated inline figure ids\n")
+cat("ok - figure_manifest pins 24 hyphenated inline figure ids\n")
 
 symbol_map <- data.frame(
   ensembl = paste0("ENSMUSG", sprintf("%08d", 1:80)),
@@ -357,7 +357,10 @@ cmf <- crossmodality_figure_data(crossmodality_report, geomx_de, list(),
                                  list(top = make_top_site()),
                                  list(top = make_top_site(shift = 0.2)),
                                  crossmodality_table)
-stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
+cross_manifest <- figure_manifest("crossmodality")
+cmf_slots <- cross_manifest$slot[cross_manifest$target == "crossmodality_figures"]
+stopifnot(all(cmf_slots %in% names(cmf)),
+          identical(cmf$manifest$slot, cmf_slots),
           all(c("geomx_counts", "bulk_counts", "phospho_raw_corrected",
                 "four_modality_counts", "four_modality_pathways",
                 "four_modality_symbols", "axis_effect_spine",
@@ -451,10 +454,12 @@ cat("ok - qc_figure_data builds compact QC visual slots\n")
 story <- story_figure_data(qc, composition_results, pb_de_microglia,
                            trajectory_report, mechanism_report,
                            crossmodality_report, cmf)
-stopifnot(all(figure_manifest("story")$slot %in% names(story)),
+story_slots <- manifest$slot[manifest$target == "story_figures"]
+stopifnot(all(story_slots %in% names(story)),
+          identical(story$manifest$slot, story_slots),
           all(c("sample_counts", "dam_response", "de_counts", "trajectory",
                 "mechanism", "pathway_axes", "clearance",
-                "clearance_effects") %in% names(story)),
+                "clearance_effects", "closing_model") %in% names(story)),
           nrow(story$dam_response$unit) == length(units16),
           nrow(story$de_counts$signed) == length(contrasts) * 2L,
           all(c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic") %in%
@@ -464,6 +469,10 @@ stopifnot(all(figure_manifest("story")$slot %in% names(story)),
           nrow(story$pathway_axes) > 0L,
           nrow(story$clearance) > 0L,
           nrow(story$clearance_effects) > 0L,
+          nrow(story$closing_model$nodes) > 0L,
+          nrow(story$closing_model$edges) > 0L,
+          all(is.finite(story$closing_model$nodes$x)),
+          all(is.finite(story$closing_model$edges$xend)),
           all(c("mechanism", "clearance", "clearance_effects") %in%
                 names(story$mechanism_crossmodality)))
 cat("ok - story_figure_data assembles compact publication story plates\n")

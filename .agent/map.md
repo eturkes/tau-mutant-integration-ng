@@ -249,8 +249,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       visible QC now uses only depth/fraction distributions.
    + (Story plate synthesis 2026-07-03) figures.R: story_figure_data -> story_figures. Consumes compact
       already-built bundles only (qc_figures, composition_results, pb_de_microglia, trajectory_report,
-      mechanism_report, crossmodality_report, crossmodality_figures) and assembles two front-of-report
-      publication story plates: core DAM/composition/progression evidence + mechanism/cross-modality triage.
+      mechanism_report, crossmodality_report, crossmodality_figures) and assembles compact publication synthesis
+      data: two front-of-report story plates plus the final cross-modality closing model. Core plate = DAM/
+      composition/progression evidence; mechanism/cross-modality plate = Myc/NF-kB/Gsk3b + Apoe/Trem2; closing
+      model = node/edge support-boundary synthesis.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -303,7 +305,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible named evidence plates + conventional GeoMx/phospho boundary slots; generic dashboard reductions retained as audit data; ~3.6MB live after S3
-       story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact front-of-report story plates; no new inference; ~5.7KB live after S3
+       story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact story plates + closing model; no new inference; ~6.9KB live after S4
   - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation
     `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures, story_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
@@ -344,9 +346,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
                (caption-only cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
-                tar_load crossmodality_report + crossmodality_figures [compact targets] ->
+                tar_load crossmodality_report + crossmodality_figures + story_figures [compact targets] ->
                 named evidence plates for amyloid-response DAM/AP anchors, synaptic/clearance context,
                 and interaction boundaries, followed by GeoMx volcano/sensitivity and phospho correction.
+                Final closing model uses `story_figures$closing_model` to show support/boundary flow without
+                reloading heavy sources.
                 Generic four-modality dashboards and standalone count panels stay out of the visible path.
                 Modality wording keeps bulk
                 hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
@@ -354,8 +358,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       story plate synthesis, 2026-07-03 (38 figures / 38 captions / 38 role-img elements;
-       strict caption-only source+HTML gate counts `_story.qmd`; Chromium PDF story-page QA clean).
+       cross-modality closing model, 2026-07-03 (37 figures / 37 captions / 37 nonblank alts;
+       strict caption-only source+HTML gate green; Chromium PDF closing-model page clean).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):

@@ -34,21 +34,23 @@ figure_manifest <- function(chapter = NULL) {
       "fig-crossmodality-interaction-boundary",
       "fig-crossmodality-geomx-volcano",
       "fig-crossmodality-geomx-sensitivity",
-      "fig-crossmodality-phospho-correction"
+      "fig-crossmodality-phospho-correction",
+      "fig-crossmodality-closing-model"
     ),
     chapter = c(
       rep("story", 2),
       rep("microglia", 7),
       rep("trajectory", 4),
       rep("mechanism", 4),
-      rep("crossmodality", 6)
+      rep("crossmodality", 7)
     ),
     target = c(
       rep("story_figures", 2),
       rep("microglia_figures", 7),
       rep("trajectory_figures", 4),
       rep("mechanism_figures", 4),
-      rep("crossmodality_figures", 6)
+      rep("crossmodality_figures", 6),
+      "story_figures"
     ),
     slot = c(
       "core_story",
@@ -73,7 +75,8 @@ figure_manifest <- function(chapter = NULL) {
       "interaction_boundary_plate",
       "geomx_volcano",
       "geomx_sensitivity",
-      "phospho_raw_corrected"
+      "phospho_raw_corrected",
+      "closing_model"
     ),
     stringsAsFactors = FALSE
   )
@@ -283,6 +286,159 @@ figure_manifest <- function(chapter = NULL) {
   x
 }
 
+.fig_story_closing_model <- function(dam_response, trajectory, mechanism,
+                                     pathway_axes, clearance,
+                                     crossmodality_report, alpha = 0.10) {
+  stopifnot(is.list(dam_response), is.data.frame(dam_response$mean),
+            is.data.frame(trajectory), is.data.frame(mechanism),
+            is.data.frame(pathway_axes), is.data.frame(clearance),
+            is.list(crossmodality_report))
+  .fig_require_cols(dam_response$mean, c("tau_background", "amyloid", "mean"),
+                    "story DAM mean response")
+  .fig_require_cols(trajectory, c("measure", "fdr", "supported"),
+                    "story trajectory")
+  .fig_require_cols(mechanism, c("track", "supported"), "story mechanism")
+  .fig_require_cols(pathway_axes, c("axis", "n_modalities_sig"),
+                    "story pathway axes")
+  .fig_require_cols(clearance, c("pair", "status", "supported"),
+                    "story clearance")
+
+  dam_mean <- dam_response$mean
+  dam_value <- function(tau_background, amyloid) {
+    idx <- dam_mean$tau_background == tau_background & dam_mean$amyloid == amyloid
+    if (!any(idx)) return(NA_real_)
+    dam_mean$mean[which(idx)[1L]]
+  }
+  dam_gain_maptki <- dam_value("MAPTKI", "NLGF+") - dam_value("MAPTKI", "NLGF-")
+  dam_gain_p301s <- dam_value("P301S", "NLGF+") - dam_value("P301S", "NLGF-")
+  dam_synergy <- dam_gain_p301s - dam_gain_maptki
+
+  tr_row <- function(measure) {
+    x <- trajectory[trajectory$measure == measure, , drop = FALSE]
+    stopifnot(nrow(x) >= 1L)
+    x[1L, , drop = FALSE]
+  }
+  comp <- tr_row("comp_cf")
+  prog <- tr_row("progression_cf")
+  comp_supported <- isTRUE(comp$supported[1L]) || (is.finite(comp$fdr[1L]) && comp$fdr[1L] < alpha)
+  prog_supported <- isTRUE(prog$supported[1L]) || (is.finite(prog$fdr[1L]) && prog$fdr[1L] < alpha)
+
+  myc_supported <- any(mechanism$track == "Myc TF" & mechanism$supported %in% TRUE)
+  nfkb_supported <- any(mechanism$track == "NF-kB gate" & mechanism$supported %in% TRUE)
+  gsk_supported <- any(mechanism$track == "Gsk3b kinase" & mechanism$supported %in% TRUE)
+
+  axis_sig <- stats::aggregate(n_modalities_sig ~ axis, data = pathway_axes, FUN = max)
+  axis_sig <- axis_sig[is.finite(axis_sig$n_modalities_sig) &
+                         axis_sig$n_modalities_sig > 0, , drop = FALSE]
+  axis_keep <- intersect(c("DAM", "synaptic", "clearance", "antigen_presentation"),
+                         as.character(axis_sig$axis))
+  axis_label <- if (length(axis_keep)) {
+    paste(gsub("_", " ", axis_keep, fixed = TRUE), collapse = ", ")
+  } else {
+    "context axes"
+  }
+
+  earned <- clearance[clearance$supported %in% TRUE | clearance$status == "earned", , drop = FALSE]
+  earned_pair_label <- if (nrow(earned)) {
+    paste(unique(gsub("_", "-", earned$pair, fixed = TRUE)), collapse = ", ")
+  } else {
+    "clearance measured"
+  }
+  spatial_status <- crossmodality_report$clearance$spatial_decon$status %||% NA_character_
+  ccc_called <- isTRUE(crossmodality_report$clearance$ccc_called %||% FALSE)
+
+  nodes <- data.frame(
+    id = c("amyloid", "dam_program", "p301s", "dam_composition",
+           "progression_boundary", "myc", "cross_axes", "clearance_pair",
+           "mechanism_boundary", "spatial_boundary"),
+    x = c(0.00, 1.18, 0.00, 1.18, 2.36, 2.36, 3.54, 4.72, 3.54, 4.72),
+    y = c(2.35, 2.35, 1.12, 1.12, 1.12, 2.35, 2.35, 2.35, 1.12, 1.12),
+    label = c("Amyloid (NLGF)", "DAM activation", "P301S tau background",
+              "extra DAM cells", "progression boundary", "Myc-linked RNA",
+              "cross-modality context", earned_pair_label,
+              "NF-kB / Gsk3b", "spatial abundance / CCC"),
+    detail = c(
+      "driver contrast",
+      "homeostatic to DAM",
+      "modifier background",
+      if (is.finite(dam_synergy) && dam_synergy > 0) "larger DAM gain" else "DAM gain checked",
+      if (prog_supported) "supported in target" else "not supported",
+      if (myc_supported) "supported signal" else "not recovered",
+      axis_label,
+      if (nrow(earned)) "focused support" else "not earned",
+      if (nfkb_supported || gsk_supported) "mixed recovery" else "not recovered",
+      paste(c(if (identical(spatial_status, "blocked")) "blocked fit" else spatial_status,
+              if (ccc_called) "full CCC called" else "full CCC absent"),
+            collapse = "; ")
+    ),
+    node_state = c("input", "supported", "input",
+                   if (comp_supported) "supported" else "boundary",
+                   if (prog_supported) "supported" else "boundary",
+                   if (myc_supported) "focused" else "boundary",
+                   "corroborated",
+                   if (nrow(earned)) "focused" else "boundary",
+                   if (nfkb_supported || gsk_supported) "focused" else "boundary",
+                   if (identical(spatial_status, "blocked") || !ccc_called) "blocked" else "focused"),
+    stringsAsFactors = FALSE
+  )
+  nodes$text <- paste(nodes$label, nodes$detail, sep = "\n")
+
+  edges <- data.frame(
+    from = c("amyloid", "amyloid", "p301s", "dam_composition",
+             "dam_program", "dam_program", "cross_axes",
+             "myc", "cross_axes"),
+    to = c("dam_program", "dam_composition", "dam_composition",
+           "progression_boundary", "myc", "cross_axes",
+           "clearance_pair", "mechanism_boundary", "spatial_boundary"),
+    edge_state = c("supported", "supported", "supported", "boundary",
+                   "focused", "corroborated", "focused", "boundary", "blocked"),
+    label = c("amyloid response", "response size", "modulation", "no extra progression",
+              "mechanism thread", "tissue context", "measured pair", "limits", "limits"),
+    curvature = c(0, 0.10, -0.10, 0, 0.06, 0, 0, 0.10, -0.08),
+    stringsAsFactors = FALSE
+  )
+  from <- nodes[match(edges$from, nodes$id), c("x", "y")]
+  to <- nodes[match(edges$to, nodes$id), c("x", "y")]
+  stopifnot(!anyNA(from$x), !anyNA(to$x))
+  edges$x <- from$x
+  edges$y <- from$y
+  edges$xend <- to$x
+  edges$yend <- to$y
+  edges$label_x <- (edges$x + edges$xend) / 2
+  edges$label_y <- (edges$y + edges$yend) / 2 + ifelse(edges$curvature >= 0, 0.12, -0.12)
+
+  bands <- data.frame(
+    label = c("supported spine", "boundaries and modifiers"),
+    xmin = -0.35,
+    xmax = 5.05,
+    ymin = c(1.80, 0.55),
+    ymax = c(2.92, 1.66),
+    label_x = -0.25,
+    label_y = c(2.78, 1.52),
+    stringsAsFactors = FALSE
+  )
+
+  state_levels <- c("input", "supported", "focused", "corroborated", "boundary", "blocked")
+  edge_levels <- c("supported", "focused", "corroborated", "boundary", "blocked")
+  nodes$node_state <- factor(nodes$node_state, levels = state_levels)
+  edges$edge_state <- factor(edges$edge_state, levels = edge_levels)
+  .fig_assert_finite(nodes, c("x", "y"), "closing model nodes")
+  .fig_assert_finite(edges, c("x", "y", "xend", "yend", "label_x", "label_y"),
+                     "closing model edges")
+  .fig_assert_finite(bands, c("xmin", "xmax", "ymin", "ymax", "label_x", "label_y"),
+                     "closing model bands")
+  list(nodes = nodes, edges = edges, bands = bands,
+       support = data.frame(
+         metric = c("dam_synergy", "composition_supported", "progression_supported",
+                    "myc_supported", "nfkb_supported", "gsk3b_supported",
+                    "earned_clearance_pairs", "spatial_status", "ccc_called"),
+         value = c(format(dam_synergy, digits = 4), comp_supported, prog_supported,
+                   myc_supported, nfkb_supported, gsk_supported, nrow(earned),
+                   spatial_status, ccc_called),
+         stringsAsFactors = FALSE
+       ))
+}
+
 story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
                               trajectory_report, mechanism_report,
                               crossmodality_report, crossmodality_figures,
@@ -301,8 +457,13 @@ story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
   path <- .fig_story_pathways(crossmodality_figures)
   clr <- .fig_story_clearance(crossmodality_report)
   clr_effects <- .fig_story_clearance_effects(crossmodality_figures)
+  closing <- .fig_story_closing_model(dam, traj, mech, path, clr,
+                                      crossmodality_report, alpha)
+  manifest <- figure_manifest()
+  manifest <- manifest[manifest$target == "story_figures", , drop = FALSE]
+  rownames(manifest) <- NULL
   out <- list(
-    manifest = figure_manifest("story"),
+    manifest = manifest,
     sample_counts = sample_counts,
     dam_response = dam,
     de_counts = de,
@@ -311,6 +472,7 @@ story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
     pathway_axes = path,
     clearance = clr,
     clearance_effects = clr_effects,
+    closing_model = closing,
     core_story = list(dam_response = dam, de_counts = de, trajectory = traj),
     mechanism_crossmodality = list(mechanism = mech, clearance = clr,
                                    clearance_effects = clr_effects),
@@ -1994,8 +2156,11 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   synaptic_clearance <- .fig_crossmodality_synaptic_clearance_plate(axis_effect$spine)
   interaction_boundary <- .fig_crossmodality_interaction_boundary_plate(axis_effect$spine)
 
+  manifest <- figure_manifest("crossmodality")
+  manifest <- manifest[manifest$target == "crossmodality_figures", , drop = FALSE]
+  rownames(manifest) <- NULL
   out <- list(
-    manifest = figure_manifest("crossmodality"),
+    manifest = manifest,
     axis_effect_spine = axis_effect$spine,
     axis_effect_selection = axis_effect$selection,
     amyloid_response_plate = amyloid_response,

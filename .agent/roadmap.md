@@ -111,7 +111,7 @@ S3 Replace dashboard panels with journal-style evidence plates [DONE 2026-07-03]
   36 figures / 36 captions / 36 nonblank alts, no old dashboard ids, no external
   or local figure refs; full `scripts/check.sh` green.
 
-S4 Closing model + report flow [PENDING]
+S4 Closing model + report flow [DONE 2026-07-03]
 - Add final graphical model / closing synthesis after cross-modality: amyloid
   drives DAM; P301S amplifies DAM-cell composition; progression beyond
   composition unsupported; Myc-supported mechanism; NF-kB/Gsk3b not recovered;
@@ -120,6 +120,14 @@ S4 Closing model + report flow [PENDING]
   figure-only story.
 - Acceptance: figure order tells the story without body prose from first design
   panel through final model; no claim boundary is hidden.
+  Closed by `story_figures$closing_model` and
+  `fig-crossmodality-closing-model`: the cross-modality chapter now ends with a
+  compact node/edge synthesis over existing compact targets, linking amyloid ->
+  DAM, P301S -> DAM-cell composition, progression boundary, Myc support,
+  NF-kB/Gsk3b boundary, cross-modality axes, earned Apoe-Trem2 support, and
+  blocked SpatialDecon/full-CCC state. Strict caption-only HTML QA remains green
+  at 37 figures / 37 captions / 37 nonblank alts; Chromium PDF spot check shows
+  the closing model present and unclipped.
 
 S5 QA + close [PENDING]
 - Run strict caption-only HTML QA, Chromium PDF QA/contact pass, and
@@ -130,9 +138,9 @@ S5 QA + close [PENDING]
   legends or unreadable cross-modality labels, full gate green, roadmap/history
   updated, one scoped commit.
 
-Next `$session-prompt` mode = EXECUTE S4. Last closed = Cross-modality narrative
-S3 (2026-07-03; replaced dashboard-first integration panels with named evidence
-plates and redrew the front mechanism/cross-modality story plate).
+Next `$session-prompt` mode = EXECUTE S5. Last closed = Cross-modality narrative
+S4 (2026-07-03; added the closing graphical synthesis model after the
+cross-modality evidence plates).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

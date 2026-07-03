@@ -1074,11 +1074,22 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   clearance-effect strip. Targeted render DOM QA: 36 figures / 36 captions /
   36 nonblank alts, no old dashboard ids, no external/local figure refs; full
   `scripts/check.sh` green.
+- Cross-modality closing model (2026-07-03, S4 built):
+  `story_figures$closing_model` is a compact node/edge synthesis shown at the
+  end of `_crossmodality.qmd` as `fig-crossmodality-closing-model`. It derives
+  support states from existing compact targets: amyloid -> DAM activation,
+  P301S -> DAM-cell composition, progression beyond composition not supported,
+  Myc supported, NF-kB/Gsk3b not recovered, cross-modality DAM/synaptic/
+  clearance context, focused Apoe-Trem2 support, SpatialDecon abundance blocked,
+  and full CCC absent. No new inference. QA: target rebuild warning-clean,
+  strict caption-only HTML = 37 figures / 37 captions / 37 nonblank alts, and
+  Chromium PDF spot check shows the closing model present/unclipped.
 - Story plate synthesis (2026-07-03, CURRENT report surface): report now opens
-  QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~5.7KB)
+  QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~6.9KB)
   and does no new inference; it assembles existing result bundles into two
-  publication-style composite plates. Coherent story distilled from the live
-  targets = amyloid drives DAM activation; P301S amplifies DAM-cell composition;
+  publication-style composite plates plus the closing model. Coherent story
+  distilled from the live targets = amyloid drives DAM activation; P301S
+  amplifies DAM-cell composition;
   trajectory interaction is composition-supported, not progression-supported;
   Myc is the focused RNA mechanism signal; NF-kB attenuation/Gsk3b are not
   recovered; cross-modality support is strong for amyloid-response / synaptic /

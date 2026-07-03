@@ -9,12 +9,13 @@ suppressPackageStartupMessages({
 })
 options(warn = 2)
 targets::tar_source()
-targets::tar_load(c(crossmodality_report, crossmodality_figures)) # compact targets only, no heavy modality objects
+targets::tar_load(c(crossmodality_report, crossmodality_figures, story_figures)) # compact targets only, no heavy modality objects
 knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
 cmr <- crossmodality_report
 cmf <- crossmodality_figures
+sf <- story_figures
 alpha <- cmr$provenance$alpha
 focus <- cmr$provenance$focus_contrasts
 contrast_labels <- c(
@@ -258,6 +259,27 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 } else {
   "DAM activation and synaptic suppression, with clearance kept descriptive"
 }
+
+closing_model <- sf$closing_model
+closing_nodes <- closing_model$nodes
+closing_edges <- closing_model$edges
+closing_bands <- closing_model$bands
+closing_node_fill <- c(input = "#EEF0F3",
+                       supported = "#DCEFF1",
+                       focused = "#F6E4C3",
+                       corroborated = "#E7E3F4",
+                       boundary = "#F3E1DE",
+                       blocked = "#F1E9D8")
+closing_edge_colour <- c(supported = "#0B7A75",
+                         focused = "#C8841C",
+                         corroborated = "#3F5F7F",
+                         boundary = "#A63A50",
+                         blocked = "#8A6A32")
+closing_edge_lty <- c(supported = "solid",
+                      focused = "solid",
+                      corroborated = "solid",
+                      boundary = "dashed",
+                      blocked = "dotdash")
 ```
 
 ## Axis Evidence Plates
@@ -489,4 +511,60 @@ ggplot(pc_points, aes(raw_logFC, corrected_logFC)) +
        title = "Parent correction changes phosphosite effect geometry") +
   theme(panel.grid.minor = element_blank(),
         legend.position = "bottom")
+```
+
+## Closing Model
+
+```{r}
+#| label: fig-crossmodality-closing-model
+#| fig-width: 11
+#| fig-height: 5.6
+#| fig-cap: "The closing model keeps support and boundaries together."
+#| fig-alt: "Graphical model showing amyloid-driven DAM activation, P301S-amplified DAM composition, unsupported progression beyond composition, Myc support, NF-kB and Gsk3b boundaries, and blocked spatial abundance/full CCC."
+ggplot() +
+  geom_rect(data = closing_bands,
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "#F7F5EF", colour = NA, alpha = 0.82) +
+  geom_text(data = closing_bands,
+            aes(label_x, label_y, label = label),
+            inherit.aes = FALSE, hjust = 0, fontface = "bold",
+            size = 3.0, colour = "#53504A") +
+  geom_segment(
+    data = closing_edges,
+    aes(x = x, y = y, xend = xend, yend = yend,
+        colour = edge_state, linetype = edge_state),
+    linewidth = 0.72,
+    arrow = grid::arrow(length = grid::unit(0.12, "inches"), type = "closed"),
+    alpha = 0.86
+  ) +
+  geom_text(data = closing_edges,
+            aes(label_x, label_y, label = label, colour = edge_state),
+            inherit.aes = FALSE, size = 2.45, fontface = "bold",
+            show.legend = FALSE) +
+  geom_label(
+    data = closing_nodes,
+    aes(x, y, label = text, fill = node_state),
+    inherit.aes = FALSE,
+    colour = "#262B2F",
+    linewidth = 0.25,
+    label.padding = grid::unit(0.16, "lines"),
+    label.r = grid::unit(0.06, "lines"),
+    size = 2.75,
+    lineheight = 0.92
+  ) +
+  scale_fill_manual(values = closing_node_fill, guide = "none") +
+  scale_colour_manual(values = closing_edge_colour, name = "connection") +
+  scale_linetype_manual(values = closing_edge_lty, name = "connection") +
+  coord_cartesian(xlim = c(-0.38, 5.10), ylim = c(0.42, 3.02), clip = "off") +
+  labs(x = NULL, y = NULL,
+       title = "Closing synthesis model") +
+  guides(colour = guide_legend(override.aes = list(linewidth = 1.0))) +
+  theme_void(base_size = 10.8) +
+  theme(
+    plot.title = element_text(face = "bold", colour = "#262B2F", hjust = 0),
+    plot.margin = margin(6, 18, 6, 18),
+    legend.position = "bottom",
+    legend.title = element_text(colour = "#333333"),
+    legend.text = element_text(colour = "#333333")
+  )
 ```
