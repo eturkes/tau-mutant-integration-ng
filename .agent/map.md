@@ -323,8 +323,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
                 unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
-       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA was
-       Figure expansion S5 (42 figure blocks); Prose-to-figures S5 must rerun count/caption/lightbox/external-ref QA.
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
+       Prose-to-figures S5, 2026-07-03 (49 figures / 49 captions, no >32-word captions, no duplicate IDs,
+       no broken anchors, no external href/src refs, lightbox present, no visible warning/error markers,
+       no underscored rendered fig-* IDs).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):
@@ -339,6 +341,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
     -> baseline 5,111 words / 119 blocks; 33 headings kept as navigation;
     86/86 prose/caption blocks assigned non-keep dispositions; selected target
     >=55% reduction (<=2,300 counted words), stretch <=1,800.
+  - S5 final: same command -> 1,164 words / 117 blocks (77% reduction, stretch
+    met); manifest remains the compact source of qmd block/disposition/slot state.
 
 ### Tests (S3; gate-wired at S5)
 `tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,

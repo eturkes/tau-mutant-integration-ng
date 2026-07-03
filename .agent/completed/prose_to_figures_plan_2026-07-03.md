@@ -284,10 +284,24 @@ Work:
 
 Acceptance:
 - Final before/after prose-only count shows the selected reduction target was met
-  or a specific accepted blocker explains the residual prose.
-- Full `scripts/check.sh` green.
-- Rendered HTML QA green.
-- Close-out review finds no unsupported visual overclaim.
+  or a specific accepted blocker explains the residual prose. DONE: baseline =
+  5,111 words / 119 blocks; final = 1,164 words / 117 blocks by
+  `scripts/prose_inventory.py --manifest .agent/prose_replacement_manifest.tsv --summary-only`.
+  Reduction = 77%, clearing the >=55% floor and <=1,800 stretch.
+- Full `scripts/check.sh` green. DONE: tests warn=2, forced 125-chunk report
+  render, tar_meta clean across 52 current targets/branches, render-log clean.
+- Rendered HTML QA green. DONE: `_report/index.html` has 49 figures and 49
+  captions, no >32-word captions, no duplicate IDs, no broken internal anchors,
+  no external `href`/`src` refs, lightbox class present, no visible warning/error
+  markers, and rendered `fig-*` IDs contain no underscores.
+- Close-out review finds no unsupported visual overclaim. DONE: accepted review
+  finding set = none; removed prose claims are either target-derived in status /
+  logic boards, encoded in shortened captions, redundant with visible panels, or
+  deliberately dropped as table-heavy audit detail.
+
+Output:
+- Archived close-out target:
+  `.agent/completed/prose_to_figures_plan_2026-07-03.md`.
 
 ## Claim Rules
 

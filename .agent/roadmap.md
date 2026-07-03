@@ -32,21 +32,9 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
-Next `$session-prompt` mode = EXECUTE S5 visual QA and close-out. Route
-selected = aggressive inline visual conversion over the existing report. S1
-measured baseline = 5,111 prose-only words / 119 human-facing blocks across
-`index.qmd` + `_*.qmd`; 33 headings are kept navigation, and all 86
-prose/caption blocks have non-keep dispositions in
-`.agent/prose_replacement_manifest.tsv`. Selected target = >=55% reduction
-(final counted prose <=2,300 words), stretch <=1,800 if S2 slots cover caveats
-without claim loss. S2 built compact visual grammar contracts: `qc_figures` +
-`report_visuals`, manifest slot coverage, and chapter status/logic board aliases.
-S3 converted Overview + synthesis to visual-first panels (305 -> 46 counted
-words, 85% local reduction) using compact `report_visuals`. S4 converted result
-chapters to visual boards/short captions (result chapters 4,468 -> 780 counted
-words; full report 1,164 words), preserving progression/NF-kB/Gsk3b/SpatialDecon/
-CCC/run-index nulls and caveats; full gate green.
+## Active plan: (none)
+Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the user
+before opening a plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -80,14 +68,15 @@ CCC/run-index nulls and caveats; full gate green.
   broad abundance primary and microglia substates only if stable. Final status:
   profile earned, SpatialDecon ran, abundance DE blocked by unresolved AOIs;
   residual audit is report QC; synthesis says blocked, not skipped.
-- Prose-to-figures reduction [ACTIVE 2026-07-03 -> `.agent/prose_to_figures_plan.md`]:
+- Prose-to-figures reduction [DONE 2026-07-03 -> `.agent/completed/prose_to_figures_plan_2026-07-03.md`]:
   user feedback: final output remains too prose-heavy even after Figure
   expansion. Plan opens a visual-first reduction pass: prose inventory,
   replacement manifest, compact visual data slots/schematics, chapter conversion,
   and before/after prose-density QA. S0 chose aggressive inline visual conversion;
   S1 measured the baseline and replacement manifest; S2 built visual grammar /
   compact data slots; S3 converted overview+synthesis; S4 converted result
-  chapters. Next = S5 visual QA and close-out.
+  chapters; S5 closed with final report prose 5,111 -> 1,164 words (77%
+  reduction), rendered HTML QA green, and full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -574,8 +563,8 @@ CCC/run-index nulls and caveats; full gate green.
   reset Active plan to none. Cohesive-story spine already carries the final
   blocked-fit SpatialDecon state. Final close-out gate green. Next = PLAN only
   after user confirms a new roadmap unit.
-- 2026-07-03 Prose-to-figures reduction OPENED ->
-  `.agent/prose_to_figures_plan.md`. User feedback: output report remains far
+- 2026-07-03 Prose-to-figures reduction OPENED (later archived ->
+  `.agent/completed/prose_to_figures_plan_2026-07-03.md`). User feedback: output report remains far
   too prose-heavy. Research = current qmd/report inventory, completed Figure
   expansion infrastructure, v1 archive report-shape mining, and current Quarto
   figure/crossref/diagram/tabset docs. Default plan = aggressive inline visual
@@ -630,6 +619,17 @@ CCC/run-index nulls and caveats; full gate green.
   full CCC absent, bulk run-index caveat. Manifest writer now emits `.` for
   empty cells to avoid trailing whitespace. Full `scripts/check.sh` green. Next =
   S5 visual QA and close-out.
+- 2026-07-03 Prose-to-figures reduction S5 DONE -> CLOSED. Final source
+  inventory = 1,164 counted words / 117 blocks vs 5,111 / 119 baseline (77%
+  reduction; clears >=55% floor and <=1,800 stretch). Rendered HTML QA:
+  49 figures / 49 captions, no >32-word captions, no duplicate IDs, no broken
+  internal anchors, no external href/src refs, lightbox present, no visible
+  warning/error markers, no underscored rendered fig-* IDs. Claim-parity review
+  accepted no blockers: nulls/blocked states remain target-derived in boards,
+  captions, or visible panels. Full `scripts/check.sh` green. Folded digest ->
+  history.md; archived plan -> `.agent/completed/prose_to_figures_plan_2026-07-03.md`;
+  reset Active plan to none. Next = PLAN only after user confirms a new roadmap
+  unit.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

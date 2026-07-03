@@ -977,6 +977,12 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   is generated/heavy -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
   script), not a direct large-tree read. Inspect output HTML via a tiny python/R script building the path
   ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
+- Prose-to-figures close (2026-07-03): final source inventory = 1,164 counted
+  words / 117 blocks vs 5,111 / 119 baseline (77% reduction; floor was >=55%).
+  Rendered HTML QA = 49 figures / 49 captions, no >32-word captions, no duplicate
+  IDs, no broken internal anchors, no external `href`/`src`, lightbox present, no
+  visible warning/error markers, no underscored rendered `fig-*` IDs. Use parser-
+  based HTML QA that ignores script/style/code; raw grep false-hits in embedded JS.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

@@ -307,3 +307,29 @@ Verification (honest): S1-S5 each smoke-tested live with fresh leaf builds where
 (`geomx_reference_profile`, `geomx_decon`, `geomx_abundance_de`, `spatial_decon_report`, `clearance_axis`,
 `crossmodality_report`, `synthesis_report`) and full `scripts/check.sh` was green through S5. Close-out review found
 no accepted shipped code/prose blocker; final close-out gate re-run green on 2026-07-02.
+
+## Prose-to-figures reduction -- closed 2026-07-03 (-> `.agent/completed/prose_to_figures_plan_2026-07-03.md`)
+
+Closed the post-report user feedback that the final artifact still read as too prose-heavy. This was not new
+biology: it converted the existing P1-P5 claims into a visual-first report path while preserving compact-target
+rendering, warning-fatal Quarto, offline HTML, and visible null/blocked states.
+
+- ROUTE: aggressive inline visual conversion over the existing report. REJECTED: standalone visual abstract only
+  (too little chapter reduction), publication PNG gallery (tracked generated asset burden), and hiding prose in
+  collapsible audit sections (relocates prose rather than replacing it).
+- INVENTORY/CONTRACT: `scripts/prose_inventory.py` counted human-facing qmd prose/caption blocks and wrote
+  `.agent/prose_replacement_manifest.tsv`. Baseline = 5,111 words / 119 blocks; 33 headings kept as navigation;
+  86/86 prose/caption blocks got non-keep dispositions. S2 added compact `qc_figures` + `report_visuals`,
+  manifest slot coverage, report spine/source/status visual grammar, and per-chapter status/logic board aliases.
+- REPORT SHAPE: Overview/synthesis became report-spine, visual abstract, source matrix, and unsupported grid.
+  Result chapters became visual boards plus short captions. The visible nulls stayed explicit: trajectory
+  composition-not-progression, NF-kB not supported/discordant, Gsk3b not recovered, SpatialDecon abundance blocked,
+  no full CCC, and bulk run-index caveats.
+- FINAL OUTCOME: counted report prose = 1,164 words / 117 blocks, a 77% reduction from baseline, clearing the
+  >=55% floor and <=1,800-word stretch. Captions are one-line factual claims, not paragraph substitutes.
+
+Verification (honest): final `scripts/check.sh` green (tests warn=2, forced 125-chunk render, tar_meta clean across
+52 current targets/branches, render-log clean). Rendered HTML QA on `_report/index.html`: 49 figures / 49 captions,
+no >32-word captions, no duplicate IDs, no broken internal anchors, no external `href`/`src` refs, lightbox present,
+no visible warning/error markers, rendered `fig-*` IDs have no underscores. Close-out claim-parity review found no
+unsupported visual overclaim.
