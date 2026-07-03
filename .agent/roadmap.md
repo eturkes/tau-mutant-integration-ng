@@ -32,13 +32,87 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: none
-Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Story plate synthesis
-(ad hoc, 2026-07-03; added two front-of-report composite plates that distill
-the coherent story: amyloid->DAM, tau-amplified composition not progression,
-Myc-focused mechanism, and cross-modality clearance/context support; 38
-caption-only figures).
+## Active plan: Cross-modality narrative figure pass
+User feedback: integrated cross-modality figures are useful but dashboard-like.
+Goal = replace / reshape those panels into field-conventional journal-style
+evidence plates while keeping the caption-only report and the earned claim set.
+Field-convention anchor from quick literature scan (AD single-cell / spatial /
+multi-omic papers: SEA-AD multimodal atlas, spatial+snRNAseq AD, multiregion
+single-cell AD, in situ AD mouse mapping): primary figures are multi-panel
+scientific evidence plates, not generic evidence dashboards. Common grammar =
+experimental / data schematic; UMAP or spatial map where anatomy/cell state is
+load-bearing; volcano/scatter/effect-size panels for differential signal; gene
+or pathway dot/heatmap only when it resolves a named biological axis; concise
+cartoon/model as synthesis. Avoid broad "assay x contrast" matrices as the
+main cross-modality story unless they are demoted to audit/support.
+
+Scope constraints:
+- No new biological claims unless live target data already earn them.
+- Cross-modality must resolve named axes: amyloid->DAM, synaptic/clearance
+  context, interaction boundary; not "all assays support everything."
+- Keep unsupported boundaries visible: bulk not microglia-sorted; SpatialDecon
+  abundance blocked; full CCC not called; Gsk3b not recovered.
+- Caption-only invariant remains: visible path = headings + figures + captions;
+  alts retained; no prose/table fallback.
+- Figures must look plausible in an AD / neurogenomics journal article: UMAP,
+  spatial / volcano / scatter / effect-size / compact model grammar first;
+  dashboard tiles only as supplemental-style audit if retained.
+
+Sessions:
+S1 Figure-convention + manifest audit [OPEN]
+- Mine current `_crossmodality.qmd`, `R/figures.R`, `crossmodality_figures`,
+  `story_figures`, and rendered PDF pages 18-21.
+- Build a replacement manifest with keep / replace / demote decisions for
+  figures 31-38 and the front story mechanism plate.
+- Acceptance: manifest names exact figure ids, target slots, biological role,
+  replacement grammar, and claim/boundary carried by each panel.
+
+S2 Cross-modality evidence spine [PENDING]
+- Add compact target data for axis-centric plotting: selected symbols/pathways
+  x modalities x contrasts with effect, FDR/support status, direction, and
+  measured/unmeasured state; expose reproducible selection rules.
+- Acceptance: unit tests cover complete keys, finite effects where measured,
+  deterministic axis ordering, and explicit blocked/unmeasured encoding.
+
+S3 Replace dashboard panels with journal-style evidence plates [PENDING]
+- Primary candidates:
+  1. Amyloid-response concordance plate: snRNAseq / GeoMx / bulk rows shown as
+     aligned effect-size or volcano/scatter panels for DAM / antigen-presentation
+     symbols, with assay identity carried by panel layout rather than grid cells.
+  2. Synaptic-clearance axis plate: paired effect panels for synaptic loss and
+     clearance/DAM markers; Apoe-Trem2 support visible but bounded to measured
+     pairs.
+  3. Interaction-boundary plate: interaction signal localized to microglia
+     composition, while GeoMx/bulk/phospho show weak or non-specific interaction
+     support; negative evidence shown as CIs/effects, not status boxes.
+- Demote or remove generic FDR-count heatmaps if they no longer carry a named
+  claim.
+- Acceptance: caption-only HTML has fewer dashboard/tile-first cross-modality
+  panels; each remaining integration figure can be understood as one biological
+  sentence from figure+caption.
+
+S4 Closing model + report flow [PENDING]
+- Add final graphical model / closing synthesis after cross-modality: amyloid
+  drives DAM; P301S amplifies DAM-cell composition; progression beyond
+  composition unsupported; Myc-supported mechanism; NF-kB/Gsk3b not recovered;
+  cross-modality context supports amyloid/synaptic/clearance axes.
+- Move audit/provenance-style panels later or demote them if they interrupt the
+  figure-only story.
+- Acceptance: figure order tells the story without body prose from first design
+  panel through final model; no claim boundary is hidden.
+
+S5 QA + close [PENDING]
+- Run strict caption-only HTML QA, Chromium PDF QA/contact pass, and
+  `scripts/check.sh` unless docs-only close warrants a narrower check.
+- Fix print clipping / legends / dense labels discovered in the prior review
+  (notably trajectory DAM-fraction scatter legend if still present).
+- Acceptance: rendered main path is caption-only, PDF pages have no clipped
+  legends or unreadable cross-modality labels, full gate green, roadmap/history
+  updated, one scoped commit.
+
+Next `$session-prompt` mode = EXECUTE S1. Last closed = Field-convention figure
+pass (ad hoc, 2026-07-03; restored conventional point volcanoes/scatters,
+stacked composition bars, and tile heatmaps over prior circular/bubble grammar).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -150,6 +224,11 @@ caption-only figures).
   heatmaps over the prior circular-density/bubble grammar. Revised visible
   design/composition/matrix/volcano/scatter panels accordingly, while retaining
   compact target-backed figure data.
+- Cross-modality narrative figure pass [ACTIVE]:
+  user feedback: integrated cross-modality figures are useful but dashboard-like.
+  Multi-session plan above replaces generic assay/contrast dashboards with
+  journal-style evidence plates and a closing model while preserving the earned
+  claim boundaries.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
