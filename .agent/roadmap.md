@@ -33,12 +33,14 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
-Next `$session-prompt` mode = EXECUTE S1 prose inventory + replacement
-manifest. Route selected = aggressive inline visual conversion over the existing
-report. Provisional target = >=40% prose-only reduction, raise after inventory
-if more low-risk prose can be removed. S1 must measure baseline excluding code /
-YAML / setup chunks, classify every human-facing block, and state the final
-target before report-source conversion.
+Next `$session-prompt` mode = EXECUTE S2 visual grammar + data contract. Route
+selected = aggressive inline visual conversion over the existing report. S1
+measured baseline = 5,111 prose-only words / 119 human-facing blocks across
+`index.qmd` + `_*.qmd`; 33 headings are kept navigation, and all 86
+prose/caption blocks have non-keep dispositions in
+`.agent/prose_replacement_manifest.tsv`. Selected target = >=55% reduction
+(final counted prose <=2,300 words), stretch <=1,800 if S2 slots cover caveats
+without claim loss.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -77,7 +79,8 @@ target before report-source conversion.
   expansion. Plan opens a visual-first reduction pass: prose inventory,
   replacement manifest, compact visual data slots/schematics, chapter conversion,
   and before/after prose-density QA. S0 chose aggressive inline visual conversion;
-  S1 inventory is next.
+  S1 measured the baseline and replacement manifest; S2 visual grammar / compact
+  data slots are next.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -579,6 +582,16 @@ target before report-source conversion.
   count reduction, with S1 allowed to raise it after baseline inventory. No
   report sources edited before route selection. Next = S1 prose inventory and
   replacement manifest.
+- 2026-07-03 Prose-to-figures reduction S1 DONE -> `scripts/prose_inventory.py`
+  + `.agent/prose_replacement_manifest.tsv`. Baseline = 5,111 prose-only words
+  across 119 human-facing blocks in `index.qmd` + `_*.qmd`; section headings
+  are 33 kept navigation blocks, leaving 86 prose/caption blocks. All 86 have
+  non-keep dispositions (`caption` 42, `figure` 32, `collapsed_audit` 7,
+  `schematic` 5) and target slots. Selected reduction floor raised
+  to >=55% (<=2,300 counted words; stretch <=1,800). Checked with
+  `python3 -m py_compile scripts/prose_inventory.py` + inventory command; no
+  report-source edits, so full render gate deferred to S2+ implementation.
+  Next = S2 visual grammar and compact data contract.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

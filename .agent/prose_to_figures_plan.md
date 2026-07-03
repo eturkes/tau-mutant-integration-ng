@@ -18,10 +18,12 @@ raised after S1 inventory if more can be removed safely.
 ## Research Digest
 
 Local state:
-- Current report source rough word count is 15,066 across `index.qmd` and the
-  five result includes, but this includes code chunks. S1 must compute a
-  prose-only baseline excluding fenced code, YAML, setup chunks, and hidden helper
-  code.
+- S1 measured the prose-only baseline with `scripts/prose_inventory.py`, counting
+  markdown prose plus rendered caption metadata while excluding YAML, executable
+  code bodies, hidden setup/helper code, and ordinary source comments. Baseline
+  = 5,111 words / 119 human-facing blocks across `index.qmd` + `_*.qmd`; 33 are
+  section headings kept for navigation, leaving 86 prose/caption blocks for
+  replacement.
 - Figure expansion already delivered 42 captioned figure blocks, lightbox support,
   and compact per-chapter figure targets. This plan is not "add more plots" by
   default; it is "make figures carry the narration".
@@ -102,8 +104,10 @@ targets the complaint, reuses the current compact figure infrastructure, and
 keeps the report as one warning-gated offline artifact.
 
 Selected route (S0, 2026-07-03): aggressive inline visual conversion.
-Provisional reduction floor = at least 40% prose-only word-count reduction,
-raise after S1 inventory if more low-risk removals are visible.
+Selected reduction target (S1, 2026-07-03): at least 55% prose-only word-count
+reduction from the 5,111-word baseline, i.e. final counted prose <= 2,300 words.
+Stretch target = <= 1,800 words if S2 visual slots cover the audit/caveat load
+without losing claim parity.
 
 ## Steps
 
@@ -126,7 +130,7 @@ Acceptance:
   target. DONE.
 - No report source edits before the route is selected. DONE.
 
-### S1 - Prose Inventory and Replacement Manifest [OPEN]
+### S1 - Prose Inventory and Replacement Manifest [DONE 2026-07-03]
 
 Work:
 - Add a lightweight prose-inventory script or command documented in the plan.
@@ -139,10 +143,33 @@ Work:
   slot.
 
 Acceptance:
-- Baseline prose-only counts by chapter are recorded.
+- Baseline prose-only counts by chapter are recorded. DONE:
+
+  | qmd | blocks | words | headings | prose blocks | non-keep prose |
+  |---|---:|---:|---:|---:|---:|
+  | `index.qmd` | 4 | 158 | 1 | 3 | 3 |
+  | `_synthesis.qmd` | 5 | 147 | 1 | 4 | 4 |
+  | `_qc.qmd` | 15 | 338 | 5 | 10 | 10 |
+  | `_microglia.qmd` | 31 | 1,438 | 8 | 23 | 23 |
+  | `_trajectory.qmd` | 20 | 1,317 | 6 | 14 | 14 |
+  | `_mechanism.qmd` | 20 | 755 | 6 | 14 | 14 |
+  | `_crossmodality.qmd` | 24 | 958 | 6 | 18 | 18 |
+  | total | 119 | 5,111 | 33 | 86 | 86 |
+
 - At least 80% of prose blocks have non-`keep` dispositions unless a chapter
-  review justifies otherwise.
-- The selected reduction target is concretely stated before S2.
+  review justifies otherwise. DONE: 86/86 prose/caption blocks = 100%
+  non-`keep`; 33 `keep` blocks are section headings, treated as navigation not
+  prose targets. Disposition totals: `caption` 42, `figure` 32,
+  `collapsed_audit` 7, `schematic` 5.
+- The selected reduction target is concretely stated before S2. DONE: floor =
+  >=55% reduction, final counted prose <=2,300 words; stretch <=1,800 words.
+
+Output:
+- Tool: `scripts/prose_inventory.py`.
+- Repro command:
+  `python3 scripts/prose_inventory.py --manifest .agent/prose_replacement_manifest.tsv --summary-only`
+- Manifest: `.agent/prose_replacement_manifest.tsv` (block id, qmd, line, kind,
+  section, word count, disposition, target slot, label, source text).
 
 ### S2 - Visual Grammar and Data Contract
 

@@ -322,6 +322,20 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id; S5 rendered HTML QA =
        42 figure blocks / 42 captions, lightbox embedded, 0 external resource refs.
 
+### Report prose inventory (Prose-to-figures S1)
+`scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):
+  - parses `index.qmd` + `_*.qmd`; skips YAML, executable code bodies, hidden
+    setup/helper code, and ordinary source comments.
+  - keeps Quarto caption metadata (`fig-cap` / `tbl-cap` / `fig-alt`) as
+    human-facing report prose.
+  - emits chapter baseline summary + block-level TSV manifest with qmd, block id,
+    line, kind, section, word count, disposition, target slot, label, and text.
+  - S1 command:
+    `python3 scripts/prose_inventory.py --manifest .agent/prose_replacement_manifest.tsv --summary-only`
+    -> baseline 5,111 words / 119 blocks; 33 headings kept as navigation;
+    86/86 prose/caption blocks assigned non-keep dispositions; selected target
+    >=55% reduction (<=2,300 counted words), stretch <=1,800.
+
 ### Tests (S3; gate-wired at S5)
 `tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,
 make_meta16, make_fake_seurat = synthetic Seurat fixtures, make_trajectory_embedding = synthetic
@@ -378,6 +392,6 @@ negative tests) -> memory.md Quality gate.
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
           _quarto.yml index.qmd _synthesis.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
-          rv/.gitignore | scripts/install-*.sh | AGENTS.md .agents/skills/** .codex/prompts/*.md
+          rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md .agents/skills/** .codex/prompts/*.md
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + read-economy skip);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)
