@@ -291,12 +291,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 immediately includes report chapters)
                                                           --{{< include >}}--> `_qc.qmd`
                (caption-only QC chapter: setup `options(warn=2)` -> chunk warnings fail the render;
-                tar_load `qc_figures` only -> depth/fraction histograms; hidden checks still enforce modality
-                shapes, 16-run key, populated genotype-batch grid, GeoMx count, and metric bounds)
+                tar_load `qc_figures` only -> 2x2 study-design/sample-support panel plus depth/fraction
+                histograms; hidden checks still enforce modality shapes, 16-run key, populated
+                genotype-batch grid, GeoMx count, and metric bounds)
                                                           --{{< include >}}--> `_microglia.qmd`
                (caption-only microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
                 composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->
-                substate UMAPs/score maps, composition shift + unit composition, composition forest,
+                substate UMAPs/score maps, composition shift + direct tau x amyloid DAM-response panel +
+                unit composition, composition forest,
                 amyloid + all-contrast volcanoes, substate fit/DE audit, pruning audit.
                 Hidden finite-check replaces visible sccomp stdout. Claims remain source-derived:
                 amyloid->DAM, DAM composition interaction, interaction DE under-powered not absent.)
@@ -310,7 +312,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                                                           --{{< include >}}--> `_mechanism.qmd`
                (caption-only mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
                 mechanism_report + mechanism_figures [compact targets] -> project/GO pathway panels,
-                Myc/NF-kB-family TF panels, kinase/run-index heatmap.
+                Myc/NF-kB-family TF panels, NF-kB primary-score lollipop, kinase/run-index heatmap.
                 Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
@@ -322,10 +324,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       figure curation, 2026-07-03 (strict rendered main path pass; 31 figures / 31 captions,
-       0 removed box-figure label hits, 0 visible body paragraphs/tables/stdout/text outputs, code UI
-       blocks, warning/error markers, or external refs; full gate green after forced 75-chunk render;
-       tar_meta clean across 52 current targets/branches).
+       figure story layout, 2026-07-03 (strict rendered main path pass; 33 figures / 33 captions /
+       33 nonblank alts, 0 visible body paragraphs/tables/stdout/text outputs, 0 duplicate IDs,
+       0 external refs; full gate green after forced 79-chunk render; tar_meta clean across
+       52 current targets/branches).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):

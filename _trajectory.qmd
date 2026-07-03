@@ -125,10 +125,11 @@ p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
   geom_vline(xintercept = 0, colour = "grey70") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r)) +
   scale_colour_discrete(guide = "none") +
-  labs(x = "interaction effect on mean pseudotime", y = NULL,
+  labs(x = "effect on mean pseudotime", y = NULL,
        title = "Genotype effects on position")
 
-(p_dist | p_ctr)
+(p_dist | p_ctr) +
+  plot_annotation(tag_levels = "A")
 ```
 
 ```{r}
@@ -178,7 +179,8 @@ p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
   labs(x = NULL, y = "loading (fraction of position interaction)",
        title = "Decomposition loadings")
 
-(p_forest | p_load)
+(p_forest | p_load) +
+  plot_annotation(tag_levels = "A")
 ```
 
 ```{r}
@@ -189,6 +191,7 @@ p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
 #| fig-alt: "Scatter plot shows replicate mean pseudotime increasing with DAM fraction."
 ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
   geom_point(size = 2.6) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, linewidth = 0.55) +
   geom_text(aes(label = batch), size = 2.4, nudge_y = 0.35, check_overlap = TRUE) +
   scale_colour_genotype(name = "genotype") +
   scale_x_continuous(labels = function(x) paste0(round(x), "%")) +

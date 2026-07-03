@@ -177,6 +177,17 @@ kin_order <- kin_plot[order(kin_plot$source != "Gsk3b", kin_plot$fdr,
                             -abs(kin_plot$score), kin_plot$source,
                             method = "radix", na.last = TRUE), "source"]
 kin_plot$source <- factor(kin_plot$source, levels = rev(unique(kin_order)))
+
+nf_plot <- nf_primary
+nf_plot$test_label <- c(tf_family = "TF-family ULM",
+                        target_gsea = "signed target GSEA")[nf_plot$test]
+nf_plot$test_label[is.na(nf_plot$test_label)] <- nf_plot$test[is.na(nf_plot$test_label)]
+nf_plot$test_label <- factor(nf_plot$test_label,
+                             levels = rev(c("TF-family ULM", "signed target GSEA")))
+nf_plot$supported <- nf_plot$primary_family_fdr < alpha
+nf_plot$fdr_label <- paste0("FDR ", fmt_p(nf_plot$primary_family_fdr))
+nf_plot$label_x <- nf_plot$score
+nf_plot$label_hjust <- ifelse(nf_plot$score >= 0, 1.08, -0.08)
 ```
 
 ## Pathway Survey
@@ -257,6 +268,25 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
   labs(x = "ULM activity score", y = NULL,
        title = "Myc and NF-kB-family TF activities") +
   theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: fig-mechanism-nfkb-primary
+#| fig-width: 7.4
+#| fig-height: 3.8
+#| fig-cap: "NF-kB primary rows do not form a supported attenuation signal."
+#| fig-alt: "Lollipop plot shows NF-kB TF-family and signed target-GSEA scores with FDR labels."
+ggplot(nf_plot, aes(score, test_label)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_segment(aes(x = 0, xend = score, yend = test_label), linewidth = 0.5) +
+  geom_point(aes(shape = supported), size = 2.6) +
+  geom_text(aes(x = label_x, label = fdr_label, hjust = label_hjust),
+            nudge_y = 0.12, vjust = 0, size = 3) +
+  scale_shape_manual(values = c(`FALSE` = 1, `TRUE` = 16), guide = "none") +
+  scale_x_continuous(expand = expansion(mult = 0.16)) +
+  labs(x = "primary score", y = NULL, title = "Predeclared NF-kB attenuation gate") +
+  coord_cartesian(clip = "off") +
+  theme(panel.grid.major.y = element_blank())
 ```
 
 ## Gsk3b And Kinase Activity

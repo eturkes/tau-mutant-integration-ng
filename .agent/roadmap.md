@@ -34,8 +34,9 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Box-figure curation (ad hoc,
-2026-07-03; supersedes the 48-figure caption-only surface with 31 curated figures).
+user before writing a plan. Last closed = Figure story layout (ad hoc,
+2026-07-03; starts from the 31 curated data-rich figures and lands 33
+caption-only figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -92,6 +93,14 @@ user before writing a plan. Last closed = Box-figure curation (ad hoc,
   chapters; retained data-rich journal-relevant plots. Rendered main path now has
   31 figures / 31 captions, no removed-label hits, strict caption-only HTML QA
   green, and full gate green.
+- Figure story layout [DONE 2026-07-03]:
+  user feedback: add/shape figures and make the layout tell more story while
+  staying conventional for the field. Added a data-backed 2x2 design/sample
+  support figure, reshaped the DAM composition panel around a direct tau x
+  amyloid DAM-response plot, tagged composite panels, added a trajectory
+  DAM-fraction trend, and replaced NF-kB status-box logic with a primary-score
+  lollipop. Rendered main path now has 33 figures / 33 captions, strict
+  caption-only HTML QA green, and full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -708,6 +717,17 @@ user before writing a plan. Last closed = Box-figure curation (ad hoc,
   schematic prose-replacement set after manifest regeneration. Strict rendered
   HTML QA green (31 captions, 0 body prose/tables/stdout/text-only outputs,
   0 removed-label hits); full `scripts/check.sh` green across 52 targets/branches.
+- 2026-07-03 Figure story layout DONE (ad hoc user task): kept caption-only
+  surface and conventional figure classes, but reshaped the story. Added
+  `qc_figures$study_design` + `fig-qc-study-design` (2x2 genotype grid +
+  modality support bars); expanded `fig-microglia-composition-shift` to a
+  3-panel composition / tau x amyloid DAM-response / DAM-score figure; added
+  panel tags to composite microglia/trajectory figures; added an lm trend to the
+  trajectory DAM-fraction scatter; added `fig-mechanism-nfkb-primary` as a
+  primary-score lollipop instead of a status box. Strict rendered QA: 33 figures /
+  33 captions / 33 nonblank alts, 0 duplicate IDs, 0 external refs, 0 visible body
+  prose/tables/stdout/text outputs; full `scripts/check.sh` green across
+  52 targets/branches.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

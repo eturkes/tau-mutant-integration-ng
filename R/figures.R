@@ -247,6 +247,7 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
                           "percent_malat1", "percent_contam"),
                     "microglia_seurat_raw@meta.data")
   .fig_require_cols(gd, "genotype", "geomx metadata")
+  .fig_require_cols(sample_key, "genotype", "sample_key")
   microglia_dim <- .fig_object_dim(microglia_seurat_raw, "microglia_seurat_raw")
   geomx_dim <- .fig_object_dim(geomx, "geomx")
   proteomics_dim <- .fig_object_dim(proteomics, "proteomics")
@@ -280,6 +281,36 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   names(geomx_genotype)[2L] <- "n_aoi"
   geomx_genotype$n_aoi <- as.numeric(geomx_genotype$n_aoi)
 
+  design_grid <- data.frame(
+    genotype = genotype_levels,
+    tau_background = ifelse(grepl("P301S", genotype_levels), "P301S", "MAPTKI"),
+    amyloid = ifelse(startsWith(genotype_levels, "NLGF"), "NLGF+", "NLGF-"),
+    label = c("MAPTKI", "P301S", "NLGF\nMAPTKI", "NLGF\nP301S"),
+    stringsAsFactors = FALSE
+  )
+  design_grid$genotype <- factor(design_grid$genotype, levels = genotype_levels)
+  design_grid$tau_background <- factor(design_grid$tau_background,
+                                       levels = c("MAPTKI", "P301S"))
+  design_grid$amyloid <- factor(design_grid$amyloid, levels = c("NLGF-", "NLGF+"))
+
+  sn_counts <- stats::aggregate(Freq ~ genotype, data = genotype_batch, FUN = sum)
+  names(sn_counts)[2L] <- "n"
+  sn_counts$modality <- "snRNAseq nuclei"
+  geo_counts <- geomx_genotype
+  names(geo_counts)[2L] <- "n"
+  geo_counts$modality <- "GeoMx AOIs"
+  sample_genotype <- factor(as.character(sample_key$genotype), levels = genotype_levels)
+  bulk_counts <- as.data.frame(table(genotype = sample_genotype), stringsAsFactors = FALSE)
+  names(bulk_counts)[2L] <- "n"
+  bulk_counts$n <- as.numeric(bulk_counts$n)
+  bulk_counts$modality <- "24M bulk runs"
+  sample_counts <- rbind(sn_counts[c("genotype", "modality", "n")],
+                         geo_counts[c("genotype", "modality", "n")],
+                         bulk_counts[c("genotype", "modality", "n")])
+  sample_counts$genotype <- factor(as.character(sample_counts$genotype), levels = genotype_levels)
+  sample_counts$modality <- factor(sample_counts$modality,
+                                   levels = c("snRNAseq nuclei", "GeoMx AOIs", "24M bulk runs"))
+
   depth_metrics <- c(nCount_RNA = "total counts", nFeature_RNA = "detected genes")
   frac_metrics <- c(percent_mt = "mitochondrial %", percent_ribo = "ribosomal %",
                     percent_malat1 = "MALAT1 %", percent_contam = "contamination %")
@@ -307,10 +338,15 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
             all(md$nFeature_RNA <= md$nCount_RNA),
             all(genotype_batch$Freq > 0),
             nrow(sample_key) == 16L,
+            !anyNA(sample_genotype),
+            !anyNA(sample_counts$genotype),
+            all(table(sample_genotype) == nrow(sample_key) %/% length(genotype_levels)),
             setequal(as.character(unique(gd$genotype)), genotype_levels))
 
   out <- list(
     manifest = visual_reduction_slot_map("figure")[visual_reduction_slot_map("figure")$target == "qc_figures", ],
+    study_design = list(genotype_grid = design_grid,
+                        sample_counts = sample_counts),
     modality_table = modality_table,
     geomx_genotype = geomx_genotype,
     genotype_batch = genotype_batch,
@@ -328,6 +364,7 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
     )
   )
   .fig_assert_finite(out$modality_table, c("n_features", "n_samples"), "qc modality_table")
+  .fig_assert_finite(out$study_design$sample_counts, "n", "qc study_design sample_counts")
   .fig_assert_finite(out$genotype_batch, "Freq", "qc genotype_batch")
   .fig_assert_finite(out$geomx_genotype, "n_aoi", "qc geomx_genotype")
   .fig_assert_finite(out$depth_distribution, c("x_mid", "n"), "qc depth_distribution")

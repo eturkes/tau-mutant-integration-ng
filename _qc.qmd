@@ -40,8 +40,11 @@ metric_names <- metric_lab(qc$metric_bounds$metric)
 stopifnot(
   is.list(qc),
   all(c("modality_table", "geomx_genotype", "genotype_batch", "depth_distribution",
-        "fraction_distribution", "metric_bounds", "audit_notes") %in% names(qc)),
+        "fraction_distribution", "metric_bounds", "audit_notes", "study_design") %in% names(qc)),
+  all(c("genotype_grid", "sample_counts") %in% names(qc$study_design)),
   nrow(qc$modality_table) == 5L,
+  nrow(qc$study_design$genotype_grid) == 4L,
+  nrow(qc$study_design$sample_counts) == 12L,
   sum(sample_key_row) == 1L,
   !anyNA(metric_names),
   nrow(qc$geomx_genotype) == 4L,
@@ -53,6 +56,52 @@ stopifnot(
   all(qc$metric_bounds$within),
   all(qc$metric_bounds$n_na == 0L)
 )
+```
+
+## Study design
+
+```{r}
+#| label: fig-qc-study-design
+#| fig-width: 10
+#| fig-height: 4.8
+#| fig-cap: "The 2x2 genotype design has support across single-nucleus, spatial and bulk layers."
+#| fig-alt: "Panel A shows the tau by amyloid genotype grid; panel B shows per-genotype sample counts across modalities."
+design_grid <- qc$study_design$genotype_grid
+design_grid$genotype <- factor(as.character(design_grid$genotype), levels = genotype_levels)
+design_counts <- qc$study_design$sample_counts
+design_counts$genotype <- factor(as.character(design_counts$genotype), levels = genotype_levels)
+design_counts$modality <- factor(as.character(design_counts$modality),
+                                 levels = c("snRNAseq nuclei", "GeoMx AOIs", "24M bulk runs"))
+design_counts$label <- fmt_n(design_counts$n)
+count_pad <- stats::aggregate(n ~ modality, data = design_counts, FUN = max)
+names(count_pad)[2L] <- "max_n"
+design_counts <- merge(design_counts, count_pad, by = "modality", all.x = TRUE, sort = FALSE)
+design_counts$label_y <- design_counts$n + pmax(design_counts$max_n * 0.035, 0.8)
+
+p_grid <- ggplot(design_grid, aes(tau_background, amyloid)) +
+  geom_point(aes(fill = genotype), shape = 21, size = 18, colour = "grey25", stroke = 0.45) +
+  geom_text(aes(label = label), size = 3.2, fontface = "bold", lineheight = 0.9) +
+  scale_fill_genotype(guide = "none") +
+  labs(x = "tau background", y = "amyloid", title = "Factorial genotype design") +
+  coord_fixed(ratio = 1.05) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(face = "bold"),
+        axis.text.y = element_text(face = "bold"))
+
+p_counts <- ggplot(design_counts, aes(genotype, n, fill = genotype)) +
+  geom_col(width = 0.66) +
+  geom_text(aes(y = label_y, label = label), size = 2.8, fontface = "bold") +
+  facet_wrap(~ modality, nrow = 1, scales = "free_y") +
+  scale_fill_genotype(guide = "none") +
+  scale_x_discrete(labels = genotype_labels) +
+  labs(x = NULL, y = "count", title = "Per-genotype support by layer") +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid.major.x = element_blank())
+
+(p_grid | p_counts) +
+  plot_layout(widths = c(0.9, 2.1)) +
+  plot_annotation(tag_levels = "A")
 ```
 
 ## snRNAseq microglia: quality metrics

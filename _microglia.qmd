@@ -161,7 +161,8 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
   scale_colour_rwb(name = "DAM z", midpoint = 0) +
   labs(x = "UMAP 1", y = "UMAP 2", title = "DAM activation score")
 
-(p_sub | p_dam)
+(p_sub | p_dam) +
+  plot_annotation(tag_levels = "A")
 ```
 
 ```{r}
@@ -198,10 +199,10 @@ ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
 
 ```{r}
 #| label: fig-microglia-composition-shift
-#| fig-width: 10
-#| fig-height: 4.5
-#| fig-cap: "Amyloid shifts composition and DAM score upward."
-#| fig-alt: "Stacked bars and violin plot show amyloid-linked DAM composition and score increases."
+#| fig-width: 11
+#| fig-height: 5.2
+#| fig-cap: "Amyloid expands DAM cells, with the largest response on the P301S background."
+#| fig-alt: "Stacked bars, an interaction plot, and violin plot show amyloid-linked DAM composition and score increases."
 prop_df <- as.data.frame(prop.table(st, 1))                       # genotype, substate, Freq(=within-genotype proportion)
 prop_df <- prop_df[prop_df$substate %in% present_sub, ]
 prop_df$genotype <- factor(prop_df$genotype, levels = genotype_levels)
@@ -210,16 +211,47 @@ prop_df$substate <- factor(as.character(prop_df$substate), levels = present_sub)
 p_prop <- ggplot(prop_df, aes(genotype, Freq, fill = substate)) +
   geom_col() +
   scale_fill_substate(breaks = present_sub, name = "substate") +
+  scale_x_discrete(labels = genotype_labels) +
   labs(x = NULL, y = "proportion of microglia", title = "Substate composition") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+unit_dam <- mf_unit[mf_unit$substate == "DAM", , drop = FALSE]
+unit_dam$tau_background <- factor(ifelse(grepl("P301S", as.character(unit_dam$genotype)),
+                                         "P301S", "MAPTKI"),
+                                  levels = c("MAPTKI", "P301S"))
+unit_dam$amyloid <- factor(ifelse(startsWith(as.character(unit_dam$genotype), "NLGF"),
+                                  "NLGF+", "NLGF-"),
+                           levels = c("NLGF-", "NLGF+"))
+dam_mean <- stats::aggregate(proportion ~ tau_background + amyloid, data = unit_dam, FUN = mean)
+dam_se <- stats::aggregate(proportion ~ tau_background + amyloid, data = unit_dam,
+                           FUN = function(x) if (length(x) > 1L) stats::sd(x) / sqrt(length(x)) else 0)
+names(dam_mean)[3L] <- "mean"
+names(dam_se)[3L] <- "se"
+dam_mean <- merge(dam_mean, dam_se, by = c("tau_background", "amyloid"), sort = FALSE)
+dam_mean$lo <- pmax(0, dam_mean$mean - dam_mean$se)
+dam_mean$hi <- pmin(1, dam_mean$mean + dam_mean$se)
+
+p_dam_response <- ggplot(unit_dam, aes(amyloid, proportion, colour = tau_background,
+                                       group = tau_background)) +
+  geom_point(position = position_jitter(width = 0.035, height = 0), alpha = 0.5, size = 1.5) +
+  geom_line(data = dam_mean, aes(y = mean), linewidth = 0.7) +
+  geom_pointrange(data = dam_mean, aes(y = mean, ymin = lo, ymax = hi), linewidth = 0.45) +
+  scale_colour_discrete(name = "tau background") +
+  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
+  labs(x = NULL, y = "DAM fraction", title = "DAM response across the 2x2") +
+  theme(legend.position = "bottom",
+        panel.grid.major.x = element_blank())
 
 p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
   geom_violin(scale = "width") +
   scale_fill_genotype(guide = "none") +
+  scale_x_discrete(labels = genotype_labels) +
   labs(x = NULL, y = "DAM activation score (z)", title = "DAM score per nucleus") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
-(p_prop | p_score)
+(p_prop | p_dam_response | p_score) +
+  plot_layout(widths = c(1.05, 1, 1.05)) +
+  plot_annotation(tag_levels = "A")
 ```
 
 ```{r}

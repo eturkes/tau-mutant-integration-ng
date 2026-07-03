@@ -989,7 +989,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   duplicate IDs, 0 external refs, 0 code UI. Keep `fig-alt` as source-level
   accessibility text; visible report prose stays limited to headings, figure text
   and captions.
-- Box-figure curation (2026-07-03, CURRENT report surface): supersedes the
+- Box-figure curation (2026-07-03): superseded the
   board-heavy 48-figure caption-only endpoint. Visible report now has 31 figures /
   31 captions and keeps data-rich journal-relevant panels: QC distributions,
   microglia UMAP/composition/DE/pruning panels, trajectory pseudotime/decomposition/
@@ -1002,6 +1002,19 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   ids; `visual_slot_coverage()` handles the valid empty figure/schematic
   prose-replacement manifest after regeneration. Latest QA: strict caption-only
   source+HTML pass, 0 removed-label hits, full `scripts/check.sh` green.
+- Figure story layout (2026-07-03, CURRENT report surface): preserves the
+  caption-only contract and conventional plot types while making the first-pass
+  story more explicit. Visible report now has 33 figures / 33 captions: added a
+  data-backed 2x2 genotype design + modality support figure; reshaped the main
+  microglia composition figure into composition / direct tau x amyloid DAM
+  response / DAM-score panels; added panel tags to composite microglia and
+  trajectory figures; added an lm trend to the trajectory DAM-fraction scatter;
+  added an NF-kB primary-score lollipop (TF-family vs signed target-GSEA rows)
+  instead of reintroducing status boxes. `qc_figures` now includes
+  `study_design = list(genotype_grid, sample_counts)` and
+  `tests/test_figures.R` locks that compact slot. Latest QA: strict caption-only
+  source+HTML pass; rendered DOM = 33 figures / 33 captions / 33 nonblank alts,
+  0 duplicate IDs, 0 external refs; full `scripts/check.sh` green.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

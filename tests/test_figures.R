@@ -330,10 +330,14 @@ qc <- qc_figure_data(
        dims = c(120L, 14L)),
   data.frame(a = 1:4, b = 5:8),
   data.frame(a = 1:5, b = 6:10),
-  data.frame(sample = seq_len(16))
+  data.frame(sample = seq_len(16),
+             genotype = factor(rep(genotype_levels, each = 4), levels = genotype_levels))
 )
-stopifnot(all(c("modality_table", "genotype_batch", "depth_distribution",
+stopifnot(all(c("study_design", "modality_table", "genotype_batch", "depth_distribution",
                 "fraction_distribution", "metric_bounds") %in% names(qc)),
+          all(c("genotype_grid", "sample_counts") %in% names(qc$study_design)),
+          nrow(qc$study_design$genotype_grid) == 4L,
+          nrow(qc$study_design$sample_counts) == 12L,
           nrow(qc$genotype_batch) == 16L,
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")
