@@ -217,19 +217,19 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
 
 ```{r}
 #| label: fig-mechanism-go-dotplot
-#| fig-width: 10
-#| fig-height: 6.5
+#| fig-width: 8.4
+#| fig-height: 8.6
 #| fig-cap: "GO survey rows are exploratory context, not new mechanism calls."
-#| fig-alt: "Dot plot shows exploratory GO rows by population, contrast, NES and set size."
+#| fig-alt: "Dot plot shows exploratory GO rows by population, contrast, NES and set size; populations stack vertically so the contrast labels stay legible."
 ggplot(go_select, aes(contrast, pathway_label)) +
   geom_point(aes(size = size, colour = NES, alpha = supported)) +
-  facet_wrap(~ population_label, nrow = 1, scales = "free_y") +
+  facet_wrap(~ population_label, ncol = 1, scales = "free_y") +
   scale_colour_rwb(name = "NES", midpoint = 0) +
   scale_alpha_manual(values = c(`FALSE` = 0.45, `TRUE` = 1), guide = "none") +
-  scale_size_continuous(range = c(1.4, 4.2), name = "set size") +
+  scale_size_continuous(range = c(1.6, 4.6), name = "set size") +
   labs(x = NULL, y = NULL, title = "Top GO rows by population and contrast") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid.major.y = element_blank(),
+  theme(axis.text.x = element_text(angle = 20, hjust = 1),
+        panel.grid.major.y = element_line(colour = "#EFEBE2", linewidth = 0.2),
         strip.text = element_text(size = 9, face = "bold"))
 ```
 

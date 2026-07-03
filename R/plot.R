@@ -176,3 +176,108 @@ concordance_plot <- function(df, x_col, y_col, label_col = "gene",
     ) +
     theme_tau()
 }
+
+# Cross-modality support matrix ------------------------------------------------------------
+# One bubble per (feature x modality) cell of a cross-modality effect plate. Modality sits on
+# the x-axis -- never colour -- so a reader scans a single feature row across assays for
+# directional agreement, the standard multi-omics concordance read. Fill = signed effect on a
+# diverging, symmetric scale (zero = paper); a dark ring flags a supported/earned call versus a
+# faint ring for measured-but-unsupported; supported bubbles are drawn slightly larger. Faint
+# x / open-triangle glyphs mark not-observed / blocked cells so coverage gaps stay explicit.
+# `measured` and `missing` are the two row groups the axis-effect spine splits out
+# (measured_state_chr == "measured" vs the rest). Facets are added by the caller.
+plate_support_matrix <- function(measured, missing = NULL,
+                                 effect_name = "signed effect",
+                                 title = NULL, x_lab = NULL, y_lab = NULL,
+                                 point_size = 3.7) {
+  stopifnot(is.data.frame(measured), nrow(measured) > 0L,
+            all(c("modality_label", "feature_label_plot", "plot_effect", "plot_status") %in%
+                  names(measured)))
+  measured <- measured[is.finite(measured$plot_effect), , drop = FALSE]
+  stopifnot(nrow(measured) > 0L)
+  measured$support_ring_lvl <- factor(
+    ifelse(as.character(measured$plot_status) == "supported/earned", "supported", "measured"),
+    levels = c("supported", "measured"))
+  eff_max <- max(abs(measured$plot_effect), na.rm = TRUE)
+  eff_max <- if (is.finite(eff_max) && eff_max > 0) eff_max else 1
+  support_ring <- c(supported = "#20242A", measured = "#C7C1B4")
+
+  p <- ggplot2::ggplot(measured,
+                       ggplot2::aes(modality_label, feature_label_plot)) +
+    ggplot2::geom_point(ggplot2::aes(fill = plot_effect, colour = support_ring_lvl,
+                                     size = support_ring_lvl),
+                        shape = 21, stroke = 0.7)
+  # Draw the not-observed / blocked glyphs (and their shape scale) only when such cells exist --
+  # a shape scale with no matching data trips ggplot's "no shared levels" warning (fatal at warn=2).
+  has_missing <- FALSE
+  if (!is.null(missing) && nrow(missing) > 0L) {
+    missing <- missing[as.character(missing$plot_status) %in% c("not observed", "blocked"), ,
+                       drop = FALSE]
+    if (nrow(missing) > 0L) {
+      has_missing <- TRUE
+      missing$plot_status <- factor(as.character(missing$plot_status),
+                                    levels = c("not observed", "blocked"))
+      p <- p + ggplot2::geom_point(
+        data = missing,
+        ggplot2::aes(modality_label, feature_label_plot, shape = plot_status),
+        inherit.aes = FALSE, colour = "#B4AFA3", size = 1.7, stroke = 0.5) +
+        ggplot2::scale_shape_manual(values = c(`not observed` = 4, blocked = 2), name = NULL)
+    }
+  }
+  p <- p +
+    scale_fill_rwb(midpoint = 0, name = effect_name,
+                   limits = c(-eff_max, eff_max), oob = scales::squish) +
+    ggplot2::scale_colour_manual(values = support_ring, breaks = c("supported", "measured"),
+                                 name = NULL) +
+    ggplot2::scale_size_manual(values = c(supported = point_size,
+                                          measured = point_size * 0.8), guide = "none") +
+    ggplot2::labs(title = title, x = x_lab, y = y_lab) +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(colour = "#EFEBE2", linewidth = 0.2),
+      axis.text.x = ggplot2::element_text(angle = 30, hjust = 1),
+      legend.position = "bottom")
+  guide_args <- list(
+    fill = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
+                                    barwidth = grid::unit(4.5, "lines")),
+    colour = ggplot2::guide_legend(order = 2,
+      override.aes = list(size = 3.2, fill = "#ECE7DC", shape = 21)))
+  if (has_missing) {
+    guide_args$shape <- ggplot2::guide_legend(order = 3,
+      override.aes = list(colour = "#8C877B", size = 2.4))
+  }
+  p + do.call(ggplot2::guides, guide_args)
+}
+
+# Pair-support count matrix ----------------------------------------------------------------
+# Compact matrix for the CCC-lite clearance pairs: one cell per (pair x contrast). Fill and the
+# printed number both give how many modalities coherently support the pair; an "earned" pair
+# gets a dark ring. Replaces the earlier per-slot dot strip, which read as cryptic. `pairs` needs
+# columns x (contrast), y (pair), count (integer), earned (logical).
+plate_pair_matrix <- function(pairs, title = NULL, count_name = "supported modalities") {
+  stopifnot(is.data.frame(pairs), nrow(pairs) > 0L,
+            all(c("x", "y", "count", "earned") %in% names(pairs)))
+  pairs$count <- as.integer(round(pairs$count))
+  pairs$earned <- factor(as.logical(pairs$earned), levels = c(TRUE, FALSE))
+  count_max <- max(2L, max(pairs$count, na.rm = TRUE))
+  ggplot2::ggplot(pairs, ggplot2::aes(x, y)) +
+    ggplot2::geom_point(ggplot2::aes(fill = count, colour = earned),
+                        shape = 21, size = 8, stroke = 0.9) +
+    ggplot2::geom_text(ggplot2::aes(label = count), size = 2.9, colour = "#20242A") +
+    ggplot2::scale_fill_gradient(low = "#F1EEE5", high = "#1F6F8B",
+                                 limits = c(0, count_max), breaks = 0:count_max,
+                                 name = count_name) +
+    ggplot2::scale_colour_manual(values = c(`TRUE` = "#20242A", `FALSE` = "#D8D3C8"),
+                                 breaks = c("TRUE", "FALSE"),
+                                 labels = c(`TRUE` = "earned", `FALSE` = "not earned"),
+                                 name = NULL) +
+    ggplot2::labs(title = title, x = NULL, y = NULL) +
+    ggplot2::guides(
+      fill = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
+                                      barwidth = grid::unit(4, "lines")),
+      colour = ggplot2::guide_legend(order = 2,
+        override.aes = list(size = 3.5, fill = "#ECE7DC"))) +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(colour = "#EFEBE2", linewidth = 0.2),
+      axis.text.x = ggplot2::element_text(angle = 20, hjust = 1),
+      legend.position = "bottom")
+}

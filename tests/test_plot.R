@@ -116,4 +116,51 @@ df_bad <- rbind(df, data.frame(gene = c("gNA", "gInf"), x = c(NA, Inf), y = c(1,
 p_bad <- concordance_plot(df_bad, "x", "y")
 stopifnot(nrow(p_bad$data) == 20L, grepl("n = 20", p_bad$labels$subtitle, fixed = TRUE))
 
+# --- plate_support_matrix: cross-modality bubble matrix; builds warning-free with & without a
+#     not-observed layer. ggplot_build forces scale training so a shape scale left dangling when
+#     `missing` is empty would raise "no shared levels" -> under warn=2 that is an error here. ----
+mods <- c("snRNAseq", "GeoMx", "phospho")
+feats <- c("Cst7", "Apoe")
+psm_measured <- data.frame(
+  modality_label = factor(c("snRNAseq", "GeoMx", "snRNAseq", "GeoMx"), levels = mods),
+  feature_label_plot = factor(c("Apoe", "Apoe", "Cst7", "Cst7"), levels = feats),
+  plot_effect = c(1.5, 0.9, -0.8, 2.1),
+  plot_status = c("supported/earned", "measured, not supported",
+                  "supported/earned", "measured, not supported"),
+  stringsAsFactors = FALSE)
+psm_missing <- data.frame(
+  modality_label = factor(c("phospho", "phospho"), levels = mods),
+  feature_label_plot = factor(c("Apoe", "Cst7"), levels = feats),
+  plot_effect = NA_real_,
+  plot_status = c("not observed", "blocked"),
+  stringsAsFactors = FALSE)
+p_full <- plate_support_matrix(psm_measured, psm_missing, effect_name = "effect")
+p_nomiss <- plate_support_matrix(psm_measured, missing = NULL)
+p_emptymiss <- plate_support_matrix(psm_measured, psm_missing[0, , drop = FALSE])
+stopifnot(
+  inherits(p_full, "ggplot"), inherits(p_nomiss, "ggplot"),
+  length(p_full$layers) == 2L,     # measured bubbles + not-observed glyphs
+  length(p_nomiss$layers) == 1L,   # measured bubbles only, no dangling shape layer
+  length(p_emptymiss$layers) == 1L,
+  inherits(ggplot2::ggplot_build(p_full)$plot, "ggplot"),      # trains scales, no warning at warn=2
+  inherits(ggplot2::ggplot_build(p_nomiss)$plot, "ggplot"),
+  inherits(ggplot2::ggplot_build(p_emptymiss)$plot, "ggplot")
+)
+
+# --- plate_pair_matrix: pair x contrast count matrix; builds warning-free incl. an all-not-earned
+#     panel (only the FALSE ring level present). --------------------------------------------------
+ppm <- data.frame(
+  x = factor(c("amyloid on P301S", "amyloid on MAPTKI"),
+             levels = c("amyloid on MAPTKI", "amyloid on P301S")),
+  y = factor(c("Apoe-Trem2", "App-Cd74"), levels = c("App-Cd74", "Apoe-Trem2")),
+  count = c(2L, 1L), earned = c(TRUE, FALSE), stringsAsFactors = FALSE)
+p_pair <- plate_pair_matrix(ppm)
+ppm0 <- transform(ppm, count = c(0L, 0L), earned = c(FALSE, FALSE))
+p_pair0 <- plate_pair_matrix(ppm0)
+stopifnot(
+  inherits(p_pair, "ggplot"), length(p_pair$layers) == 2L,     # bubbles + count text
+  inherits(ggplot2::ggplot_build(p_pair)$plot, "ggplot"),
+  inherits(ggplot2::ggplot_build(p_pair0)$plot, "ggplot")
+)
+
 cat("ok - test_plot\n")

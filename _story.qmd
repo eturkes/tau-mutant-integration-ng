@@ -68,23 +68,12 @@ clearance$contrast <- plot_contrast(clearance$contrast)
 clearance$pair_label <- factor(clearance$pair_label, levels = rev(unique(clearance$pair_label)))
 clearance$supported <- factor(clearance$supported, levels = c(FALSE, TRUE))
 clearance_pair <- clearance
-clearance_pair_max <- max(2, max(clearance_pair$n_supported_modalities, na.rm = TRUE))
-clearance_pair_slots <- seq_len(ceiling(clearance_pair_max))
-clearance_pair_dots <- do.call(rbind, lapply(seq_len(nrow(clearance_pair)), function(i) {
-  data.frame(contrast = clearance_pair$contrast[i],
-             pair_label = clearance_pair$pair_label[i],
-             supported = clearance_pair$supported[i],
-             slot = clearance_pair_slots,
-             filled = clearance_pair_slots <= clearance_pair$n_supported_modalities[i],
-             stringsAsFactors = FALSE)
-}))
-clearance_pair_dots$pair_label <- factor(clearance_pair_dots$pair_label,
-                                         levels = levels(clearance$pair_label))
-clearance_pair_dots$dot_state <- factor(
-  ifelse(clearance_pair_dots$filled,
-         ifelse(as.character(clearance_pair_dots$supported) == "TRUE", "earned", "partial"),
-         "not counted"),
-  levels = c("not counted", "partial", "earned")
+clearance_pair_df <- data.frame(
+  x = clearance_pair$contrast,
+  y = clearance_pair$pair_label,
+  count = clearance_pair$n_supported_modalities,
+  earned = as.character(clearance_pair$supported) == "TRUE",
+  stringsAsFactors = FALSE
 )
 
 clearance_effects <- sf$mechanism_crossmodality$clearance_effects
@@ -162,7 +151,7 @@ p_traj <- ggplot(traj, aes(coef, measure_label, colour = supported)) +
 #| fig-width: 11
 #| fig-height: 6.8
 #| fig-cap: "Cross-modality support narrows the mechanism to Myc and clearance context."
-#| fig-alt: "Composite figure with signed mechanism score points for Myc, NF-kB and Gsk3b, modality-level Apoe-Trem2 effect rows, and clearance-pair support dots."
+#| fig-alt: "Composite figure with signed mechanism score points for Myc, NF-kB and Gsk3b, an Apoe-Trem2 effect matrix across modalities, and a clearance-pair matrix of coherent supported-modality counts."
 p_mech <- ggplot(mech_story, aes(score, row_label)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_point(aes(size = neg_log10_fdr, fill = supported),
@@ -176,41 +165,13 @@ p_mech <- ggplot(mech_story, aes(score, row_label)) +
   theme(panel.grid.major.y = element_blank(),
         legend.position = "none")
 
-p_clear_effect <- ggplot(clearance_effects,
-                         aes(plot_effect, feature_label_plot, colour = modality_label)) +
-  geom_vline(xintercept = 0, colour = "grey75") +
-  geom_point(aes(shape = plot_status), size = 2.15, stroke = 0.48) +
+p_clear_effect <- plate_support_matrix(clearance_effects, effect_name = "effect (log2)",
+                       title = "Apoe-Trem2 effect context") +
   facet_wrap(~ contrast_label, nrow = 1) +
-  scale_colour_manual(values = tau_discrete_colours, name = NULL) +
-  scale_shape_manual(values = c(`supported/earned` = 16,
-                                `measured, not supported` = 1,
-                                `not observed` = 4,
-                                blocked = 17,
-                                `not applicable` = 3),
-                     labels = c(`supported/earned` = "supported",
-                                `measured, not supported` = "measured",
-                                `not observed` = "not observed",
-                                blocked = "blocked",
-                                `not applicable` = "n/a"),
-                     drop = TRUE, name = NULL) +
-  labs(x = "log2 effect", y = NULL, title = "Apoe-Trem2 effect context") +
-  guides(colour = guide_legend(nrow = 1), shape = guide_legend(nrow = 1)) +
-  theme(panel.grid.major.y = element_blank(),
-        legend.position = "bottom",
-        legend.text = element_text(size = 7.2))
+  theme(legend.text = element_text(size = 7))
 
-p_pair <- ggplot(clearance_pair_dots, aes(slot, pair_label, fill = dot_state)) +
-  geom_point(shape = 21, size = 2.85, colour = "#262B2F", stroke = 0.25) +
-  facet_wrap(~ contrast, nrow = 1) +
-  scale_fill_manual(values = c(`not counted` = "#F8F5ED",
-                               partial = "#B7B1A5",
-                               earned = "#0B6F7E"),
-                    name = NULL) +
-  scale_x_continuous(breaks = clearance_pair_slots, limits = c(0.6, clearance_pair_max + 0.4)) +
-  labs(x = "coherent support slots", y = NULL, title = "CCC-lite pair boundary") +
-  guides(fill = "none") +
-  theme(panel.grid.major.y = element_blank(),
-        legend.position = "none")
+p_pair <- plate_pair_matrix(clearance_pair_df, title = "CCC-lite pair support") +
+  theme(legend.text = element_text(size = 7))
 
 p_clear_stack <- (p_clear_effect / p_pair) +
   plot_layout(heights = c(1, 0.62))

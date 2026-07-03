@@ -123,60 +123,37 @@ pc_lab <- do.call(rbind, lapply(split(pc_lab, pc_lab$contrast, drop = TRUE), fun
 pc_lab$contrast <- plot_contrast(pc_lab$contrast)
 pc_lab$site_label <- wrap_label(gsub("_", " ", pc_lab$site_id, fixed = TRUE), 14L)
 
-amyloid_plate <- cmf$amyloid_response_plate$effects
-amyloid_measured <- amyloid_plate[amyloid_plate$measured_state_chr == "measured", , drop = FALSE]
-amyloid_missing <- amyloid_plate[amyloid_plate$measured_state_chr != "measured", , drop = FALSE]
+# Cross-modality axis plates share one idiom (plate_support_matrix): modality on x, feature on
+# y, signed-effect fill, a ring for supported vs measured, and faint glyphs for not-observed /
+# blocked cells. Short modality names keep the matrix columns legible.
+modality_short <- c(`snRNAseq microglia` = "snRNAseq", `GeoMx spatial` = "GeoMx",
+                    `bulk proteome` = "proteome", `bulk phosphoproteome` = "phospho",
+                    `TF activity` = "TF activity", `kinase activity` = "kinase activity",
+                    `cross-modality pathway` = "pathway", `clearance pair` = "pair")
+shorten_modality <- function(d) {
+  lv <- levels(d$modality_label)
+  if (is.null(lv)) lv <- sort(unique(as.character(d$modality_label)))
+  map <- ifelse(is.na(modality_short[lv]), lv, unname(modality_short[lv]))
+  cur <- as.character(d$modality_label)
+  d$modality_label <- factor(ifelse(is.na(modality_short[cur]), cur, unname(modality_short[cur])),
+                             levels = unique(map))
+  d
+}
+split_plate <- function(plate) {
+  list(measured = shorten_modality(plate[plate$measured_state_chr == "measured", , drop = FALSE]),
+       missing = shorten_modality(plate[plate$measured_state_chr != "measured", , drop = FALSE]))
+}
+amyloid <- split_plate(cmf$amyloid_response_plate$effects)
+synclr <- split_plate(cmf$synaptic_clearance_plate$effects)
+interaction_bd <- split_plate(cmf$interaction_boundary_plate$effects)
 
-synclr_plate <- cmf$synaptic_clearance_plate$effects
-synclr_measured <- synclr_plate[synclr_plate$measured_state_chr == "measured", , drop = FALSE]
-synclr_missing <- synclr_plate[synclr_plate$measured_state_chr != "measured", , drop = FALSE]
 synclr_pairs <- cmf$synaptic_clearance_plate$pairs
-synclr_pair_max <- max(2, max(synclr_pairs$plot_effect, na.rm = TRUE))
-synclr_pair_slots <- seq_len(ceiling(synclr_pair_max))
-synclr_pair_dots <- do.call(rbind, lapply(seq_len(nrow(synclr_pairs)), function(i) {
-  data.frame(contrast_label = synclr_pairs$contrast_label[i],
-             feature_label_plot = synclr_pairs$feature_label_plot[i],
-             plot_status = synclr_pairs$plot_status[i],
-             slot = synclr_pair_slots,
-             filled = synclr_pair_slots <= synclr_pairs$plot_effect[i],
-             stringsAsFactors = FALSE)
-}))
-synclr_pair_dots$dot_state <- factor(
-  ifelse(synclr_pair_dots$filled,
-         as.character(synclr_pair_dots$plot_status),
-         "not counted"),
-  levels = c("not counted", "supported/earned", "measured, not supported",
-             "not observed", "blocked", "not applicable")
-)
-
-interaction_plate <- cmf$interaction_boundary_plate$effects
-interaction_measured <- interaction_plate[interaction_plate$measured_state_chr == "measured", , drop = FALSE]
-interaction_missing <- interaction_plate[interaction_plate$measured_state_chr != "measured", , drop = FALSE]
-
-plate_status_fill <- c(`supported/earned` = "#A63A50",
-                       `measured, not supported` = "#F8F5ED",
-                       `not observed` = "#D7D3CA",
-                       blocked = "#C8841C",
-                       `not applicable` = "#D7D3CA")
-plate_status_shape <- c(`supported/earned` = 21,
-                        `measured, not supported` = 21,
-                        `not observed` = 4,
-                        blocked = 24,
-                        `not applicable` = 3)
-plate_status_labels <- c(`supported/earned` = "supported",
-                         `measured, not supported` = "measured",
-                         `not observed` = "not observed",
-                         blocked = "blocked",
-                         `not applicable` = "n/a")
-plate_modality_colours <- c(
-  `snRNAseq microglia` = "#3F5F7F",
-  `GeoMx spatial` = "#0B7A75",
-  `bulk proteome` = "#C8841C",
-  `bulk phosphoproteome` = "#A63A50",
-  `TF activity` = "#7D5CB8",
-  `kinase activity` = "#8A6A32",
-  `cross-modality pathway` = "#6F7782",
-  `clearance pair` = "#2F7EA8"
+synclr_pair_df <- data.frame(
+  x = synclr_pairs$contrast_label,
+  y = synclr_pairs$feature_label_plot,
+  count = synclr_pairs$plot_effect,
+  earned = as.character(synclr_pairs$plot_status) == "supported/earned",
+  stringsAsFactors = FALSE
 )
 
 geo_int <- one_row(geom_counts, geom_counts$contrast == "interaction", "GeoMx interaction counts")
@@ -299,33 +276,11 @@ closing_edge_lty <- c(supported = "solid",
 #| fig-width: 10.5
 #| fig-height: 6.2
 #| fig-cap: "Amyloid-response effects align across DAM and antigen-presentation axes."
-#| fig-alt: "Effect-size plate for DAM and antigen-presentation symbols across snRNAseq, GeoMx, proteome and phosphoproteome in the two amyloid contrasts."
-ggplot() +
-  geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
-  geom_point(data = amyloid_measured,
-             aes(plot_effect, feature_label_plot, fill = plot_status,
-                 size = neg_log10_fdr, colour = modality_label),
-             shape = 21, stroke = 0.32) +
-  geom_point(data = amyloid_missing,
-             aes(plot_effect, feature_label_plot, shape = plot_status),
-             colour = "#77746C", size = 1.8, stroke = 0.45) +
+#| fig-alt: "Concordance matrix: for each DAM and antigen-presentation marker, signed effect fill across snRNAseq, GeoMx, proteome and phosphoproteome in the two amyloid contrasts, with a dark ring on supported cells and a cross on not-observed cells."
+plate_support_matrix(amyloid$measured, amyloid$missing, effect_name = "effect (log2)",
+                     title = "Amyloid response: DAM and antigen-presentation anchors") +
   facet_grid(axis_label ~ contrast_label, scales = "free_y", space = "free_y") +
-  scale_colour_manual(values = plate_modality_colours, name = NULL) +
-  scale_fill_manual(values = plate_status_fill, labels = plate_status_labels, name = NULL) +
-  scale_shape_manual(values = plate_status_shape, labels = plate_status_labels, name = NULL) +
-  scale_size_continuous(range = c(1.3, 4.2), name = "-log10 FDR") +
-  labs(x = "effect size", y = NULL,
-       title = "Amyloid response: DAM and antigen-presentation anchors") +
-  guides(colour = guide_legend(order = 1, nrow = 1,
-                               override.aes = list(size = 2.4, alpha = 1)),
-         fill = guide_legend(order = 2, nrow = 1, override.aes = list(size = 2.4)),
-         shape = guide_legend(order = 3, nrow = 1, override.aes = list(size = 2.4)),
-         size = "none") +
-  theme(panel.grid.major.y = element_blank(),
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.text = element_text(size = 7.5),
-        legend.spacing.y = grid::unit(0.02, "lines"))
+  theme(legend.box = "horizontal", legend.text = element_text(size = 7.6))
 ```
 
 ```{r}
@@ -334,46 +289,16 @@ ggplot() +
 #| fig-height: 7
 #| fig-cap: "Synaptic loss and clearance support remain axis-bounded."
 #| fig-alt: "Composite plate showing synaptic and clearance marker effects across modalities plus clearance-pair support counts."
-p_synclr <- ggplot() +
-  geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
-  geom_point(data = synclr_measured,
-             aes(plot_effect, feature_label_plot, fill = plot_status,
-                 size = neg_log10_fdr, colour = modality_label),
-             shape = 21, stroke = 0.30) +
-  geom_point(data = synclr_missing,
-             aes(plot_effect, feature_label_plot, shape = plot_status),
-             colour = "#77746C", size = 1.6, stroke = 0.42) +
+p_synclr <- plate_support_matrix(synclr$measured, synclr$missing, effect_name = "effect (log2)",
+                     title = "Synaptic and clearance markers in amyloid contrasts") +
   facet_grid(axis_label ~ contrast_label, scales = "free_y", space = "free_y") +
-  scale_colour_manual(values = plate_modality_colours, name = NULL) +
-  scale_fill_manual(values = plate_status_fill, labels = plate_status_labels, name = NULL) +
-  scale_shape_manual(values = plate_status_shape, labels = plate_status_labels, name = NULL) +
-  scale_size_continuous(range = c(1.15, 3.8), name = "-log10 FDR") +
-  labs(x = "effect size", y = NULL,
-       title = "Synaptic and clearance markers in amyloid contrasts") +
-  guides(colour = guide_legend(order = 1, nrow = 1,
-                               override.aes = list(size = 2.2, alpha = 1)),
-         fill = guide_legend(order = 2, nrow = 1, override.aes = list(size = 2.2)),
-         shape = guide_legend(order = 3, nrow = 1, override.aes = list(size = 2.2)),
-         size = "none") +
-  theme(panel.grid.major.y = element_blank(),
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.text = element_text(size = 7.5),
-        legend.spacing.y = grid::unit(0.02, "lines"))
+  theme(legend.box = "horizontal", legend.text = element_text(size = 7.3))
 
-p_pairs <- ggplot(synclr_pair_dots, aes(slot, feature_label_plot, fill = dot_state)) +
-  geom_point(shape = 21, size = 2.75, colour = "#262B2F", stroke = 0.25) +
-  facet_wrap(~ contrast_label, nrow = 1) +
-  scale_fill_manual(values = c(`not counted` = "#F8F5ED", plate_status_fill), name = NULL) +
-  scale_x_continuous(breaks = synclr_pair_slots, limits = c(0.6, synclr_pair_max + 0.4)) +
-  labs(x = "coherent supported modalities", y = NULL,
-       title = "Measured clearance pairs, not full CCC") +
-  guides(fill = "none") +
-  theme(panel.grid.major.y = element_blank())
+p_pairs <- plate_pair_matrix(synclr_pair_df,
+                     title = "Clearance pairs: coherent supported modalities, not full CCC") +
+  theme(legend.text = element_text(size = 7.3))
 
-p_synclr / p_pairs +
-  plot_layout(heights = c(1, 0.36), guides = "collect") &
-  theme(legend.position = "bottom")
+p_synclr / p_pairs + plot_layout(heights = c(1, 0.52))
 ```
 
 ```{r}
@@ -381,33 +306,12 @@ p_synclr / p_pairs +
 #| fig-width: 10.5
 #| fig-height: 6.5
 #| fig-cap: "Interaction support narrows outside microglia composition."
-#| fig-alt: "Interaction-boundary plate showing measured effects for selected axes and mechanism rows, with blocked SpatialDecon abundance called out."
-ggplot() +
-  geom_vline(xintercept = 0, colour = "grey75", linewidth = 0.35) +
-  geom_point(data = interaction_measured,
-             aes(plot_effect, feature_label_plot, fill = plot_status,
-                 size = neg_log10_fdr, colour = modality_label),
-             shape = 21, stroke = 0.32) +
-  geom_point(data = interaction_missing,
-             aes(plot_effect, feature_label_plot, shape = plot_status),
-             colour = "#77746C", size = 2.0, stroke = 0.48) +
-  facet_wrap(~ axis_label, ncol = 2, scales = "free_y") +
-  scale_colour_manual(values = plate_modality_colours, name = NULL) +
-  scale_fill_manual(values = plate_status_fill, labels = plate_status_labels, name = NULL) +
-  scale_shape_manual(values = plate_status_shape, labels = plate_status_labels, name = NULL) +
-  scale_size_continuous(range = c(1.25, 4.2), name = "-log10 FDR") +
-  labs(x = "interaction effect", y = NULL,
-       title = "Interaction evidence boundary across modalities") +
-  guides(colour = guide_legend(order = 1, nrow = 1,
-                               override.aes = list(size = 2.3, alpha = 1)),
-         fill = guide_legend(order = 2, nrow = 1, override.aes = list(size = 2.3)),
-         shape = guide_legend(order = 3, nrow = 1, override.aes = list(size = 2.3)),
-         size = "none") +
-  theme(panel.grid.major.y = element_blank(),
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.text = element_text(size = 7.5),
-        legend.spacing.y = grid::unit(0.02, "lines"))
+#| fig-alt: "Interaction concordance matrix across axes: signed interaction-effect fill per modality with supported rings, not-observed crosses and a blocked SpatialDecon triangle, showing support narrows outside microglia composition."
+plate_support_matrix(interaction_bd$measured, interaction_bd$missing,
+                     effect_name = "interaction (log2)",
+                     title = "Interaction evidence boundary across modalities") +
+  facet_wrap(~ axis_label, ncol = 2, scales = "free") +
+  theme(legend.box = "horizontal", legend.text = element_text(size = 7.6))
 ```
 
 ## GeoMx Spatial DE
