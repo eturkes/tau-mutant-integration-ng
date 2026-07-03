@@ -130,7 +130,7 @@ Outcome:
 - Existing `scripts/check.sh` stays green; strict caption-only gate remains separate
   until S2-S4 remove the blockers.
 
-### S2 - QC Chapter Conversion
+### S2 - QC Chapter Conversion [DONE 2026-07-03]
 
 Work:
 - Convert QC prose/tables into figures: modality-shape grid, genotype/AOI/sample
@@ -143,6 +143,18 @@ Acceptance:
 - QC facts still visible: modality shapes, GeoMx genotype tally, 16 sample key,
   genotype x batch completeness, metric bounds pass.
 - Strict gate passes for `_qc.qmd`.
+
+Outcome:
+- `_qc.qmd` now tar_loads only `qc_figures` and renders five figure chunks:
+  modality/GeoMx/sample-key grid, genotype-by-batch heatmap, depth histograms,
+  fraction histograms, and structural/bounds status tiles.
+- Removed all QC markdown body prose, `knitr::kable()` tables, and visible `cat()`
+  provenance; sanity checks stay hidden and fail the render on compact-contract
+  drift.
+- `uv run python scripts/prose_inventory.py --strict --summary-only _qc.qmd`
+  passes for the QC source; rendered strict HTML has no QC tables/stdout blockers
+  (remaining blockers are result chapters + YAML author metadata for S3/S4).
+- Visual readback of the extracted QC images is legible; `scripts/check.sh` green.
 
 ### S3 - Result Chapter Body-Prose Removal
 

@@ -34,13 +34,13 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Figure-caption-only report
 Plan file: `.agent/figure_caption_only_plan.md`.
-Next `$session-prompt` mode = EXECUTE S2.
+Next `$session-prompt` mode = EXECUTE S3.
 Goal = visible report path becomes headings + figures + captions only: zero
 body prose, zero visible tables, zero visible provenance text; accessibility
 `fig-alt` stays source-level.
 Steps:
 - S1 strict inventory gate [DONE 2026-07-03]: count/fail non-heading/non-caption visible blocks.
-- S2 QC conversion: replace QC prose/tables with figure panels.
+- S2 QC conversion [DONE 2026-07-03]: replace QC prose/tables with figure panels.
 - S3 result conversion: remove chapter openers/status tails/provenance text.
 - S4 caption/alt/HTML QA: caption length, `fig-alt`, DOM checks, full gate.
 - S5 close-out: claim parity, docs/history/archive, reset Active plan.
@@ -661,6 +661,14 @@ Steps:
   conversion: headings + figures + captions only; no visible markdown prose,
   `knitr::kable()` tables, or `cat()` provenance; `fig-alt` remains source-level
   accessibility text. Next = S1 strict inventory gate.
+- 2026-07-03 Figure-caption-only S2 DONE: `_qc.qmd` now loads only compact
+  `qc_figures` and renders headings + 5 figures/captions: modality/GeoMx/sample-key
+  grid, 16-cell genotype-by-batch heatmap, depth and fraction histograms, and
+  structural/bounds status tiles. Removed QC markdown prose, `knitr::kable()`
+  tables, and visible `cat()` provenance. QC source strict gate passes; rendered
+  strict HTML has no QC table/stdout blockers, with remaining blockers reserved
+  for result chapters + YAML author metadata. Full `scripts/check.sh` green.
+  Next = S3 result chapter body-prose removal.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

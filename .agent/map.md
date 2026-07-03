@@ -279,8 +279,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
                 immediately includes report chapters)
                                                           --{{< include >}}--> `_qc.qmd`
-               (QC-sanity chapter: setup `options(warn=2)` -> chunk warnings fail the render; tar_load 4
-                modalities + sample_key -> dims, 16x16 design bijection, bounds)
+               (caption-only QC chapter: setup `options(warn=2)` -> chunk warnings fail the render;
+                tar_load `qc_figures` only -> modality/GeoMx/sample-key grid, 16-cell genotype-batch
+                heatmap, depth/fraction histograms, hidden compact-contract checks, metric bounds status)
                                                           --{{< include >}}--> `_microglia.qmd`
                (P1/S4 visual-first microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
                 composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->

@@ -947,6 +947,13 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   IDs, no broken internal anchors, no external `href`/`src`, lightbox present, no
   visible warning/error markers, no underscored rendered `fig-*` IDs. Use parser-
   based HTML QA that ignores script/style/code; raw grep false-hits in embedded JS.
+- Figure-caption-only S2 (2026-07-03): `_qc.qmd` is now caption-only and
+  tar_loads only compact `qc_figures` during render. Visible QC facts live in five
+  figures: modality/GeoMx/sample-key grid, 16-cell genotype-batch heatmap,
+  depth/fraction histograms, and structural/bounds status tiles. Hidden checks
+  assert the compact contract, sample-key n=16, 4x4 populated genotype-batch grid,
+  GeoMx AOI total, and metric-bounds pass. No QC `knitr::kable()`, visible `cat()`,
+  or markdown body prose remains. QC source strict gate passes; full gate green.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or
