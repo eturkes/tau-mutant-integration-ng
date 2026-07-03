@@ -91,6 +91,11 @@ composition_results$concordance$sig_asin <- composition_results$concordance$sig_
 composition_results$concordance$dir_concordant <- TRUE
 composition_results$concordance$sig_concordant <- TRUE
 composition_results$concordance$flag <- FALSE
+composition_results$propeller_logit <- expand.grid(contrast = contrasts,
+                                                   substate = c("Homeostatic", "DAM", "IFN"),
+                                                   stringsAsFactors = FALSE)
+composition_results$propeller_logit$t <- seq(-3, 3, length.out = nrow(composition_results$propeller_logit))
+composition_results$propeller_logit$fdr_global <- seq(0.01, 0.5, length.out = nrow(composition_results$propeller_logit))
 
 pb_de_microglia <- list(top = make_top_gene())
 cell_counts <- t(counts)
@@ -107,6 +112,7 @@ pb_de_substate <- list(
 mf <- microglia_figure_data(list(cell_frame = cf), composition_results,
                             pb_de_microglia, pb_de_substate, symbol_map)
 stopifnot(all(figure_manifest("microglia")$slot %in% names(mf)),
+          all(c("summary_board", "composition_shift", "composition_forest", "amyloid_volcano") %in% names(mf)),
           nrow(mf$umap_by_substate) == nrow(cf),
           nrow(mf$score_triptych) > 0L,
           nrow(mf$unit_composition) == length(units16) * 3L,
@@ -128,6 +134,7 @@ weighted_top <- stats::setNames(lapply(seq_along(contrasts), function(i) {
 trajectory_report <- list(
   cell_frame = data.frame(genotype = cf$genotype, substate = cf$substate,
                           on_lineage = TRUE, pt_raw = seq(1, 5, length.out = nrow(cf)),
+                          score_axis_pt = seq(-1, 1, length.out = nrow(cf)),
                           stringsAsFactors = FALSE),
   per_unit = data.frame(genotype_batch = units16,
                         genotype = rep(genotype_levels, each = 4),
@@ -140,6 +147,19 @@ trajectory_report <- list(
                         within_homeostatic = seq(1, 4, length.out = 16),
                         within_dam = seq(3, 6, length.out = 16),
                         stringsAsFactors = FALSE),
+  interaction = data.frame(
+    family = c("exploratory", "exploratory", "primary", "exploratory",
+               "primary", "exploratory"),
+    measure = c("mean_pt", "comp_cf", "progression_cf", "cross",
+                "within_homeostatic", "within_dam"),
+    coef = c(1.1, 1.4, -0.2, -0.1, 0.05, 0.1),
+    ci_l = c(0.4, 0.6, -0.5, -0.4, -0.2, -0.1),
+    ci_r = c(1.8, 2.2, 0.1, 0.2, 0.3, 0.3),
+    p_value = c(0.01, 0.005, 0.2, 0.5, 0.7, 0.4),
+    perm_p = c(0.04, NA, 0.18, NA, 0.6, NA),
+    fdr = c(0.04, 0.02, 0.4, 0.6, 0.7, 0.5),
+    stringsAsFactors = FALSE
+  ),
   weighted_top = weighted_top,
   lineage_per_unit = data.frame(genotype_batch = units16,
                                 genotype = rep(genotype_levels, each = 4),
@@ -157,6 +177,7 @@ trajectory_report <- list(
 )
 tf <- trajectory_figure_data(trajectory_report, composition_results)
 stopifnot(all(figure_manifest("trajectory")$slot %in% names(tf)),
+          all(c("pseudotime_shift", "decomposition", "concordance", "logic_board") %in% names(tf)),
           nrow(tf$pt_density) > 0L,
           all(is.finite(tf$unit_pt_vs_dam$dam_fraction)),
           all(c("comp_cf", "progression_cf", "cross") %in% tf$kitagawa_forest$measure))
@@ -207,6 +228,7 @@ mechanism_report$kinase$table$include_reason <- ifelse(mechanism_report$kinase$t
                                                        "gsk3b_carry", "significant")
 mecf <- mechanism_figure_data(mechanism_report)
 stopifnot(all(figure_manifest("mechanism")$slot %in% names(mecf)),
+          all(c("status_board", "project_sets", "tf_interaction") %in% names(mecf)),
           nrow(mecf$project_pathway_heatmap) > 0L,
           nrow(mecf$nfkb_discordance$table) > 0L,
           any(mecf$kinase_heatmap$source == "Gsk3b"))
@@ -221,9 +243,18 @@ geomx_de <- list(
   )
 )
 crossmodality_report <- list(
+  geomx = list(counts = data.frame(contrast = contrasts,
+                                   n_features = 100,
+                                   n_fdr_0_05 = 1:5,
+                                   n_fdr_0_10 = 2:6,
+                                   n_up_fdr_0_10 = 1:5,
+                                   n_down_fdr_0_10 = 1,
+                                   stringsAsFactors = FALSE)),
   bulk = list(
     run_index = expand.grid(layer = c("proteome", "phospho_raw", "phospho_corrected"),
                             contrast = contrasts, stringsAsFactors = FALSE),
+    significant_counts = expand.grid(layer = c("proteome", "phospho_raw", "phospho_corrected"),
+                                     contrast = contrasts, stringsAsFactors = FALSE),
     anchor_rows = data.frame(layer = "proteome", contrast = rep(focus, each = 4),
                              feature = paste0("F", 1:16), site_id = NA_character_,
                              symbols = paste0("A", 1:16),
@@ -235,7 +266,9 @@ crossmodality_report <- list(
                              adj.P.Val = seq(0.02, 0.8, length.out = 16),
                              stringsAsFactors = FALSE)
   ),
-  clearance = list(pair_support = expand.grid(pair = c("Apoe_Trem2", "App_Cd74"),
+  clearance = list(spatial_decon = list(status = "blocked", action = "attempted",
+                                        unresolved_aoi_n = 4L),
+                   pair_support = expand.grid(pair = c("Apoe_Trem2", "App_Cd74"),
                                               contrast = focus,
                                               stringsAsFactors = FALSE)),
   divergence = list(axis_symbols = expand.grid(symbol = paste0("S", 1:6),
@@ -248,6 +281,11 @@ crossmodality_report <- list(
 crossmodality_report$bulk$run_index$status <- "fit"
 crossmodality_report$bulk$run_index$n_primary_sig <- rep(0:4, length.out = nrow(crossmodality_report$bulk$run_index))
 crossmodality_report$bulk$run_index$n_lost_or_flipped <- rep(0:3, length.out = nrow(crossmodality_report$bulk$run_index))
+crossmodality_report$bulk$significant_counts$n_features <- 100
+crossmodality_report$bulk$significant_counts$n_fdr_0_05 <- rep(0:2, length.out = nrow(crossmodality_report$bulk$significant_counts))
+crossmodality_report$bulk$significant_counts$n_fdr_0_10 <- rep(1:3, length.out = nrow(crossmodality_report$bulk$significant_counts))
+crossmodality_report$bulk$significant_counts$n_up_fdr_0_10 <- 1
+crossmodality_report$bulk$significant_counts$n_down_fdr_0_10 <- 0
 crossmodality_report$clearance$pair_support$n_sides_measured <- 2
 crossmodality_report$clearance$pair_support$modalities_measured <- "GeoMx_spatial;snRNAseq_microglia"
 crossmodality_report$clearance$pair_support$coherent_supported_modalities <- ""
@@ -268,11 +306,81 @@ cmf <- crossmodality_figure_data(crossmodality_report, geomx_de, list(),
                                  list(top = make_top_site()),
                                  list(top = make_top_site(shift = 0.2)))
 stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
+          all(c("status_board", "geomx_counts", "bulk_counts", "axis_heatmap") %in% names(cmf)),
           nrow(cmf$geomx_volcano$bins) > 0L,
           nrow(cmf$geomx_sensitivity) == length(focus) * 2L,
           nrow(cmf$phospho_raw_corrected$labels) > 0L,
           all(is.finite(cmf$bulk_run_index$loss_fraction)))
 cat("ok - crossmodality_figure_data bins heavy contrasts into compact plotting tables\n")
+
+qc_md <- data.frame(
+  genotype = rep(genotype_levels, each = 8),
+  batch = rep(rep(sprintf("batch%02d", 1:4), each = 2), times = 4),
+  genotype_batch = rep(units16, each = 2),
+  nCount_RNA = seq(1000, 5000, length.out = 32),
+  nFeature_RNA = seq(300, 1200, length.out = 32),
+  percent_mt = seq(1, 8, length.out = 32),
+  percent_ribo = seq(5, 18, length.out = 32),
+  percent_malat1 = seq(0.5, 3, length.out = 32),
+  percent_contam = seq(0.2, 4, length.out = 32),
+  stringsAsFactors = FALSE
+)
+qc <- qc_figure_data(
+  list(meta.data = qc_md, dims = c(2000L, nrow(qc_md))),
+  list(meta.data = data.frame(genotype = rep(genotype_levels, c(3, 3, 4, 4)),
+                              stringsAsFactors = FALSE),
+       dims = c(120L, 14L)),
+  data.frame(a = 1:4, b = 5:8),
+  data.frame(a = 1:5, b = 6:10),
+  data.frame(sample = seq_len(16))
+)
+stopifnot(all(c("modality_table", "genotype_batch", "depth_distribution",
+                "fraction_distribution", "metric_bounds") %in% names(qc)),
+          nrow(qc$genotype_batch) == 16L,
+          all(qc$metric_bounds$within))
+cat("ok - qc_figure_data builds compact QC visual slots\n")
+
+claim_ids <- names(.fig_claim_labels())
+evidence_table <- data.frame(
+  claim_id = claim_ids,
+  axis = rep(c("microglia_state", "interaction", "mechanism", "cross_modality", "unearned"),
+             length.out = length(claim_ids)),
+  status = c("core_supported", "core_supported", "not_supported", "focused_support",
+             "not_supported", "not_supported", "corroborated", "focused_support",
+             "not_earned", "open_caveat"),
+  direction = paste("direction", seq_along(claim_ids)),
+  evidence = paste("evidence", seq_along(claim_ids)),
+  primary_sources = rep(c("microglia_report", "trajectory_report", "mechanism_report",
+                          "crossmodality_report"), length.out = length(claim_ids)),
+  supporting_sources = rep(c("trajectory_report", "mechanism_report", "crossmodality_report",
+                             "microglia_report"), length.out = length(claim_ids)),
+  caveat = paste("caveat", seq_along(claim_ids)),
+  report_anchor = rep(c("#sec-microglia", "#sec-trajectory", "#sec-mechanism",
+                        "#sec-crossmodality"), length.out = length(claim_ids)),
+  stringsAsFactors = FALSE
+)
+synthesis_report <- list(
+  evidence_table = evidence_table,
+  status_summary = data.frame(status = names(table(evidence_table$status)),
+                              n = as.integer(table(evidence_table$status)),
+                              stringsAsFactors = FALSE)
+)
+rv <- report_visual_data(data.frame(component = "R", version = "test"),
+                         synthesis_report, qc, mf, tf, mecf, cmf)
+stopifnot(all(c("report_spine_schematic", "synthesis_visual_abstract",
+                "caveat_status_glyphs", "chapter_evidence_boards") %in% names(rv)),
+          nrow(rv$synthesis_visual_abstract$source_matrix) ==
+            length(claim_ids) * 4L,
+          nrow(rv$synthesis_visual_abstract$unsupported_status_grid) > 0L,
+          rv$source_target_contract$n_manifest_slots[
+            rv$source_target_contract$target == "report_visuals"] > 0L)
+cat("ok - report_visual_data builds visual abstract, spine, status, and caveat boards\n")
+
+replacement_manifest <- utils::read.delim(".agent/prose_replacement_manifest.tsv",
+                                          stringsAsFactors = FALSE, check.names = FALSE)
+coverage <- visual_slot_coverage(replacement_manifest)
+stopifnot(coverage$n_missing == 0L)
+cat("ok - visual slot map covers every figure/schematic prose-replacement disposition\n")
 
 bad <- mf
 bad$whole_de_volcano$bins$x_mid[1] <- Inf

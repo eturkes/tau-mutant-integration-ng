@@ -33,14 +33,15 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
-Next `$session-prompt` mode = EXECUTE S2 visual grammar + data contract. Route
+Next `$session-prompt` mode = EXECUTE S3 synthesis + overview conversion. Route
 selected = aggressive inline visual conversion over the existing report. S1
 measured baseline = 5,111 prose-only words / 119 human-facing blocks across
 `index.qmd` + `_*.qmd`; 33 headings are kept navigation, and all 86
 prose/caption blocks have non-keep dispositions in
 `.agent/prose_replacement_manifest.tsv`. Selected target = >=55% reduction
 (final counted prose <=2,300 words), stretch <=1,800 if S2 slots cover caveats
-without claim loss.
+without claim loss. S2 built compact visual grammar contracts: `qc_figures` +
+`report_visuals`, manifest slot coverage, and chapter status/logic board aliases.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -592,6 +593,17 @@ without claim loss.
   `python3 -m py_compile scripts/prose_inventory.py` + inventory command; no
   report-source edits, so full render gate deferred to S2+ implementation.
   Next = S2 visual grammar and compact data contract.
+- 2026-07-03 Prose-to-figures reduction S2 DONE -> compact visual grammar/data
+  contract. Added `qc_figures` (QC modality/design/metric slots) and
+  `report_visuals` (report spine schematic, synthesis visual abstract/source
+  matrix, unsupported status grid, caveat glyphs, chapter evidence boards);
+  enriched existing chapter figure targets with board/alias slots
+  (microglia summary/composition, trajectory logic/decomposition/concordance,
+  mechanism status, cross-modality status/count aliases). `visual_reduction_slot_map`
+  + `visual_slot_coverage` cover every S1 `figure`/`schematic` disposition.
+  Live build warning-clean and compact: `qc_figures` 4.37 KB, `report_visuals`
+  4.28 KB; enriched chapter targets remain small. Focused figure test green.
+  Next = S3 synthesis and overview conversion.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

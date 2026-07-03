@@ -138,6 +138,9 @@ list(
   tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
   tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
   tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),
+  tar_target(qc_figures,
+             qc_figure_data(microglia_seurat_raw, geomx, proteomics, phospho, sample_key),
+             format = "qs"),
 
   # S3 kinase layer. Minimal 24M bulk-phosphosite DE (16 sample-key-matched runs, no batch
   # term) feeds decoupleR ULM activity over the fingerprinted direct-mouse OmniPath KSN. The
@@ -245,6 +248,11 @@ list(
   tar_target(synthesis_report,
              synthesis_report_data(microglia_report, trajectory_report,
                                    mechanism_report, crossmodality_report),
+             format = "qs"),
+  tar_target(report_visuals,
+             report_visual_data(spine, synthesis_report, qc_figures,
+                                microglia_figures, trajectory_figures,
+                                mechanism_figures, crossmodality_figures),
              format = "qs"),
 
   # Standalone HTML report render (path = project root with _quarto.yml; renders index.qmd, which

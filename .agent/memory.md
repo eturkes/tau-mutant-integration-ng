@@ -804,6 +804,29 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   sections present, lightbox markers present, 0 external resource refs, and 0
   warning/error markers. Full `scripts/check.sh` stayed green after the forced render.
 
+## Prose-to-figures visual contract (S2, built) -- `R/figures.R` -> `qc_figures` / `report_visuals`
+- Purpose = data contract only for the aggressive prose-reduction pass; no qmd
+  prose rewrites yet and no new biological inference. `visual_reduction_slot_map`
+  maps every S1 manifest target slot to a compact source target/slot, and
+  `visual_slot_coverage(.agent/prose_replacement_manifest.tsv)` must report
+  `n_missing=0` for `figure`/`schematic` dispositions before S3/S4 rewrites.
+- New compact targets: `qc_figures` (modality table, GeoMx genotype tally,
+  genotype-batch grid, depth/fraction histograms, metric bounds, audit notes)
+  and `report_visuals` (report spine schematic incl. Mermaid text, synthesis
+  source matrix/status grid, unsupported status grid, caveat glyphs, chapter
+  evidence boards, source-target contract). Live build sizes were tiny:
+  `qc_figures` 4.37 KB, `report_visuals` 4.28 KB.
+- Existing chapter figure targets gained alias/board slots without heavy reads:
+  `microglia_figures` adds summary board, composition shift/forest, amyloid
+  volcano alias; `trajectory_figures` adds pseudotime-shift bundle,
+  decomposition, concordance bins, logic board; `mechanism_figures` adds status
+  board, project-set and interaction-TF aliases; `crossmodality_figures` adds
+  status board plus GeoMx/bulk count and axis aliases. These slots exist to let
+  S3/S4 move prose into figures/captions without recomputing in qmd chunks.
+- Test contract: `tests/test_figures.R` now covers compact QC/report-visual
+  builders, per-chapter alias slots, manifest coverage, and finite geom guards.
+  Real build command used for S2: `Rscript -e 'targets::tar_make(c(qc_figures, report_visuals))'`.
+
 ## Environment (project-local; NO Docker, NO system-wide installs)
 - Run as eturkes:eturkes (single-user Distrobox) -> files land user-owned, NO chown
   needed (v1's `chown rstudio:rstudio` was a rocker artefact, obsolete).

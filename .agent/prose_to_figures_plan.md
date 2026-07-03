@@ -171,7 +171,7 @@ Output:
 - Manifest: `.agent/prose_replacement_manifest.tsv` (block id, qmd, line, kind,
   section, word count, disposition, target slot, label, source text).
 
-### S2 - Visual Grammar and Data Contract
+### S2 - Visual Grammar and Data Contract [DONE 2026-07-03]
 
 Work:
 - Extend `R/figures.R` and compact figure targets only where existing slots cannot
@@ -184,11 +184,26 @@ Work:
 - Add tests for any new target slots, finite geom inputs, and manifest coverage.
 
 Acceptance:
-- New visual slots cover every S1 `figure`/`schematic` disposition.
+- New visual slots cover every S1 `figure`/`schematic` disposition. DONE:
+  `visual_reduction_slot_map()` + `visual_slot_coverage()` cover every
+  semicolon-split manifest slot assigned to `figure` / `schematic`.
 - Compact target sizes remain qmd-safe; no raw modality or heavy Seurat report
-  reads are introduced.
+  reads are introduced. DONE: added compact `qc_figures` (4.37 KB live) and
+  `report_visuals` (4.28 KB live); existing enriched targets stayed compact
+  (`microglia_figures` 429.50 KB, `trajectory_figures` 18.07 KB,
+  `mechanism_figures` 25.49 KB, `crossmodality_figures` 59.96 KB live).
 - `tests/test_figures.R` or a focused new test locks slot presence and finite
-  plotted values.
+  plotted values. DONE: `tests/test_figures.R` now covers QC slots, report
+  visual grammar, per-chapter board aliases, finite geom guards, and manifest
+  coverage.
+
+Output:
+- Targets: `qc_figures`, `report_visuals`.
+- Data slots: report spine schematic, synthesis visual abstract/source matrix,
+  unsupported status grid, caveat glyphs, chapter evidence boards, QC modality /
+  design / metric slots, and chapter status/logic board aliases.
+- Live build command:
+  `Rscript -e 'targets::tar_make(c(qc_figures, report_visuals))'`.
 
 ### S3 - Synthesis and Overview Conversion
 
