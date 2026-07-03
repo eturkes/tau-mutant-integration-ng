@@ -1,15 +1,45 @@
-# Shared ggplot2 plotting layer: a project base theme, default genotype colour/fill scales,
-# and the cross-modality concordance scatter. Pure functions consumed by P1+ analysis chapters. All
+# Shared ggplot2 plotting layer: a project base theme, muted colour/fill scales, and the
+# cross-modality concordance scatter. Helpers consumed by P1+ analysis chapters. All
 # ggplot2/ggrepel/stats calls are namespace-qualified so the file sources cleanly into any
 # session (targets attaches only `quarto`; a Quarto chunk may attach ggplot2 for inline
-# plotting -- these helpers need neither). Plot data colours use ggplot defaults; the HTML
-# report identity (IBM Plex + crimson) lives in theme.scss, decoupled from these panels.
+# plotting -- these helpers need neither). Plot data colours use a deliberately plain,
+# colourblind-aware project palette; the HTML chrome (IBM Plex + crimson) stays decoupled.
+
+tau_discrete_colours <- c(
+  "#4C78A8",  # blue
+  "#F58518",  # orange
+  "#54A24B",  # green
+  "#C44E52",  # muted red
+  "#72B7B2",  # teal
+  "#B279A2",  # mauve
+  "#9D755D",  # brown
+  "#8C8C8C"   # grey
+)
+tau_discrete_scale_types <- lapply(seq_along(tau_discrete_colours), function(i) {
+  tau_discrete_colours[seq_len(i)]
+})
+
+genotype_colours <- c(
+  MAPTKI      = "#4C78A8",
+  P301S       = "#54A24B",
+  NLGF_MAPTKI = "#F58518",
+  NLGF_P301S  = "#C44E52"
+)
+
+set_tau_plot_defaults <- function() {
+  options(
+    ggplot2.discrete.colour = tau_discrete_scale_types,
+    ggplot2.discrete.fill   = tau_discrete_scale_types
+  )
+  invisible(tau_discrete_colours)
+}
 
 # Project base theme. base_family defaults to "" (device default sans) on purpose: a named
 # family (e.g. "IBM Plex Sans") not registered with the graphics device warns at draw time and
 # is non-portable across machines -> the Plex identity is carried by the HTML chrome (theme.scss)
 # while the figures stay warning-free. Pass base_family explicitly once a phase registers the font.
 theme_tau <- function(base_size = 11, base_family = "") {
+  set_tau_plot_defaults()
   ggplot2::theme_minimal(base_size = base_size, base_family = base_family) +
     ggplot2::theme(
       panel.grid.minor = ggplot2::element_blank(),
@@ -21,24 +51,24 @@ theme_tau <- function(base_size = 11, base_family = "") {
     )
 }
 
-# Genotype colour/fill scales: use ggplot's default discrete scheme while pinning the
-# canonical 4-genotype domain and legend order. limits/breaks = genotype_levels include all
+# Genotype colour/fill scales: map the canonical 4 genotypes to a stable muted palette
+# while pinning the domain and legend order. limits/breaks = genotype_levels include all
 # genotypes even when a subset is plotted (drop = FALSE alone does so only for a complete
-# factor); `...` forwards name/labels/guide to the underlying discrete scale. The data column
+# factor); `...` forwards name/labels/guide to the underlying manual scale. The data column
 # must be a factor/character over genotype_levels.
 scale_colour_genotype <- function(...) {
-  ggplot2::scale_colour_discrete(limits = genotype_levels, breaks = genotype_levels,
-                                 drop = FALSE, ...)
+  ggplot2::scale_colour_manual(values = genotype_colours, limits = genotype_levels,
+                               breaks = genotype_levels, drop = FALSE, ...)
 }
 scale_fill_genotype <- function(...) {
-  ggplot2::scale_fill_discrete(limits = genotype_levels, breaks = genotype_levels,
-                               drop = FALSE, ...)
+  ggplot2::scale_fill_manual(values = genotype_colours, limits = genotype_levels,
+                             breaks = genotype_levels, drop = FALSE, ...)
 }
 scale_color_genotype <- scale_colour_genotype   # US-spelling alias
 
 # RWB heatmap scales: blue lows, white midpoint, red highs. `midpoint=NULL` maps
 # the observed continuous range; signed effects pass `midpoint=0` so zero is white.
-rwb_colours <- c(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B")
+rwb_colours <- c(low = "#4C78A8", mid = "#F7F7F7", high = "#C44E52")
 scale_fill_rwb <- function(..., midpoint = NULL, colours = rwb_colours) {
   stopifnot(is.character(colours), length(colours) == 3L)
   if (is.null(midpoint)) {

@@ -188,7 +188,7 @@ p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
 
 p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
   geom_point(size = 0.25, alpha = 0.6) +
-  scale_colour_continuous(name = "DAM z") +
+  scale_colour_rwb(name = "DAM z", midpoint = 0) +
   labs(x = "UMAP 1", y = "UMAP 2", title = "DAM activation score")
 
 (p_sub | p_dam)
@@ -218,7 +218,7 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
   geom_point(aes(size = pmin(n, 6)), shape = 15, alpha = 0.85) +
   facet_wrap(~ score_name, nrow = 1) +
-  scale_colour_continuous(name = "mean z") +
+  scale_colour_rwb(name = "mean z", midpoint = 0) +
   scale_size_continuous(range = c(0.4, 1.4), guide = "none") +
   labs(x = "UMAP 1", y = "UMAP 2", title = "Signature gradients across the microglia manifold") +
   theme(panel.grid = element_blank())

@@ -1,8 +1,10 @@
 # S4 acceptance: plot layer. Device-free structural checks on the shared ggplot helpers -- no
 # graphics device is opened and nothing is drawn. Verifies theme_tau is a ggplot theme, the
-# genotype colour/fill scales use ggplot defaults while pinning the canonical domain, the US-spelling alias is the same
-# function, and concordance_plot assembles the expected layered ggplot (dropping non-finite rows,
-# reporting correlations) without rendering. Mirrors the stopifnot idiom of the other tests/test_*.R.
+# genotype colour/fill scales pin a muted project palette + domain, the generic ggplot
+# discrete defaults inherit the same muted palette after theme_tau(), the US-spelling alias is
+# the same function, and concordance_plot assembles the expected layered ggplot (dropping
+# non-finite rows, reporting correlations) without rendering. Mirrors the stopifnot idiom of
+# the other tests/test_*.R.
 
 source("R/constants.R")
 source("R/utils.R")
@@ -17,17 +19,27 @@ stopifnot(inherits(theme_tau(), "theme"), inherits(theme_tau(), "gg"),
           inherits(theme_tau(base_size = 14, base_family = "serif"), "theme"),
           theme_tau(base_size = 14)$text$size == 14)   # base_size plumbs through (value, not just class)
 
-# --- genotype scales: ggplot defaults + domain pinned to the canonical four -------------
+# --- palette contract: muted defaults + genotype domain pinned to the canonical four ----
 sc <- scale_colour_genotype()
 sf <- scale_fill_genotype()
 sc_default <- ggplot2::scale_colour_discrete()
 sf_default <- ggplot2::scale_fill_discrete()
 stopifnot(
+  identical(tau_discrete_colours,
+            c("#4C78A8", "#F58518", "#54A24B", "#C44E52",
+              "#72B7B2", "#B279A2", "#9D755D", "#8C8C8C")),
+  identical(genotype_colours,
+            c(MAPTKI = "#4C78A8", P301S = "#54A24B",
+              NLGF_MAPTKI = "#F58518", NLGF_P301S = "#C44E52")),
+  identical(getOption("ggplot2.discrete.colour"), tau_discrete_scale_types),
+  identical(getOption("ggplot2.discrete.fill"), tau_discrete_scale_types),
   identical(sc$aesthetics, "colour"), identical(sf$aesthetics, "fill"),
   identical(sc$limits, genotype_levels), identical(sc$breaks, genotype_levels),  # all 4 in domain + legend
   identical(sf$limits, genotype_levels), identical(sf$breaks, genotype_levels),
-  identical(sc$fallback_palette(length(genotype_levels)), sc_default$fallback_palette(length(genotype_levels))),
-  identical(sf$fallback_palette(length(genotype_levels)), sf_default$fallback_palette(length(genotype_levels))),
+  identical(sc$palette(length(genotype_levels)), genotype_colours),
+  identical(sf$palette(length(genotype_levels)), genotype_colours),
+  identical(sc_default$fallback_palette(4), tau_discrete_colours[1:4]),
+  identical(sf_default$fallback_palette(4), tau_discrete_colours[1:4]),
   identical(scale_color_genotype, scale_colour_genotype)                          # US-spelling alias = same fn
 )
 
@@ -36,7 +48,7 @@ rwb_fill_seq <- scale_fill_rwb(name = "x")
 rwb_fill_mid <- scale_fill_rwb(name = "x", midpoint = 0)
 rwb_col_mid <- scale_colour_rwb(name = "x", midpoint = 0)
 stopifnot(
-  identical(unname(rwb_colours), c("#2166AC", "#F7F7F7", "#B2182B")),
+  identical(unname(rwb_colours), c("#4C78A8", "#F7F7F7", "#C44E52")),
   inherits(rwb_fill_seq, "ScaleContinuous"), inherits(rwb_fill_mid, "ScaleContinuous"),
   inherits(rwb_col_mid, "ScaleContinuous"),
   identical(rwb_fill_seq$aesthetics, "fill"), identical(rwb_fill_mid$aesthetics, "fill"),

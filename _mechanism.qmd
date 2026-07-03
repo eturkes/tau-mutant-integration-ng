@@ -258,7 +258,7 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
 ggplot(go_select, aes(contrast, pathway_label)) +
   geom_point(aes(size = size, colour = NES, alpha = supported)) +
   facet_wrap(~ population_label, nrow = 1, scales = "free_y") +
-  scale_colour_continuous(name = "NES") +
+  scale_colour_rwb(name = "NES", midpoint = 0) +
   scale_alpha_manual(values = c(`FALSE` = 0.45, `TRUE` = 1), guide = "none") +
   scale_size_continuous(range = c(1.4, 4.2), name = "set size") +
   labs(x = NULL, y = NULL, title = "Top GO rows by population and contrast") +
