@@ -32,9 +32,18 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none)
-Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the user
-before opening a plan.
+## Active plan: Figure-caption-only report
+Plan file: `.agent/figure_caption_only_plan.md`.
+Next `$session-prompt` mode = EXECUTE S1.
+Goal = visible report path becomes headings + figures + captions only: zero
+body prose, zero visible tables, zero visible provenance text; accessibility
+`fig-alt` stays source-level.
+Steps:
+- S1 strict inventory gate: count/fail non-heading/non-caption visible blocks.
+- S2 QC conversion: replace QC prose/tables with figure panels.
+- S3 result conversion: remove chapter openers/status tails/provenance text.
+- S4 caption/alt/HTML QA: caption length, `fig-alt`, DOM checks, full gate.
+- S5 close-out: claim parity, docs/history/archive, reset Active plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -77,6 +86,13 @@ before opening a plan.
   compact data slots; S3 converted overview+synthesis; S4 converted result
   chapters; S5 closed with final report prose 5,111 -> 1,164 words (77%
   reduction), rendered HTML QA green, and full gate green.
+- Figure-caption-only report [ACTIVE 2026-07-03 -> `.agent/figure_caption_only_plan.md`]:
+  user requested the extreme endpoint: no prose, just figures and captions.
+  Plan target = rendered main path with headings + figures + captions only;
+  paragraphs/tables/provenance text removed or figure-encoded; `fig-alt`
+  retained for accessibility. Current post-removal baseline = 1,119 counted
+  words / 109 blocks; 33 paragraph blocks / 594 words remain; S1 opens a strict
+  inventory gate before report-source edits.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -636,6 +652,15 @@ before opening a plan.
   slot. `index.qmd` is now YAML + includes only; rendered order is QC -> result
   chapters. Local mechanism/cross-modality "Synthesis" tails were renamed to status
   headings.
+- 2026-07-03 Figure-caption-only report OPENED -> `.agent/figure_caption_only_plan.md`.
+  User request = extreme prose elimination: no prose, just figures/captions.
+  Research = current qmd inventory, completed prose-to-figures plan, top-section
+  removal commits, Quarto figure/code docs, WCAG non-text-content guidance.
+  Current source inventory = 1,119 words / 109 blocks: paragraph 33/594,
+  caption 45/388, headings 31/137. Selected route = strict visible-path
+  conversion: headings + figures + captions only; no visible markdown prose,
+  `knitr::kable()` tables, or `cat()` provenance; `fig-alt` remains source-level
+  accessibility text. Next = S1 strict inventory gate.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
