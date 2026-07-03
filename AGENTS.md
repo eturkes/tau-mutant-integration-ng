@@ -11,6 +11,18 @@
   `storage/data/`, `storage/cache/`, `storage/logs/`, `.agent/completed/`, `*.html`,
   `**/*.woff2`. Prefer target metadata, compact report targets, or runtime indirection for
   large/heavy artefact inspection.
+- Environment: Debian container; repo path in-container starts `/run/host/...` while host paths
+  differ. `uv` venv scripts bake absolute paths → if a project dir moves or host/container paths
+  mix, rebuild the local env (`rm -rf .venv && uv sync`; use `.venv-host` only when deliberately
+  maintaining a separate host env).
+- Browser/visual QA: `chromiumfish` is installed. Use `$(chromiumfish path)` with
+  `--headless=new --no-sandbox --disable-gpu`; full-page capture = `--print-to-pdf`
+  `--no-pdf-header-footer` → `pdftoppm` → inspect PNGs. `url#fragment` screenshots are unreliable;
+  `--virtual-time-budget` / `--run-all-compositor-stages-before-draw` can hang new-headless;
+  `--force-dark-mode` is not `prefers-color-scheme` emulation (patch media query in scratch if needed).
+- Shell exactness: prefer `/usr/bin/rg`/`rg` for search. For byte-exact grep/find behavior use
+  `command grep` / `/usr/bin/find`; if a future shell adds grep/find wrappers, treat ranked/fuzzy
+  output as browsing only and re-run exact commands before using matches for edits.
 - Install/configure project-local; work only within the launch dir + children.
 - Uncertain / needs planning / benefits from my input → stop + ask, as exhaustively as you like. Accuracy + low hallucination > completion. Chat = blockers + essentials only; I'm technically proficient.
 - Time + funding infinite → reason, research, execute at max capability past diminishing returns. My efficiency directives serve performance alone. Every task is multi-step → think before responding.
