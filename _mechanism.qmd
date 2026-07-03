@@ -1,7 +1,5 @@
 # Mechanism: Myc signal, NF-kB check, and bulk kinase support {#sec-mechanism}
 
-Mechanism audit: Myc RNA support; NF-kB attenuation and Gsk3b kinase support not recovered.
-
 ```{r}
 #| label: mechanism-setup
 #| include: false
@@ -217,8 +215,6 @@ ggplot(mech_board, aes(status, mechanism, fill = status)) +
 
 ## Pathway Survey
 
-DAM pathway signal aligns with DAM composition (`r fmt_p(dam_int$fdr_global)`) and trajectory composition (`r fmt_p(traj_comp$fdr)`), not progression (`r fmt_p(traj_prog$fdr)`).
-
 ```{r}
 #| label: fig-mechanism-project-sets
 #| fig-width: 9.5
@@ -276,8 +272,6 @@ ggplot(go_select, aes(contrast, pathway_label)) +
 
 ## TF Activity
 
-Myc is the cleanest mechanism signal: whole-microglia FDR `r fmt_p(myc_whole$fdr)`, DAM FDR `r fmt_p(myc_dam$fdr)`.
-
 ```{r}
 #| label: fig-mechanism-tf-interaction
 #| fig-width: 9.5
@@ -321,8 +315,6 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
 
 ## NF-kB Attenuation
 
-`r nf_sentence` Supportive rows cannot override the whole-microglia interaction gate.
-
 ```{r}
 #| label: fig-mechanism-nfkb-discordance
 #| fig-width: 7.2
@@ -342,8 +334,6 @@ ggplot(nf_plot, aes(contrast, test_label, fill = score)) +
 
 ## Gsk3b And Kinase Activity
 
-`r gsk_sentence` This is 24-month bulk hippocampus phospho, not microglia-sorted.
-
 ```{r}
 #| label: fig-mechanism-kinase-heatmap
 #| fig-width: 9.5
@@ -362,7 +352,3 @@ ggplot(kin_plot, aes(contrast, source, fill = score)) +
   theme(axis.text.x = element_text(angle = 35, hjust = 1),
         panel.grid = element_blank())
 ```
-
-## Mechanism status
-
-Mechanism result: DAM/Myc strengthened; NF-kB attenuation and Gsk3b stay unsupported here.

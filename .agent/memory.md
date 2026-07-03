@@ -954,6 +954,15 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   assert the compact contract, sample-key n=16, 4x4 populated genotype-batch grid,
   GeoMx AOI total, and metric-bounds pass. No QC `knitr::kable()`, visible `cat()`,
   or markdown body prose remains. QC source strict gate passes; full gate green.
+- Figure-caption-only S3 (2026-07-03): result chapters are caption-only at source:
+  `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`, `_crossmodality.qmd` have
+  zero paragraph/list/table blockers outside headings/captions. Microglia sccomp
+  diagnostics are hidden as a finite-check chunk (`microglia-provenance-check`);
+  trajectory provenance/per-cell status is visible as `fig-trajectory-method-status`
+  instead of stdout. Strict rendered HTML after S3 has only the title-block author
+  paragraph (`Emir Turkes`) remaining for S4; no result-body paragraphs, tables,
+  text-only outputs, or stdout provenance remain. Caption rule: 53 source captions,
+  max 12 words, median 8. Full gate green after a forced 109-chunk render.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

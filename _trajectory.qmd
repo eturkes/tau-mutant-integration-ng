@@ -1,7 +1,5 @@
 # The tau-amyloid synergy adds DAM cells rather than advancing them {#sec-trajectory}
 
-Trajectory resolves the tau-amyloid synergy as more DAM cells, not supported further progression.
-
 ```{r}
 #| label: trajectory-setup
 #| include: false
@@ -105,6 +103,24 @@ tr_logic <- trf$logic_board
 tr_logic$endpoint <- factor(tr_logic$endpoint, levels = rev(tr_logic$endpoint))
 tr_logic$status <- factor(tr_logic$status, levels = c("context", "supported", "not supported"))
 tr_logic$label <- paste0(sprintf("%+.2f", tr_logic$coef), "\nFDR ", sprintf("%.2f", tr_logic$fdr))
+method_status <- data.frame(
+  check = c("lineage", "factorial", "per-cell"),
+  status = c(ifelse(isTRUE(prov$concordant), "pass", "flag"), "context",
+             ifelse(identical(glmm$method, "failed"), "failed", "position only")),
+  label = c(
+    sprintf("%s -> %s\nrho %.2f", prov$root_substate, prov$terminal_substate, prov$concordance_rho),
+    sprintf("%d units\n%d FL perms", nrow(trd$per_unit), prov$n_perm),
+    if (identical(glmm$method, "failed")) {
+      "failed\nsummary only"
+    } else {
+      sprintf("%s\n%+.2f", glmm$method, glmm$estimate)
+    }
+  ),
+  stringsAsFactors = FALSE
+)
+method_status$check <- factor(method_status$check, levels = rev(method_status$check))
+method_status$status <- factor(method_status$status,
+                               levels = c("pass", "context", "position only", "flag", "failed"))
 ```
 
 ```{r}
@@ -122,8 +138,6 @@ ggplot(tr_logic, aes(status, endpoint, fill = status)) +
 ```
 
 ## Amyloid drives a large shift along the activation axis
-
-Slingshot pseudotime is rooted homeostatic to DAM; amyloid shifts mean position by `r round(amy_k$coef, 1)` and `r round(amy_p$coef, 1)` units.
 
 ```{r}
 #| label: fig-trajectory-pseudotime-shift
@@ -171,8 +185,6 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
 ```
 
 ## The interaction is composition, not progression
-
-Mean position interaction = `r round(int_mpt$coef, 1)` units; decomposition assigns it to composition (`r round(int_comp$coef, 2)`), not progression (`r round(int_prog$coef, 2)`).
 
 ```{r}
 #| label: fig-trajectory-decomposition
@@ -249,11 +261,7 @@ p_all_channels | p_decomp
 
 ## A per-cell model corroborates the position shift
 
-Per-cell sensitivity `r glmm_sentence`; it supports position shift only, not progression.
-
 ## Reconciliation, robustness and concordance
-
-Versus v1, the synergy remains but the loading moves from progression to composition; refits stay concordant at rho >= `r round(dims_min, 3)`.
 
 ```{r}
 #| label: fig-trajectory-concordance
@@ -291,13 +299,19 @@ p_sens | p_omit
 
 ## Caveats and provenance
 
-Caveats: pseudotime is position, not rate; lineage omits `r omit_pct`% off-axis nuclei; decomposition uses pooled within-state anchors.
 ```{r}
-#| label: trajectory-provenance
-#| echo: true
-cat(sprintf("slingshot on harmony[1:%d], rooted at %s -> %s; pseudotime concordant with marker score-axis (rho %.2f, floor %.2f: %s).\nProgression inference: %d-unit weighted factorial, %d Freedman-Lane permutations, seed %d, limma %s, R %s.\n",
-  prov$primary_dims, prov$root_substate, prov$terminal_substate, prov$concordance_rho,
-  prov$concordance_floor, ifelse(isTRUE(prov$concordant), "pass", "FLAG"),
-  nrow(trd$per_unit), prov$n_perm, prov$seed, prov$limma_version, prov$r_version))
-cat(glmm_prov, "\n", sep = "")
+#| label: fig-trajectory-method-status
+#| fig-width: 7.6
+#| fig-height: 2.7
+#| fig-cap: "Method board: lineage passes; per-cell fit is position-only."
+ggplot(method_status, aes(status, check, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = label), size = 3, lineheight = 0.9) +
+  scale_fill_manual(
+    values = c(pass = "#6B7A3F", context = "#D8D8D8", `position only` = "#B7A06A",
+               flag = "#E08754", failed = "#3F5A6B"),
+    guide = "none"
+  ) +
+  labs(x = NULL, y = NULL, title = "Trajectory method status") +
+  theme(panel.grid = element_blank())
 ```

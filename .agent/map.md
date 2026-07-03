@@ -283,26 +283,27 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 tar_load `qc_figures` only -> modality/GeoMx/sample-key grid, 16-cell genotype-batch
                 heatmap, depth/fraction histograms, hidden compact-contract checks, metric bounds status)
                                                           --{{< include >}}--> `_microglia.qmd`
-               (P1/S4 visual-first microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
+               (caption-only microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
                 composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->
                 summary board, substate UMAPs/score maps, composition shift + unit composition, composition
                 forest/concordance, amyloid + all-contrast volcanoes, substate fit/DE audit, pruning audit.
-                Claims remain source-derived: amyloid->DAM, DAM composition interaction, interaction DE
-                under-powered not absent.)
+                Hidden finite-check replaces visible sccomp stdout. Claims remain source-derived:
+                amyloid->DAM, DAM composition interaction, interaction DE under-powered not absent.)
                                                           --{{< include >}}--> `_trajectory.qmd`
-               (P2/S4 visual-first trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load
+               (caption-only trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load
                 trajectory_report + trajectory_figures [compact targets] -> logic board, pseudotime shift/density,
                 3-channel decomposition, unit DAM-fraction/mean-pt scatter, Kitagawa forest, score-axis
-                concordance, robustness/omission audit + compact provenance. Headline = synergy adds DAM cells;
-                progression and within-homeostatic advance are explicitly not supported.)
+                concordance, robustness/omission audit, method-status board. Headline = synergy adds DAM cells;
+                progression and within-homeostatic advance are explicitly not supported; per-cell arm is
+                position-only support.)
                                                           --{{< include >}}--> `_mechanism.qmd`
-               (P3/S4 visual-first mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
+               (caption-only mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
                 mechanism_report + mechanism_figures [compact targets] -> mechanism status board, project/GO
                 pathway panels, Myc/NF-kB-family TF panels, NF-kB discordance tile, kinase/run-index heatmap.
                 Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
-               (P4/S4 visual-first cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
+               (caption-only cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
                 tar_load crossmodality_report + crossmodality_figures [compact targets] -> status board,
                 GeoMx counts/volcano/sensitivity, 24M bulk proteome/phospho counts + run-index + correction,
                 anchor heatmap, clearance grid, symbol matrix, pathway heatmap. Modality wording keeps bulk
@@ -310,9 +311,9 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       Prose-to-figures S5, 2026-07-03 (49 figures / 49 captions, no >32-word captions, no duplicate IDs,
-       no broken anchors, no external href/src refs, lightbox present, no visible warning/error markers,
-       no underscored rendered fig-* IDs).
+       Figure-caption-only S3, 2026-07-03 (result qmd source strict pass; 53 source captions, max 12 words,
+       median 8; full gate green after forced 109-chunk render; strict rendered HTML has one remaining
+       known blocker, the YAML author paragraph, for S4).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):

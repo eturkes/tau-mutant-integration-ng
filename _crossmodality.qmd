@@ -1,7 +1,5 @@
 # Cross-modality: spatial, bulk, and divergence checks {#sec-crossmodality}
 
-Cross-modality audit: amyloid response corroborated; interaction support remains microglia-composition-centred.
-
 ```{r}
 #| label: crossmodality-setup
 #| include: false
@@ -316,8 +314,6 @@ ggplot(cross_board, aes(status, axis, fill = status)) +
 
 ## GeoMx Spatial DE
 
-GeoMx uses `r fmt_int(cmr$geomx$provenance$n_aoi)` AOIs with bio-unit blocking: amyloid DE is large, interaction DE smaller.
-
 ```{r}
 #| label: fig-crossmodality-geomx-counts
 #| fig-width: 8.8
@@ -385,8 +381,6 @@ ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
 ```
 
 ## Bulk Proteome And Phospho
-
-Bulk layers are 24-month hippocampus, not microglia-sorted; `r fmt_int(bulk_lost)` of `r fmt_int(bulk_primary_sig)` primary hits lose or flip under run-index sensitivity.
 
 ```{r}
 #| label: fig-crossmodality-bulk-counts
@@ -471,8 +465,6 @@ ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
 
 ## Spatial Composition And Clearance Axis
 
-SpatialDecon abundance is attempted but blocked (`r decon_unresolved_sentence`); CCC-lite earns `r earned_sentence`, with no full CCC call.
-
 ```{r}
 #| label: fig-crossmodality-clearance-grid
 #| fig-width: 8.4
@@ -492,8 +484,6 @@ ggplot(clear_plot, aes(contrast, pair_label, fill = status_label)) +
 ```
 
 ## Integrated Divergence
-
-Integration keeps nulls and mixed signs visible instead of scoring convergence.
 
 ```{r}
 #| label: fig-crossmodality-axis-heatmap
@@ -549,7 +539,3 @@ ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid = element_blank())
 ```
-
-## Cross-modality status
-
-Cross-modality corroborates `r closing_support_phrase`; SpatialDecon, full CCC, progression, NF-kB and Gsk3b remain unsupported or blocked.

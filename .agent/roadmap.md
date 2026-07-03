@@ -34,14 +34,14 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Figure-caption-only report
 Plan file: `.agent/figure_caption_only_plan.md`.
-Next `$session-prompt` mode = EXECUTE S3.
+Next `$session-prompt` mode = EXECUTE S4.
 Goal = visible report path becomes headings + figures + captions only: zero
 body prose, zero visible tables, zero visible provenance text; accessibility
 `fig-alt` stays source-level.
 Steps:
 - S1 strict inventory gate [DONE 2026-07-03]: count/fail non-heading/non-caption visible blocks.
 - S2 QC conversion [DONE 2026-07-03]: replace QC prose/tables with figure panels.
-- S3 result conversion: remove chapter openers/status tails/provenance text.
+- S3 result conversion [DONE 2026-07-03]: remove chapter openers/status tails/provenance text.
 - S4 caption/alt/HTML QA: caption length, `fig-alt`, DOM checks, full gate.
 - S5 close-out: claim parity, docs/history/archive, reset Active plan.
 
@@ -669,6 +669,15 @@ Steps:
   strict HTML has no QC table/stdout blockers, with remaining blockers reserved
   for result chapters + YAML author metadata. Full `scripts/check.sh` green.
   Next = S3 result chapter body-prose removal.
+- 2026-07-03 Figure-caption-only S3 DONE: result chapters now have zero
+  paragraph/list/table source blockers: headings + figure chunks/captions only.
+  Removed chapter opener/status-tail prose from `_microglia.qmd`, `_trajectory.qmd`,
+  `_mechanism.qmd`, `_crossmodality.qmd`; hid microglia sccomp diagnostics as a
+  render-fatal check; converted trajectory provenance/per-cell status to
+  `fig-trajectory-method-status`. Captions pass S3 rule (53 captions, max 12 words,
+  median 8). Strict rendered HTML is down to the known YAML author paragraph only;
+  no result-body paragraphs, tables, text-only outputs, or stdout provenance remain.
+  Full `scripts/check.sh` green. Next = S4 caption/alt/HTML QA + author metadata.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

@@ -1,7 +1,5 @@
 # Microglia: amyloid drives a homeostatic-to-DAM programme {#sec-microglia}
 
-Single-nucleus core: amyloid expands DAM microglia; mutant tau scales that expansion.
-
 ```{r}
 #| label: microglia-setup
 #| include: false
@@ -178,8 +176,6 @@ ggplot(mf_board, aes(status, panel, fill = status)) +
 
 ## Substate landscape
 
-Cluster-primary substates over `r format(mrd$n_cells, big.mark = ",")` retained nuclei; DAM is scored, not thresholded.
-
 ```{r}
 #| label: fig-microglia-umap
 #| fig-width: 10
@@ -229,8 +225,6 @@ ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
 ```
 
 ## Amyloid expands the DAM compartment
-
-DAM rises from `r dam_pct["MAPTKI"]`-`r dam_pct["P301S"]`% without amyloid to `r dam_pct["NLGF_MAPTKI"]`-`r dam_pct["NLGF_P301S"]`% with amyloid.
 
 ```{r}
 #| label: fig-microglia-composition-shift
@@ -288,8 +282,6 @@ ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
 
 ## Composition is tested across the genotype contrasts
 
-Propeller-logit is primary; sccomp is supportive. DAM interaction FDR = `r fmt_p(int_prop_fdr)`.
-
 ```{r}
 #| label: fig-microglia-composition-forest
 #| fig-width: 8
@@ -337,8 +329,6 @@ ggplot(mf_conc, aes(contrast, substate, fill = status)) +
 ```
 
 ## The amyloid-to-DAM expression programme
-
-Pseudobulk DE confirms the DAM programme: `r format(pbm$stageR$n_screened, big.mark = ",")` genes pass the stageR screen.
 
 ```{r}
 #| label: fig-microglia-amyloid-volcano
@@ -392,11 +382,7 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 
 ## The tau-by-amyloid interaction is under-powered, not absent
 
-Interaction DE is under-powered, not absent: 0 large-effect FDR hits, but `r n_int_stageR` stageR-confirmed genes and MDE `r round(pbm$interaction$mde, 2)`.
-
 ## Per-substate differential expression
-
-Substate DE fits only where every replicate unit clears `r pbs$min_cells` cells; DAM retains `r dam_amyloid_de` amyloid DE genes.
 
 ```{r}
 #| label: fig-microglia-substate-audit
@@ -431,8 +417,6 @@ ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
 
 ## Caveats and provenance
 
-Key caveats: DAM under-detection, genotype-skewed low-DAM pruning, and propeller as the locked primary composition call.
-
 ```{r}
 #| label: fig-microglia-dropout-audit
 #| fig-width: 8.2
@@ -448,13 +432,14 @@ ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n, fill = genotype)) +
 ```
 
 ```{r}
-#| label: sccomp-diag
-#| echo: true
+#| label: microglia-provenance-check
+#| include: false
 sd <- comp$provenance$sccomp_diagnostics
 if (!is.null(sd)) {
-  cat(sprintf("sccomp HMC: %d chains, %d post-warmup draws; %d divergent transitions, %d at max tree depth, minimum E-BFMI %.2f.\n",
-              sd$n_chains, sd$n_post_warmup_draws, sd$num_divergent, sd$num_max_treedepth, sd$ebfmi_min))
-} else {
-  cat("sccomp cross-check not run on this build (propeller-only); Stan backend absent.\n")
+  stopifnot(
+    is.finite(sd$n_chains), is.finite(sd$n_post_warmup_draws),
+    is.finite(sd$num_divergent), is.finite(sd$num_max_treedepth),
+    is.finite(sd$ebfmi_min)
+  )
 }
 ```

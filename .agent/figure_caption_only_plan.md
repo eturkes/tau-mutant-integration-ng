@@ -156,7 +156,7 @@ Outcome:
   (remaining blockers are result chapters + YAML author metadata for S3/S4).
 - Visual readback of the extracted QC images is legible; `scripts/check.sh` green.
 
-### S3 - Result Chapter Body-Prose Removal
+### S3 - Result Chapter Body-Prose Removal [DONE 2026-07-03]
 
 Work:
 - Remove one-sentence chapter openers and status-tail paragraphs from
@@ -172,6 +172,25 @@ Acceptance:
 - Each result qmd has zero paragraph/list/table blocks outside captions/headings.
 - No `echo: true` chunk renders plain provenance text.
 - Captions remain <=24 words; target median <=12 words.
+
+Outcome:
+- `_microglia.qmd`, `_trajectory.qmd`, `_mechanism.qmd`, and
+  `_crossmodality.qmd` now have zero source paragraph/list/table blockers; visible
+  result path is headings + figures + captions only.
+- Deleted one-sentence chapter openers and result/status-tail body prose. Removed
+  terminal status-tail headings where they only hosted deleted prose.
+- Hid microglia sccomp diagnostics as `microglia-provenance-check`
+  (`include: false`) with finite diagnostics assertions.
+- Replaced visible trajectory stdout provenance with
+  `fig-trajectory-method-status`, preserving lineage/factorial/per-cell status as
+  a figure.
+- `uv run python scripts/prose_inventory.py --strict --summary-only
+  _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd` passes.
+- Full strict rendered HTML now has only the known YAML author metadata paragraph
+  blocker; result-body paragraphs/tables/text-only output/stdout provenance are
+  gone.
+- Caption rule passes: 53 source captions, max 12 words, median 8. Full
+  `scripts/check.sh` green after a forced 109-chunk render.
 
 ### S4 - Caption, Alt, and HTML QA
 
