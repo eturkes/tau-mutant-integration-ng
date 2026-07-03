@@ -40,7 +40,7 @@ Rplots.pdf
 __pycache__/
 *.py[cod]
 
-# retired non-Codex agent state
-/CLAUDE.md
-/.claude/
-/.serena/
+# Claude state: track settings.json + commands/, ignore the rest
+/.claude/*
+!/.claude/settings.json
+!/.claude/commands/

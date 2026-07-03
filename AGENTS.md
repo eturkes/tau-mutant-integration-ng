@@ -1,16 +1,5 @@
 # Alignment — always on
 
-- Codex is the sole development agent for this repo. Canonical runtime = Codex CLI/API from
-  the repo root; canonical instruction file = this `AGENTS.md`. Keep `CLAUDE.md`, `.claude/`,
-  and non-Codex agent project configs absent from git.
-- Codex session entry = `$session-prompt` (repo skill) backed by
-  `.codex/prompts/session.md`. Update the paired skill/prompt files together;
-  they replace slash-command files.
-- Read economy: skip generated/heavy trees unless the task needs them: `.git/`, `.venv/`,
-  `rv/library/`, `tools/`, `_targets/`, `_report/`, `_freeze/`, `.quarto/`, `.tokensave/`,
-  `storage/data/`, `storage/cache/`, `storage/logs/`, `.agent/completed/`, `*.html`,
-  `**/*.woff2`. Prefer target metadata, compact report targets, or runtime indirection for
-  large/heavy artefact inspection.
 - Environment: Debian container; repo path in-container starts `/run/host/...` while host paths
   differ. `uv` venv scripts bake absolute paths → if a project dir moves or host/container paths
   mix, rebuild the local env (`rm -rf .venv && uv sync`; use `.venv-host` only when deliberately
@@ -29,7 +18,7 @@
 - AI agents = the sole developers → optimize every file (code, docs, instructions) for LLM readability + token efficiency: write them dense, symbol-forward, human-sparse — telegraphic phrasing, `→`/`=` notation. Aggressively compress whatever you read, however works best.
 - Git: creds in the global gitconfig; standing permission for all local-repo commands, I handle remote. Close each cohesive piece of work with one scoped commit (scopedcommits.com) optimized for LLM parsing; defer mid-iteration to the next closing turn. Keep `.gitignore` current.
 - Memory/scratchpad = `.agent/memory.md`: learn from mistakes, stay factual, carry live context across sessions + subagents. Each entry earns its place vs code/docs/tests/git history → skip drift-prone bloat (version numbers) + what the diff/log already records; delete superseded or obsolete (git + `roadmap.md`'s ledger hold the trajectory).
-- Instruction + prompt files = yours to maintain → update any the moment it's improvable. Route durable guidance by scope: project-specific facts/decisions → that project's `.agent/memory.md`; agent-agnostic, project-independent working principles → here (`AGENTS.md`); Codex workflow prompts → `.codex/prompts/`.
+- Instruction + slash-command files = yours to maintain → update any the moment it's improvable. Route durable guidance by scope: project-specific facts/decisions → that project's `.agent/memory.md`; agent-agnostic, project-independent working principles → here (`AGENTS.md`); agent-specific config → that agent's own instruction files.
 - Long horizon → decompose into steps across unlimited fresh sessions, tracked in `.agent/roadmap.md`.
 - Phrase text you'll later read (esp. prompts) to counter your biases: LLMs misread negatives ("do not"/"never") → frame positively ("always"/"you must") — the "pink elephant" problem.
 - Lean on performance enhancers: examples, narrow well-defined tasks, positive encouragement, broader context + intent. Find more (web search, your knowledge).

@@ -18,7 +18,7 @@ modalities, a QC-sanity report, 2x2 factorial + 5-contrast machinery, a concrete
 - REPORT: pivoted Quarto BOOK -> ONE standalone offline HTML (`index.qmd` format:html embed-resources +
   `{{< include _qc.qmd >}}`). Book rejected: multi-file nav emits `Could not fetch resource ./<sibling>.html`
   under embed-resources -> caught by the gate's render-log scan (quiet=FALSE). theme.scss = crimson #B0344D + IBM Plex (9 woff2
-  base64-inlined offline; woff2 COMMITTED, read-economy skip).
+  base64-inlined offline; woff2 COMMITTED, deny-Read).
 - MODULES: pure fns via `tar_source` (the DAG orders execution -> no manual loader; supersedes v1 helpers.R):
   constants/utils/io/design/de_pb/plot/spine. 6 modalities materialized as qs2 targets. 5 canonical contrasts
   via TWO equivalent parameterisations (factorial `~tau+nlgf+tau_nlgf[+batch]` AND cell-means `~0+genotype`),

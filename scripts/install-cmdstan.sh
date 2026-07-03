@@ -6,7 +6,7 @@
 #
 # OFF rv.lock BY NECESSITY -- the recorded reproducibility blocker: cmdstanr lives on the Stan
 # r-universe (not the pinned P3M snapshot) and CmdStan is a compiled C++ tree rv cannot lock. Both
-# land project-local under tools/ (gitignored + read-economy skip), in a library SEPARATE from rv/library
+# land project-local under tools/ (gitignored + deny-Read), in a library SEPARATE from rv/library
 # so `rv sync` never prunes them. Idempotent. The CmdStan version is RECORDED (provenance), not
 # bitwise-pinned: the Bayesian arm is explicitly non-locked; the locked guarantee is propeller.
 # Toolchain: build-essential (g++/make) -- already a project sysdep (scripts/install-sysdeps.sh).

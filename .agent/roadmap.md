@@ -33,7 +33,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: (none)
-Next `$session-prompt` mode = PLAN. Confirm the next roadmap direction with the
+Next `/session-prompt` mode = PLAN. Confirm the next roadmap direction with the
 user before writing a new plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -400,15 +400,6 @@ user before writing a new plan.
   trd$decomposition, comp_cf/progression_cf/cross labels align across extractor/test/qmd, include placement +
   #sec-trajectory unique, no residual ggplot trans=. Rebuilt trajectory_report fresh on real data (new postconds
   pass, no false-red) + re-render 0-warning + tests warn=2. Commit `trajectory (p2 s4b review): ... (codex)`.
-- 2026-07-02 infra Codex-only adaptation: retired tracked `CLAUDE.md`, `.claude/`, and `.serena/` project config;
-  made `AGENTS.md` the sole canonical agent instruction surface; added `.codex/prompts/session.md`; rewired
-  `.agent/context.sh` to Codex JSONL sessions; updated live memory/map/history wording from Claude deny-Read to
-  Codex read-economy.
-- 2026-07-02 infra Codex skill wrapper: added repo-scoped `.agents/skills/session-prompt` per Codex docs
-  (`.agents/skills` repo discovery; explicit `$...` invocation). `$session-prompt` reads
-  `.codex/prompts/session.md`; fresh `codex exec` smoke checks confirmed it appears in initial skill context.
-- 2026-07-02 infra review wrapper retired: removed redundant review skills/prompts/script; session prompt now
-  uses direct self-checks plus `.agent/context.sh` headroom tracking.
 - 2026-07-02 P2 CLOSED: close-out review of plan body + shipped trajectory code/prose found no remaining blocker
   after the S4b review fixes; the only forward-state correction was the spine wording. Folded P2 digest ->
   history.md; archived plan -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`; reset Active plan to none.
@@ -831,6 +822,11 @@ user before writing a new plan.
   QA clean for trajectory, cross-modality plates, GeoMx, phospho, and closing
   model; Chromium still emits one trailing blank page. Full `scripts/check.sh`
   green across 53 current targets/branches. Active plan reset to none.
+- 2026-07-03 infra agent-surface revert: restored the Claude/Serena project
+  surface (`CLAUDE.md`, `.claude/commands/`, `.claude/settings.json`,
+  `.serena/`) and slash-command session/review entry points; `.agent/context.sh`
+  again reads Claude Code transcripts. Removed the Codex-only prompt/skill
+  surface while preserving the current roadmap/report state.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
