@@ -81,7 +81,7 @@ design_counts$label <- fmt_n(design_counts$n)
 count_pad <- stats::aggregate(n ~ modality, data = design_counts, FUN = max)
 names(count_pad)[2L] <- "max_n"
 design_counts <- merge(design_counts, count_pad, by = "modality", all.x = TRUE, sort = FALSE)
-design_counts$label_y <- design_counts$n + pmax(design_counts$max_n * 0.035, 0.8)
+design_counts$label_x <- design_counts$n + pmax(design_counts$max_n * 0.04, 0.8)
 
 p_grid <- ggplot(design_grid, aes(tau_background, amyloid)) +
   geom_tile(aes(fill = genotype), colour = "#F8F6F1", linewidth = 0.8,
@@ -108,24 +108,26 @@ p_batch <- ggplot(batch_grid, aes(genotype, batch, fill = Freq)) +
         legend.position = "bottom",
         legend.key.width = grid::unit(0.55, "cm"))
 
-p_counts <- ggplot(design_counts, aes(genotype, n, fill = genotype)) +
-  geom_segment(aes(xend = genotype, y = 0, yend = n, colour = genotype),
+# Horizontal lollipops: genotype on y keeps the long labels unrotated and puts each value tag
+# on its own row, so no two tags collide (the vertical form crowded near-equal snRNAseq counts).
+p_counts <- ggplot(design_counts, aes(n, genotype, fill = genotype)) +
+  geom_segment(aes(yend = genotype, x = 0, xend = n, colour = genotype),
                linewidth = 0.62, alpha = 0.72) +
   geom_point(shape = 21, size = 3.0, colour = "#262B2F", stroke = 0.28) +
-  geom_text(aes(y = label_y, label = label), size = 2.7, colour = "#333333") +
-  facet_wrap(~ modality, nrow = 1, scales = "free_y") +
+  geom_text(aes(x = label_x, label = label), size = 2.6, colour = "#333333", hjust = 0) +
+  facet_wrap(~ modality, nrow = 1, scales = "free_x") +
   scale_fill_genotype(guide = "none") +
   scale_colour_genotype(guide = "none") +
-  scale_x_discrete(labels = genotype_labels) +
-  labs(x = NULL, y = "count", title = "Per-genotype layer support") +
+  scale_y_discrete(limits = rev(genotype_levels), labels = genotype_labels) +
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.22))) +
+  labs(x = "count", y = NULL, title = "Per-genotype layer support") +
   coord_cartesian(clip = "off") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        plot.title = element_text(size = 8.5, face = "bold"),
+  theme(plot.title = element_text(size = 8.5, face = "bold"),
         strip.text = element_text(size = 6.9, face = "bold"),
-        panel.grid.major.x = element_blank())
+        panel.grid.major.y = element_blank())
 
 (p_grid | p_batch | p_counts) +
-  plot_layout(widths = c(0.82, 1.22, 1.8), guides = "collect") +
+  plot_layout(widths = c(0.82, 1.16, 1.7)) +
   plot_annotation(tag_levels = "A")
 ```
 

@@ -308,8 +308,10 @@ p_counts <- ggplot(p_count_data, aes(x_unit, n_cells, colour = genotype)) +
   scale_x_continuous(breaks = seq_along(genotype_levels),
                      labels = unname(genotype_print_labels[genotype_levels])) +
   scale_colour_genotype(guide = "none") +
-  labs(x = NULL, y = "nuclei", title = "Total vs on-lineage nuclei") +
+  labs(x = NULL, y = "nuclei", title = "Total vs on-lineage nuclei",
+       subtitle = "hollow = total, filled = on-lineage") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        plot.subtitle = element_text(size = 7.4, colour = "#5B5A55"),
         panel.grid.major.x = element_blank())
 
 p_sens | p_omit | p_counts
