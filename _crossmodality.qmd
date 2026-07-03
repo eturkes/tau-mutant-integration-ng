@@ -315,20 +315,33 @@ ggplot(cross_board, aes(status, axis, fill = status)) +
 #| fig-width: 8.8
 #| fig-height: 4.2
 #| fig-cap: "GeoMx DE counts are largest in amyloid contrasts."
-#| fig-alt: "Bar plot shows GeoMx up and down DE counts for focal contrasts."
+#| fig-alt: "Direct-labelled diverging bars show GeoMx up and down DE counts for focal contrasts."
 geo_plot <- geom_counts[geom_counts$contrast %in% focus, , drop = FALSE]
 geo_long <- rbind(
   data.frame(contrast = geo_plot$contrast, direction = "up", n = geo_plot$n_up_fdr_0_10),
   data.frame(contrast = geo_plot$contrast, direction = "down", n = geo_plot$n_down_fdr_0_10)
 )
-geo_long$contrast <- factor(geo_long$contrast, levels = focus, labels = contrast_labels[focus])
+geo_long$contrast <- plot_contrast(geo_long$contrast, reverse = TRUE)
 geo_long$direction <- factor(geo_long$direction, levels = c("up", "down"))
+geo_long$n_signed <- ifelse(geo_long$direction == "down", -geo_long$n, geo_long$n)
+geo_max <- max(1, max(abs(geo_long$n_signed), na.rm = TRUE))
+geo_pad <- geo_max * 0.04
+geo_long$label <- ifelse(geo_long$n == 0, "", fmt_int(geo_long$n))
+geo_long$label_x <- geo_long$n_signed + ifelse(geo_long$n_signed < 0, -geo_pad, geo_pad)
+geo_long$label_hjust <- ifelse(geo_long$n_signed < 0, 1, 0)
 
-ggplot(geo_long, aes(contrast, n, fill = direction)) +
-  geom_col(width = 0.72) +
+ggplot(geo_long, aes(n_signed, contrast, fill = direction)) +
+  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.4) +
+  geom_col(width = 0.56) +
+  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
+            size = 3.1, fontface = "bold") +
   scale_fill_discrete(name = "direction") +
-  labs(x = NULL, y = "GeoMx rows at FDR < 0.10", title = "Spatial DE is strongest for amyloid") +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
+  labs(x = "GeoMx rows at FDR < 0.10", y = NULL,
+       title = "Spatial DE is strongest for amyloid") +
+  coord_cartesian(xlim = c(-geo_max * 1.22, geo_max * 1.22), clip = "off") +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "bottom")
 ```
 
 ```{r}
@@ -364,16 +377,28 @@ ggplot(geo_volc_bins) +
 #| fig-width: 9.2
 #| fig-height: 4.8
 #| fig-cap: "GeoMx sensitivity marks rows gained or lost versus the primary model."
-#| fig-alt: "Diverging bars show GeoMx rows lost from or gained versus the primary model."
-ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
-  geom_hline(yintercept = 0, colour = "grey65") +
-  geom_col(width = 0.68) +
+#| fig-alt: "Direct-labelled diverging bars show GeoMx rows lost from or gained versus the primary model."
+geo_sens_plot <- geo_sens_long
+geo_sens_plot$contrast <- factor(as.character(geo_sens_plot$contrast),
+                                 levels = rev(levels(geo_sens_long$contrast)))
+geo_sens_max <- max(1, max(abs(geo_sens_plot$n), na.rm = TRUE))
+geo_sens_pad <- geo_sens_max * 0.04
+geo_sens_plot$label <- ifelse(abs(geo_sens_plot$n) == 0, "", fmt_int(abs(geo_sens_plot$n)))
+geo_sens_plot$label_x <- geo_sens_plot$n + ifelse(geo_sens_plot$n < 0, -geo_sens_pad, geo_sens_pad)
+geo_sens_plot$label_hjust <- ifelse(geo_sens_plot$n < 0, 1, 0)
+
+ggplot(geo_sens_plot, aes(n, contrast, fill = metric)) +
+  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.4) +
+  geom_col(width = 0.56) +
+  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
+            size = 3, fontface = "bold") +
   facet_wrap(~ fit_label, nrow = 1) +
   scale_fill_discrete(name = NULL) +
-  scale_y_continuous(labels = function(x) abs(x)) +
-  labs(x = NULL, y = "GeoMx rows changed at FDR < 0.10",
+  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
+  labs(x = "GeoMx rows changed at FDR < 0.10", y = NULL,
        title = "Spatial DE support depends on the replicate treatment") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+  coord_cartesian(xlim = c(-geo_sens_max * 1.22, geo_sens_max * 1.22), clip = "off") +
+  theme(panel.grid.major.y = element_blank(),
         legend.position = "bottom")
 ```
 
@@ -384,16 +409,24 @@ ggplot(geo_sens_long, aes(contrast, n, fill = metric)) +
 #| fig-width: 9
 #| fig-height: 4.4
 #| fig-cap: "Bulk omics FDR counts are corroborative, not microglia-sorted."
-#| fig-alt: "Grouped bars show bulk proteome and phospho FDR counts by focal contrast."
+#| fig-alt: "Direct-labelled horizontal bars show bulk proteome and phospho FDR counts by focal contrast."
 bp <- bulk_counts[bulk_counts$contrast %in% focus, , drop = FALSE]
-bp$contrast <- factor(bp$contrast, levels = focus, labels = contrast_labels[focus])
+bp$contrast <- plot_contrast(bp$contrast, reverse = TRUE)
 bp$layer <- factor(bp$layer, levels = names(layer_labels), labels = unname(layer_labels))
+bp_max <- max(1, max(bp$n_fdr_0_10, na.rm = TRUE))
+bp_pad <- bp_max * 0.03
+bp$label <- ifelse(bp$n_fdr_0_10 == 0, "", fmt_int(bp$n_fdr_0_10))
 
-ggplot(bp, aes(contrast, n_fdr_0_10, fill = layer)) +
-  geom_col(position = position_dodge(width = 0.78), width = 0.68) +
-  scale_fill_discrete(name = NULL) +
-  labs(x = NULL, y = "features at FDR < 0.10", title = "Bulk significance is largest in amyloid contrasts") +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+ggplot(bp, aes(n_fdr_0_10, contrast, fill = layer)) +
+  geom_col(width = 0.56) +
+  geom_text(aes(x = n_fdr_0_10 + bp_pad, label = label),
+            hjust = 0, size = 3, fontface = "bold") +
+  facet_wrap(~ layer, nrow = 1) +
+  scale_fill_discrete(guide = "none") +
+  labs(x = "features at FDR < 0.10", y = NULL,
+       title = "Bulk significance is largest in amyloid contrasts") +
+  coord_cartesian(xlim = c(0, bp_max * 1.16), clip = "off") +
+  theme(panel.grid.major.y = element_blank())
 ```
 
 ```{r}

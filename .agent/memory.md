@@ -786,6 +786,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   `n_missing=0` for `figure`/`schematic` dispositions before S3/S4 rewrites.
 - Compact QC target: `qc_figures` (modality table, GeoMx genotype tally,
   genotype-batch grid, depth/fraction histograms, metric bounds, audit notes).
+- Figure-polish convention: small count/tally panels should prefer horizontal,
+  direct-labelled bars/lollipops with human-facing labels; reserve heatmaps for
+  true matrix structure and avoid rotated x labels for contrast/genotype counts.
 - Existing chapter figure targets gained alias/board slots without heavy reads:
   `microglia_figures` adds summary board, composition shift/forest, amyloid
   volcano alias; `trajectory_figures` adds pseudotime-shift bundle,

@@ -32,6 +32,9 @@ metric_lab <- function(x) {
     percent_ribo = "ribosomal %", percent_malat1 = "MALAT1 %",
     percent_contam = "contamination %")[x]
 }
+genotype_labels <- c(MAPTKI = "MAPTKI", P301S = "P301S",
+                     NLGF_MAPTKI = "NLGF + MAPTKI",
+                     NLGF_P301S = "NLGF + P301S")
 sample_key_row <- qc$modality_table$modality == "proteomics sample key"
 metric_names <- metric_lab(qc$metric_bounds$metric)
 stopifnot(
@@ -59,7 +62,7 @@ stopifnot(
 #| fig-width: 9
 #| fig-height: 5.4
 #| fig-cap: "Assay dimensions, GeoMx AOI counts and the 16-run sample key are materialised."
-#| fig-alt: "Loaded assay dimensions and GeoMx AOI counts by genotype."
+#| fig-alt: "Loaded assay dimensions and direct-labelled GeoMx AOI counts by genotype."
 modal <- qc$modality_table
 modal$modality <- factor(modal$modality, levels = rev(modal$modality))
 modal_cells <- rbind(
@@ -73,21 +76,34 @@ modal_cells <- rbind(
 modal_cells$axis <- factor(modal_cells$axis, levels = c("feature axis", "sample axis"))
 
 geomx_counts <- qc$geomx_genotype
-geomx_counts$genotype <- factor(geomx_counts$genotype, levels = genotype_levels)
+geomx_counts$genotype <- factor(geomx_counts$genotype, levels = rev(genotype_levels))
+geomx_pad <- max(geomx_counts$n_aoi) * 0.06
 
-p_modal <- ggplot(modal_cells, aes(axis, modality, fill = log10(pmax(n, 1)))) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = label), size = 3.2, lineheight = 0.9) +
-  scale_fill_rwb(guide = "none") +
-  labs(x = NULL, y = NULL, title = "Materialised target dimensions")
+p_modal <- ggplot(modal_cells, aes(axis, modality, fill = axis)) +
+  geom_tile(colour = "white", linewidth = 0.9) +
+  geom_text(aes(label = label), size = 3.25, lineheight = 0.9) +
+  scale_fill_manual(values = c("feature axis" = "grey94", "sample axis" = "grey88"),
+                    guide = "none") +
+  labs(x = NULL, y = NULL, title = "Materialised data inputs") +
+  theme(panel.grid = element_blank())
 
-p_geomx <- ggplot(geomx_counts, aes(genotype, n_aoi, fill = genotype)) +
-  geom_col(width = 0.75) +
-  geom_text(aes(label = fmt_n(n_aoi)), vjust = -0.35, size = 3.1) +
+p_geomx <- ggplot(geomx_counts, aes(n_aoi, genotype, fill = genotype)) +
+  geom_segment(aes(x = 0, xend = n_aoi, yend = genotype),
+               colour = "grey88", linewidth = 5.5, lineend = "round") +
+  geom_point(shape = 21, size = 7, stroke = 1.1, colour = "white") +
+  geom_text(aes(x = n_aoi + geomx_pad, label = fmt_n(n_aoi)),
+            hjust = 0, size = 3.5, fontface = "bold") +
   scale_fill_genotype(guide = "none") +
-  labs(x = NULL, y = "AOIs", title = "GeoMx genotype tally") +
-  coord_cartesian(ylim = c(0, max(geomx_counts$n_aoi) * 1.18)) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  scale_y_discrete(labels = genotype_labels) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.02))) +
+  labs(x = NULL, y = NULL, title = "GeoMx AOIs by genotype",
+       subtitle = paste(fmt_n(sum(geomx_counts$n_aoi)), "AOIs total")) +
+  coord_cartesian(xlim = c(0, max(geomx_counts$n_aoi) * 1.28), clip = "off") +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(face = "bold"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
 
 p_modal / p_geomx + plot_layout(heights = c(2.4, 1))
 ```
