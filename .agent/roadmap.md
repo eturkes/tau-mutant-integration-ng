@@ -59,15 +59,18 @@ Scope constraints:
   dashboard tiles only as supplemental-style audit if retained.
 
 Sessions:
-S1 Figure-convention + manifest audit [OPEN]
+S1 Figure-convention + manifest audit [DONE 2026-07-03]
 - Mine current `_crossmodality.qmd`, `R/figures.R`, `crossmodality_figures`,
   `story_figures`, and rendered PDF pages 18-21.
 - Build a replacement manifest with keep / replace / demote decisions for
   figures 31-38 and the front story mechanism plate.
 - Acceptance: manifest names exact figure ids, target slots, biological role,
   replacement grammar, and claim/boundary carried by each panel.
+  Closed by `.agent/crossmodality_narrative_manifest.md`: Figures 31/34/36/37
+  demoted; Figures 32/33 and story Figure 5 replaced; Figures 35/38 kept but
+  reshaped into named evidence/boundary plates; S2 data-slot contract set.
 
-S2 Cross-modality evidence spine [PENDING]
+S2 Cross-modality evidence spine [OPEN]
 - Add compact target data for axis-centric plotting: selected symbols/pathways
   x modalities x contrasts with effect, FDR/support status, direction, and
   measured/unmeasured state; expose reproducible selection rules.
@@ -110,9 +113,9 @@ S5 QA + close [PENDING]
   legends or unreadable cross-modality labels, full gate green, roadmap/history
   updated, one scoped commit.
 
-Next `$session-prompt` mode = EXECUTE S1. Last closed = Field-convention figure
-pass (ad hoc, 2026-07-03; restored conventional point volcanoes/scatters,
-stacked composition bars, and tile heatmaps over prior circular/bubble grammar).
+Next `$session-prompt` mode = EXECUTE S2. Last closed = Cross-modality narrative
+S1 (2026-07-03; audited visible Figures 31-38 plus story Figure 5, wrote exact
+replacement manifest and data-slot handoff).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
