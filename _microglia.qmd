@@ -185,9 +185,9 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 #| fig-width: 10
 #| fig-height: 3.5
 #| fig-cap: "Homeostatic, DAM and MHC-APC score gradients across the manifold."
-#| fig-alt: "Binned UMAP panels show homeostatic, DAM and MHC-APC signature gradients."
+#| fig-alt: "Point-cloud UMAP panels show homeostatic, DAM and MHC-APC signature gradients."
 ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
-  geom_point(aes(size = pmin(n, 6)), shape = 15, alpha = 0.85) +
+  geom_point(aes(size = pmin(n, 6)), shape = 16, alpha = 0.82) +
   facet_wrap(~ score_name, nrow = 1) +
   scale_colour_rwb(name = "mean z", midpoint = 0) +
   scale_size_continuous(range = c(0.4, 1.4), guide = "none") +
@@ -202,16 +202,20 @@ ggplot(mf_score, aes(umap_1, umap_2, colour = score_mean)) +
 #| fig-width: 11
 #| fig-height: 5.2
 #| fig-cap: "Amyloid expands DAM cells, with the largest response on the P301S background."
-#| fig-alt: "Stacked bars, an interaction plot, and violin plot show amyloid-linked DAM composition and score increases."
+#| fig-alt: "A substate proportion profile, an interaction plot, and a violin plot show amyloid-linked DAM composition and score increases."
 prop_df <- as.data.frame(prop.table(st, 1))                       # genotype, substate, Freq(=within-genotype proportion)
 prop_df <- prop_df[prop_df$substate %in% present_sub, ]
 prop_df$genotype <- factor(prop_df$genotype, levels = genotype_levels)
 prop_df$substate <- factor(as.character(prop_df$substate), levels = present_sub)
 
-p_prop <- ggplot(prop_df, aes(genotype, Freq, fill = substate)) +
-  geom_col() +
+p_prop <- ggplot(prop_df, aes(genotype, Freq, group = substate)) +
+  geom_line(aes(colour = substate), linewidth = 0.62, alpha = 0.9) +
+  geom_point(aes(fill = substate), shape = 21, size = 2.5,
+             colour = "#262B2F", stroke = 0.28) +
+  scale_colour_substate(breaks = present_sub, guide = "none") +
   scale_fill_substate(breaks = present_sub, name = "substate") +
   scale_x_discrete(labels = genotype_labels) +
+  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
   labs(x = NULL, y = "proportion of microglia", title = "Substate composition") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
@@ -260,13 +264,15 @@ p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
 #| fig-width: 9.5
 #| fig-height: 4.6
 #| fig-cap: "Replicate-unit composition shows the DAM expansion across batches."
-#| fig-alt: "Replicate-unit bars show DAM expansion across batches and genotypes."
-ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
-  geom_col(width = 0.78) +
+#| fig-alt: "Replicate-unit dot matrices show DAM expansion across batches and genotypes."
+ggplot(mf_unit, aes(batch, substate)) +
+  geom_point(aes(size = proportion, fill = substate),
+             shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.9) +
   facet_grid(. ~ genotype) +
   scale_fill_substate(breaks = present_sub, name = "substate") +
-  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
-  labs(x = "batch", y = "within-unit proportion", title = "Substate composition at replicate-unit resolution") +
+  scale_size_area(max_size = 7, labels = function(x) paste0(round(100 * x), "%"),
+                  name = "unit proportion") +
+  labs(x = "batch", y = NULL, title = "Substate composition at replicate-unit resolution") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid.major.x = element_blank())
 ```
@@ -293,7 +299,7 @@ ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
 #| fig-width: 8
 #| fig-height: 4.5
 #| fig-cap: "DAM and homeostatic composition effects across contrasts."
-#| fig-alt: "Forest or bar plot shows homeostatic and DAM composition effects for all contrasts."
+#| fig-alt: "Forest or dot plot shows homeostatic and DAM composition effects for all contrasts."
 ctr_levels <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
 if (!is.null(comp$sccomp)) {
   fdf <- comp$sccomp[comp$sccomp$substate %in% c("Homeostatic", "DAM"), ]
@@ -308,10 +314,10 @@ if (!is.null(comp$sccomp)) {
 } else {
   fdf <- comp$propeller_logit[comp$propeller_logit$substate %in% c("Homeostatic", "DAM"), ]
   fdf$contrast <- factor(fdf$contrast, levels = rev(ctr_levels))
-  ggplot(fdf, aes(t, contrast, fill = substate)) +
+  ggplot(fdf, aes(t, contrast, colour = substate)) +
     geom_vline(xintercept = 0, colour = "grey70") +
-    geom_col(position = position_dodge(width = 0.6), width = 0.6) +
-    scale_fill_substate(breaks = c("Homeostatic", "DAM"), name = "substate") +
+    geom_point(position = position_dodge(width = 0.6), size = 2.4) +
+    scale_colour_substate(breaks = c("Homeostatic", "DAM"), name = "substate") +
     labs(x = "propeller t-statistic", y = NULL,
          title = "Composition effects across contrasts (propeller)")
 }
@@ -352,10 +358,10 @@ ggplot(vol, aes(logFC, neglog10p, colour = gene_class)) +
 #| fig-width: 10
 #| fig-height: 6.5
 #| fig-cap: "Whole-microglia DE is dominated by amyloid contrasts."
-#| fig-alt: "Faceted binned volcanoes show amyloid contrasts dominating whole-microglia DE."
-ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
-  geom_tile(width = median(diff(sort(unique(mf_wv_bins$x_mid)))),
-            height = median(diff(sort(unique(mf_wv_bins$y_mid))))) +
+#| fig-alt: "Faceted circular density volcanoes show amyloid contrasts dominating whole-microglia DE."
+ggplot(mf_wv_bins, aes(x_mid, y_mid)) +
+  geom_point(aes(size = n, fill = log_n), shape = 21,
+             colour = "#F8F5ED", stroke = 0.05, alpha = 0.86) +
   ggrepel::geom_text_repel(
     data = mf_wv_lab,
     aes(effect, neg_log10_p, label = label),
@@ -368,6 +374,7 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
   ) +
   facet_wrap(~ contrast, ncol = 3) +
   scale_fill_rwb(name = "log10(n + 1)") +
+  scale_size_continuous(range = c(0.25, 2.9), guide = "none") +
   labs(x = "log2 fold-change", y = "-log10 p-value",
        title = "Whole-microglia DE across all contrasts") +
   theme(panel.grid = element_blank())
@@ -380,9 +387,11 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 #| fig-width: 7.8
 #| fig-height: 4.2
 #| fig-cap: "Homeostatic and DAM pass the per-unit cell floor; IFN/proliferative stay descriptive."
-#| fig-alt: "Bar plot marks substates that pass or miss the replicate-unit cell floor."
+#| fig-alt: "Point-stem plot marks substates that pass or miss the replicate-unit cell floor."
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
-  geom_col(width = 0.62, colour = "#F8F6F1", linewidth = 0.4) +
+  geom_segment(aes(xend = substate, y = 0, yend = min_cells_unit),
+               colour = "#B7B1A5", linewidth = 0.7) +
+  geom_point(shape = 21, size = 4.2, colour = "#262B2F", stroke = 0.35) +
   geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#4A4A45") +
   scale_fill_manual(values = c(fit = "#0B6F7E", skipped = "#B7B1A5"), guide = "none") +
   labs(x = NULL, y = "minimum cells per replicate unit",
@@ -395,13 +404,16 @@ ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
 #| fig-width: 9.2
 #| fig-height: 4.4
 #| fig-cap: "Within-state DE keeps amyloid larger than the interaction."
-#| fig-alt: "Signed bar plot compares within-state DE counts across contrasts."
-ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
-  geom_hline(yintercept = 0, colour = "grey65") +
-  geom_col(width = 0.72) +
+#| fig-alt: "Signed point-stem plots compare within-state DE counts across contrasts."
+ggplot(mf_ss_signed, aes(n_genes, contrast, colour = direction)) +
+  geom_vline(xintercept = 0, colour = "grey65") +
+  geom_segment(aes(x = 0, xend = n_genes, yend = contrast),
+               linewidth = 0.55, alpha = 0.82) +
+  geom_point(size = 2.5) +
   facet_wrap(~ substate, nrow = 1) +
-  scale_fill_direction(name = "direction") +
-  labs(x = NULL, y = "signed FDR < 0.10 gene count",
+  scale_colour_manual(values = tau_direction_colours, name = "direction") +
+  scale_x_continuous(labels = function(x) format(abs(round(x)), big.mark = ",", trim = TRUE)) +
+  labs(x = "signed FDR < 0.10 gene count", y = NULL,
        title = "Within-substate expression shifts keep the amyloid programme visible") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid.major.x = element_blank())
@@ -414,9 +426,11 @@ ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
 #| fig-width: 8.2
 #| fig-height: 4.2
 #| fig-cap: "Pruned nuclei are genotype-skewed but low-DAM; labels show cluster DAM medians."
-#| fig-alt: "Dropped-cluster bars show genotype skew and low DAM medians for pruned nuclei."
+#| fig-alt: "Dropped-cluster point stems show genotype skew and low DAM medians for pruned nuclei."
 ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n, fill = genotype)) +
-  geom_col(width = 0.72) +
+  geom_segment(aes(xend = cluster, y = 0, yend = n),
+               colour = "#B7B1A5", linewidth = 0.55) +
+  geom_point(shape = 21, size = 3.2, colour = "#262B2F", stroke = 0.3) +
   geom_text(aes(label = sprintf("%.2f", DAM_med)), vjust = -0.3, size = 2.7) +
   facet_wrap(~ genotype, nrow = 1, scales = "free_y") +
   scale_fill_genotype(guide = "none") +

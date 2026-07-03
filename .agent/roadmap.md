@@ -34,9 +34,9 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Four-modality integration figures
-(ad hoc, 2026-07-03; +3 compact cross-modality panels integrating snRNAseq,
-GeoMx, proteome, and phosphoproteome evidence; 36 caption-only figures).
+user before writing a plan. Last closed = Figure elegance pass
+(ad hoc, 2026-07-03; replaced blocky bars/squares with traces, circular
+matrices, contours, and point-stems; 36 caption-only figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -126,6 +126,14 @@ GeoMx, proteome, and phosphoproteome evidence; 36 caption-only figures).
   across assay families, and selected axis-symbol modality tiles. Rendered main
   path now has 36 figures / 36 captions / 36 nonblank alts, duplicate IDs 0;
   full gate green.
+- Figure elegance pass [DONE 2026-07-03]:
+  user feedback: too many figures still looked blocky (bar plots, squares).
+  Replaced visible QMD `geom_col`/`geom_tile`/`geom_rect`/`geom_bin2d` grammar with
+  node/stem design, distribution traces, circular density dots, bubble/dot
+  matrices, contours, and point-stems; updated captions/alts accordingly.
+  Added theme print-overflow override after Chromium PDF QA exposed figure
+  scrollbar chrome. Rendered main path remains 36 figures / 36 captions / 36
+  role-img elements; full gate green; Chromium PDF contact sheet clean.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset

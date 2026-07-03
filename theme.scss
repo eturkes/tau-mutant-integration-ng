@@ -65,3 +65,16 @@ body { font-family: $font-family-sans-serif; }
 h1, h2, h3, h4, h5, h6,
 .h1, .h2, .h3, .h4, .h5, .h6 { font-family: $headings-font-family; font-weight: 600; }
 code, pre, kbd, samp, .sourceCode { font-family: $font-family-monospace; }
+
+// Quarto wraps figure outputs in scrollable containers when a plot is near the
+// content bounds. That is useful for code blocks, but it can print scrollbar
+// chrome over figures; keep figure outputs visible and scrollbar-free.
+.cell-output-display,
+.quarto-figure,
+.quarto-figure figure,
+.quarto-figure figure > div { overflow: visible !important; }
+
+@media print {
+  html, body { overflow: visible !important; }
+  ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+}

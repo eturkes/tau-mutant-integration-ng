@@ -260,14 +260,16 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 #| fig-width: 9.2
 #| fig-height: 4.7
 #| fig-cap: "FDR support spans the four assay families."
-#| fig-alt: "A four by four heatmap shows significant symbol counts by contrast across snRNAseq microglia, GeoMx spatial, bulk proteome and bulk phosphoproteome."
-ggplot(four_counts, aes(contrast, modality, fill = log_n_sig)) +
-  geom_tile(colour = "#F8F5ED", linewidth = 0.7) +
+#| fig-alt: "A four by four bubble matrix shows significant symbol counts by contrast across snRNAseq microglia, GeoMx spatial, bulk proteome and bulk phosphoproteome."
+ggplot(four_counts, aes(contrast, modality)) +
+  geom_point(aes(size = n_sig, fill = log_n_sig), shape = 21,
+             colour = "#262B2F", stroke = 0.28, alpha = 0.92) +
   geom_text(aes(label = label), size = 3.0, colour = "#262B2F") +
   scale_fill_rwb(name = "log10(n + 1)") +
+  scale_size_area(max_size = 8.6, guide = "none") +
   labs(x = NULL, y = NULL, title = "Four-modality FDR support by contrast") +
   coord_equal(ratio = 0.82) +
-  theme(panel.grid = element_blank(),
+  theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_text(angle = 28, hjust = 1),
         legend.position = "bottom")
 ```
@@ -277,7 +279,7 @@ ggplot(four_counts, aes(contrast, modality, fill = log_n_sig)) +
 #| fig-width: 9.4
 #| fig-height: 5.4
 #| fig-cap: "Pathway axes summarize four-modality support."
-#| fig-alt: "A dot heatmap shows pathway axes by contrast, with dot size encoding the number of significant modalities and fill encoding direction."
+#| fig-alt: "A dot matrix shows pathway axes by contrast, with dot size encoding the number of significant modalities and fill encoding direction."
 ggplot(four_paths, aes(contrast, axis_label)) +
   geom_point(aes(size = n_modalities_sig, fill = direction),
              shape = 21, colour = "#262B2F", stroke = 0.25) +
@@ -298,17 +300,21 @@ ggplot(four_paths, aes(contrast, axis_label)) +
 #| fig-width: 10
 #| fig-height: 7.2
 #| fig-cap: "Axis genes show measured and significant modalities."
-#| fig-alt: "Faceted tile plots show selected axis genes against the four assay families; tiles distinguish absent, measured and FDR-significant support."
-ggplot(four_symbols, aes(modality, symbol_label, fill = status)) +
-  geom_tile(colour = "#F8F5ED", linewidth = 0.55) +
+#| fig-alt: "Faceted dot matrices show selected axis genes against the four assay families; dots distinguish absent, measured and FDR-significant support."
+ggplot(four_symbols, aes(modality, symbol_label, fill = status, size = status)) +
+  geom_point(shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.92) +
   facet_wrap(~ contrast, ncol = 2, scales = "free_y") +
   scale_fill_manual(values = c(`not observed` = "#D7D3CA",
                                measured = "#3F5F7F",
                                `FDR < 0.10` = "#A63A50"),
                     drop = FALSE, name = NULL) +
+  scale_size_manual(values = c(`not observed` = 1.2,
+                               measured = 2.7,
+                               `FDR < 0.10` = 4.3),
+                    drop = FALSE, name = NULL) +
   labs(x = NULL, y = NULL, title = "Selected axis symbols across modalities") +
   coord_cartesian(clip = "off") +
-  theme(panel.grid = element_blank(),
+  theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_text(angle = 28, hjust = 1),
         legend.position = "bottom")
 ```
@@ -320,7 +326,7 @@ ggplot(four_symbols, aes(modality, symbol_label, fill = status)) +
 #| fig-width: 8.8
 #| fig-height: 4.2
 #| fig-cap: "GeoMx DE counts are largest in amyloid contrasts."
-#| fig-alt: "Direct-labelled diverging bars show GeoMx up and down DE counts for focal contrasts."
+#| fig-alt: "Direct-labelled diverging point stems show GeoMx up and down DE counts for focal contrasts."
 geo_plot <- geom_counts[geom_counts$contrast %in% focus, , drop = FALSE]
 geo_long <- rbind(
   data.frame(contrast = geo_plot$contrast, direction = "up", n = geo_plot$n_up_fdr_0_10),
@@ -335,12 +341,14 @@ geo_long$label <- ifelse(geo_long$n == 0, "", fmt_int(geo_long$n))
 geo_long$label_x <- geo_long$n_signed + ifelse(geo_long$n_signed < 0, -geo_pad, geo_pad)
 geo_long$label_hjust <- ifelse(geo_long$n_signed < 0, 1, 0)
 
-ggplot(geo_long, aes(n_signed, contrast, fill = direction)) +
+ggplot(geo_long, aes(n_signed, contrast, colour = direction)) +
   geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.4) +
-  geom_col(width = 0.56) +
+  geom_segment(aes(x = 0, xend = n_signed, yend = contrast),
+               linewidth = 0.62, alpha = 0.86) +
+  geom_point(size = 2.8) +
   geom_text(aes(x = label_x, label = label, hjust = label_hjust),
             size = 3.0, colour = "#333333") +
-  scale_fill_direction(name = "direction") +
+  scale_colour_manual(values = tau_direction_colours, name = "direction") +
   scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
   labs(x = "GeoMx rows at FDR < 0.10", y = NULL,
        title = "Spatial DE is strongest for amyloid") +
@@ -354,11 +362,10 @@ ggplot(geo_long, aes(n_signed, contrast, fill = direction)) +
 #| fig-width: 10
 #| fig-height: 6
 #| fig-cap: "GeoMx primary volcanoes show dense amyloid structure."
-#| fig-alt: "Faceted binned volcanoes show GeoMx effect and p-value structure by contrast."
-ggplot(geo_volc_bins) +
-  geom_rect(aes(xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max,
-                fill = log_n),
-            colour = NA) +
+#| fig-alt: "Faceted circular density volcanoes show GeoMx effect and p-value structure by contrast."
+ggplot(geo_volc_bins, aes(x_mid, y_mid)) +
+  geom_point(aes(size = n, fill = log_n), shape = 21,
+             colour = "#F8F5ED", stroke = 0.05, alpha = 0.86) +
   geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.3) +
   ggrepel::geom_text_repel(
     data = geo_volc_lab,
@@ -372,6 +379,7 @@ ggplot(geo_volc_bins) +
   ) +
   facet_wrap(~ contrast, ncol = 2) +
   scale_fill_rwb(name = "log10(n + 1)") +
+  scale_size_continuous(range = c(0.25, 2.9), guide = "none") +
   labs(x = "GeoMx log2 fold-change", y = "-log10 p-value",
        title = "GeoMx primary spatial DE by contrast") +
   theme(panel.grid = element_blank())
@@ -382,7 +390,7 @@ ggplot(geo_volc_bins) +
 #| fig-width: 9.2
 #| fig-height: 4.8
 #| fig-cap: "GeoMx sensitivity marks rows gained or lost versus the primary model."
-#| fig-alt: "Direct-labelled diverging bars show GeoMx rows lost from or gained versus the primary model."
+#| fig-alt: "Direct-labelled diverging point stems show GeoMx rows lost from or gained versus the primary model."
 geo_sens_plot <- geo_sens_long
 geo_sens_plot$contrast <- factor(as.character(geo_sens_plot$contrast),
                                  levels = rev(levels(geo_sens_long$contrast)))
@@ -392,15 +400,17 @@ geo_sens_plot$label <- ifelse(abs(geo_sens_plot$n) == 0, "", fmt_int(abs(geo_sen
 geo_sens_plot$label_x <- geo_sens_plot$n + ifelse(geo_sens_plot$n < 0, -geo_sens_pad, geo_sens_pad)
 geo_sens_plot$label_hjust <- ifelse(geo_sens_plot$n < 0, 1, 0)
 
-ggplot(geo_sens_plot, aes(n, contrast, fill = metric)) +
+ggplot(geo_sens_plot, aes(n, contrast, colour = metric)) +
   geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.4) +
-  geom_col(width = 0.56) +
+  geom_segment(aes(x = 0, xend = n, yend = contrast),
+               linewidth = 0.62, alpha = 0.86) +
+  geom_point(size = 2.8) +
   geom_text(aes(x = label_x, label = label, hjust = label_hjust),
             size = 2.95, colour = "#333333") +
   facet_wrap(~ fit_label, nrow = 1) +
-  scale_fill_manual(values = c(`lost from primary` = "#A63A50",
-                               `gained in sensitivity` = "#0B6F7E"),
-                    name = NULL) +
+  scale_colour_manual(values = c(`lost from primary` = "#A63A50",
+                                 `gained in sensitivity` = "#0B6F7E"),
+                      name = NULL) +
   scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
   labs(x = "GeoMx rows changed at FDR < 0.10", y = NULL,
        title = "Spatial DE support depends on the replicate treatment") +
@@ -416,7 +426,7 @@ ggplot(geo_sens_plot, aes(n, contrast, fill = metric)) +
 #| fig-width: 9
 #| fig-height: 4.4
 #| fig-cap: "Bulk omics FDR counts are corroborative, not microglia-sorted."
-#| fig-alt: "Direct-labelled horizontal bars show bulk proteome and phospho FDR counts by focal contrast."
+#| fig-alt: "Direct-labelled point stems show bulk proteome and phospho FDR counts by focal contrast."
 bp <- bulk_counts[bulk_counts$contrast %in% focus, , drop = FALSE]
 bp$contrast <- plot_contrast(bp$contrast, reverse = TRUE)
 bp$layer <- factor(bp$layer, levels = names(layer_labels), labels = unname(layer_labels))
@@ -424,15 +434,17 @@ bp_max <- max(1, max(bp$n_fdr_0_10, na.rm = TRUE))
 bp_pad <- bp_max * 0.03
 bp$label <- ifelse(bp$n_fdr_0_10 == 0, "", fmt_int(bp$n_fdr_0_10))
 
-ggplot(bp, aes(n_fdr_0_10, contrast, fill = layer)) +
-  geom_col(width = 0.56) +
+ggplot(bp, aes(n_fdr_0_10, contrast, colour = layer)) +
+  geom_segment(aes(x = 0, xend = n_fdr_0_10, yend = contrast),
+               linewidth = 0.62, alpha = 0.86) +
+  geom_point(size = 2.8) +
   geom_text(aes(x = n_fdr_0_10 + bp_pad, label = label),
             hjust = 0, size = 2.95, colour = "#333333") +
   facet_wrap(~ layer, nrow = 1) +
-  scale_fill_manual(values = c(proteome = "#3F5F7F",
-                               `raw phospho` = "#0B7A75",
-                               `corrected phospho` = "#7D5CB8"),
-                    guide = "none") +
+  scale_colour_manual(values = c(proteome = "#3F5F7F",
+                                 `raw phospho` = "#0B7A75",
+                                 `corrected phospho` = "#7D5CB8"),
+                      guide = "none") +
   labs(x = "features at FDR < 0.10", y = NULL,
        title = "Bulk significance is largest in amyloid contrasts") +
   coord_cartesian(xlim = c(0, bp_max * 1.16), clip = "off") +
@@ -444,14 +456,13 @@ ggplot(bp, aes(n_fdr_0_10, contrast, fill = layer)) +
 #| fig-width: 10
 #| fig-height: 7
 #| fig-cap: "Parent correction changes bulk phosphosite effect geometry."
-#| fig-alt: "Faceted binned scatter compares raw and parent-corrected phosphosite effects."
+#| fig-alt: "Faceted circular density scatter compares raw and parent-corrected phosphosite effects."
 ggplot(pc_bins) +
   geom_abline(slope = 1, intercept = 0, colour = "grey65", linewidth = 0.35) +
   geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
   geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
-  geom_rect(aes(xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max,
-                fill = log_n),
-            colour = NA) +
+  geom_point(aes(x_mid, y_mid, size = n, fill = log_n), shape = 21,
+             colour = "#F8F5ED", stroke = 0.05, alpha = 0.86) +
   ggrepel::geom_text_repel(
     data = pc_lab,
     aes(raw_logFC, corrected_logFC, label = site_label),
@@ -464,6 +475,7 @@ ggplot(pc_bins) +
   ) +
   facet_wrap(~ contrast, ncol = 2) +
   scale_fill_rwb(name = "log10(n + 1)") +
+  scale_size_continuous(range = c(0.25, 2.9), guide = "none") +
   labs(x = "raw phosphosite log2 fold-change",
        y = "parent-corrected phosphosite log2 fold-change",
        title = "Parent correction changes phosphosite effect geometry") +

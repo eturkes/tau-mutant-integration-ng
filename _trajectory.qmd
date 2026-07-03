@@ -155,7 +155,7 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "The position interaction is carried by composition, not progression."
-#| fig-alt: "Forest and loading panels decompose the interaction into composition, progression and cross channels."
+#| fig-alt: "Forest and point-stem loading panels decompose the interaction into composition, progression and cross channels."
 chan       <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam")
 chan_label <- c("mean position", "composition", "progression", "cross",
                 "within-homeostatic", "within-DAM")
@@ -173,8 +173,10 @@ ld <- data.frame(
                    levels = c("composition", "progression", "cross")),
   loading = c(load_comp, load_prog, load_cross))
 p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
-  geom_col(width = 0.64, colour = "#F8F6F1", linewidth = 0.4) +
   geom_hline(yintercept = 0, colour = "grey50") +
+  geom_segment(aes(xend = channel, y = 0, yend = loading),
+               colour = "#B7B1A5", linewidth = 0.75) +
+  geom_point(shape = 21, size = 4.4, colour = "#262B2F", stroke = 0.35) +
   scale_fill_manual(values = c(composition = "#0B6F7E", progression = "#A63A50", cross = "#7C838A"),
                     guide = "none") +
   labs(x = NULL, y = "loading (fraction of position interaction)",
@@ -234,10 +236,10 @@ p_all_channels | p_decomp
 #| fig-width: 6.5
 #| fig-height: 4.5
 #| fig-cap: "Slingshot pseudotime and marker score-axis are concordant."
-#| fig-alt: "Binned scatter shows positive concordance between slingshot pseudotime and marker score-axis."
+#| fig-alt: "Density contours show positive concordance between slingshot pseudotime and marker score-axis."
 ggplot(on, aes(pt_raw, score_axis_pt)) +
-  geom_bin2d(bins = 60) +
-  scale_fill_rwb(name = "nuclei", transform = "log10") +
+  geom_point(size = 0.18, alpha = 0.08, colour = "#3F5F7F") +
+  geom_density_2d(colour = "#0B6F7E", linewidth = 0.38, bins = 9) +
   labs(x = "activation pseudotime", y = "marker score-axis (DAM - homeostatic)",
        title = sprintf("Pseudotime vs marker score-axis (rho = %.2f)", prov$concordance_rho))
 ```
@@ -247,7 +249,7 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| fig-width: 9.6
 #| fig-height: 4.2
 #| fig-cap: "Refits are stable and lineage omission is low across genotypes."
-#| fig-alt: "Bar and point panels show stable refits and low lineage omission by genotype."
+#| fig-alt: "Point-stem and replicate-point panels show stable refits and low lineage omission by genotype."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
   geom_hline(yintercept = 1, colour = "grey70", linewidth = 0.3) +
   geom_linerange(aes(ymin = 0.95, ymax = spearman_vs_primary), linewidth = 0.5, colour = "#0B6F7E") +

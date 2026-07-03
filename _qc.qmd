@@ -65,7 +65,7 @@ stopifnot(
 #| fig-width: 10
 #| fig-height: 4.8
 #| fig-cap: "The 2x2 genotype design has support across single-nucleus, spatial and bulk layers."
-#| fig-alt: "Panel A shows the tau by amyloid genotype grid; panel B shows per-genotype sample counts across modalities."
+#| fig-alt: "Panel A marks the tau by amyloid genotype grid with circular nodes; panel B shows per-genotype sample counts as direct-labelled point stems across modalities."
 design_grid <- qc$study_design$genotype_grid
 design_grid$genotype <- factor(as.character(design_grid$genotype), levels = genotype_levels)
 design_counts <- qc$study_design$sample_counts
@@ -79,8 +79,8 @@ design_counts <- merge(design_counts, count_pad, by = "modality", all.x = TRUE, 
 design_counts$label_y <- design_counts$n + pmax(design_counts$max_n * 0.035, 0.8)
 
 p_grid <- ggplot(design_grid, aes(tau_background, amyloid)) +
-  geom_tile(aes(fill = genotype), width = 0.84, height = 0.84,
-            colour = "#F8F6F1", linewidth = 0.6) +
+  geom_point(aes(fill = genotype), shape = 21, size = 23,
+             colour = "#F8F6F1", stroke = 0.9) +
   geom_text(aes(label = label), size = 3.05, fontface = "bold", lineheight = 0.9,
             colour = "#F8F6F1") +
   scale_fill_genotype(guide = "none") +
@@ -91,7 +91,9 @@ p_grid <- ggplot(design_grid, aes(tau_background, amyloid)) +
         axis.text.y = element_text(face = "bold"))
 
 p_counts <- ggplot(design_counts, aes(genotype, n, fill = genotype)) +
-  geom_col(width = 0.66) +
+  geom_segment(aes(xend = genotype, y = 0, yend = n),
+               colour = "#B7B1A5", linewidth = 0.55) +
+  geom_point(shape = 21, size = 3.2, stroke = 0.35, colour = "#262B2F") +
   geom_text(aes(y = label_y, label = label), size = 2.7, colour = "#333333") +
   facet_wrap(~ modality, nrow = 1, scales = "free_y") +
   scale_fill_genotype(guide = "none") +
@@ -113,15 +115,17 @@ p_counts <- ggplot(design_counts, aes(genotype, n, fill = genotype)) +
 #| fig-width: 9
 #| fig-height: 4.8
 #| fig-cap: "Total counts and detected genes stay finite across genotypes."
-#| fig-alt: "Binned log10 total-count and detected-gene distributions by genotype."
+#| fig-alt: "Area and line traces show log10 total-count and detected-gene distributions by genotype."
 depth_bins <- qc$depth_distribution
 depth_bins$genotype <- factor(as.character(depth_bins$genotype), levels = genotype_levels)
 depth_bins$metric <- factor(depth_bins$metric, levels = c("total counts", "detected genes"))
 depth_width <- median(diff(sort(unique(depth_bins$x_mid))))
-ggplot(depth_bins, aes(x_mid, n, fill = genotype)) +
-  geom_col(width = depth_width * 0.92) +
+ggplot(depth_bins, aes(x_mid, n, fill = genotype, colour = genotype)) +
+  geom_area(alpha = 0.28, linewidth = 0) +
+  geom_line(linewidth = 0.45) +
   facet_grid(metric ~ genotype, scales = "free_y") +
   scale_fill_genotype(guide = "none") +
+  scale_colour_genotype(guide = "none") +
   labs(x = "log10 count", y = "nuclei", title = "Library size and complexity")
 ```
 
@@ -130,15 +134,17 @@ ggplot(depth_bins, aes(x_mid, n, fill = genotype)) +
 #| fig-width: 9
 #| fig-height: 6
 #| fig-cap: "Mitochondrial, ribosomal, MALAT1 and contamination fractions remain bounded."
-#| fig-alt: "Binned percentage-quality distributions by genotype."
+#| fig-alt: "Area and line traces show percentage-quality distributions by genotype."
 frac_bins <- qc$fraction_distribution
 frac_bins$genotype <- factor(as.character(frac_bins$genotype), levels = genotype_levels)
 frac_bins$metric <- factor(frac_bins$metric, levels = c("mitochondrial %", "ribosomal %",
                                                         "MALAT1 %", "contamination %"))
 frac_width <- median(diff(sort(unique(frac_bins$x_mid))))
-ggplot(frac_bins, aes(x_mid, n, fill = genotype)) +
-  geom_col(width = frac_width * 0.92) +
+ggplot(frac_bins, aes(x_mid, n, fill = genotype, colour = genotype)) +
+  geom_area(alpha = 0.28, linewidth = 0) +
+  geom_line(linewidth = 0.45) +
   facet_grid(metric ~ genotype, scales = "free_y") +
   scale_fill_genotype(guide = "none") +
+  scale_colour_genotype(guide = "none") +
   labs(x = "% of nucleus counts", y = "nuclei", title = "Quality fractions")
 ```

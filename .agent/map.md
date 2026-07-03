@@ -297,8 +297,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 immediately includes report chapters)
                                                           --{{< include >}}--> `_qc.qmd`
                (caption-only QC chapter: setup `options(warn=2)` -> chunk warnings fail the render;
-                tar_load `qc_figures` only -> 2x2 study-design/sample-support panel plus depth/fraction
-                histograms; hidden checks still enforce modality shapes, 16-run key, populated
+                tar_load `qc_figures` only -> 2x2 study-design/sample-support node/stem panel plus depth/fraction
+                trace panels; hidden checks still enforce modality shapes, 16-run key, populated
                 genotype-batch grid, GeoMx count, and metric bounds)
                                                           --{{< include >}}--> `_microglia.qmd`
                (caption-only microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
@@ -317,22 +317,24 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 position-only support.)
                                                           --{{< include >}}--> `_mechanism.qmd`
                (caption-only mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
-                mechanism_report + mechanism_figures [compact targets] -> project/GO pathway panels,
-                Myc/NF-kB-family TF focus panels, NF-kB signed primary-score bars, kinase/run-index heatmap.
+                mechanism_report + mechanism_figures [compact targets] -> project/GO pathway dot matrices,
+                Myc/NF-kB-family TF focus panels, NF-kB signed primary-score point stems, kinase/run-index matrix.
                 Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
                (caption-only cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
                 tar_load crossmodality_report + crossmodality_figures [compact targets] ->
-                GeoMx counts/volcano/sensitivity, 24M bulk proteome/phospho counts + phospho correction.
+                four-modality count/pathway/symbol dot matrices, GeoMx counts/volcano/sensitivity,
+                24M bulk proteome/phospho counts + phospho correction.
                 Modality wording keeps bulk
                 hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
                 unresolved AOIs, and CCC-lite != full CCC.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
+       + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       color saturation pass, 2026-07-03 (33 figures / 33 captions / 33 nonblank alts,
-       0 duplicate IDs; full gate green after forced 79-chunk render; tar_meta clean across
-       52 current targets/branches).
+       figure elegance pass, 2026-07-03 (36 figures / 36 captions / 36 role-img elements,
+       no `geom_col`/`geom_tile`/`geom_rect`/`geom_bin2d` in QMDs; full gate green after
+       forced 85-chunk render; Chromium PDF contact sheet clean).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):
