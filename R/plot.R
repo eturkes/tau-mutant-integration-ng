@@ -36,6 +36,29 @@ scale_fill_genotype <- function(...) {
 }
 scale_color_genotype <- scale_colour_genotype   # US-spelling alias
 
+# RWB heatmap scales. `midpoint=NULL` maps the observed continuous range through
+# red-white-blue; signed effects pass `midpoint=0` so zero is white.
+rwb_colours <- c(low = "#B2182B", mid = "#F7F7F7", high = "#2166AC")
+scale_fill_rwb <- function(..., midpoint = NULL, colours = rwb_colours) {
+  stopifnot(is.character(colours), length(colours) == 3L)
+  if (is.null(midpoint)) {
+    ggplot2::scale_fill_gradientn(colours = unname(colours), ...)
+  } else {
+    ggplot2::scale_fill_gradient2(low = colours[[1]], mid = colours[[2]],
+                                  high = colours[[3]], midpoint = midpoint, ...)
+  }
+}
+scale_colour_rwb <- function(..., midpoint = NULL, colours = rwb_colours) {
+  stopifnot(is.character(colours), length(colours) == 3L)
+  if (is.null(midpoint)) {
+    ggplot2::scale_colour_gradientn(colours = unname(colours), ...)
+  } else {
+    ggplot2::scale_colour_gradient2(low = colours[[1]], mid = colours[[2]],
+                                    high = colours[[3]], midpoint = midpoint, ...)
+  }
+}
+scale_color_rwb <- scale_colour_rwb
+
 # Concordance scatter for two effect-size vectors (e.g. log2FC of the same features under two
 # contrasts or modalities): faint points, an OLS trend line, zero crosshairs, and the top_n
 # features by |x|+|y| labelled. Subtitle reports Spearman + Pearson correlation and n. `df` is

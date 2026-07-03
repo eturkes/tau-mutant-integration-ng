@@ -272,7 +272,7 @@ p_all_channels | p_decomp
 #| fig-alt: "Binned scatter shows positive concordance between slingshot pseudotime and marker score-axis."
 ggplot(on, aes(pt_raw, score_axis_pt)) +
   geom_bin2d(bins = 60) +
-  scale_fill_continuous(name = "nuclei", transform = "log10") +
+  scale_fill_rwb(name = "nuclei", transform = "log10") +
   labs(x = "activation pseudotime", y = "marker score-axis (DAM - homeostatic)",
        title = sprintf("Pseudotime vs marker score-axis (rho = %.2f)", prov$concordance_rho))
 ```

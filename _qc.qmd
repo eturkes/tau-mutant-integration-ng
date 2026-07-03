@@ -78,7 +78,7 @@ geomx_counts$genotype <- factor(geomx_counts$genotype, levels = genotype_levels)
 p_modal <- ggplot(modal_cells, aes(axis, modality, fill = log10(pmax(n, 1)))) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = label), size = 3.2, lineheight = 0.9) +
-  scale_fill_continuous(guide = "none") +
+  scale_fill_rwb(guide = "none") +
   labs(x = NULL, y = NULL, title = "Materialised target dimensions")
 
 p_geomx <- ggplot(geomx_counts, aes(genotype, n_aoi, fill = genotype)) +
@@ -106,7 +106,7 @@ cell_counts$batch <- factor(cell_counts$batch, levels = sort(unique(cell_counts$
 ggplot(cell_counts, aes(batch, genotype, fill = Freq)) +
   geom_tile(colour = "white", linewidth = 0.7) +
   geom_text(aes(label = fmt_n(Freq)), size = 3.2) +
-  scale_fill_continuous(name = "nuclei") +
+  scale_fill_rwb(name = "nuclei") +
   labs(x = NULL, y = NULL, title = "Microglia genotype-by-batch design grid")
 ```
 

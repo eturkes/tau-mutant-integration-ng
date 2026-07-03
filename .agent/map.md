@@ -38,6 +38,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free) +
       default ggplot scale_colour/fill_genotype (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) +
+      RWB continuous heatmap scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass midpoint=0) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
@@ -369,7 +370,7 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
-  - test_plot.R   : device-free -- theme_tau/scale_*_genotype/concordance_plot class + wiring checks
+  - test_plot.R   : device-free -- theme_tau/scale_*_genotype/scale_*_rwb/concordance_plot class + wiring checks
   - test_figures.R : (Figure expansion S1) 26-figure manifest + compact figure builder contracts for microglia /
                     trajectory / mechanism / cross-modality; (Prose-to-figures S2) QC/report-visual builders,
                     per-chapter board aliases, S1 manifest figure/schematic slot coverage; synthetic finite guards

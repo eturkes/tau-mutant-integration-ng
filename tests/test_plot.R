@@ -31,6 +31,19 @@ stopifnot(
   identical(scale_color_genotype, scale_colour_genotype)                          # US-spelling alias = same fn
 )
 
+# --- RWB heatmap scales: red-white-blue helpers for sequential + signed panels ---------
+rwb_fill_seq <- scale_fill_rwb(name = "x")
+rwb_fill_mid <- scale_fill_rwb(name = "x", midpoint = 0)
+rwb_col_mid <- scale_colour_rwb(name = "x", midpoint = 0)
+stopifnot(
+  identical(unname(rwb_colours), c("#B2182B", "#F7F7F7", "#2166AC")),
+  inherits(rwb_fill_seq, "ScaleContinuous"), inherits(rwb_fill_mid, "ScaleContinuous"),
+  inherits(rwb_col_mid, "ScaleContinuous"),
+  identical(rwb_fill_seq$aesthetics, "fill"), identical(rwb_fill_mid$aesthetics, "fill"),
+  identical(rwb_col_mid$aesthetics, "colour"),
+  identical(scale_color_rwb, scale_colour_rwb)
+)
+
 # --- concordance_plot: expected layered ggplot; finite-row filter; correlations reported -
 df <- data.frame(
   gene = paste0("g", 1:20),

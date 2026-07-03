@@ -353,7 +353,7 @@ ggplot(geo_volc_bins) +
     box.padding = 0.12
   ) +
   facet_wrap(~ contrast, ncol = 2) +
-  scale_fill_continuous(name = "log10(n + 1)") +
+  scale_fill_rwb(name = "log10(n + 1)") +
   labs(x = "GeoMx log2 fold-change", y = "-log10 p-value",
        title = "GeoMx primary spatial DE by contrast") +
   theme(panel.grid = element_blank())
@@ -405,7 +405,7 @@ ggplot(bp, aes(contrast, n_fdr_0_10, fill = layer)) +
 ggplot(bulk_run_plot, aes(contrast, layer_label, fill = loss_fraction)) +
   geom_tile(colour = "white", linewidth = 0.45) +
   geom_text(aes(label = cell_label), size = 3) +
-  scale_fill_continuous(limits = c(0, 1), name = "loss fraction") +
+  scale_fill_rwb(limits = c(0, 1), name = "loss fraction") +
   labs(x = NULL, y = NULL, title = "Bulk run-index sensitivity is load-bearing") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid = element_blank())
@@ -435,7 +435,7 @@ ggplot(pc_bins) +
     box.padding = 0.12
   ) +
   facet_wrap(~ contrast, ncol = 2) +
-  scale_fill_continuous(name = "log10(n + 1)") +
+  scale_fill_rwb(name = "log10(n + 1)") +
   labs(x = "raw phosphosite log2 fold-change",
        y = "parent-corrected phosphosite log2 fold-change",
        title = "Parent correction changes phosphosite effect geometry") +
@@ -453,7 +453,7 @@ ggplot(anchor_plot, aes(contrast, anchor_label, fill = logFC)) +
   geom_point(data = anchor_plot[anchor_plot$supported, , drop = FALSE],
              shape = 21, size = 1.9, stroke = 0.35, fill = "white", colour = "grey20") +
   facet_wrap(~ layer_label, nrow = 1) +
-  scale_fill_continuous(name = "logFC") +
+  scale_fill_rwb(name = "logFC", midpoint = 0) +
   labs(x = NULL, y = NULL, title = "Bulk anchor rows are sparse and layer-dependent") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid = element_blank())
@@ -499,7 +499,7 @@ pa$direction_label <- ifelse(pa$mixed_sign, "mix",
 ggplot(pa, aes(contrast, axis_label, fill = n_modalities_sig)) +
   geom_tile(colour = "white", linewidth = 0.4) +
   geom_text(aes(label = direction_label), size = 3) +
-  scale_fill_continuous(name = "sig modalities") +
+  scale_fill_rwb(name = "sig modalities") +
   labs(x = NULL, y = NULL, title = "Cross-modality axis support") +
   theme(axis.text.x = element_text(angle = 25, hjust = 1))
 ```
@@ -513,8 +513,8 @@ ggplot(pa, aes(contrast, axis_label, fill = n_modalities_sig)) +
 ggplot(sym_plot, aes(contrast, symbol, fill = n_modalities_sig)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_text(aes(label = dir_label), size = 2.8) +
-  scale_fill_continuous(breaks = 0:max(sym_plot$n_modalities_sig),
-                        name = "sig broad\nmodalities") +
+  scale_fill_rwb(breaks = 0:max(sym_plot$n_modalities_sig),
+                 name = "sig broad\nmodalities") +
   labs(x = NULL, y = NULL, title = "Symbol-level evidence uses broad modality classes") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid = element_blank())
@@ -530,8 +530,8 @@ ggplot(path_fig, aes(contrast, set_label, fill = n_modalities_sig)) +
   geom_tile(colour = "white", linewidth = 0.35) +
   geom_text(aes(label = direction_label), size = 2.7) +
   facet_wrap(~ axis_label, scales = "free_y", ncol = 2) +
-  scale_fill_continuous(breaks = 0:max(path_fig$n_modalities_sig),
-                        name = "sig broad\nmodalities") +
+  scale_fill_rwb(breaks = 0:max(path_fig$n_modalities_sig),
+                 name = "sig broad\nmodalities") +
   labs(x = NULL, y = NULL, title = "Pathway-axis support is strongest in amyloid contrasts") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid = element_blank())
