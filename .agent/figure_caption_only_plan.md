@@ -26,6 +26,16 @@ Current baseline, after the top-section removal commits:
 | h2 | 26 | 103 | keep as navigation |
 | total inventory | 109 | 1,119 | source-count baseline |
 
+S1 strict baseline (`uv run python scripts/prose_inventory.py --strict --html
+_report/index.html --summary-only`, expected red before conversion):
+- Source: 109 blocks / 1,119 words; allowed = 31 headings + 45 captions; blockers =
+  33 paragraphs / 594 words.
+- Rendered HTML main path: blockers = 34 paragraphs / 716 words (incl. visible author
+  metadata), 4 tables / 168 words, 0 text-only `.cell-output-display`, 4 stdout
+  provenance blocks / 80 words.
+- Total strict blocker records = 75 (source + rendered-HTML lenses; source/rendered
+  prose intentionally overlap).
+
 Success = body prose blocks == 0 and no visible non-figure tables/provenance
 outputs in rendered HTML. Captions stay short: target <=14 words each unless a
 reviewed scientific caveat needs more; hard fail above 24 words.
@@ -99,7 +109,7 @@ Selected: default strict visible-path conversion.
 
 Each implementation step runs `scripts/check.sh` unless explicitly docs-only.
 
-### S1 - Strict Inventory Gate
+### S1 - Strict Inventory Gate [DONE 2026-07-03]
 
 Work:
 - Extend or wrap `scripts/prose_inventory.py` with a strict mode that reports
@@ -112,6 +122,13 @@ Acceptance:
 - Current blockers are listed by qmd/line/kind.
 - Gate command exists and fails on the current report before conversion.
 - No report-source edits beyond inventory/gate plumbing.
+
+Outcome:
+- `scripts/prose_inventory.py --strict --html _report/index.html --summary-only`
+  is the strict gate; current report fails red with source qmd/line blockers and
+  rendered HTML line/kind blockers.
+- Existing `scripts/check.sh` stays green; strict caption-only gate remains separate
+  until S2-S4 remove the blockers.
 
 ### S2 - QC Chapter Conversion
 

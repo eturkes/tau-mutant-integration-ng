@@ -34,12 +34,12 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Figure-caption-only report
 Plan file: `.agent/figure_caption_only_plan.md`.
-Next `$session-prompt` mode = EXECUTE S1.
+Next `$session-prompt` mode = EXECUTE S2.
 Goal = visible report path becomes headings + figures + captions only: zero
 body prose, zero visible tables, zero visible provenance text; accessibility
 `fig-alt` stays source-level.
 Steps:
-- S1 strict inventory gate: count/fail non-heading/non-caption visible blocks.
+- S1 strict inventory gate [DONE 2026-07-03]: count/fail non-heading/non-caption visible blocks.
 - S2 QC conversion: replace QC prose/tables with figure panels.
 - S3 result conversion: remove chapter openers/status tails/provenance text.
 - S4 caption/alt/HTML QA: caption length, `fig-alt`, DOM checks, full gate.

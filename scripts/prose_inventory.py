@@ -2,8 +2,8 @@
 """Inventory report prose blocks and planned visual replacements.
 
 Counts human-facing Quarto text while skipping YAML, executable code bodies,
-ordinary source comments, and generated output. Quarto captions (`fig-cap`,
-`tbl-cap`, `fig-alt`) are retained because they render as report text.
+ordinary source comments, and generated output. Quarto captions/alt metadata
+(`fig-cap`, `tbl-cap`, `fig-alt`) are retained as report-facing text.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import argparse
 import csv
 import re
 import sys
+from html.parser import HTMLParser
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -88,6 +89,17 @@ class Block:
     @property
     def words(self) -> int:
         return len(WORD_RE.findall(clean_text(self.text)))
+
+
+@dataclass(frozen=True)
+class HtmlBlock:
+    line: int
+    kind: str
+    text: str
+
+    @property
+    def words(self) -> int:
+        return len(WORD_RE.findall(self.text))
 
 
 def clean_text(text: str) -> str:
@@ -205,6 +217,130 @@ def parse_qmd(path: Path) -> list[Block]:
     return blocks
 
 
+class ReportHtmlParser(HTMLParser):
+    """Small Quarto-main-content parser for visible caption-only blockers."""
+
+    IGNORED_TAGS = {"script", "style", "noscript", "template", "head"}
+    DISPLAY_NON_TEXT_TAGS = {"canvas", "figure", "iframe", "img", "svg", "table"}
+    VOID_TAGS = {
+        "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
+        "meta", "param", "source", "track", "wbr",
+    }
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[dict[str, object]] = []
+        self.blocks: list[HtmlBlock] = []
+        self._capture_stack: list[dict[str, object]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr = {k: v or "" for k, v in attrs}
+        classes = set(attr.get("class", "").split())
+        parent = self.stack[-1] if self.stack else {}
+        in_main = bool(parent.get("in_main")) or (
+            tag == "main" and attr.get("id") == "quarto-document-content"
+        )
+        ignored = bool(parent.get("ignored")) or tag in self.IGNORED_TAGS
+        in_caption = bool(parent.get("in_caption")) or tag in {"figcaption", "caption"}
+        output_display_depth = int(parent.get("output_display_depth", 0))
+        if "cell-output-display" in classes:
+            output_display_depth += 1
+        output_stdout_depth = int(parent.get("output_stdout_depth", 0))
+        if "cell-output-stdout" in classes:
+            output_stdout_depth += 1
+
+        node = {
+            "tag": tag,
+            "classes": classes,
+            "in_main": in_main,
+            "ignored": ignored,
+            "in_caption": in_caption,
+            "line": self.getpos()[0],
+            "output_display_depth": output_display_depth,
+            "output_stdout_depth": output_stdout_depth,
+        }
+        if tag not in self.VOID_TAGS:
+            self.stack.append(node)
+
+        if not in_main or ignored:
+            return
+        if output_display_depth > 0 and (
+            tag in self.DISPLAY_NON_TEXT_TAGS or {"quarto-figure", "quarto-float"} & classes
+        ):
+            for capture in self._capture_stack:
+                if capture["kind"] == "html_cell_output_display":
+                    capture["non_text_child"] = True
+        if tag == "p" and not in_caption:
+            self._start_capture("html_paragraph", node["line"])
+        elif tag == "table" and not in_caption:
+            self._start_capture("html_table", node["line"])
+        elif "cell-output-display" in classes:
+            self._start_capture("html_cell_output_display", node["line"])
+        elif "cell-output-stdout" in classes:
+            self._start_capture("html_stdout_provenance", node["line"])
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        n_stack = len(self.stack)
+        self.handle_starttag(tag, attrs)
+        if len(self.stack) > n_stack and self.stack[-1].get("tag") == tag:
+            self.stack.pop()
+
+    def handle_endtag(self, tag: str) -> None:
+        self._close_captures(tag)
+        if self.stack:
+            self.stack.pop()
+
+    def handle_data(self, data: str) -> None:
+        if not data or not self.stack:
+            return
+        current = self.stack[-1]
+        if not current.get("in_main") or current.get("ignored"):
+            return
+        if current["tag"] in {"script", "style"}:
+            return
+        for capture in self._capture_stack:
+            capture["text"].append(data)
+
+    def _start_capture(self, kind: str, line: object) -> None:
+        self._capture_stack.append({"kind": kind, "line": int(line),
+                                    "text": [], "non_text_child": False})
+
+    def _close_captures(self, tag: str) -> None:
+        if not self._capture_stack:
+            return
+        closing = {
+            "html_paragraph": "p",
+            "html_table": "table",
+            "html_cell_output_display": "div",
+            "html_stdout_provenance": "div",
+        }
+        remaining: list[dict[str, object]] = []
+        for capture in self._capture_stack:
+            if closing.get(str(capture["kind"])) != tag:
+                remaining.append(capture)
+                continue
+            text = normalize_space(" ".join(str(x) for x in capture["text"]))
+            if text and not capture.get("non_text_child") and not self._allowed_html_capture(str(capture["kind"]), text):
+                self.blocks.append(HtmlBlock(int(capture["line"]), str(capture["kind"]), text))
+        self._capture_stack = remaining
+
+    @staticmethod
+    def _allowed_html_capture(kind: str, text: str) -> bool:
+        # Plot widgets/image outputs sometimes place fallback labels in display containers.
+        # The S1 blocker is text-only output, so a display container with only Figure refs is allowed.
+        return kind == "html_cell_output_display" and re.fullmatch(r"Figure\s+\d+(?:\.\d+)?", text)
+
+
+def normalize_space(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def parse_html(path: Path) -> list[HtmlBlock]:
+    parser = ReportHtmlParser()
+    parser.feed(path.read_text(encoding="utf-8"))
+    return parser.blocks
+
+
 def disposition(block: Block) -> tuple[str, str]:
     slot = SECTION_SLOTS.get((block.qmd, block.section), "chapter-board")
     text_l = clean_text(block.text).lower()
@@ -232,6 +368,58 @@ def read_blocks(files: list[Path]) -> list[Block]:
     for path in files:
         blocks.extend(parse_qmd(path))
     return blocks
+
+
+def source_kind_counts(blocks: list[Block]) -> Counter[str]:
+    return Counter(block.kind for block in blocks)
+
+
+def html_kind_counts(blocks: list[HtmlBlock]) -> Counter[str]:
+    return Counter(block.kind for block in blocks)
+
+
+def print_kind_summary(blocks: list[Block], html_blocks: list[HtmlBlock]) -> None:
+    print("source_kind\tblocks\twords")
+    source_counts = source_kind_counts(blocks)
+    source_kinds = sorted(set(source_counts) | {"caption", "paragraph", "table_row", "list_item"})
+    for kind in source_kinds:
+        count = source_counts.get(kind, 0)
+        words = sum(block.words for block in blocks if block.kind == kind)
+        print(f"{kind}\t{count}\t{words}")
+    print()
+    print("html_kind\tblocks\twords")
+    html_counts = html_kind_counts(html_blocks)
+    html_kinds = (
+        "html_paragraph",
+        "html_table",
+        "html_cell_output_display",
+        "html_stdout_provenance",
+    )
+    for kind in html_kinds:
+        count = html_counts.get(kind, 0)
+        words = sum(block.words for block in html_blocks if block.kind == kind)
+        print(f"{kind}\t{count}\t{words}")
+
+
+def source_blockers(blocks: list[Block]) -> list[Block]:
+    return [block for block in blocks if not (block.kind.startswith("h") or block.kind == "caption")]
+
+
+def print_strict_blockers(blocks: list[Block], html_blocks: list[HtmlBlock]) -> None:
+    if blocks:
+        print()
+        print("STRICT SOURCE BLOCKERS")
+        print("qmd\tline\tkind\twords\tsection\ttext")
+        for block in blocks:
+            text = normalize_space(clean_text(block.text))
+            print(f"{block.qmd}\t{block.line}\t{block.kind}\t{block.words}\t{block.section}\t{text}")
+    if html_blocks:
+        print()
+        print("STRICT HTML BLOCKERS")
+        print("html\tline\tkind\twords\ttext")
+        for block in html_blocks:
+            text = normalize_space(block.text)
+            print(f"index.html\t{block.line}\t{block.kind}\t{block.words}\t{text}")
 
 
 def print_summary(blocks: list[Block]) -> None:
@@ -314,6 +502,10 @@ def main() -> int:
     parser.add_argument("files", nargs="*", type=Path, help="QMD files to inventory")
     parser.add_argument("--manifest", type=Path, help="write block-level TSV manifest")
     parser.add_argument("--summary-only", action="store_true", help="skip manifest stdout when no --manifest is given")
+    parser.add_argument("--strict", action="store_true",
+                        help="fail if source contains visible blocks other than headings/captions")
+    parser.add_argument("--html", type=Path,
+                        help="also inspect rendered report HTML for visible body prose/tables/provenance")
     args = parser.parse_args()
 
     files = args.files or [Path(p) for p in DEFAULT_QMDS]
@@ -322,7 +514,18 @@ def main() -> int:
         parser.error("missing qmd file(s): " + ", ".join(missing))
 
     blocks = read_blocks(files)
+    html_blocks = parse_html(args.html) if args.html else []
     print_summary(blocks)
+    if args.strict:
+        print()
+        print_kind_summary(blocks, html_blocks)
+        src_blockers = source_blockers(blocks)
+        print_strict_blockers(src_blockers, html_blocks)
+        total = len(src_blockers) + len(html_blocks)
+        if total:
+            print(f"\nFAIL - caption-only strict gate found {total} blocker(s)")
+            return 1
+        print("\nPASS - caption-only strict gate")
     if args.manifest:
         write_manifest(blocks, args.manifest)
     elif not args.summary_only:

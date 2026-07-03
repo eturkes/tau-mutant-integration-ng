@@ -318,11 +318,16 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   - parses `index.qmd` + `_*.qmd`; skips YAML, executable code bodies, hidden
     setup/helper code, and ordinary source comments.
   - keeps Quarto caption metadata (`fig-cap` / `tbl-cap` / `fig-alt`) as
-    human-facing report prose.
+    report-facing text.
   - emits chapter baseline summary + block-level TSV manifest with qmd, block id,
     line, kind, section, word count, disposition, target slot, label, and text.
   - S1 command:
     `python3 scripts/prose_inventory.py --manifest .agent/prose_replacement_manifest.tsv --summary-only`
+  - Figure-caption-only S1 strict gate:
+    `uv run python scripts/prose_inventory.py --strict --html _report/index.html --summary-only`
+    -> expected red until conversion is complete; source allows only headings/captions,
+       rendered HTML fails visible body paragraphs, tables, text-only `.cell-output-display`,
+       and stdout provenance.
     -> baseline 5,111 words / 119 blocks; 33 headings kept as navigation;
     86/86 prose/caption blocks assigned non-keep dispositions; selected target
     >=55% reduction (<=2,300 counted words), stretch <=1,800.
