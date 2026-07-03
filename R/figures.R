@@ -25,7 +25,7 @@ figure_manifest <- function(chapter = NULL) {
       "fig-trajectory-audit",
       "fig-mechanism-project-pathway",
       "fig-mechanism-go-dotplot",
-      "fig-mechanism-tf-lollipop",
+      "fig-mechanism-tf-focus",
       "fig-mechanism-kinase-heatmap",
       "fig-crossmodality-geomx-volcano",
       "fig-crossmodality-geomx-sensitivity",
@@ -57,7 +57,7 @@ figure_manifest <- function(chapter = NULL) {
       "trajectory_audit",
       "project_pathway_heatmap",
       "go_top_dotplot",
-      "tf_lollipop",
+      "tf_focus",
       "kinase_heatmap",
       "geomx_volcano",
       "geomx_sensitivity",
@@ -811,7 +811,7 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
     project_pathway_heatmap = project,
     go_top_dotplot = go_top,
     tf_interaction = tf[tf$contrast == "interaction", , drop = FALSE],
-    tf_lollipop = tf,
+    tf_focus = tf,
     kinase_heatmap = kinase,
     provenance = list(
       source_targets = "mechanism_report",
@@ -821,7 +821,7 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
   )
   .fig_assert_finite(out$project_pathway_heatmap, c("NES", "fdr"), "project_pathway_heatmap")
   .fig_assert_finite(out$go_top_dotplot, c("NES", "fdr", "size"), "go_top_dotplot")
-  .fig_assert_finite(out$tf_lollipop, c("score", "fdr"), "tf_lollipop")
+  .fig_assert_finite(out$tf_focus, c("score", "fdr"), "tf_focus")
   .fig_assert_finite(out$kinase_heatmap, c("score", "fdr", "run_index_score"), "kinase_heatmap")
   out
 }

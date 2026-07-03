@@ -102,9 +102,9 @@ sig_tau <- sig_tau[order(sig_tau$fdr, -abs(sig_tau$score), sig_tau$source,
 run_supported_tau <- sum(sig_tau$run_index_supports %in% TRUE)
 
 contrast_labels <- c(tau_alone = "tau alone",
-                     nlgf_in_maptki = "amyloid on MAPTKI",
-                     nlgf_in_p301s = "amyloid on P301S",
-                     tau_in_nlgf = "tau in NLGF",
+                     nlgf_in_maptki = "NLGF / MAPTKI",
+                     nlgf_in_p301s = "NLGF / P301S",
+                     tau_in_nlgf = "tau / NLGF",
                      interaction = "interaction")
 project_labels <- c(DAM = "DAM",
                     Homeostatic = "homeostatic",
@@ -113,9 +113,9 @@ project_labels <- c(DAM = "DAM",
                     NFkB_Activated_Targets = "NF-kB activated targets",
                     NFkB_CollecTRI_Targets = "NF-kB target union",
                     NFkB_Repressed_Targets = "NF-kB repressed targets")
-population_labels <- c(whole_microglia = "whole microglia",
+population_labels <- c(whole_microglia = "whole MG",
                        DAM = "DAM",
-                       Homeostatic = "homeostatic")
+                       Homeostatic = "homeo.")
 fmt_contrast <- function(x, rev = FALSE) {
   lv <- if (rev) rev(names(contrast_labels)) else names(contrast_labels)
   factor(x, levels = lv, labels = unname(contrast_labels[lv]))
@@ -159,7 +159,7 @@ go_select$pathway_label <- factor(go_select$pathway_label,
                                   levels = rev(unique(go_select$pathway_label)))
 go_select$supported <- go_select$fdr < alpha
 
-tf_focus <- mfg$tf_lollipop
+tf_focus <- mfg$tf_focus
 tf_focus <- tf_focus[tf_focus$source %in% c("Myc", "Nfkb1", "Nfkb2", "Rela", "Relb") &
                        tf_focus$contrast %in% c("interaction", "tau_in_nlgf"), , drop = FALSE]
 tf_focus$contrast <- fmt_contrast(tf_focus$contrast)
@@ -212,7 +212,7 @@ ggplot(m_project, aes(contrast, pathway_label, fill = NES)) +
 ```{r}
 #| label: fig-mechanism-go-dotplot
 #| fig-width: 10
-#| fig-height: 7
+#| fig-height: 6.5
 #| fig-cap: "GO survey rows are exploratory context, not new mechanism calls."
 #| fig-alt: "Dot plot shows exploratory GO rows by population, contrast, NES and set size."
 ggplot(go_select, aes(contrast, pathway_label)) +
@@ -222,8 +222,9 @@ ggplot(go_select, aes(contrast, pathway_label)) +
   scale_alpha_manual(values = c(`FALSE` = 0.45, `TRUE` = 1), guide = "none") +
   scale_size_continuous(range = c(1.4, 4.2), name = "set size") +
   labs(x = NULL, y = NULL, title = "Top GO rows by population and contrast") +
-  theme(axis.text.x = element_text(angle = 35, hjust = 1),
-        panel.grid.major.y = element_blank())
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid.major.y = element_blank(),
+        strip.text = element_text(size = 9, face = "bold"))
 ```
 
 ## TF Activity
@@ -248,26 +249,26 @@ ggplot(tf_int, aes(score, reorder(source, score), colour = is_myc)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_point(size = 2.2) +
   facet_wrap(~ population, scales = "free_y") +
-  scale_colour_discrete(guide = "none") +
+  scale_colour_tau_binary(guide = "none",
+                          values = c(`FALSE` = "#8A8A84", `TRUE` = "#7A4052")) +
   labs(x = "ULM activity score", y = NULL, title = "Interaction TF activity")
 ```
 
 ```{r}
-#| label: fig-mechanism-tf-lollipop
+#| label: fig-mechanism-tf-focus
 #| fig-width: 10
 #| fig-height: 5.8
 #| fig-cap: "Myc is supported; NF-kB-family rows lack concordant attenuation."
-#| fig-alt: "Faceted lollipop plot contrasts Myc and NF-kB-family TF activity rows."
-ggplot(tf_focus, aes(score, source, colour = class)) +
-  geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = score, yend = source), linewidth = 0.45) +
-  geom_point(aes(shape = supported), size = 2.2) +
-  facet_grid(population_label ~ contrast) +
-  scale_colour_discrete(name = NULL) +
-  scale_shape_manual(values = c(`FALSE` = 1, `TRUE` = 16), name = "FDR < 0.10") +
-  labs(x = "ULM activity score", y = NULL,
-       title = "Myc and NF-kB-family TF activities") +
-  theme(legend.position = "bottom")
+#| fig-alt: "Faceted heatmap contrasts Myc and NF-kB-family TF activity rows."
+ggplot(tf_focus, aes(contrast, source, fill = score)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.35) +
+  geom_point(data = tf_focus[tf_focus$supported, , drop = FALSE],
+             shape = 21, size = 1.8, stroke = 0.35, fill = "#F8F6F1", colour = "#262B2F") +
+  facet_wrap(~ population_label, nrow = 1) +
+  scale_fill_rwb(name = "ULM score", midpoint = 0) +
+  labs(x = NULL, y = NULL, title = "Myc and NF-kB-family TF activities") +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        panel.grid = element_blank())
 ```
 
 ```{r}
@@ -275,14 +276,13 @@ ggplot(tf_focus, aes(score, source, colour = class)) +
 #| fig-width: 7.4
 #| fig-height: 3.8
 #| fig-cap: "NF-kB primary rows do not form a supported attenuation signal."
-#| fig-alt: "Lollipop plot shows NF-kB TF-family and signed target-GSEA scores with FDR labels."
-ggplot(nf_plot, aes(score, test_label)) +
+#| fig-alt: "Signed bar plot shows NF-kB TF-family and signed target-GSEA scores with FDR labels."
+ggplot(nf_plot, aes(score, test_label, fill = supported)) +
   geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = score, yend = test_label), linewidth = 0.5) +
-  geom_point(aes(shape = supported), size = 2.6) +
+  geom_col(width = 0.42, colour = "#3B3B37", linewidth = 0.25) +
   geom_text(aes(x = label_x, label = fdr_label, hjust = label_hjust),
             nudge_y = 0.12, vjust = 0, size = 3) +
-  scale_shape_manual(values = c(`FALSE` = 1, `TRUE` = 16), guide = "none") +
+  scale_fill_tau_binary(guide = "none") +
   scale_x_continuous(expand = expansion(mult = 0.16)) +
   labs(x = "primary score", y = NULL, title = "Predeclared NF-kB attenuation gate") +
   coord_cartesian(clip = "off") +

@@ -37,10 +37,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       subset pre-aggregation), fit_limma_voom (voomWQW default + confint) / fit_limma_log (log-intensity),
       median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
    + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free; installs
-      muted ggplot discrete defaults for the render session) + manual muted scale_colour/fill_genotype
-      (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate
-      scales (DAM=red, IFN=orange) + softened RWB continuous heatmap scales (`scale_fill_rwb`,
-      `scale_colour_rwb`; signed panels pass midpoint=0) +
+      restrained ggplot discrete defaults for the render session) + manual muted scale_colour/fill_genotype
+      (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate /
+      tau-background / binary / direction scales + muted continuous scales (`scale_fill_rwb`,
+      `scale_colour_rwb`; signed panels pass midpoint=0; count panels use a neutral sequential gradient) +
       concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
@@ -312,7 +312,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                                                           --{{< include >}}--> `_mechanism.qmd`
                (caption-only mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
                 mechanism_report + mechanism_figures [compact targets] -> project/GO pathway panels,
-                Myc/NF-kB-family TF panels, NF-kB primary-score lollipop, kinase/run-index heatmap.
+                Myc/NF-kB-family TF focus panels, NF-kB signed primary-score bars, kinase/run-index heatmap.
                 Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
                 24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
                                                           --{{< include >}}--> `_crossmodality.qmd`
@@ -322,11 +322,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 Modality wording keeps bulk
                 hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
                 unresolved AOIs, and CCC-lite != full CCC.)
-       `theme.scss` = crimson colours (#B0344D) + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
+       `theme.scss` = deep-ink/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       figure story layout, 2026-07-03 (strict rendered main path pass; 33 figures / 33 captions /
-       33 nonblank alts, 0 visible body paragraphs/tables/stdout/text outputs, 0 duplicate IDs,
-       0 external refs; full gate green after forced 79-chunk render; tar_meta clean across
+       visual maturity pass, 2026-07-03 (33 figures / 33 captions / 33 nonblank alts,
+       0 duplicate IDs; full gate green after forced 79-chunk render; tar_meta clean across
        52 current targets/branches).
 
 ### Report prose inventory (Prose-to-figures S1)
@@ -375,7 +374,8 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
-  - test_plot.R   : device-free -- theme_tau/scale_*_genotype/scale_*_rwb/concordance_plot class + wiring checks
+  - test_plot.R   : device-free -- theme_tau/scale_*_genotype/substate/background/binary/direction/rwb +
+                    concordance_plot class + wiring checks
   - test_figures.R : curated 18-figure manifest + compact figure builder contracts for microglia /
                     trajectory / mechanism / cross-modality; QC visual builders, manifest-driven slot coverage
                     (including empty figure/schematic manifest sets), synthetic finite guards for qmd geom inputs

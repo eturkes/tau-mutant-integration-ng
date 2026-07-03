@@ -124,7 +124,7 @@ ov$is_int   <- ov$contrast == "interaction"
 p_ctr <- ggplot(ov, aes(coef, contrast, colour = is_int)) +
   geom_vline(xintercept = 0, colour = "grey70") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r)) +
-  scale_colour_discrete(guide = "none") +
+  scale_colour_tau_binary(guide = "none") +
   labs(x = "effect on mean pseudotime", y = NULL,
        title = "Genotype effects on position")
 
@@ -165,7 +165,7 @@ fd$sig   <- fd$ci_l > 0 | fd$ci_r < 0                            # 95% CI exclud
 p_forest <- ggplot(fd, aes(coef, label, colour = sig)) +
   geom_vline(xintercept = 0, colour = "grey70") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r)) +
-  scale_colour_discrete(guide = "none") +
+  scale_colour_tau_binary(guide = "none") +
   labs(x = "interaction effect (pseudotime units)", y = NULL, title = "Interaction by channel")
 
 ld <- data.frame(
@@ -173,9 +173,10 @@ ld <- data.frame(
                    levels = c("composition", "progression", "cross")),
   loading = c(load_comp, load_prog, load_cross))
 p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
-  geom_col(width = 0.7) +
+  geom_col(width = 0.64, colour = "#F8F6F1", linewidth = 0.4) +
   geom_hline(yintercept = 0, colour = "grey50") +
-  scale_fill_discrete(guide = "none") +
+  scale_fill_manual(values = c(composition = "#315E6F", progression = "#7A4052", cross = "#8A8A84"),
+                    guide = "none") +
   labs(x = NULL, y = "loading (fraction of position interaction)",
        title = "Decomposition loadings")
 
@@ -190,9 +191,8 @@ p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
 #| fig-cap: "Replicate mean position tracks DAM fraction."
 #| fig-alt: "Scatter plot shows replicate mean pseudotime increasing with DAM fraction."
 ggplot(tr_unit, aes(dam_pct, mean_pt, colour = genotype)) +
-  geom_point(size = 2.6) +
+  geom_point(aes(shape = batch), size = 2.1, alpha = 0.85) +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE, linewidth = 0.55) +
-  geom_text(aes(label = batch), size = 2.4, nudge_y = 0.35, check_overlap = TRUE) +
   scale_colour_genotype(name = "genotype") +
   scale_x_continuous(labels = function(x) paste0(round(x), "%")) +
   labs(x = "DAM fraction in unit", y = "mean pseudotime",
@@ -215,13 +215,13 @@ p_all_channels <- ggplot(tr_forest, aes(coef, contrast_label, colour = significa
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.35) +
   facet_wrap(~ measure_label, nrow = 1) +
-  scale_colour_discrete(guide = "none") +
+  scale_colour_tau_binary(guide = "none") +
   labs(x = "effect on pseudotime position", y = NULL, title = "Overall and within-state rows")
 
 p_decomp <- ggplot(decomp_rows, aes(coef, channel, colour = sig)) +
   geom_vline(xintercept = 0, colour = "grey75") +
   geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.45) +
-  scale_colour_discrete(guide = "none") +
+  scale_colour_tau_binary(guide = "none") +
   labs(x = "interaction effect", y = NULL, title = "Interaction decomposition")
 
 p_all_channels | p_decomp
@@ -249,14 +249,15 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 #| fig-cap: "Refits are stable and lineage omission is low across genotypes."
 #| fig-alt: "Bar and point panels show stable refits and low lineage omission by genotype."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
-  geom_col(width = 0.66) +
-  geom_text(aes(label = sprintf("%.3f", spearman_vs_primary)), vjust = -0.35, size = 3) +
+  geom_hline(yintercept = 1, colour = "grey70", linewidth = 0.3) +
+  geom_linerange(aes(ymin = 0.95, ymax = spearman_vs_primary), linewidth = 0.5, colour = "#315E6F") +
+  geom_point(size = 2.2, colour = "#315E6F") +
   coord_cartesian(ylim = c(0.95, 1.01)) +
   labs(x = NULL, y = "Spearman vs primary", title = "Pseudotime refit concordance") +
   theme(panel.grid.major.x = element_blank())
 
 p_omit <- ggplot(tr_lineage, aes(genotype, omitted_pct, colour = genotype, group = genotype_batch)) +
-  geom_point(size = 2.2, position = position_dodge(width = 0.45)) +
+  geom_point(size = 1.9, alpha = 0.85, position = position_dodge(width = 0.45)) +
   scale_colour_genotype(guide = "none") +
   scale_y_continuous(labels = function(x) paste0(round(x, 1), "%")) +
   labs(x = NULL, y = "off-lineage nuclei", title = "Omitted fraction by unit") +

@@ -740,7 +740,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   across all contrasts; the explicit composition/progression/cross rows still come from guarded
   `trajectory_report$interaction`.
 - `_mechanism.qmd` retains project pathway, GO dotplot,
-  Myc/NF-kB-family TF lollipop, and kinase heatmap panels. Claim guard:
+  Myc/NF-kB-family TF focus heatmap, and kinase heatmap panels. Claim guard:
   Myc is visibly supported; the separate NF-kB discordance tile was removed; Gsk3b is carried in the kinase
   heatmap without a primary-support marker unless the target actually makes it significant; kinase caveats remain
   24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.
@@ -786,9 +786,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - Compact QC target: `qc_figures` (modality table, GeoMx genotype tally,
   genotype-batch grid, depth/fraction histograms, metric bounds, audit notes). Visible report now uses only
   depth/fraction histograms; the other slots remain hidden checks/source material.
-- Figure-polish convention: small count/tally panels should prefer horizontal,
-  direct-labelled bars/lollipops with human-facing labels; reserve heatmaps for
-  true matrix structure and avoid rotated x labels for contrast/genotype counts.
+- Figure-polish convention after the visual-maturity pass: prefer journal-standard
+  heatmaps, forests, density/volcano bins, and restrained bars/point-ranges. Use
+  direct labels sparingly; avoid decorative lollipop/status/tile-board idioms.
 - Current retained chapter figure aliases avoid board/status figures:
   `microglia_figures` keeps composition shift/forest and amyloid volcano aliases;
   `trajectory_figures` keeps pseudotime-shift, decomposition, and concordance bins;
@@ -924,21 +924,22 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   The `report` target uses explicit compact-target arguments plus `report_sources` / `report_extra_files`
   file targets; do not rely on automatic qmd dependency inspection. The gate's force-render + tar_meta scope
   exercise the declared dependencies; list theme/css/fonts in `report_extra_files` (inspection misses them).
-- Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29):
-  scss:defaults COLOUR vars ($primary/$link-color #B0344D, $code-color #3F5A6B) + the IBM Plex stack
+- Theme + fonts SHIP via theme.scss (Quarto 1.9.38, verified live on the production render 2026-06-29;
+  visual identity revised 2026-07-03):
+  scss:defaults COLOUR vars ($primary #263846, $link-color #315E6F, $code-color #4A5661) + the IBM Plex stack
   ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)
   with a relative `url("assets/fonts/<n>.woff2") format("woff2")`. Quarto base64-INLINES each woff2 into
   the embedded CSS under embed-resources -> ONE offline file (render PROVED: 9 faces inlined, magic d09GMg,
   0 external). The 9 woff2 are COMMITTED (assets/fonts/; avoid direct reads via `AGENTS.md` read economy);
   list them in `report_extra_files` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
-  (device font); `theme_tau()` installs muted ggplot discrete defaults for generic `scale_*_discrete()`
-  calls, genotype scales use a stable manual muted palette, microglia-substate scales pin DAM=red and
-  IFN=orange wherever `substate` is mapped, and continuous heatmap/score fills use the softened shared
-  RWB helper (`scale_fill_rwb` / `scale_colour_rwb`: blue lows, white midpoint, red highs; signed panels
-  with midpoint=0). Figures stay decoupled from the HTML chrome + warning-free.
+  (device font); `theme_tau()` installs restrained graphite/teal/ochre/wine ggplot discrete defaults,
+  genotype/substate scales use stable manual muted palettes, binary/direction helpers avoid ggplot's bright
+  defaults, and continuous fills use `scale_fill_rwb` / `scale_colour_rwb`: signed panels are teal/paper/wine
+  with midpoint=0, while count-density panels use a neutral sequential gradient. Figures stay decoupled from
+  the HTML chrome + warning-free.
 - Theme-CSS DETECTION gotcha: with an `@font-face url()` in the theme, Quarto URL-encodes the WHOLE compiled
-  theme CSS into a `data:text/css,...` URI -> to verify embedding, match ENCODED tokens (`#B0344D`->`%23B0344D`,
+  theme CSS into a `data:text/css,...` URI -> to verify embedding, match ENCODED tokens (`#263846`->`%23263846`,
   woff2 magic -> `d09GMg`); RAW `.count` reads ~0 theme-side and URLdecoding the ~1MB blob is very slow. Figures
   embed as `data:image/png` base64, so their colours are not raw either.
 - Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
@@ -1002,7 +1003,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   ids; `visual_slot_coverage()` handles the valid empty figure/schematic
   prose-replacement manifest after regeneration. Latest QA: strict caption-only
   source+HTML pass, 0 removed-label hits, full `scripts/check.sh` green.
-- Figure story layout (2026-07-03, CURRENT report surface): preserves the
+- Figure story layout (2026-07-03): preserves the
   caption-only contract and conventional plot types while making the first-pass
   story more explicit. Visible report now has 33 figures / 33 captions: added a
   data-backed 2x2 genotype design + modality support figure; reshaped the main
@@ -1015,6 +1016,18 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   `tests/test_figures.R` locks that compact slot. Latest QA: strict caption-only
   source+HTML pass; rendered DOM = 33 figures / 33 captions / 33 nonblank alts,
   0 duplicate IDs, 0 external refs; full `scripts/check.sh` green.
+- Visual maturity pass (2026-07-03, CURRENT report surface): user feedback was
+  that the colour scheme and figure types felt juvenile. Current style =
+  restrained journal palette (deep-ink HTML chrome; graphite/teal/ochre/wine
+  genotype/substate accents; neutral sequential count fills; teal/paper/wine
+  signed fills), compact 2x2 tile design panel instead of oversized genotype
+  circles, muted binary/direction scales, TF focus heatmap instead of the
+  Myc/NF-kB lollipop, NF-kB signed bars instead of point-lollipops, and batch
+  shape-coding instead of text labels on the trajectory DAM-fraction scatter.
+  Preserve this direction unless the user asks for a more illustrative style.
+  QA: visual PDF pages inspected (opening + mechanism panels), rendered DOM =
+  33 figures / 33 captions / 33 nonblank alts / 0 duplicate IDs, full
+  `scripts/check.sh` green across 52 current targets/branches.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

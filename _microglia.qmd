@@ -236,14 +236,15 @@ p_dam_response <- ggplot(unit_dam, aes(amyloid, proportion, colour = tau_backgro
   geom_point(position = position_jitter(width = 0.035, height = 0), alpha = 0.5, size = 1.5) +
   geom_line(data = dam_mean, aes(y = mean), linewidth = 0.7) +
   geom_pointrange(data = dam_mean, aes(y = mean, ymin = lo, ymax = hi), linewidth = 0.45) +
-  scale_colour_discrete(name = "tau background") +
+  scale_colour_tau_background(name = "tau background") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
   labs(x = NULL, y = "DAM fraction", title = "DAM response across the 2x2") +
   theme(legend.position = "bottom",
         panel.grid.major.x = element_blank())
 
 p_score <- ggplot(cf, aes(genotype, DAM_UCell_z, fill = genotype)) +
-  geom_violin(scale = "width") +
+  geom_violin(scale = "width", colour = "#3B3B37", linewidth = 0.25, alpha = 0.88) +
+  stat_summary(fun = median, geom = "point", colour = "#F8F6F1", size = 1.2) +
   scale_fill_genotype(guide = "none") +
   scale_x_discrete(labels = genotype_labels) +
   labs(x = NULL, y = "DAM activation score (z)", title = "DAM score per nucleus") +
@@ -381,10 +382,9 @@ ggplot(mf_wv_bins, aes(x_mid, y_mid, fill = log_n)) +
 #| fig-cap: "Homeostatic and DAM pass the per-unit cell floor; IFN/proliferative stay descriptive."
 #| fig-alt: "Bar plot marks substates that pass or miss the replicate-unit cell floor."
 ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
-  geom_col(width = 0.68) +
-  geom_hline(yintercept = pbs$min_cells, linetype = "dashed") +
-  geom_text(aes(label = status), vjust = -0.35, size = 3) +
-  scale_fill_discrete(guide = "none") +
+  geom_col(width = 0.62, colour = "#F8F6F1", linewidth = 0.4) +
+  geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#4A4A45") +
+  scale_fill_manual(values = c(fit = "#315E6F", skipped = "#B2ABA0"), guide = "none") +
   labs(x = NULL, y = "minimum cells per replicate unit",
        title = "Substate fits are limited by replicate-unit cell floors") +
   theme(panel.grid.major.x = element_blank())
@@ -400,7 +400,7 @@ ggplot(mf_ss_signed, aes(contrast, n_genes, fill = direction)) +
   geom_hline(yintercept = 0, colour = "grey65") +
   geom_col(width = 0.72) +
   facet_wrap(~ substate, nrow = 1) +
-  scale_fill_discrete(name = "direction") +
+  scale_fill_direction(name = "direction") +
   labs(x = NULL, y = "signed FDR < 0.10 gene count",
        title = "Within-substate expression shifts keep the amyloid programme visible") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),

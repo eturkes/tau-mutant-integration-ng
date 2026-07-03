@@ -1,15 +1,15 @@
 /*-- scss:defaults --*/
-// Report visual identity (Quarto Bootstrap theme; supersedes the dropped _brand.yml). Crimson
-// drives primary + links; steel tints inline code. These chrome colours stay decoupled from
-// muted plot data colours in R/plot.R. IBM Plex is the typeface -- Sans body, Serif
+// Report visual identity (Quarto Bootstrap theme; supersedes the dropped _brand.yml). Deep
+// ink drives primary chrome, links use a restrained teal, and inline code stays slate. These
+// chrome colours stay decoupled from plot data colours in R/plot.R. IBM Plex is the typeface -- Sans body, Serif
 // headings, Mono code; the 9 woff2 in assets/fonts/ are base64-inlined
 // by Quarto under embed-resources (each @font-face url() resolves relative to this file at the
 // project root). The ggplot panels keep the device-default font (R/plot.R theme_tau base_family "")
 // so figures stay decoupled from this HTML chrome and warning-free.
 
-$primary:    #B0344D;   // crimson; Bootstrap primary
-$link-color: #B0344D;   // links match the brand accent
-$code-color: #3F5A6B;   // steel; inline `code` text
+$primary:    #263846;   // deep ink; Bootstrap primary
+$link-color: #315E6F;   // restrained teal; report links
+$code-color: #4A5661;   // slate; inline `code` text
 
 // IBM Plex stacks, set before Bootstrap's own !default declarations so these win; the system
 // fallbacks cover a font-load failure.

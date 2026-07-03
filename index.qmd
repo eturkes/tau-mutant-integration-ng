@@ -2,7 +2,7 @@
 title: "Tau Mutant Integration"
 format:
   html:
-    theme: theme.scss        # crimson primary + links + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)
+    theme: theme.scss        # deep-ink chrome + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)
     embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
     lightbox: auto           # dense figures are clickable in the offline HTML
     toc: true

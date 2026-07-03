@@ -34,8 +34,8 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Figure story layout (ad hoc,
-2026-07-03; starts from the 31 curated data-rich figures and lands 33
+user before writing a plan. Last closed = Visual maturity pass (ad hoc,
+2026-07-03; restrained palette + less juvenile figure grammar, 33
 caption-only figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -101,6 +101,16 @@ caption-only figures).
   DAM-fraction trend, and replaced NF-kB status-box logic with a primary-score
   lollipop. Rendered main path now has 33 figures / 33 captions, strict
   caption-only HTML QA green, and full gate green.
+- Visual maturity pass [DONE 2026-07-03]:
+  user feedback: current colour scheme and figure types felt juvenile. Replaced
+  crimson/bright plot defaults with deep-ink chrome, muted
+  graphite/teal/ochre/wine categorical accents, neutral count-density fills,
+  and teal/paper/wine signed fills. Reworked oversized design circles into a
+  compact 2x2 tile matrix, replaced the Myc/NF-kB lollipop with a TF focus
+  heatmap, made the NF-kB primary gate signed bars, removed batch text labels
+  from the trajectory scatter, and muted binary/direction count panels. Rendered
+  main path remains 33 figures / 33 captions / 33 nonblank alts, duplicate IDs
+  0; full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -728,6 +738,16 @@ caption-only figures).
   33 captions / 33 nonblank alts, 0 duplicate IDs, 0 external refs, 0 visible body
   prose/tables/stdout/text outputs; full `scripts/check.sh` green across
   52 targets/branches.
+- 2026-07-03 Visual maturity pass DONE (ad hoc user task): addressed user
+  feedback that the report felt juvenile. Shared plot layer now pins a restrained
+  graphite/teal/ochre/wine palette, binary/direction helper scales, and neutral
+  sequential count fills; theme.scss uses deep-ink/teal/slate chrome. Render
+  layer changes: QC design circles -> tile matrix; mechanism TF lollipop ->
+  `fig-mechanism-tf-focus` heatmap; NF-kB primary lollipop -> signed bars;
+  trajectory DAM-fraction batch text -> shape coding; direct-labelled count bars
+  muted. Visual PDF QA inspected opening + mechanism pages; focused tests green;
+  DOM QA = 33 figures / 33 captions / 33 nonblank alts / 0 duplicate IDs; full
+  `scripts/check.sh` green across 52 targets/branches.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
