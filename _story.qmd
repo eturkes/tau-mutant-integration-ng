@@ -59,14 +59,8 @@ mech_story$track <- factor(as.character(mech_story$track),
                            levels = c("Myc TF", "NF-kB gate", "Gsk3b kinase"))
 mech_story$contrast_label <- unname(contrast_labels[as.character(mech_story$contrast)])
 mech_story$contrast_label[is.na(mech_story$contrast_label)] <- as.character(mech_story$contrast)[is.na(mech_story$contrast_label)]
-mech_story$row_label <- paste(as.character(mech_story$item),
-                              mech_story$contrast_label, sep = " / ")
+mech_story$row_label <- as.character(mech_story$item)
 mech_story$row_label <- factor(mech_story$row_label, levels = rev(unique(mech_story$row_label)))
-mech_story$fdr_label <- paste0("FDR ", ifelse(mech_story$fdr < 0.001,
-                                               formatC(mech_story$fdr, format = "e", digits = 1),
-                                               formatC(mech_story$fdr, format = "f", digits = 2)))
-mech_story$label_x <- mech_story$score + ifelse(mech_story$score >= 0, 0.18, -0.18)
-mech_story$label_hjust <- ifelse(mech_story$score >= 0, 0, 1)
 
 clearance <- sf$clearance
 clearance <- clearance[clearance$contrast %in% focus, , drop = FALSE]
@@ -168,21 +162,16 @@ p_traj <- ggplot(traj, aes(coef, measure_label, colour = supported)) +
 #| fig-width: 11
 #| fig-height: 6.8
 #| fig-cap: "Cross-modality support narrows the mechanism to Myc and clearance context."
-#| fig-alt: "Composite figure with a mechanism score ladder for Myc, NF-kB and Gsk3b, modality-level Apoe-Trem2 effect rows, and clearance-pair support dots."
+#| fig-alt: "Composite figure with signed mechanism score points for Myc, NF-kB and Gsk3b, modality-level Apoe-Trem2 effect rows, and clearance-pair support dots."
 p_mech <- ggplot(mech_story, aes(score, row_label)) +
   geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = score, yend = row_label, colour = supported),
-               linewidth = 0.58, alpha = 0.78) +
   geom_point(aes(size = neg_log10_fdr, fill = supported),
              shape = 21, colour = "#262B2F", stroke = 0.28) +
-  geom_text(aes(x = label_x, label = fdr_label, hjust = label_hjust),
-            size = 2.3, colour = "#53504A") +
   facet_wrap(~ track, ncol = 1, scales = "free_y") +
   scale_fill_tau_binary(name = "FDR < 0.10") +
-  scale_colour_tau_binary(name = "FDR < 0.10") +
   scale_size_continuous(range = c(1.8, 4.8), name = "-log10 FDR") +
-  guides(fill = "none", colour = "none", size = "none") +
-  labs(x = "signed score", y = NULL, title = "Mechanism evidence ladder") +
+  guides(fill = "none", size = "none") +
+  labs(x = "signed score", y = NULL, title = "Mechanism evidence") +
   coord_cartesian(clip = "off") +
   theme(panel.grid.major.y = element_blank(),
         legend.position = "none")
@@ -190,9 +179,6 @@ p_mech <- ggplot(mech_story, aes(score, row_label)) +
 p_clear_effect <- ggplot(clearance_effects,
                          aes(plot_effect, feature_label_plot, colour = modality_label)) +
   geom_vline(xintercept = 0, colour = "grey75") +
-  geom_segment(aes(x = 0, xend = plot_effect, yend = feature_label_plot,
-                   colour = modality_label),
-               linewidth = 0.35, alpha = 0.58) +
   geom_point(aes(shape = plot_status), size = 2.15, stroke = 0.48) +
   facet_wrap(~ contrast_label, nrow = 1) +
   scale_colour_manual(values = tau_discrete_colours, name = NULL) +

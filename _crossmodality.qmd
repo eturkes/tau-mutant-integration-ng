@@ -449,7 +449,7 @@ ggplot(geo_volc_points, aes(effect, neg_log10_fdr)) +
 #| fig-width: 10
 #| fig-height: 5.8
 #| fig-cap: "GeoMx sensitivity marks rows gained or lost versus the primary model."
-#| fig-alt: "Two-part plate shows primary versus sensitivity GeoMx supported-row counts plus signed lost, gained and sign-flip counts."
+#| fig-alt: "Two heatmap panels show primary versus sensitivity GeoMx supported-row counts plus signed lost, gained and sign-flip counts."
 geo_sens_total <- rbind(
   data.frame(geo_sens[c("fit_label", "contrast")],
              model = "primary", n = geo_sens$n_primary_sig, stringsAsFactors = FALSE),
@@ -470,39 +470,26 @@ geo_sens_change$metric <- factor(geo_sens_change$metric,
                                  levels = c("lost", "gained", "sign flip"))
 geo_sens_change$label <- ifelse(abs(geo_sens_change$n_signed) == 0, "",
                                 fmt_int(abs(geo_sens_change$n_signed)))
-geo_sens_change$label_x <- geo_sens_change$n_signed +
-  ifelse(geo_sens_change$n_signed < 0, -55, 55)
-geo_sens_change$label_hjust <- ifelse(geo_sens_change$n_signed < 0, 1, 0)
 
-p_geo_total <- ggplot(geo_sens_total, aes(model, contrast)) +
-  geom_point(aes(size = n, fill = model), shape = 21,
-             colour = "#262B2F", stroke = 0.28, alpha = 0.9) +
+p_geo_total <- ggplot(geo_sens_total, aes(model, contrast, fill = n)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.24, width = 0.9, height = 0.82) +
   geom_text(aes(label = label), size = 2.55, colour = "#262B2F") +
   facet_wrap(~ fit_label, nrow = 1) +
-  scale_fill_manual(values = c(primary = "#3F5F7F", sensitivity = "#C8841C"),
-                    guide = "none") +
-  scale_size_area(max_size = 10, guide = "none") +
+  scale_fill_rwb(name = "supported rows", midpoint = NULL) +
   labs(x = NULL, y = NULL, title = "Supported rows by model") +
-  theme(panel.grid.major.x = element_blank(),
+  theme(panel.grid.major = element_blank(),
         axis.text.x = element_text(angle = 18, hjust = 1),
         legend.position = "none")
 
-p_geo_change <- ggplot(geo_sens_change, aes(n_signed, contrast, colour = metric)) +
-  geom_vline(xintercept = 0, colour = "grey72", linewidth = 0.3) +
-  geom_segment(aes(x = 0, xend = n_signed, yend = contrast), linewidth = 0.56) +
-  geom_point(size = 2.2) +
-  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
-            size = 2.45, colour = "#333333") +
+p_geo_change <- ggplot(geo_sens_change, aes(metric, contrast, fill = n_signed)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.24, width = 0.9, height = 0.82) +
+  geom_text(aes(label = label), size = 2.45, colour = "#333333") +
   facet_wrap(~ fit_label, nrow = 1) +
-  scale_colour_manual(values = c(lost = tau_direction_colours[["down"]],
-                                 gained = tau_direction_colours[["up"]],
-                                 `sign flip` = "#7C838A"),
-                      name = NULL) +
-  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
-  labs(x = "rows changed at FDR < 0.10", y = NULL,
+  scale_fill_rwb(name = "signed rows", midpoint = 0) +
+  labs(x = NULL, y = NULL,
        title = "Rows lost, gained or direction-flipped versus primary") +
-  coord_cartesian(clip = "off") +
-  theme(panel.grid.major.y = element_blank(),
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(angle = 18, hjust = 1),
         legend.position = "bottom")
 
 p_geo_total / p_geo_change +

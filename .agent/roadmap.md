@@ -169,6 +169,14 @@ user before writing a new plan.
   reconstruction path; NF-kB gate shows primary/supportive signed rows; GeoMx
   sensitivity shows supported-row totals plus lost/gained/flip changes. Targeted
   render green; Chromium PDF spot checks clean.
+- Conventional figure cleanup [DONE 2026-07-03]:
+  user feedback: some figures still looked strange relative to field norms. Kept
+  claims/data fixed and replaced the remaining custom grammars with standard
+  biology-paper forms: score distributions -> violin+box plots, pruning audit ->
+  faceted bars, trajectory reconstruction path -> signed contribution bars,
+  NF-kB stem audit -> score heatmap, GeoMx sensitivity bubble/segment hybrid ->
+  count heatmaps, and story mechanism stems -> point evidence. Targeted render
+  green; Chromium PDF spot checks clean.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset

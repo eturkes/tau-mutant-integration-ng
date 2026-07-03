@@ -160,7 +160,7 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
 #| fig-width: 10
 #| fig-height: 4.5
 #| fig-cap: "The position interaction is carried by composition, not progression."
-#| fig-alt: "Forest and signed loading-bar panels decompose the interaction into composition, progression and cross channels."
+#| fig-alt: "Forest and signed contribution-bar panels decompose the interaction into composition, progression and cross channels."
 chan       <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic", "within_dam")
 chan_label <- c("mean position", "composition", "progression", "cross",
                 "within-homeostatic", "within-DAM")
@@ -177,50 +177,25 @@ ld <- data.frame(
   channel = factor(c("composition", "progression", "cross"),
                    levels = c("composition", "progression", "cross")),
   loading = c(load_comp, load_prog, load_cross))
-ld$channel <- as.character(ld$channel)
-ld$start <- c(0, utils::head(cumsum(ld$loading), -1L))
-ld$end <- cumsum(ld$loading)
 ld$channel_label <- factor(as.character(ld$channel),
-                           levels = rev(c("composition", "progression", "cross", "reconstructed")))
+                           levels = rev(c("composition", "progression", "cross")))
 ld$label <- paste0(round(100 * ld$loading), "%")
-ld$label_x <- ld$end + ifelse(ld$loading >= 0, 0.08, -0.08)
+ld$label_x <- ld$loading + ifelse(ld$loading >= 0, 0.08, -0.08)
 ld$label_hjust <- ifelse(ld$loading >= 0, 0, 1)
-ld_sum <- data.frame(
-  channel = "reconstructed",
-  loading = sum(ld$loading),
-  start = 0,
-  end = sum(ld$loading),
-  channel_label = factor("reconstructed",
-                         levels = rev(c("composition", "progression", "cross", "reconstructed"))),
-  label = paste0(round(100 * sum(ld$loading)), "%"),
-  label_x = sum(ld$loading) + 0.08,
-  label_hjust = 0,
-  stringsAsFactors = FALSE
-)
-ld_path <- rbind(ld, ld_sum)
-p_load <- ggplot(ld_path, aes(y = channel_label)) +
+p_load <- ggplot(ld, aes(loading, channel_label, fill = channel)) +
   geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.3) +
   geom_vline(xintercept = 1, colour = "grey70", linewidth = 0.3, linetype = "dashed") +
-  geom_segment(aes(x = start, xend = end, yend = channel_label, colour = channel),
-               linewidth = 4.2, lineend = "round", alpha = 0.86) +
-  geom_point(aes(x = end, fill = channel), shape = 21, size = 3.0,
-             colour = "#262B2F", stroke = 0.28) +
+  geom_col(width = 0.56, colour = "#F8F6F1", linewidth = 0.22, alpha = 0.9) +
   geom_text(aes(x = label_x, label = label, hjust = label_hjust),
             size = 2.8, colour = "#333333") +
-  scale_colour_manual(values = c(composition = "#0B6F7E",
-                                 progression = "#A63A50",
-                                 cross = "#7C838A",
-                                 reconstructed = "#262B2F"),
-                      guide = "none") +
   scale_fill_manual(values = c(composition = "#0B6F7E",
                                progression = "#A63A50",
-                               cross = "#7C838A",
-                               reconstructed = "#262B2F"),
+                               cross = "#7C838A"),
                     guide = "none") +
   scale_x_continuous(labels = function(x) paste0(round(100 * x), "%"),
-                     expand = expansion(mult = c(0.06, 0.18))) +
-  labs(x = "cumulative fraction of position interaction", y = NULL,
-       title = "Signed reconstruction path") +
+                     expand = expansion(mult = c(0.20, 0.18))) +
+  labs(x = "fraction of position interaction", y = NULL,
+       title = "Signed channel contribution") +
   coord_cartesian(clip = "off") +
   theme(panel.grid.major.y = element_blank())
 

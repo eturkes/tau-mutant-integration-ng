@@ -194,9 +194,6 @@ nf_gate$fdr_plot <- ifelse(nf_gate$primary_test %in% TRUE,
                            nf_gate$primary_family_fdr, nf_gate$p_value)
 nf_gate$neg_log10 <- -log10(pmax(nf_gate$fdr_plot, 1e-300))
 nf_gate$supported <- nf_gate$primary_test %in% TRUE & nf_gate$primary_family_fdr < alpha
-nf_gate$fdr_label <- paste0("FDR ", fmt_p(nf_gate$fdr_plot))
-nf_gate$label_x <- nf_gate$score + ifelse(nf_gate$score >= 0, 0.12, -0.12)
-nf_gate$label_hjust <- ifelse(nf_gate$score >= 0, 0, 1)
 ```
 
 ## Pathway Survey
@@ -285,29 +282,21 @@ ggplot(tf_focus, aes(contrast, source, fill = score)) +
 #| fig-width: 9.6
 #| fig-height: 5.1
 #| fig-cap: "NF-kB primary rows do not form a supported attenuation signal."
-#| fig-alt: "Faceted signed-score audit shows NF-kB primary and supportive rows by contrast and RNA population, with point size encoding FDR or p-value."
-ggplot(nf_gate, aes(score, test_label)) +
-  geom_vline(xintercept = 0, colour = "grey72", linewidth = 0.32) +
-  geom_segment(aes(x = 0, xend = score, yend = test_label, colour = supported),
-               linewidth = 0.58, alpha = 0.78) +
-  geom_point(aes(shape = row_type, size = neg_log10, fill = supported),
-             colour = "#262B2F", stroke = 0.32) +
-  geom_text(data = nf_gate[nf_gate$primary_test %in% TRUE, , drop = FALSE],
-            aes(x = label_x, label = fdr_label, hjust = label_hjust),
-            size = 2.35, colour = "#53504A") +
-  facet_grid(population_label ~ contrast_label) +
-  scale_fill_tau_binary(name = "primary FDR < 0.10",
-                        values = c(`FALSE` = "#B7B1A5", `TRUE` = "#0B6F7E")) +
-  scale_colour_tau_binary(guide = "none",
-                          values = c(`FALSE` = "#7C838A", `TRUE` = "#0B6F7E")) +
+#| fig-alt: "Faceted heatmap shows NF-kB primary and supportive signed scores by contrast and RNA population, with point size encoding FDR or p-value."
+ggplot(nf_gate, aes(contrast_label, test_label, fill = score)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.25, width = 0.94, height = 0.9) +
+  geom_point(aes(shape = row_type, size = neg_log10),
+             colour = "#262B2F", stroke = 0.34) +
+  facet_wrap(~ population_label, nrow = 1) +
+  scale_fill_rwb(name = "signed score", midpoint = 0) +
   scale_shape_manual(values = c(`supportive row` = 21, `primary gate` = 24),
                      name = NULL) +
   scale_size_continuous(range = c(1.4, 4.2), name = "-log10 value") +
-  labs(x = "signed NF-kB score", y = NULL, title = "Predeclared NF-kB attenuation gate") +
-  coord_cartesian(clip = "off") +
-  guides(fill = "none", size = "none",
+  labs(x = NULL, y = NULL, title = "Predeclared NF-kB attenuation gate") +
+  guides(size = "none",
          shape = guide_legend(nrow = 1, override.aes = list(size = 2.8))) +
-  theme(panel.grid.major.y = element_blank(),
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1),
         legend.position = "bottom")
 ```
 

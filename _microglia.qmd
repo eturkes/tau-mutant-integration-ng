@@ -110,13 +110,22 @@ mf_unit <- mf$unit_composition
 mf_unit$substate <- factor(as.character(mf_unit$substate), levels = present_sub)
 mf_unit$genotype <- factor(as.character(mf_unit$genotype), levels = genotype_levels)
 mf_unit$batch <- factor(mf_unit$batch, levels = sort(unique(mf_unit$batch), method = "radix"))
-mf_dist <- mf$score_distribution
-mf_dist <- mf_dist[as.character(mf_dist$substate) %in% present_sub &
-                     as.character(mf_dist$score_name) %in% names(score_labels), , drop = FALSE]
-mf_dist$substate <- factor(as.character(mf_dist$substate), levels = present_sub)
-mf_dist$genotype <- factor(as.character(mf_dist$genotype), levels = genotype_levels)
-mf_dist$score_name <- factor(as.character(mf_dist$score_name), levels = names(score_labels),
-                             labels = unname(score_labels))
+score_long <- rbind(
+  data.frame(cf[c("genotype", "substate")],
+             score_name = "Homeostatic", score = cf$Homeostatic_UCell_z,
+             stringsAsFactors = FALSE),
+  data.frame(cf[c("genotype", "substate")],
+             score_name = "DAM", score = cf$DAM_UCell_z,
+             stringsAsFactors = FALSE),
+  data.frame(cf[c("genotype", "substate")],
+             score_name = "MHC_APC", score = cf$MHC_APC_UCell_z,
+             stringsAsFactors = FALSE)
+)
+score_long <- score_long[as.character(score_long$substate) %in% present_sub, , drop = FALSE]
+score_long$genotype <- factor(as.character(score_long$genotype), levels = genotype_levels)
+score_long$substate <- factor(as.character(score_long$substate), levels = present_sub)
+score_long$score_name <- factor(score_long$score_name, levels = names(score_labels),
+                                labels = unname(score_labels))
 mf_wv_points <- mf$whole_de_volcano$points
 mf_wv_points$contrast <- fmt_contrast(mf_wv_points$contrast)
 mf_wv_points$direction <- factor(as.character(mf_wv_points$direction),
@@ -292,16 +301,23 @@ ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
 ```{r}
 #| label: fig-microglia-score-distribution
 #| fig-width: 10
-#| fig-height: 6.2
+#| fig-height: 6.5
 #| fig-cap: "Score distributions show a graded activation programme."
-#| fig-alt: "Faceted density lines show graded signature-score shifts by substate and genotype."
-ggplot(mf_dist, aes(x_mid, n, colour = genotype, group = genotype)) +
-  geom_line(linewidth = 0.45, alpha = 0.9) +
+#| fig-alt: "Faceted violin and box plots show graded signature-score shifts by substate and genotype."
+ggplot(score_long, aes(genotype, score, fill = genotype)) +
+  geom_violin(scale = "width", colour = "#5B5A55", linewidth = 0.2,
+              alpha = 0.82, trim = TRUE) +
+  geom_boxplot(width = 0.12, outlier.shape = NA, fill = "#F8F5ED",
+               colour = "#262B2F", linewidth = 0.24, alpha = 0.82) +
   facet_grid(score_name ~ substate, scales = "free_y") +
-  scale_colour_genotype(name = "genotype") +
-  labs(x = "signature score (z)", y = "nuclei per bin",
+  scale_fill_genotype(name = "genotype", labels = genotype_print_labels) +
+  scale_x_discrete(labels = genotype_labels) +
+  labs(x = NULL, y = "signature score (z)",
        title = "Signature-score distributions across genotype and substate") +
-  theme(panel.grid.minor = element_blank())
+  guides(fill = guide_legend(nrow = 1, override.aes = list(alpha = 1))) +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1, size = 7.1),
+        legend.position = "bottom")
 ```
 
 ## Composition is tested across the genotype contrasts
@@ -452,15 +468,16 @@ ggplot(mf_ss_signed, aes(direction, contrast, fill = n_genes)) +
 #| fig-width: 8.2
 #| fig-height: 4.2
 #| fig-cap: "Pruned nuclei are genotype-skewed but low-DAM; labels show cluster DAM medians."
-#| fig-alt: "Bubble plot shows dropped-cluster counts by genotype, with fill encoding low DAM medians."
+#| fig-alt: "Faceted bar plots show dropped-cluster counts by genotype, with fill encoding low DAM medians."
 ggplot(drop_df[drop_df$n > 0, ], aes(cluster, n)) +
-  geom_point(aes(size = n, fill = DAM_med), shape = 21,
-             colour = "#262B2F", stroke = 0.3, alpha = 0.9) +
-  geom_text(aes(label = sprintf("%.2f", DAM_med)), size = 2.45, colour = "#262B2F") +
+  geom_col(aes(fill = DAM_med), width = 0.72,
+           colour = "#5B5A55", linewidth = 0.24, alpha = 0.92) +
+  geom_text(aes(label = sprintf("%.2f", DAM_med)),
+            vjust = -0.35, size = 2.45, colour = "#262B2F") +
   facet_wrap(~ genotype, nrow = 1, scales = "free_y") +
   scale_fill_rwb(name = "DAM median", midpoint = NULL) +
-  scale_size_area(max_size = 7, name = "nuclei") +
   labs(x = "dropped cluster", y = "nuclei dropped", title = "Pruning audit") +
+  coord_cartesian(clip = "off") +
   theme(panel.grid.major.x = element_blank())
 ```
 
