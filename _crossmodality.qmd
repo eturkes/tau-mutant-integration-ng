@@ -29,6 +29,8 @@ layer_labels <- c(
   phospho_raw = "raw phospho",
   phospho_corrected = "corrected phospho"
 )
+modality_levels <- c("snRNAseq microglia", "GeoMx spatial",
+                     "bulk proteome", "bulk phosphoproteome")
 axis_labels <- c(
   DAM = "DAM",
   homeostatic = "homeostatic",
@@ -128,6 +130,37 @@ pc_lab <- do.call(rbind, lapply(split(pc_lab, pc_lab$contrast, drop = TRUE), fun
 pc_lab$contrast <- plot_contrast(pc_lab$contrast)
 pc_lab$site_label <- wrap_label(gsub("_", " ", pc_lab$site_id, fixed = TRUE), 14L)
 
+four_counts <- cmf$four_modality_counts
+four_counts$contrast <- plot_contrast(four_counts$contrast)
+four_counts$modality <- factor(four_counts$modality, levels = rev(modality_levels))
+four_counts$label <- fmt_int(four_counts$n_sig)
+
+four_paths <- cmf$four_modality_pathways
+four_paths$contrast <- plot_contrast(four_paths$contrast)
+four_paths$axis_label <- fmt_axis(four_paths$axis)
+path_rank <- stats::aggregate(cbind(n_modalities_sig, n_modalities_present, rank_score) ~ axis_label,
+                              data = four_paths, FUN = max)
+path_rank <- path_rank[order(-path_rank$n_modalities_sig, -path_rank$n_modalities_present,
+                             -path_rank$rank_score, path_rank$axis_label,
+                             method = "radix", na.last = TRUE), , drop = FALSE]
+four_paths$axis_label <- factor(four_paths$axis_label, levels = rev(path_rank$axis_label))
+four_paths$direction <- factor(as.character(four_paths$direction),
+                               levels = c("positive", "negative", "mixed", "none"))
+four_paths$label <- ifelse(four_paths$n_modalities_sig > 0L,
+                           four_paths$n_modalities_sig, "")
+four_path_max_sig <- max(4L, max(four_paths$n_modalities_sig, na.rm = TRUE))
+
+four_symbols <- cmf$four_modality_symbols
+four_symbols$contrast <- plot_contrast(four_symbols$contrast)
+four_symbols$modality <- factor(four_symbols$modality, levels = modality_levels)
+four_symbols$symbol_label <- wrap_label(gsub(";", " / ", four_symbols$symbol_axis, fixed = TRUE), 18L)
+sym_rank <- unique(four_symbols[order(match(four_symbols$contrast, levels(four_symbols$contrast)),
+                                      -four_symbols$n_modalities_present,
+                                      -four_symbols$n_modalities_sig,
+                                      four_symbols$symbol_label,
+                                      method = "radix", na.last = TRUE), "symbol_label"])
+four_symbols$symbol_label <- factor(four_symbols$symbol_label, levels = rev(sym_rank))
+
 geo_int <- one_row(geom_counts, geom_counts$contrast == "interaction", "GeoMx interaction counts")
 geo_amy_k <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_maptki", "GeoMx amyloid MAPTKI counts")
 geo_amy_p <- one_row(geom_counts, geom_counts$contrast == "nlgf_in_p301s", "GeoMx amyloid P301S counts")
@@ -218,6 +251,66 @@ closing_support_phrase <- if (length(earned_pair_names)) {
 } else {
   "DAM activation and synaptic suppression, with clearance kept descriptive"
 }
+```
+
+## Integrated Four-Modality Views
+
+```{r}
+#| label: fig-crossmodality-four-modality-counts
+#| fig-width: 9.2
+#| fig-height: 4.7
+#| fig-cap: "FDR support spans the four assay families."
+#| fig-alt: "A four by four heatmap shows significant symbol counts by contrast across snRNAseq microglia, GeoMx spatial, bulk proteome and bulk phosphoproteome."
+ggplot(four_counts, aes(contrast, modality, fill = log_n_sig)) +
+  geom_tile(colour = "#F8F5ED", linewidth = 0.7) +
+  geom_text(aes(label = label), size = 3.0, colour = "#262B2F") +
+  scale_fill_rwb(name = "log10(n + 1)") +
+  labs(x = NULL, y = NULL, title = "Four-modality FDR support by contrast") +
+  coord_equal(ratio = 0.82) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 28, hjust = 1),
+        legend.position = "bottom")
+```
+
+```{r}
+#| label: fig-crossmodality-four-modality-pathways
+#| fig-width: 9.4
+#| fig-height: 5.4
+#| fig-cap: "Pathway axes summarize four-modality support."
+#| fig-alt: "A dot heatmap shows pathway axes by contrast, with dot size encoding the number of significant modalities and fill encoding direction."
+ggplot(four_paths, aes(contrast, axis_label)) +
+  geom_point(aes(size = n_modalities_sig, fill = direction),
+             shape = 21, colour = "#262B2F", stroke = 0.25) +
+  geom_text(aes(label = label), size = 2.35, colour = "#F8F5ED", fontface = "bold") +
+  scale_size_continuous(name = "significant modalities", limits = c(0, four_path_max_sig),
+                        breaks = 0:four_path_max_sig, range = c(2.4, 8.2)) +
+  scale_fill_manual(values = c(positive = "#A63A50", negative = "#2F78A0",
+                               mixed = "#C8841C", none = "#D7D3CA"),
+                    drop = FALSE, name = "direction") +
+  labs(x = NULL, y = NULL, title = "Pathway-level support across assay families") +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(angle = 28, hjust = 1),
+        legend.position = "bottom")
+```
+
+```{r}
+#| label: fig-crossmodality-four-modality-symbols
+#| fig-width: 10
+#| fig-height: 7.2
+#| fig-cap: "Axis genes show measured and significant modalities."
+#| fig-alt: "Faceted tile plots show selected axis genes against the four assay families; tiles distinguish absent, measured and FDR-significant support."
+ggplot(four_symbols, aes(modality, symbol_label, fill = status)) +
+  geom_tile(colour = "#F8F5ED", linewidth = 0.55) +
+  facet_wrap(~ contrast, ncol = 2, scales = "free_y") +
+  scale_fill_manual(values = c(`not observed` = "#D7D3CA",
+                               measured = "#3F5F7F",
+                               `FDR < 0.10` = "#A63A50"),
+                    drop = FALSE, name = NULL) +
+  labs(x = NULL, y = NULL, title = "Selected axis symbols across modalities") +
+  coord_cartesian(clip = "off") +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 28, hjust = 1),
+        legend.position = "bottom")
 ```
 
 ## GeoMx Spatial DE

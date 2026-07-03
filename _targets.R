@@ -237,7 +237,8 @@ list(
              format = "qs"),
   tar_target(crossmodality_figures,
              crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary,
-                                       phospho_de_24m, phospho_corrected_24m),
+                                       phospho_de_24m, phospho_corrected_24m,
+                                       crossmodality_table),
              format = "qs"),
 
   # Standalone HTML report render. Source-file targets make report invalidation explicit so

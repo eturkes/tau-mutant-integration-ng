@@ -1034,6 +1034,16 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   QA: visual PDF pages inspected (opening + mechanism panels), rendered DOM =
   33 figures / 33 captions / 33 nonblank alts / 0 duplicate IDs, full
   `scripts/check.sh` green across 52 current targets/branches.
+- Four-modality integration figures (2026-07-03, CURRENT report surface):
+  crossmodality_figures now consumes crossmodality_table at target-build time
+  to reduce the harmonised evidence table into compact plot slots. Visible
+  cross-modality chapter begins with three integrated panels over the four assay
+  families (snRNAseq microglia, GeoMx spatial, bulk proteome, bulk
+  phosphoproteome): FDR support counts, pathway-axis support/direction, and
+  selected axis-symbol modality tiles. Render contract unchanged: qmd loads only
+  crossmodality_report + crossmodality_figures. QA: rendered DOM = 36 figures /
+  36 captions / 36 nonblank alts / 0 duplicate IDs; visual PDF pages inspected
+  for the new panels; full `scripts/check.sh` green.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

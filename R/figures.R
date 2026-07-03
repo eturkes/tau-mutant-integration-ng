@@ -27,6 +27,9 @@ figure_manifest <- function(chapter = NULL) {
       "fig-mechanism-go-dotplot",
       "fig-mechanism-tf-focus",
       "fig-mechanism-kinase-heatmap",
+      "fig-crossmodality-four-modality-counts",
+      "fig-crossmodality-four-modality-pathways",
+      "fig-crossmodality-four-modality-symbols",
       "fig-crossmodality-geomx-volcano",
       "fig-crossmodality-geomx-sensitivity",
       "fig-crossmodality-phospho-correction"
@@ -35,13 +38,13 @@ figure_manifest <- function(chapter = NULL) {
       rep("microglia", 7),
       rep("trajectory", 4),
       rep("mechanism", 4),
-      rep("crossmodality", 3)
+      rep("crossmodality", 6)
     ),
     target = c(
       rep("microglia_figures", 7),
       rep("trajectory_figures", 4),
       rep("mechanism_figures", 4),
-      rep("crossmodality_figures", 3)
+      rep("crossmodality_figures", 6)
     ),
     slot = c(
       "umap_by_substate",
@@ -59,6 +62,9 @@ figure_manifest <- function(chapter = NULL) {
       "go_top_dotplot",
       "tf_focus",
       "kinase_heatmap",
+      "four_modality_counts",
+      "four_modality_pathways",
+      "four_modality_symbols",
       "geomx_volcano",
       "geomx_sensitivity",
       "phospho_raw_corrected"
@@ -917,12 +923,173 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
   out
 }
 
+.fig_four_modality_classes <- function() {
+  c(
+    snRNAseq_microglia = "snRNAseq microglia",
+    GeoMx_spatial = "GeoMx spatial",
+    bulk_proteome = "bulk proteome",
+    bulk_phosphoproteome = "bulk phosphoproteome"
+  )
+}
+
+.fig_semicolon_tokens <- function(x) {
+  if (length(x) != 1L || is.na(x) || !nzchar(x)) return(character())
+  z <- unlist(strsplit(as.character(x), ";", fixed = TRUE), use.names = FALSE)
+  z[nzchar(z)]
+}
+
+.fig_best_four_modality_evidence <- function(crossmodality_table, contrasts,
+                                             alpha = 0.10,
+                                             modalities = names(.fig_four_modality_classes())) {
+  stopifnot(is.list(crossmodality_table), is.data.frame(crossmodality_table$evidence),
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
+  ev <- crossmodality_table$evidence
+  .fig_require_cols(ev, c("symbol", "contrast", "modality_class", "modality_group",
+                          "effect", "statistic", "fdr", "sign", "missingness_reason"),
+                    "crossmodality_table$evidence")
+  ev <- ev[ev$contrast %in% contrasts &
+             ev$modality_class %in% modalities &
+             !is.na(ev$symbol) & ev$symbol != "" &
+             is.na(ev$missingness_reason), , drop = FALSE]
+  stopifnot(nrow(ev) > 0L, all(contrasts %in% ev$contrast),
+            all(modalities %in% ev$modality_class))
+  fdr_ord <- ev$fdr
+  fdr_ord[!is.finite(fdr_ord)] <- Inf
+  stat_abs <- abs(ev$statistic)
+  stat_abs[!is.finite(stat_abs)] <- -Inf
+  ev <- ev[order(ev$contrast, ev$modality_class, ev$symbol, fdr_ord, -stat_abs,
+                 ev$modality_group, method = "radix", na.last = TRUE), , drop = FALSE]
+  key <- interaction(ev$contrast, ev$modality_class, ev$symbol, drop = TRUE, lex.order = TRUE)
+  out <- ev[!duplicated(key), , drop = FALSE]
+  out$significant <- is.finite(out$fdr) & out$fdr < alpha
+  out$best_sign <- ifelse(is.finite(out$sign) & out$sign != 0L, as.integer(out$sign),
+                          ifelse(out$effect > 0, 1L, ifelse(out$effect < 0, -1L, 0L)))
+  out[, c("symbol", "contrast", "modality_class", "modality_group", "effect",
+          "statistic", "fdr", "significant", "best_sign"), drop = FALSE]
+}
+
+.fig_four_modality_counts <- function(crossmodality_table, contrasts, alpha = 0.10) {
+  modalities <- .fig_four_modality_classes()
+  best <- .fig_best_four_modality_evidence(crossmodality_table, contrasts, alpha,
+                                           names(modalities))
+  split_key <- interaction(best$contrast, best$modality_class, drop = TRUE, lex.order = TRUE)
+  rows <- lapply(split(best, split_key), function(d) {
+    data.frame(
+      contrast = d$contrast[1L],
+      modality_class = d$modality_class[1L],
+      n_symbols = nrow(d),
+      n_sig = sum(d$significant),
+      n_up_sig = sum(d$significant & d$best_sign > 0L),
+      n_down_sig = sum(d$significant & d$best_sign < 0L),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  grid <- expand.grid(contrast = contrasts, modality_class = names(modalities),
+                      stringsAsFactors = FALSE)
+  out <- merge(grid, out, by = c("contrast", "modality_class"), all.x = TRUE,
+               sort = FALSE)
+  count_cols <- c("n_symbols", "n_sig", "n_up_sig", "n_down_sig")
+  out[count_cols] <- lapply(out[count_cols], function(x) {
+    x[is.na(x)] <- 0L
+    as.integer(x)
+  })
+  out$modality <- unname(modalities[out$modality_class])
+  out$signed_balance <- ifelse(out$n_sig > 0L,
+                               (out$n_up_sig - out$n_down_sig) / out$n_sig,
+                               0)
+  out$log_n_sig <- log10(out$n_sig + 1)
+  out[order(match(out$contrast, contrasts), match(out$modality_class, names(modalities)),
+            method = "radix"), , drop = FALSE]
+}
+
+.fig_four_modality_pathways <- function(crossmodality_report, contrasts) {
+  stopifnot(is.list(crossmodality_report), is.list(crossmodality_report$pathway),
+            is.data.frame(crossmodality_report$pathway$axis_summary))
+  x <- crossmodality_report$pathway$axis_summary
+  .fig_require_cols(x, c("axis", "contrast", "n_modalities_present", "n_modalities_sig",
+                         "n_evidence_groups_sig", "n_positive_modalities",
+                         "n_negative_modalities", "mixed_sign", "consistent_direction",
+                         "rank_score"),
+                    "crossmodality_report$pathway$axis_summary")
+  x <- x[x$contrast %in% contrasts, , drop = FALSE]
+  stopifnot(nrow(x) > 0L, all(contrasts %in% x$contrast))
+  x$direction <- ifelse(x$mixed_sign, "mixed", as.character(x$consistent_direction))
+  x$direction[is.na(x$direction) | !nzchar(x$direction)] <- "none"
+  x$direction <- factor(x$direction, levels = c("positive", "negative", "mixed", "none"))
+  x$modality_fraction <- x$n_modalities_sig / pmax(1, x$n_modalities_present)
+  x[order(match(x$contrast, contrasts), -x$n_modalities_sig, -x$n_modalities_present,
+          -x$rank_score, x$axis, method = "radix", na.last = TRUE), , drop = FALSE]
+}
+
+.fig_four_modality_symbols <- function(crossmodality_report, contrasts,
+                                       top_per_contrast = 6L) {
+  stopifnot(is.list(crossmodality_report), is.list(crossmodality_report$divergence),
+            is.data.frame(crossmodality_report$divergence$axis_symbols),
+            top_per_contrast >= 1L)
+  modalities <- .fig_four_modality_classes()
+  x <- crossmodality_report$divergence$axis_symbols
+  .fig_require_cols(x, c("symbol", "contrast", "axis", "n_modalities_present",
+                         "n_modalities_sig", "min_fdr", "max_abs_statistic",
+                         "modalities_present", "modalities_sig", "direction_call",
+                         "rank_score"),
+                    "crossmodality_report$divergence$axis_symbols")
+  x <- x[x$contrast %in% contrasts, , drop = FALSE]
+  stopifnot(nrow(x) > 0L, all(contrasts %in% x$contrast))
+  x$n_four_modalities_present <- vapply(x$modalities_present, function(z) {
+    sum(names(modalities) %in% .fig_semicolon_tokens(z))
+  }, integer(1), USE.NAMES = FALSE)
+  x$n_four_modalities_sig <- vapply(x$modalities_sig, function(z) {
+    sum(names(modalities) %in% .fig_semicolon_tokens(z))
+  }, integer(1), USE.NAMES = FALSE)
+  pieces <- lapply(contrasts, function(cn) {
+    d <- x[x$contrast == cn, , drop = FALSE]
+    d <- d[order(-d$n_four_modalities_present, -d$n_four_modalities_sig, -d$rank_score,
+                 d$min_fdr, -d$max_abs_statistic, d$symbol,
+                 method = "radix", na.last = TRUE), , drop = FALSE]
+    utils::head(d, top_per_contrast)
+  })
+  picked <- do.call(rbind, pieces)
+  rows <- lapply(seq_len(nrow(picked)), function(i) {
+    d <- picked[i, , drop = FALSE]
+    present <- .fig_semicolon_tokens(d$modalities_present)
+    sig <- .fig_semicolon_tokens(d$modalities_sig)
+    data.frame(
+      symbol = d$symbol,
+      contrast = d$contrast,
+      axis = d$axis,
+      direction_call = d$direction_call,
+      min_fdr = d$min_fdr,
+      n_modalities_present = d$n_four_modalities_present,
+      n_modalities_sig = d$n_four_modalities_sig,
+      modality_class = names(modalities),
+      modality = unname(modalities),
+      status = ifelse(names(modalities) %in% sig, "FDR < 0.10",
+                      ifelse(names(modalities) %in% present, "measured", "not observed")),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  out$status <- factor(out$status, levels = c("not observed", "measured", "FDR < 0.10"))
+  out$symbol_axis <- ifelse(is.na(out$axis) | out$axis == "other" | out$axis == "",
+                            out$symbol,
+                            paste0(out$symbol, " (", out$axis, ")"))
+  out[order(match(out$contrast, contrasts), -out$n_modalities_present,
+            -out$n_modalities_sig, out$symbol, match(out$modality_class, names(modalities)),
+            method = "radix", na.last = TRUE), , drop = FALSE]
+}
+
 crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics_summary,
                                       phospho_de_24m, phospho_corrected_24m,
+                                      crossmodality_table = NULL,
                                       alpha = 0.10) {
   stopifnot(is.list(crossmodality_report), is.list(geomx_de),
             is.list(bulk_omics_summary), is.list(phospho_de_24m),
             is.list(phospho_corrected_24m))
+  if (is.null(crossmodality_table)) {
+    stop("crossmodality_figure_data needs crossmodality_table for four-modality figures",
+         call. = FALSE)
+  }
   contrasts <- .fig_focus_contrasts()
   geomx_volcano <- .fig_volcano_data(geomx_de$primary$top, contrasts,
                                      alpha = alpha, n_label = 8L)
@@ -940,9 +1107,15 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   phospho_correction <- .fig_phospho_correction(phospho_de_24m$top,
                                                 phospho_corrected_24m$top,
                                                 contrasts, alpha = alpha)
+  four_counts <- .fig_four_modality_counts(crossmodality_table, contrasts, alpha)
+  four_pathways <- .fig_four_modality_pathways(crossmodality_report, contrasts)
+  four_symbols <- .fig_four_modality_symbols(crossmodality_report, contrasts)
 
   out <- list(
     manifest = figure_manifest("crossmodality"),
+    four_modality_counts = four_counts,
+    four_modality_pathways = four_pathways,
+    four_modality_symbols = four_symbols,
     geomx_counts = geomx_counts,
     geomx_volcano = geomx_volcano,
     geomx_sensitivity = geomx_sens,
@@ -951,7 +1124,7 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
     provenance = list(
       source_targets = c("crossmodality_report", "geomx_de",
                          "bulk_omics_summary", "phospho_de_24m",
-                         "phospho_corrected_24m"),
+                         "phospho_corrected_24m", "crossmodality_table"),
       alpha = alpha,
       contract = "compact cross-modality figure data; heavy top tables reduced to bins"
     )
@@ -959,6 +1132,17 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   .fig_assert_finite(out$geomx_sensitivity,
                      c("n_primary_sig", "n_sensitivity_sig", "n_lost", "n_gained", "n_sign_flip"),
                      "geomx_sensitivity")
+  .fig_assert_finite(out$four_modality_counts,
+                     c("n_symbols", "n_sig", "n_up_sig", "n_down_sig",
+                       "signed_balance", "log_n_sig"),
+                     "four_modality_counts")
+  .fig_assert_finite(out$four_modality_pathways,
+                     c("n_modalities_present", "n_modalities_sig",
+                       "n_evidence_groups_sig", "modality_fraction"),
+                     "four_modality_pathways")
+  .fig_assert_finite(out$four_modality_symbols,
+                     c("min_fdr", "n_modalities_present", "n_modalities_sig"),
+                     "four_modality_symbols")
   .fig_assert_finite(out$geomx_counts, c("n_up", "n_down", "n_sig"), "geomx_counts")
   .fig_assert_finite(out$bulk_counts, "n_sig", "bulk_counts")
   out

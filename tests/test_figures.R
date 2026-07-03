@@ -8,13 +8,13 @@ contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "i
 focus <- c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
 
 manifest <- figure_manifest()
-stopifnot(nrow(manifest) == 18L,
+stopifnot(nrow(manifest) == 21L,
           !anyDuplicated(manifest$figure_id),
           all(grepl("^fig-", manifest$figure_id)),
           !any(grepl("_", manifest$figure_id, fixed = TRUE)),
           all(c("microglia", "trajectory", "mechanism", "crossmodality") %in%
                 manifest$chapter))
-cat("ok - figure_manifest pins 18 hyphenated inline figure ids\n")
+cat("ok - figure_manifest pins 21 hyphenated inline figure ids\n")
 
 symbol_map <- data.frame(
   ensembl = paste0("ENSMUSG", sprintf("%08d", 1:80)),
@@ -296,16 +296,53 @@ crossmodality_report$divergence$axis_symbols$axis_member <- TRUE
 crossmodality_report$divergence$axis_symbols$n_modalities_present <- 3
 crossmodality_report$divergence$axis_symbols$n_modalities_sig <- rep(0:2, length.out = nrow(crossmodality_report$divergence$axis_symbols))
 crossmodality_report$divergence$axis_symbols$min_fdr <- seq(0.01, 0.7, length.out = nrow(crossmodality_report$divergence$axis_symbols))
+crossmodality_report$divergence$axis_symbols$max_abs_statistic <- seq(1, 4, length.out = nrow(crossmodality_report$divergence$axis_symbols))
+crossmodality_report$divergence$axis_symbols$modalities_present <- rep(
+  c("snRNAseq_microglia;GeoMx_spatial;bulk_proteome;bulk_phosphoproteome",
+    "snRNAseq_microglia;GeoMx_spatial;bulk_proteome"),
+  length.out = nrow(crossmodality_report$divergence$axis_symbols)
+)
+crossmodality_report$divergence$axis_symbols$modalities_sig <- rep(
+  c("snRNAseq_microglia;GeoMx_spatial", "bulk_phosphoproteome", ""),
+  length.out = nrow(crossmodality_report$divergence$axis_symbols)
+)
+crossmodality_report$divergence$axis_symbols$direction_call <- rep(c("positive", "mixed", "negative"),
+                                                                  length.out = nrow(crossmodality_report$divergence$axis_symbols))
 crossmodality_report$divergence$axis_symbols$rank_score <- seq_len(nrow(crossmodality_report$divergence$axis_symbols))
 crossmodality_report$pathway$axis_summary$n_modalities_present <- 3
 crossmodality_report$pathway$axis_summary$n_modalities_sig <- rep(0:2, length.out = nrow(crossmodality_report$pathway$axis_summary))
+crossmodality_report$pathway$axis_summary$n_evidence_groups_sig <- rep(0:4, length.out = nrow(crossmodality_report$pathway$axis_summary))
+crossmodality_report$pathway$axis_summary$n_positive_modalities <- rep(0:3, length.out = nrow(crossmodality_report$pathway$axis_summary))
+crossmodality_report$pathway$axis_summary$n_negative_modalities <- rep(3:0, length.out = nrow(crossmodality_report$pathway$axis_summary))
+crossmodality_report$pathway$axis_summary$mixed_sign <- rep(c(FALSE, TRUE), length.out = nrow(crossmodality_report$pathway$axis_summary))
+crossmodality_report$pathway$axis_summary$consistent_direction <- rep(c("positive", "negative"),
+                                                                      length.out = nrow(crossmodality_report$pathway$axis_summary))
 crossmodality_report$pathway$axis_summary$rank_score <- seq_len(nrow(crossmodality_report$pathway$axis_summary))
+
+four_modalities <- names(.fig_four_modality_classes())
+cross_ev <- expand.grid(symbol = paste0("S", 1:10),
+                        contrast = focus,
+                        modality_class = four_modalities,
+                        stringsAsFactors = FALSE)
+cross_ev$modality_group <- paste0(cross_ev$modality_class, ":primary")
+cross_ev$effect <- seq(-2, 2, length.out = nrow(cross_ev))
+cross_ev$statistic <- cross_ev$effect * 1.8
+cross_ev$fdr <- rep(c(0.02, 0.14, 0.06, 0.5, 0.09), length.out = nrow(cross_ev))
+cross_ev$sign <- ifelse(cross_ev$effect >= 0, 1L, -1L)
+cross_ev$missingness_reason <- NA_character_
+crossmodality_table <- list(evidence = cross_ev)
 
 cmf <- crossmodality_figure_data(crossmodality_report, geomx_de, list(),
                                  list(top = make_top_site()),
-                                 list(top = make_top_site(shift = 0.2)))
+                                 list(top = make_top_site(shift = 0.2)),
+                                 crossmodality_table)
 stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
-          all(c("geomx_counts", "bulk_counts", "phospho_raw_corrected") %in% names(cmf)),
+          all(c("geomx_counts", "bulk_counts", "phospho_raw_corrected",
+                "four_modality_counts", "four_modality_pathways",
+                "four_modality_symbols") %in% names(cmf)),
+          nrow(cmf$four_modality_counts) == length(focus) * length(four_modalities),
+          nrow(cmf$four_modality_pathways) > 0L,
+          nrow(cmf$four_modality_symbols) > 0L,
           nrow(cmf$geomx_volcano$bins) > 0L,
           nrow(cmf$geomx_sensitivity) == length(focus) * 2L,
           nrow(cmf$phospho_raw_corrected$labels) > 0L)

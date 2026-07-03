@@ -34,9 +34,9 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Color saturation pass (ad hoc,
-2026-07-03; richer professional palette on the matured figure grammar, 33
-caption-only figures).
+user before writing a plan. Last closed = Four-modality integration figures
+(ad hoc, 2026-07-03; +3 compact cross-modality panels integrating snRNAseq,
+GeoMx, proteome, and phosphoproteome evidence; 36 caption-only figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -119,6 +119,13 @@ caption-only figures).
   blue-teal sequential count gradient. Figure grammar from the visual maturity
   pass is unchanged. Rendered main path remains 33 figures / 33 captions / 33
   nonblank alts, duplicate IDs 0; full gate green.
+- Four-modality integration figures [DONE 2026-07-03]:
+  user requested more figures integrating the four modalities. Added a compact
+  evidence-table reduction to `crossmodality_figures` and three visible
+  cross-modality panels: FDR support by assay family, pathway-axis support
+  across assay families, and selected axis-symbol modality tiles. Rendered main
+  path now has 36 figures / 36 captions / 36 nonblank alts, duplicate IDs 0;
+  full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
