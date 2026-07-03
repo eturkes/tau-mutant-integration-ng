@@ -101,27 +101,32 @@ Default recommendation: choose the aggressive inline conversion. It directly
 targets the complaint, reuses the current compact figure infrastructure, and
 keeps the report as one warning-gated offline artifact.
 
+Selected route (S0, 2026-07-03): aggressive inline visual conversion.
+Provisional reduction floor = at least 40% prose-only word-count reduction,
+raise after S1 inventory if more low-risk removals are visible.
+
 ## Steps
 
 Each step is one closing unit. Run `scripts/check.sh` for implementation steps.
 S1 may be docs/script-only but still needs at least the prose-inventory command
 and a clean `git diff` review.
 
-### S0 - Route Gate [OPEN]
+### S0 - Route Gate [DONE 2026-07-03]
 
 Work:
-- Confirm default aggressive inline conversion or choose an alternative.
-- Set the provisional prose-reduction floor. Default starts at at least 40%
+- Confirm default aggressive inline conversion or choose an alternative. Chosen:
+  aggressive inline visual conversion.
+- Set the provisional prose-reduction floor. Selected floor = at least 40%
   prose-only reduction; S1 can raise it after the baseline inventory if more
   low-risk removals are visible.
 
 Acceptance:
-- User route selected.
+- User route selected. DONE.
 - Roadmap updated from S0 to S1 with the chosen route and provisional reduction
-  target.
-- No report source edits before the route is selected.
+  target. DONE.
+- No report source edits before the route is selected. DONE.
 
-### S1 - Prose Inventory and Replacement Manifest
+### S1 - Prose Inventory and Replacement Manifest [OPEN]
 
 Work:
 - Add a lightweight prose-inventory script or command documented in the plan.

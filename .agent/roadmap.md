@@ -33,12 +33,12 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
-Next `$session-prompt` mode = EXECUTE S0 route gate. Default = aggressive
-inline visual conversion over the existing report: inventory prose, map each
-block to delete / figure / caption / schematic / collapsed audit, then enforce
-a measured prose-only reduction target. Alternatives = visual abstract first,
-publication PNG gallery, or collapsible-audit slimming. Await route choice
-before editing report sources.
+Next `$session-prompt` mode = EXECUTE S1 prose inventory + replacement
+manifest. Route selected = aggressive inline visual conversion over the existing
+report. Provisional target = >=40% prose-only reduction, raise after inventory
+if more low-risk prose can be removed. S1 must measure baseline excluding code /
+YAML / setup chunks, classify every human-facing block, and state the final
+target before report-source conversion.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -76,7 +76,8 @@ before editing report sources.
   user feedback: final output remains too prose-heavy even after Figure
   expansion. Plan opens a visual-first reduction pass: prose inventory,
   replacement manifest, compact visual data slots/schematics, chapter conversion,
-  and before/after prose-density QA. S0 route gate is open.
+  and before/after prose-density QA. S0 chose aggressive inline visual conversion;
+  S1 inventory is next.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -573,6 +574,11 @@ before editing report sources.
   then verify before/after prose reduction plus rendered HTML QA. Alternatives
   recorded for visual-abstract-first, publication PNG gallery, or collapsible
   audit slimming. Next = S0 user route gate before report-source edits.
+- 2026-07-03 Prose-to-figures reduction S0 DONE: user selected aggressive
+  inline visual conversion. Provisional reduction floor = >=40% prose-only word
+  count reduction, with S1 allowed to raise it after baseline inventory. No
+  report sources edited before route selection. Next = S1 prose inventory and
+  replacement manifest.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
