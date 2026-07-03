@@ -31,12 +31,12 @@ stopifnot(
   identical(scale_color_genotype, scale_colour_genotype)                          # US-spelling alias = same fn
 )
 
-# --- RWB heatmap scales: red-white-blue helpers for sequential + signed panels ---------
+# --- RWB heatmap scales: blue-low / red-high helpers for sequential + signed panels ----
 rwb_fill_seq <- scale_fill_rwb(name = "x")
 rwb_fill_mid <- scale_fill_rwb(name = "x", midpoint = 0)
 rwb_col_mid <- scale_colour_rwb(name = "x", midpoint = 0)
 stopifnot(
-  identical(unname(rwb_colours), c("#B2182B", "#F7F7F7", "#2166AC")),
+  identical(unname(rwb_colours), c("#2166AC", "#F7F7F7", "#B2182B")),
   inherits(rwb_fill_seq, "ScaleContinuous"), inherits(rwb_fill_mid, "ScaleContinuous"),
   inherits(rwb_col_mid, "ScaleContinuous"),
   identical(rwb_fill_seq$aesthetics, "fill"), identical(rwb_fill_mid$aesthetics, "fill"),

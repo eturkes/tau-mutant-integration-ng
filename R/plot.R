@@ -36,9 +36,9 @@ scale_fill_genotype <- function(...) {
 }
 scale_color_genotype <- scale_colour_genotype   # US-spelling alias
 
-# RWB heatmap scales. `midpoint=NULL` maps the observed continuous range through
-# red-white-blue; signed effects pass `midpoint=0` so zero is white.
-rwb_colours <- c(low = "#B2182B", mid = "#F7F7F7", high = "#2166AC")
+# RWB heatmap scales: blue lows, white midpoint, red highs. `midpoint=NULL` maps
+# the observed continuous range; signed effects pass `midpoint=0` so zero is white.
+rwb_colours <- c(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B")
 scale_fill_rwb <- function(..., midpoint = NULL, colours = rwb_colours) {
   stopifnot(is.character(colours), length(colours) == 3L)
   if (is.null(midpoint)) {
