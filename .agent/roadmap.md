@@ -32,9 +32,13 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: none
-Next `$session-prompt` mode = PLAN. Confirm any new post-report roadmap unit with
-the user before planning or implementation.
+## Active plan: Prose-to-figures reduction -> `.agent/prose_to_figures_plan.md`
+Next `$session-prompt` mode = EXECUTE S0 route gate. Default = aggressive
+inline visual conversion over the existing report: inventory prose, map each
+block to delete / figure / caption / schematic / collapsed audit, then enforce
+a measured prose-only reduction target. Alternatives = visual abstract first,
+publication PNG gallery, or collapsible-audit slimming. Await route choice
+before editing report sources.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -68,6 +72,11 @@ the user before planning or implementation.
   broad abundance primary and microglia substates only if stable. Final status:
   profile earned, SpatialDecon ran, abundance DE blocked by unresolved AOIs;
   residual audit is report QC; synthesis says blocked, not skipped.
+- Prose-to-figures reduction [ACTIVE 2026-07-03 -> `.agent/prose_to_figures_plan.md`]:
+  user feedback: final output remains too prose-heavy even after Figure
+  expansion. Plan opens a visual-first reduction pass: prose inventory,
+  replacement manifest, compact visual data slots/schematics, chapter conversion,
+  and before/after prose-density QA. S0 route gate is open.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -554,6 +563,16 @@ the user before planning or implementation.
   reset Active plan to none. Cohesive-story spine already carries the final
   blocked-fit SpatialDecon state. Final close-out gate green. Next = PLAN only
   after user confirms a new roadmap unit.
+- 2026-07-03 Prose-to-figures reduction OPENED ->
+  `.agent/prose_to_figures_plan.md`. User feedback: output report remains far
+  too prose-heavy. Research = current qmd/report inventory, completed Figure
+  expansion infrastructure, v1 archive report-shape mining, and current Quarto
+  figure/crossref/diagram/tabset docs. Default plan = aggressive inline visual
+  conversion: measure prose-only baseline, classify every human-facing block,
+  replace paragraphs with figures/schematics/status matrices/caption microcopy,
+  then verify before/after prose reduction plus rendered HTML QA. Alternatives
+  recorded for visual-abstract-first, publication PNG gallery, or collapsible
+  audit slimming. Next = S0 user route gate before report-source edits.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
