@@ -70,14 +70,20 @@ S1 Figure-convention + manifest audit [DONE 2026-07-03]
   demoted; Figures 32/33 and story Figure 5 replaced; Figures 35/38 kept but
   reshaped into named evidence/boundary plates; S2 data-slot contract set.
 
-S2 Cross-modality evidence spine [OPEN]
+S2 Cross-modality evidence spine [DONE 2026-07-03]
 - Add compact target data for axis-centric plotting: selected symbols/pathways
   x modalities x contrasts with effect, FDR/support status, direction, and
   measured/unmeasured state; expose reproducible selection rules.
 - Acceptance: unit tests cover complete keys, finite effects where measured,
   deterministic axis ordering, and explicit blocked/unmeasured encoding.
+  Closed by `crossmodality_figures$axis_effect_spine` +
+  `axis_effect_selection`: fixed axes/contrasts, selected anchor/top symbols,
+  pathway summaries, clearance pairs, mechanism boundaries, and SpatialDecon
+  blocked-abundance boundary. Live target rebuild warning-clean; tests assert
+  complete selection-key x contrast rows, finite measured effects, deterministic
+  axis order, and measured / not-observed / blocked / not-applicable states.
 
-S3 Replace dashboard panels with journal-style evidence plates [PENDING]
+S3 Replace dashboard panels with journal-style evidence plates [OPEN]
 - Primary candidates:
   1. Amyloid-response concordance plate: snRNAseq / GeoMx / bulk rows shown as
      aligned effect-size or volcano/scatter panels for DAM / antigen-presentation
@@ -113,9 +119,8 @@ S5 QA + close [PENDING]
   legends or unreadable cross-modality labels, full gate green, roadmap/history
   updated, one scoped commit.
 
-Next `$session-prompt` mode = EXECUTE S2. Last closed = Cross-modality narrative
-S1 (2026-07-03; audited visible Figures 31-38 plus story Figure 5, wrote exact
-replacement manifest and data-slot handoff).
+Next `$session-prompt` mode = EXECUTE S3. Last closed = Cross-modality narrative
+S2 (2026-07-03; added tested axis-effect spine for replacement evidence plates).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared

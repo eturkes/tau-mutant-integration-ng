@@ -228,6 +228,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (axis x contrast n_modalities_sig/direction), and four_modality_symbols (selected axis genes x four assay
       families: not observed / measured / FDR<0.10). Render still loads only crossmodality_report +
       crossmodality_figures.
+   + (Cross-modality narrative S2 2026-07-03) figures.R: crossmodality_figure_data also emits
+      axis_effect_spine + axis_effect_selection. The spine is the S3/S4 replacement-plate data contract:
+      fixed named axes x selected features x focal contrasts x declared modalities, with effect/FDR/support/direction
+      and explicit measured / not_observed / blocked / not_applicable states. Selection rules are stored alongside
+      the rows; live target build remains compact enough for report use.
    + (Figure-caption-only S4) report.R: render_report (-> report target) calls quarto::quarto_render
       with quiet=FALSE, then repair_embedded_lightbox. Repair rewrites Quarto embedded-lightbox anchors from
       absent local `index_files/figure-html/*.png` hrefs to the already embedded data-URI img src values; fails
@@ -291,7 +296,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
-       crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible four-modality count/pathway/symbol slots; no status/clearance grids; ~50KB qs live
+       crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible four-modality slots plus tested axis_effect_spine/selection for S3 evidence plates; no status/clearance grids; ~3.6MB live after S2
        story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact front-of-report story plates; no new inference; ~4KB live
   - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation

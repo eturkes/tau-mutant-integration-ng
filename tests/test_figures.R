@@ -321,15 +321,35 @@ crossmodality_report$pathway$axis_summary$consistent_direction <- rep(c("positiv
 crossmodality_report$pathway$axis_summary$rank_score <- seq_len(nrow(crossmodality_report$pathway$axis_summary))
 
 four_modalities <- names(.fig_four_modality_classes())
-cross_ev <- expand.grid(symbol = paste0("S", 1:10),
+axis_symbols <- c("Apoe", "Trem2", "Cst7", "Spp1", "Cd74", "Syn1", "Syp",
+                  "Snap25", "Gsk3b", "Myc", "Nfkb1", "Rela", paste0("S", 1:10))
+cross_ev <- expand.grid(symbol = axis_symbols,
                         contrast = focus,
                         modality_class = four_modalities,
                         stringsAsFactors = FALSE)
+cross_ev <- cross_ev[!(cross_ev$symbol == "Trem2" &
+                         cross_ev$modality_class == "bulk_phosphoproteome"),
+                     , drop = FALSE]
+mech_ev <- rbind(
+  expand.grid(symbol = c("Myc", "Nfkb1", "Rela"),
+              contrast = focus,
+              modality_class = "TF_activity",
+              stringsAsFactors = FALSE),
+  expand.grid(symbol = "Gsk3b",
+              contrast = focus,
+              modality_class = "kinase_activity",
+              stringsAsFactors = FALSE)
+)
+cross_ev <- rbind(cross_ev, mech_ev)
 cross_ev$modality_group <- paste0(cross_ev$modality_class, ":primary")
 cross_ev$effect <- seq(-2, 2, length.out = nrow(cross_ev))
 cross_ev$statistic <- cross_ev$effect * 1.8
 cross_ev$fdr <- rep(c(0.02, 0.14, 0.06, 0.5, 0.09), length.out = nrow(cross_ev))
 cross_ev$sign <- ifelse(cross_ev$effect >= 0, 1L, -1L)
+cross_ev$feature_type <- ifelse(cross_ev$modality_class == "TF_activity", "tf_activity",
+                                ifelse(cross_ev$modality_class == "kinase_activity",
+                                       "kinase_activity", "gene"))
+cross_ev$feature_id <- paste(cross_ev$symbol, cross_ev$modality_class, sep = ":")
 cross_ev$missingness_reason <- NA_character_
 crossmodality_table <- list(evidence = cross_ev)
 
@@ -340,16 +360,53 @@ cmf <- crossmodality_figure_data(crossmodality_report, geomx_de, list(),
 stopifnot(all(figure_manifest("crossmodality")$slot %in% names(cmf)),
           all(c("geomx_counts", "bulk_counts", "phospho_raw_corrected",
                 "four_modality_counts", "four_modality_pathways",
-                "four_modality_symbols") %in% names(cmf)),
+                "four_modality_symbols", "axis_effect_spine",
+                "axis_effect_selection") %in% names(cmf)),
           nrow(cmf$four_modality_counts) == length(focus) * length(four_modalities),
           nrow(cmf$four_modality_pathways) > 0L,
           nrow(cmf$four_modality_symbols) > 0L,
+          is.data.frame(cmf$axis_effect_spine),
+          is.data.frame(cmf$axis_effect_selection),
           nrow(cmf$geomx_volcano$points) > 0L,
           nrow(cmf$geomx_volcano$bins) > 0L,
           nrow(cmf$geomx_sensitivity) == length(focus) * 2L,
           nrow(cmf$phospho_raw_corrected$points) > 0L,
           nrow(cmf$phospho_raw_corrected$labels) > 0L)
 cat("ok - crossmodality_figure_data exposes conventional point and matrix plotting tables\n")
+
+spine <- cmf$axis_effect_spine
+selection <- cmf$axis_effect_selection
+required_spine <- c("axis", "feature_id", "feature_label", "feature_type",
+                    "modality_class", "contrast", "effect", "effect_scale",
+                    "fdr", "support_status", "direction", "measured_state",
+                    "source_slot", "selection_rank")
+stopifnot(all(required_spine %in% names(spine)),
+          identical(levels(spine$axis), .fig_axis_effect_axes()),
+          identical(levels(spine$contrast), .fig_axis_effect_contrasts()),
+          identical(as.character(unique(spine$axis)), .fig_axis_effect_axes()),
+          all(is.finite(spine$effect[spine$measured_state == "measured"])),
+          all(c("measured", "not_observed", "blocked", "not_applicable") %in%
+                as.character(spine$measured_state)))
+expected_keys <- as.vector(outer(selection$selection_key, .fig_axis_effect_contrasts(),
+                                 paste, sep = "\r"))
+observed_keys <- paste(as.character(spine$axis), spine$feature_id,
+                       as.character(spine$modality_class),
+                       as.character(spine$contrast), sep = "\r")
+stopifnot(!anyDuplicated(observed_keys),
+          setequal(expected_keys, observed_keys),
+          any(spine$feature_id == "clearance:Trem2" &
+                spine$modality_class == "bulk_phosphoproteome" &
+                spine$measured_state == "not_observed"),
+          any(spine$feature_id == "boundary:SpatialDecon_abundance" &
+                spine$modality_class == "GeoMx_spatial" &
+                spine$measured_state == "blocked"),
+          any(spine$feature_id == "boundary:Myc_TF" &
+                spine$modality_class == "kinase_activity" &
+                spine$measured_state == "not_applicable"),
+          any(spine$feature_id == "boundary:Myc_TF" &
+                spine$modality_class == "TF_activity" &
+                spine$measured_state == "measured"))
+cat("ok - axis_effect_spine has complete keys, finite measured effects, and explicit missing states\n")
 
 qc_md <- data.frame(
   genotype = rep(genotype_levels, each = 8),

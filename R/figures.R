@@ -1340,6 +1340,450 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
             method = "radix", na.last = TRUE), , drop = FALSE]
 }
 
+.fig_axis_effect_axes <- function() {
+  c("DAM", "antigen_presentation", "synaptic", "clearance",
+    "interaction_boundary", "mechanism_boundary")
+}
+
+.fig_axis_effect_contrasts <- function() {
+  c("nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
+}
+
+.fig_axis_effect_modalities <- function() {
+  c(
+    .fig_four_modality_classes(),
+    TF_activity = "TF activity",
+    kinase_activity = "kinase activity",
+    crossmodality_pathway = "cross-modality pathway",
+    clearance_pair = "clearance pair"
+  )
+}
+
+.fig_axis_effect_standard_axis <- function(axis) {
+  out <- rep(NA_character_, length(axis))
+  z <- as.character(axis)
+  out[z %in% "DAM" | grepl("DAM", z, fixed = TRUE)] <- "DAM"
+  out[z %in% c("antigen_presentation", "MHC_APC") |
+        grepl("MHC_APC", z, fixed = TRUE)] <- "antigen_presentation"
+  out[z %in% "synaptic" | grepl("synaptic", z, fixed = TRUE)] <- "synaptic"
+  out[z %in% c("clearance", "complement") |
+        grepl("clearance", z, fixed = TRUE) |
+        grepl("complement", z, fixed = TRUE)] <- "clearance"
+  out[z %in% c("NFkB", "gsk3b")] <- "mechanism_boundary"
+  out
+}
+
+.fig_axis_effect_anchor_symbols <- function() {
+  rows <- data.frame(
+    axis = c(rep("DAM", 3), "antigen_presentation",
+             rep("synaptic", 3), rep("clearance", 4),
+             rep("mechanism_boundary", 4)),
+    symbol = c("Apoe", "Cst7", "Spp1", "Cd74",
+               "Syn1", "Syp", "Snap25",
+               "Apoe", "Trem2", "Cd74", "Spp1",
+               "Myc", "Nfkb1", "Rela", "Gsk3b"),
+    stringsAsFactors = FALSE
+  )
+  rows$feature_id <- paste(rows$axis, rows$symbol, sep = ":")
+  rows$feature_label <- rows$symbol
+  rows$feature_type <- "symbol"
+  rows$selection_rule <- "predeclared_anchor_symbol"
+  rows$selection_rank <- seq_len(nrow(rows))
+  rows
+}
+
+.fig_axis_effect_top_symbols <- function(crossmodality_report, top_per_axis = 2L) {
+  stopifnot(is.list(crossmodality_report), is.list(crossmodality_report$divergence),
+            is.data.frame(crossmodality_report$divergence$axis_symbols),
+            top_per_axis >= 0L)
+  if (top_per_axis == 0L) return(.fig_axis_effect_anchor_symbols()[0, ])
+  x <- crossmodality_report$divergence$axis_symbols
+  .fig_require_cols(x, c("symbol", "axis", "n_modalities_present",
+                         "n_modalities_sig", "min_fdr", "max_abs_statistic",
+                         "rank_score"),
+                    "crossmodality_report$divergence$axis_symbols")
+  x$axis <- .fig_axis_effect_standard_axis(x$axis)
+  x <- x[!is.na(x$axis) & x$axis %in% .fig_axis_effect_axes() &
+           !is.na(x$symbol) & nzchar(x$symbol), , drop = FALSE]
+  if (!nrow(x)) return(.fig_axis_effect_anchor_symbols()[0, ])
+  split_key <- interaction(x$axis, x$symbol, drop = TRUE, lex.order = TRUE)
+  agg <- do.call(rbind, lapply(split(x, split_key), function(d) {
+    data.frame(
+      axis = d$axis[1L],
+      symbol = d$symbol[1L],
+      n_modalities_present = max(d$n_modalities_present, na.rm = TRUE),
+      n_modalities_sig = max(d$n_modalities_sig, na.rm = TRUE),
+      min_fdr = suppressWarnings(min(d$min_fdr, na.rm = TRUE)),
+      max_abs_statistic = max(d$max_abs_statistic, na.rm = TRUE),
+      rank_score = max(d$rank_score, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }))
+  agg$min_fdr[!is.finite(agg$min_fdr)] <- Inf
+  anchors <- .fig_axis_effect_anchor_symbols()
+  anchor_key <- paste(anchors$axis, anchors$symbol, sep = "\r")
+  agg <- agg[!(paste(agg$axis, agg$symbol, sep = "\r") %in% anchor_key), , drop = FALSE]
+  if (!nrow(agg)) return(anchors[0, ])
+  agg <- agg[order(match(agg$axis, .fig_axis_effect_axes()),
+                   -agg$n_modalities_present, -agg$n_modalities_sig,
+                   agg$min_fdr, -agg$max_abs_statistic, -agg$rank_score,
+                   agg$symbol, method = "radix", na.last = TRUE), , drop = FALSE]
+  pieces <- lapply(.fig_axis_effect_axes(), function(ax) {
+    utils::head(agg[agg$axis == ax, , drop = FALSE], top_per_axis)
+  })
+  out <- do.call(rbind, pieces)
+  if (!nrow(out)) return(anchors[0, ])
+  out$feature_id <- paste(out$axis, out$symbol, sep = ":")
+  out$feature_label <- out$symbol
+  out$feature_type <- "symbol"
+  out$selection_rule <- "top_ranked_axis_symbol"
+  out$selection_rank <- 100L + seq_len(nrow(out))
+  out[, c("axis", "symbol", "feature_id", "feature_label", "feature_type",
+          "selection_rule", "selection_rank"), drop = FALSE]
+}
+
+.fig_axis_effect_selection <- function(crossmodality_report) {
+  modalities <- .fig_axis_effect_modalities()
+  assay_modalities <- names(.fig_four_modality_classes())
+  symbols <- rbind(.fig_axis_effect_anchor_symbols(),
+                   .fig_axis_effect_top_symbols(crossmodality_report))
+  symbol_rows <- do.call(rbind, lapply(seq_len(nrow(symbols)), function(i) {
+    d <- symbols[i, , drop = FALSE]
+    data.frame(
+      axis = d$axis,
+      feature_id = d$feature_id,
+      feature_label = d$feature_label,
+      feature_type = d$feature_type,
+      modality_class = assay_modalities,
+      modality = unname(modalities[assay_modalities]),
+      lookup_symbol = d$symbol,
+      lookup_source = "evidence_symbol",
+      applicable = TRUE,
+      selection_rule = d$selection_rule,
+      selection_rank = d$selection_rank,
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  pathway_rows <- data.frame(
+    axis = .fig_axis_effect_axes(),
+    feature_id = paste0("pathway:", .fig_axis_effect_axes()),
+    feature_label = paste(gsub("_", " ", .fig_axis_effect_axes(), fixed = TRUE),
+                          "axis"),
+    feature_type = "pathway",
+    modality_class = "crossmodality_pathway",
+    modality = unname(modalities["crossmodality_pathway"]),
+    lookup_symbol = NA_character_,
+    lookup_source = "pathway_axis",
+    applicable = TRUE,
+    selection_rule = "fixed_axis_pathway_summary",
+    selection_rank = 300L + seq_along(.fig_axis_effect_axes()),
+    stringsAsFactors = FALSE
+  )
+
+  pairs <- data.frame(
+    axis = "clearance",
+    feature_id = paste0("pair:", c("Apoe_Trem2", "App_Cd74", "Pros1_Mertk")),
+    feature_label = gsub("_", "-", c("Apoe_Trem2", "App_Cd74", "Pros1_Mertk"),
+                         fixed = TRUE),
+    feature_type = "pair",
+    modality_class = "clearance_pair",
+    modality = unname(modalities["clearance_pair"]),
+    lookup_symbol = c("Apoe_Trem2", "App_Cd74", "Pros1_Mertk"),
+    lookup_source = "clearance_pair",
+    applicable = TRUE,
+    selection_rule = "predeclared_clearance_pair",
+    selection_rank = 400L + seq_len(3L),
+    stringsAsFactors = FALSE
+  )
+
+  mech <- data.frame(
+    axis = "mechanism_boundary",
+    feature_id = c("boundary:Myc_TF", "boundary:Nfkb1_TF",
+                   "boundary:Rela_TF", "boundary:Gsk3b_kinase"),
+    feature_label = c("Myc TF", "Nfkb1 TF", "Rela TF", "Gsk3b kinase"),
+    feature_type = "boundary",
+    symbol = c("Myc", "Nfkb1", "Rela", "Gsk3b"),
+    applicable_modality = c("TF_activity", "TF_activity", "TF_activity",
+                            "kinase_activity"),
+    selection_rank = 500L + seq_len(4L),
+    stringsAsFactors = FALSE
+  )
+  mech_rows <- do.call(rbind, lapply(seq_len(nrow(mech)), function(i) {
+    d <- mech[i, , drop = FALSE]
+    data.frame(
+      axis = d$axis,
+      feature_id = d$feature_id,
+      feature_label = d$feature_label,
+      feature_type = d$feature_type,
+      modality_class = c("TF_activity", "kinase_activity"),
+      modality = unname(modalities[c("TF_activity", "kinase_activity")]),
+      lookup_symbol = d$symbol,
+      lookup_source = "mechanism_boundary",
+      applicable = c("TF_activity", "kinase_activity") == d$applicable_modality,
+      selection_rule = "predeclared_mechanism_boundary",
+      selection_rank = d$selection_rank,
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  spatial_rows <- data.frame(
+    axis = "interaction_boundary",
+    feature_id = "boundary:SpatialDecon_abundance",
+    feature_label = "SpatialDecon abundance",
+    feature_type = "boundary",
+    modality_class = assay_modalities,
+    modality = unname(modalities[assay_modalities]),
+    lookup_symbol = NA_character_,
+    lookup_source = "spatial_decon_boundary",
+    applicable = assay_modalities == "GeoMx_spatial",
+    selection_rule = "blocked_spatial_abundance_boundary",
+    selection_rank = 600L,
+    stringsAsFactors = FALSE
+  )
+
+  out <- rbind(symbol_rows, pathway_rows, pairs, mech_rows, spatial_rows)
+  out$selection_key <- paste(out$axis, out$feature_id, out$modality_class,
+                             sep = "\r")
+  stopifnot(!anyDuplicated(out$selection_key),
+            all(out$axis %in% .fig_axis_effect_axes()),
+            all(out$modality_class %in% names(modalities)),
+            all(out$feature_type %in% c("symbol", "pathway", "pair", "boundary")))
+  out[order(match(out$axis, .fig_axis_effect_axes()), out$selection_rank,
+            out$feature_id, match(out$modality_class, names(modalities)),
+            method = "radix"), , drop = FALSE]
+}
+
+.fig_axis_effect_best_evidence <- function(crossmodality_table, contrasts, alpha = 0.10) {
+  stopifnot(is.list(crossmodality_table), is.data.frame(crossmodality_table$evidence),
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
+  ev <- crossmodality_table$evidence
+  .fig_require_cols(ev, c("symbol", "contrast", "modality_class", "modality_group",
+                          "feature_type", "effect", "statistic", "fdr", "sign",
+                          "feature_id", "missingness_reason"),
+                    "crossmodality_table$evidence")
+  ev <- ev[ev$contrast %in% contrasts &
+             ev$modality_class %in% names(.fig_axis_effect_modalities()) &
+             !is.na(ev$symbol) & nzchar(ev$symbol) &
+             is.na(ev$missingness_reason), , drop = FALSE]
+  stopifnot(nrow(ev) > 0L)
+  fdr_ord <- ev$fdr
+  fdr_ord[!is.finite(fdr_ord)] <- Inf
+  stat_abs <- abs(ev$statistic)
+  stat_abs[!is.finite(stat_abs)] <- -Inf
+  ev <- ev[order(ev$symbol, ev$contrast, ev$modality_class,
+                 fdr_ord, -stat_abs, ev$modality_group, ev$feature_id,
+                 method = "radix", na.last = TRUE), , drop = FALSE]
+  key <- interaction(ev$symbol, ev$contrast, ev$modality_class,
+                     drop = TRUE, lex.order = TRUE)
+  out <- ev[!duplicated(key), , drop = FALSE]
+  out$lookup_key <- paste(out$symbol, out$contrast, out$modality_class,
+                          sep = "\r")
+  out$supported <- is.finite(out$fdr) & out$fdr < alpha
+  out
+}
+
+.fig_axis_effect_best_pathway <- function(crossmodality_report, contrasts) {
+  x <- crossmodality_report$pathway$axis_summary
+  .fig_require_cols(x, c("axis", "contrast", "n_modalities_present",
+                         "n_modalities_sig", "mixed_sign",
+                         "consistent_direction", "rank_score"),
+                    "crossmodality_report$pathway$axis_summary")
+  x$axis <- .fig_axis_effect_standard_axis(x$axis)
+  x <- x[!is.na(x$axis) & x$contrast %in% contrasts, , drop = FALSE]
+  if (!nrow(x)) return(x)
+  x <- x[order(x$axis, x$contrast, -x$n_modalities_sig,
+               -x$n_modalities_present, -x$rank_score,
+               method = "radix", na.last = TRUE), , drop = FALSE]
+  key <- interaction(x$axis, x$contrast, drop = TRUE, lex.order = TRUE)
+  out <- x[!duplicated(key), , drop = FALSE]
+  out$lookup_key <- paste(out$axis, out$contrast, sep = "\r")
+  out
+}
+
+.fig_axis_effect_scale <- function(source_feature_type) {
+  if (source_feature_type %in% c("tf_activity", "kinase_activity")) {
+    "activity_score"
+  } else if (source_feature_type %in% c("gene", "protein_group",
+                                        "phosphosite_gene",
+                                        "phosphosite_gene_corrected")) {
+    "log2_effect"
+  } else {
+    source_feature_type
+  }
+}
+
+.fig_axis_effect_direction <- function(effect) {
+  if (!is.finite(effect) || effect == 0) {
+    "none"
+  } else if (effect > 0) {
+    "positive"
+  } else {
+    "negative"
+  }
+}
+
+.fig_axis_effect_spine <- function(crossmodality_report, crossmodality_table,
+                                   alpha = 0.10) {
+  contrasts <- .fig_axis_effect_contrasts()
+  selection <- .fig_axis_effect_selection(crossmodality_report)
+  evidence <- .fig_axis_effect_best_evidence(crossmodality_table, contrasts, alpha)
+  pathways <- .fig_axis_effect_best_pathway(crossmodality_report, contrasts)
+  pairs <- crossmodality_report$clearance$pair_support
+  .fig_require_cols(pairs, c("pair", "contrast", "status",
+                             "n_coherent_supported_modalities"),
+                    "crossmodality_report$clearance$pair_support")
+  pairs$lookup_key <- paste(pairs$pair, pairs$contrast, sep = "\r")
+  spatial_status <- crossmodality_report$clearance$spatial_decon$status %||% NA_character_
+
+  grid <- merge(selection, data.frame(contrast = contrasts, stringsAsFactors = FALSE),
+                by = NULL, sort = FALSE)
+  grid <- grid[order(match(grid$axis, .fig_axis_effect_axes()), grid$selection_rank,
+                     grid$feature_id, match(grid$contrast, contrasts),
+                     match(grid$modality_class, names(.fig_axis_effect_modalities())),
+                     method = "radix"), , drop = FALSE]
+  rows <- lapply(seq_len(nrow(grid)), function(i) {
+    d <- grid[i, , drop = FALSE]
+    base <- data.frame(
+      axis = d$axis,
+      feature_id = d$feature_id,
+      feature_label = d$feature_label,
+      feature_type = d$feature_type,
+      modality_class = d$modality_class,
+      modality = d$modality,
+      contrast = d$contrast,
+      effect = NA_real_,
+      effect_scale = "not_estimated",
+      fdr = NA_real_,
+      support_status = "not_observed",
+      direction = "not_observed",
+      measured_state = "not_observed",
+      source_slot = d$lookup_source,
+      source_feature_type = NA_character_,
+      source_feature_id = NA_character_,
+      selection_rank = d$selection_rank,
+      selection_rule = d$selection_rule,
+      stringsAsFactors = FALSE
+    )
+    if (!isTRUE(d$applicable)) {
+      base$support_status <- "not_applicable"
+      base$direction <- "not_applicable"
+      base$measured_state <- "not_applicable"
+      base$effect_scale <- "not_applicable"
+      return(base)
+    }
+
+    if (d$lookup_source %in% c("evidence_symbol", "mechanism_boundary")) {
+      key <- paste(d$lookup_symbol, d$contrast, d$modality_class, sep = "\r")
+      j <- match(key, evidence$lookup_key)
+      if (!is.na(j)) {
+        e <- evidence[j, , drop = FALSE]
+        base$effect <- e$effect
+        base$effect_scale <- .fig_axis_effect_scale(e$feature_type)
+        base$fdr <- e$fdr
+        base$support_status <- ifelse(e$supported, "supported",
+                                      "measured_not_supported")
+        base$direction <- .fig_axis_effect_direction(e$effect)
+        base$measured_state <- "measured"
+        base$source_slot <- paste0("crossmodality_table$evidence:", e$modality_group)
+        base$source_feature_type <- e$feature_type
+        base$source_feature_id <- e$feature_id
+      }
+      return(base)
+    }
+
+    if (d$lookup_source == "pathway_axis") {
+      key <- paste(d$axis, d$contrast, sep = "\r")
+      j <- match(key, pathways$lookup_key)
+      if (!is.na(j)) {
+        p <- pathways[j, , drop = FALSE]
+        base$effect <- p$rank_score
+        base$effect_scale <- "axis_rank_score"
+        base$support_status <- ifelse(p$n_modalities_sig > 0,
+                                      "supported", "measured_not_supported")
+        dir <- ifelse(p$mixed_sign, "mixed", as.character(p$consistent_direction))
+        base$direction <- ifelse(is.na(dir) | !nzchar(dir), "none", dir)
+        base$measured_state <- "measured"
+        base$source_slot <- "crossmodality_report$pathway$axis_summary"
+        base$source_feature_type <- "pathway_axis"
+        base$source_feature_id <- p$axis
+      }
+      return(base)
+    }
+
+    if (d$lookup_source == "clearance_pair") {
+      key <- paste(d$lookup_symbol, d$contrast, sep = "\r")
+      j <- match(key, pairs$lookup_key)
+      if (!is.na(j)) {
+        p <- pairs[j, , drop = FALSE]
+        base$effect <- p$n_coherent_supported_modalities
+        base$effect_scale <- "supported_modality_count"
+        base$support_status <- ifelse(p$status == "earned", "earned", "not_earned")
+        base$direction <- "none"
+        base$measured_state <- "measured"
+        base$source_slot <- "crossmodality_report$clearance$pair_support"
+        base$source_feature_type <- "clearance_pair"
+        base$source_feature_id <- p$pair
+      }
+      return(base)
+    }
+
+    if (d$lookup_source == "spatial_decon_boundary") {
+      if (identical(spatial_status, "blocked")) {
+        base$support_status <- "blocked"
+        base$direction <- "blocked"
+        base$measured_state <- "blocked"
+        base$effect_scale <- "blocked"
+        base$source_slot <- "crossmodality_report$clearance$spatial_decon"
+        base$source_feature_type <- "spatial_decon_abundance"
+        base$source_feature_id <- "geomx_abundance_de"
+      } else {
+        base$support_status <- "not_observed"
+        base$direction <- "not_observed"
+        base$measured_state <- "not_observed"
+        base$effect_scale <- "not_estimated"
+        base$source_slot <- "crossmodality_report$clearance$spatial_decon"
+      }
+      return(base)
+    }
+    base
+  })
+
+  out <- do.call(rbind, rows)
+  out$axis <- factor(out$axis, levels = .fig_axis_effect_axes())
+  out$contrast <- factor(out$contrast, levels = contrasts)
+  out$modality_class <- factor(out$modality_class,
+                               levels = names(.fig_axis_effect_modalities()))
+  out$measured_state <- factor(out$measured_state,
+                               levels = c("measured", "not_observed",
+                                          "blocked", "not_applicable"))
+  out$support_status <- factor(out$support_status,
+                               levels = c("supported", "earned",
+                                          "measured_not_supported",
+                                          "not_earned", "not_observed",
+                                          "blocked", "not_applicable"))
+  out$direction <- factor(out$direction,
+                          levels = c("positive", "negative", "mixed", "none",
+                                     "not_observed", "blocked", "not_applicable"))
+  out <- out[order(as.integer(out$axis), out$selection_rank, out$feature_id,
+                   as.integer(out$contrast), as.integer(out$modality_class),
+                   method = "radix"), , drop = FALSE]
+  rownames(out) <- NULL
+
+  expected <- as.vector(outer(selection$selection_key, contrasts, paste, sep = "\r"))
+  observed <- paste(as.character(out$axis), out$feature_id,
+                    as.character(out$modality_class), as.character(out$contrast),
+                    sep = "\r")
+  stopifnot(!anyDuplicated(observed),
+            setequal(expected, observed),
+            any(out$measured_state == "blocked"),
+            any(out$measured_state == "not_observed"),
+            any(out$measured_state == "not_applicable"))
+  .fig_assert_finite(out[out$measured_state == "measured", , drop = FALSE],
+                     "effect", "axis_effect_spine measured effects")
+  list(spine = out, selection = selection)
+}
+
 crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics_summary,
                                       phospho_de_24m, phospho_corrected_24m,
                                       crossmodality_table = NULL,
@@ -1371,9 +1815,13 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
   four_counts <- .fig_four_modality_counts(crossmodality_table, contrasts, alpha)
   four_pathways <- .fig_four_modality_pathways(crossmodality_report, contrasts)
   four_symbols <- .fig_four_modality_symbols(crossmodality_report, contrasts)
+  axis_effect <- .fig_axis_effect_spine(crossmodality_report, crossmodality_table,
+                                        alpha)
 
   out <- list(
     manifest = figure_manifest("crossmodality"),
+    axis_effect_spine = axis_effect$spine,
+    axis_effect_selection = axis_effect$selection,
     four_modality_counts = four_counts,
     four_modality_pathways = four_pathways,
     four_modality_symbols = four_symbols,
@@ -1387,9 +1835,15 @@ crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics
                          "bulk_omics_summary", "phospho_de_24m",
                          "phospho_corrected_24m", "crossmodality_table"),
       alpha = alpha,
+      axis_effect_axes = .fig_axis_effect_axes(),
+      axis_effect_contrasts = .fig_axis_effect_contrasts(),
+      axis_effect_states = levels(axis_effect$spine$measured_state),
       contract = "compact cross-modality figure data; heavy top tables reduced to points and bins"
     )
   )
+  .fig_assert_finite(out$axis_effect_spine[
+    out$axis_effect_spine$measured_state == "measured", , drop = FALSE],
+    "effect", "axis_effect_spine measured effects")
   .fig_assert_finite(out$geomx_sensitivity,
                      c("n_primary_sig", "n_sensitivity_sig", "n_lost", "n_gained", "n_sign_flip"),
                      "geomx_sensitivity")

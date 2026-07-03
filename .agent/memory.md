@@ -1050,6 +1050,18 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   crossmodality_report + crossmodality_figures. QA: rendered DOM = 36 figures /
   36 captions / 36 nonblank alts / 0 duplicate IDs; visual PDF pages inspected
   for the new panels; full `scripts/check.sh` green.
+- Cross-modality narrative data spine (2026-07-03, S2 built):
+  `crossmodality_figures$axis_effect_spine` is the compact contract for replacing
+  dashboard integration panels. Fixed axes = DAM, antigen_presentation, synaptic,
+  clearance, interaction_boundary, mechanism_boundary; focal contrasts =
+  nlgf_in_maptki / nlgf_in_p301s / tau_in_nlgf / interaction. Rows combine
+  anchor/top symbols from `crossmodality_table`, pathway-axis summaries,
+  clearance-pair verdicts, mechanism TF/kinase boundaries, and the SpatialDecon
+  abundance boundary. `axis_effect_selection` records the reproducible feature x
+  modality rules. Measured rows MUST have finite effects; not_observed / blocked /
+  not_applicable are explicit states with NA effects, never coerced to
+  non-significant. Current live target rebuild warning-clean; tests lock complete
+  selection-key x contrast rows and deterministic axis order.
 - Story plate synthesis (2026-07-03, CURRENT report surface): report now opens
   QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~4KB)
   and does no new inference; it assembles existing result bundles into two
