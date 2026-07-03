@@ -178,15 +178,25 @@ kin_order <- kin_plot[order(kin_plot$source != "Gsk3b", kin_plot$fdr,
                             method = "radix", na.last = TRUE), "source"]
 kin_plot$source <- factor(kin_plot$source, levels = rev(unique(kin_order)))
 
-nf_plot <- nf_primary
-nf_plot$test_label <- c(tf_family = "TF-family ULM",
-                        target_gsea = "signed target GSEA")[nf_plot$test]
-nf_plot$test_label[is.na(nf_plot$test_label)] <- nf_plot$test[is.na(nf_plot$test_label)]
-nf_plot$test_label <- factor(nf_plot$test_label,
+nf_gate <- nf[nf$contrast %in% c("interaction", "tau_in_nlgf"), , drop = FALSE]
+nf_gate$test_label <- c(tf_family = "TF-family ULM",
+                        target_gsea = "signed target GSEA")[nf_gate$test]
+nf_gate$test_label[is.na(nf_gate$test_label)] <- nf_gate$test[is.na(nf_gate$test_label)]
+nf_gate$test_label <- factor(nf_gate$test_label,
                              levels = rev(c("TF-family ULM", "signed target GSEA")))
-nf_plot$supported <- nf_plot$primary_family_fdr < alpha
-nf_plot$fdr_label <- paste0("FDR ", fmt_p(nf_plot$primary_family_fdr))
-nf_plot$tile_label <- paste0(fmt_num(nf_plot$score), "\n", nf_plot$fdr_label)
+nf_gate$population_label <- factor(fmt_population(nf_gate$population),
+                                   levels = unname(population_labels))
+nf_gate$contrast_label <- fmt_contrast(nf_gate$contrast)
+nf_gate$row_type <- factor(ifelse(nf_gate$primary_test %in% TRUE,
+                                  "primary gate", "supportive row"),
+                           levels = c("supportive row", "primary gate"))
+nf_gate$fdr_plot <- ifelse(nf_gate$primary_test %in% TRUE,
+                           nf_gate$primary_family_fdr, nf_gate$p_value)
+nf_gate$neg_log10 <- -log10(pmax(nf_gate$fdr_plot, 1e-300))
+nf_gate$supported <- nf_gate$primary_test %in% TRUE & nf_gate$primary_family_fdr < alpha
+nf_gate$fdr_label <- paste0("FDR ", fmt_p(nf_gate$fdr_plot))
+nf_gate$label_x <- nf_gate$score + ifelse(nf_gate$score >= 0, 0.12, -0.12)
+nf_gate$label_hjust <- ifelse(nf_gate$score >= 0, 0, 1)
 ```
 
 ## Pathway Survey
@@ -272,18 +282,33 @@ ggplot(tf_focus, aes(contrast, source, fill = score)) +
 
 ```{r}
 #| label: fig-mechanism-nfkb-primary
-#| fig-width: 7.4
-#| fig-height: 3.8
+#| fig-width: 9.6
+#| fig-height: 5.1
 #| fig-cap: "NF-kB primary rows do not form a supported attenuation signal."
-#| fig-alt: "Two-cell signed score strip shows NF-kB TF-family and signed target-GSEA scores with FDR labels."
-ggplot(nf_plot, aes(test_label, "primary row", fill = score)) +
-  geom_tile(colour = "#F8F6F1", linewidth = 0.35, width = 0.88, height = 0.72) +
-  geom_text(aes(label = tile_label), size = 3.05, lineheight = 0.9, colour = "#262B2F") +
-  scale_fill_rwb(name = "score", midpoint = 0) +
-  labs(x = NULL, y = NULL, title = "Predeclared NF-kB attenuation gate") +
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 18, hjust = 1),
-        axis.text.y = element_blank())
+#| fig-alt: "Faceted signed-score audit shows NF-kB primary and supportive rows by contrast and RNA population, with point size encoding FDR or p-value."
+ggplot(nf_gate, aes(score, test_label)) +
+  geom_vline(xintercept = 0, colour = "grey72", linewidth = 0.32) +
+  geom_segment(aes(x = 0, xend = score, yend = test_label, colour = supported),
+               linewidth = 0.58, alpha = 0.78) +
+  geom_point(aes(shape = row_type, size = neg_log10, fill = supported),
+             colour = "#262B2F", stroke = 0.32) +
+  geom_text(data = nf_gate[nf_gate$primary_test %in% TRUE, , drop = FALSE],
+            aes(x = label_x, label = fdr_label, hjust = label_hjust),
+            size = 2.35, colour = "#53504A") +
+  facet_grid(population_label ~ contrast_label) +
+  scale_fill_tau_binary(name = "primary FDR < 0.10",
+                        values = c(`FALSE` = "#B7B1A5", `TRUE` = "#0B6F7E")) +
+  scale_colour_tau_binary(guide = "none",
+                          values = c(`FALSE` = "#7C838A", `TRUE` = "#0B6F7E")) +
+  scale_shape_manual(values = c(`supportive row` = 21, `primary gate` = 24),
+                     name = NULL) +
+  scale_size_continuous(range = c(1.4, 4.2), name = "-log10 value") +
+  labs(x = "signed NF-kB score", y = NULL, title = "Predeclared NF-kB attenuation gate") +
+  coord_cartesian(clip = "off") +
+  guides(fill = "none", size = "none",
+         shape = guide_legend(nrow = 1, override.aes = list(size = 2.8))) +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "bottom")
 ```
 
 ## Gsk3b And Kinase Activity

@@ -160,6 +160,15 @@ user before writing a new plan.
   dot-matrix support counts, signed heatmaps, bubble audit, and signed loading
   bars. Remaining visible `geom_segment` use is the closing-model arrows. Full
   `scripts/check.sh` green; Chromium PDF QA checked changed pages.
+- Figure elaboration pass [DONE 2026-07-03]:
+  user feedback: many figures remained overly simplistic. Enriched the retained
+  conventional report figures without changing claims: QC design now includes
+  replicate-unit support; story mechanism/cross-modality plate shows a signed
+  evidence ladder plus all clearance-pair rows; substate and trajectory audits
+  expose replicate-unit distributions; trajectory decomposition uses a signed
+  reconstruction path; NF-kB gate shows primary/supportive signed rows; GeoMx
+  sensitivity shows supported-row totals plus lost/gained/flip changes. Targeted
+  render green; Chromium PDF spot checks clean.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset

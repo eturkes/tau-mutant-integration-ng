@@ -33,6 +33,9 @@ ctr_labels <- c(
   tau_in_nlgf = "tau in NLGF",
   interaction = "tau x amyloid"
 )
+genotype_print_labels <- c(MAPTKI = "MAPTKI", P301S = "P301S",
+                           NLGF_MAPTKI = "NLGF/MAPTKI",
+                           NLGF_P301S = "NLGF/P301S")
 score_labels <- c(Homeostatic = "homeostatic", DAM = "DAM", MHC_APC = "MHC-APC")
 fmt_contrast <- function(x, rev = FALSE) {
   lv <- if (rev) rev(ctr_levels) else ctr_levels
@@ -130,6 +133,14 @@ mf_audit <- Reduce(function(x, y) merge(x, y, by = "substate", all = TRUE, sort 
                    list(audit_min, audit_total, audit_status))
 mf_audit$substate <- factor(mf_audit$substate, levels = microglia_substate_levels)
 mf_audit$status <- factor(mf_audit$status, levels = c("fit", "skipped"))
+audit_unit_meta <- unique(mf_unit[c("genotype_batch", "genotype", "batch")])
+audit_units <- merge(mf_audit_counts, audit_unit_meta, by = "genotype_batch",
+                     all.x = TRUE, sort = FALSE)
+audit_units <- merge(audit_units, audit_status, by = "substate", all.x = TRUE, sort = FALSE)
+audit_units$substate <- factor(audit_units$substate, levels = microglia_substate_levels)
+audit_units$genotype <- factor(as.character(audit_units$genotype), levels = genotype_levels)
+audit_units$batch <- factor(as.character(audit_units$batch), levels = levels(mf_unit$batch))
+audit_units$status <- factor(audit_units$status, levels = c("fit", "skipped"))
 mf_ss_counts <- mf$substate_de_volcano$counts
 mf_ss_counts <- mf_ss_counts[mf_ss_counts$substate %in% c("Homeostatic", "DAM"), , drop = FALSE]
 mf_ss_counts$contrast <- fmt_contrast(mf_ss_counts$contrast)
@@ -390,18 +401,32 @@ ggplot(mf_wv_points, aes(effect, neg_log10_fdr)) +
 
 ```{r}
 #| label: fig-microglia-substate-audit
-#| fig-width: 7.8
-#| fig-height: 4.2
+#| fig-width: 9.2
+#| fig-height: 4.6
 #| fig-cap: "Homeostatic and DAM pass the per-unit cell floor; IFN/proliferative stay descriptive."
-#| fig-alt: "Dot plot marks substates that pass or miss the replicate-unit cell floor."
-ggplot(mf_audit, aes(substate, min_cells_unit, fill = status)) +
-  geom_point(shape = 21, size = 4.2, colour = "#262B2F", stroke = 0.35) +
-  geom_text(aes(label = label), vjust = -0.8, size = 2.7, colour = "#333333") +
+#| fig-alt: "Boxplots and replicate-unit points show per-substate cell counts by genotype and batch relative to the cell floor."
+ggplot(audit_units, aes(substate, n_cells)) +
   geom_hline(yintercept = pbs$min_cells, linetype = "dashed", colour = "#4A4A45") +
+  geom_boxplot(aes(fill = status), width = 0.44, alpha = 0.22,
+               outlier.shape = NA, colour = "#5B5A55", linewidth = 0.32) +
+  geom_point(aes(colour = genotype, shape = batch),
+             position = position_jitterdodge(jitter.width = 0.12, dodge.width = 0.54),
+             size = 1.85, alpha = 0.86, stroke = 0.35) +
+  geom_point(data = mf_audit, aes(substate, min_cells_unit, fill = status),
+             inherit.aes = FALSE, shape = 21, size = 3.4,
+             colour = "#262B2F", stroke = 0.35) +
+  geom_text(data = mf_audit, aes(substate, min_cells_unit, label = label),
+            inherit.aes = FALSE, vjust = -0.85, size = 2.55, colour = "#333333") +
   scale_fill_manual(values = c(fit = "#0B6F7E", skipped = "#B7B1A5"), guide = "none") +
-  labs(x = NULL, y = "minimum cells per replicate unit",
-       title = "Substate fits are limited by replicate-unit cell floors") +
-  theme(panel.grid.major.x = element_blank())
+  scale_colour_genotype(name = NULL, labels = genotype_print_labels) +
+  labs(x = NULL, y = "cells per replicate unit",
+       title = "Substate fit audit across all replicate units") +
+  guides(shape = guide_legend(title = "batch", nrow = 1),
+         colour = guide_legend(nrow = 1, override.aes = list(size = 2.2, alpha = 1))) +
+  theme(panel.grid.major.x = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 7.4),
+        legend.title = element_text(size = 7.6))
 ```
 
 ```{r}

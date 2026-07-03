@@ -98,6 +98,8 @@ tr_sens$variant_label <- factor(tr_sens$variant_label,
 tr_sens$label <- sprintf("%.3f", tr_sens$spearman_vs_primary)
 tr_lineage <- trf$trajectory_audit$lineage_per_unit
 tr_lineage$genotype <- factor(as.character(tr_lineage$genotype), levels = genotype_levels)
+tr_lineage$batch <- sub("^.*_(batch[0-9]+)$", "\\1", tr_lineage$genotype_batch)
+tr_lineage$batch <- factor(tr_lineage$batch, levels = sort(unique(tr_lineage$batch), method = "radix"))
 tr_lineage$omitted_pct <- 100 * tr_lineage$omitted_frac
 ```
 
@@ -175,17 +177,52 @@ ld <- data.frame(
   channel = factor(c("composition", "progression", "cross"),
                    levels = c("composition", "progression", "cross")),
   loading = c(load_comp, load_prog, load_cross))
+ld$channel <- as.character(ld$channel)
+ld$start <- c(0, utils::head(cumsum(ld$loading), -1L))
+ld$end <- cumsum(ld$loading)
+ld$channel_label <- factor(as.character(ld$channel),
+                           levels = rev(c("composition", "progression", "cross", "reconstructed")))
 ld$label <- paste0(round(100 * ld$loading), "%")
-p_load <- ggplot(ld, aes(channel, loading, fill = channel)) +
-  geom_hline(yintercept = 0, colour = "grey50") +
-  geom_col(width = 0.6, colour = "#F8F6F1", linewidth = 0.24) +
-  geom_text(aes(label = label), vjust = -0.5, size = 2.9, colour = "#333333") +
-  scale_fill_manual(values = c(composition = "#0B6F7E", progression = "#A63A50", cross = "#7C838A"),
+ld$label_x <- ld$end + ifelse(ld$loading >= 0, 0.08, -0.08)
+ld$label_hjust <- ifelse(ld$loading >= 0, 0, 1)
+ld_sum <- data.frame(
+  channel = "reconstructed",
+  loading = sum(ld$loading),
+  start = 0,
+  end = sum(ld$loading),
+  channel_label = factor("reconstructed",
+                         levels = rev(c("composition", "progression", "cross", "reconstructed"))),
+  label = paste0(round(100 * sum(ld$loading)), "%"),
+  label_x = sum(ld$loading) + 0.08,
+  label_hjust = 0,
+  stringsAsFactors = FALSE
+)
+ld_path <- rbind(ld, ld_sum)
+p_load <- ggplot(ld_path, aes(y = channel_label)) +
+  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.3) +
+  geom_vline(xintercept = 1, colour = "grey70", linewidth = 0.3, linetype = "dashed") +
+  geom_segment(aes(x = start, xend = end, yend = channel_label, colour = channel),
+               linewidth = 4.2, lineend = "round", alpha = 0.86) +
+  geom_point(aes(x = end, fill = channel), shape = 21, size = 3.0,
+             colour = "#262B2F", stroke = 0.28) +
+  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
+            size = 2.8, colour = "#333333") +
+  scale_colour_manual(values = c(composition = "#0B6F7E",
+                                 progression = "#A63A50",
+                                 cross = "#7C838A",
+                                 reconstructed = "#262B2F"),
+                      guide = "none") +
+  scale_fill_manual(values = c(composition = "#0B6F7E",
+                               progression = "#A63A50",
+                               cross = "#7C838A",
+                               reconstructed = "#262B2F"),
                     guide = "none") +
-  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
-                     expand = expansion(mult = c(0.08, 0.16))) +
-  labs(x = NULL, y = "loading (fraction of position interaction)",
-       title = "Decomposition loadings")
+  scale_x_continuous(labels = function(x) paste0(round(100 * x), "%"),
+                     expand = expansion(mult = c(0.06, 0.18))) +
+  labs(x = "cumulative fraction of position interaction", y = NULL,
+       title = "Signed reconstruction path") +
+  coord_cartesian(clip = "off") +
+  theme(panel.grid.major.y = element_blank())
 
 (p_forest | p_load) +
   plot_annotation(tag_levels = "A")
@@ -255,24 +292,50 @@ ggplot(on, aes(pt_raw, score_axis_pt)) +
 
 ```{r}
 #| label: fig-trajectory-audit
-#| fig-width: 9.6
-#| fig-height: 4.2
+#| fig-width: 11
+#| fig-height: 4.8
 #| fig-cap: "Refits are stable and lineage omission is low across genotypes."
-#| fig-alt: "Dot and replicate-point panels show stable refits and low lineage omission by genotype."
+#| fig-alt: "Three-panel audit shows refit concordance, omitted-fraction distributions and on-lineage nuclei counts across replicate units."
 p_sens <- ggplot(tr_sens, aes(variant_label, spearman_vs_primary)) +
   geom_hline(yintercept = 1, colour = "grey70", linewidth = 0.3) +
+  geom_segment(aes(xend = variant_label, y = 0.95, yend = spearman_vs_primary),
+               linewidth = 0.6, colour = "#8AA5B8") +
   geom_point(size = 2.2, colour = "#0B6F7E") +
   geom_text(aes(label = label), vjust = -0.7, size = 2.6, colour = "#333333") +
   coord_cartesian(ylim = c(0.95, 1.01)) +
   labs(x = NULL, y = "Spearman vs primary", title = "Pseudotime refit concordance") +
-  theme(panel.grid.major.x = element_blank())
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(angle = 18, hjust = 1))
 
-p_omit <- ggplot(tr_lineage, aes(genotype, omitted_pct, colour = genotype, group = genotype_batch)) +
-  geom_point(size = 1.9, alpha = 0.85, position = position_dodge(width = 0.45)) +
-  scale_colour_genotype(guide = "none") +
+p_omit <- ggplot(tr_lineage, aes(genotype, omitted_pct)) +
+  geom_boxplot(aes(fill = genotype), width = 0.46, alpha = 0.18,
+               outlier.shape = NA, colour = "#5B5A55", linewidth = 0.32) +
+  geom_point(aes(colour = genotype, shape = batch),
+             position = position_jitter(width = 0.08, height = 0),
+             size = 1.9, alpha = 0.85, stroke = 0.35) +
+  scale_fill_genotype(guide = "none") +
+  scale_colour_genotype(name = NULL, labels = genotype_print_labels) +
   scale_y_continuous(labels = function(x) paste0(round(x, 1), "%")) +
   labs(x = NULL, y = "off-lineage nuclei", title = "Omitted fraction by unit") +
+  guides(shape = "none", colour = "none") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
-p_sens | p_omit
+p_count_data <- tr_lineage
+batch_offsets <- stats::setNames(seq(-0.18, 0.18, length.out = length(levels(p_count_data$batch))),
+                                 levels(p_count_data$batch))
+p_count_data$x_unit <- as.numeric(p_count_data$genotype) + batch_offsets[as.character(p_count_data$batch)]
+p_counts <- ggplot(p_count_data, aes(x_unit, n_cells, colour = genotype)) +
+  geom_segment(aes(y = n_on_lineage, yend = n_cells, xend = x_unit),
+               linewidth = 0.5, alpha = 0.55) +
+  geom_point(aes(y = n_cells), shape = 21, size = 2.3, fill = "#F8F5ED",
+             stroke = 0.32) +
+  geom_point(aes(y = n_on_lineage), size = 1.8, alpha = 0.92) +
+  scale_x_continuous(breaks = seq_along(genotype_levels),
+                     labels = unname(genotype_print_labels[genotype_levels])) +
+  scale_colour_genotype(guide = "none") +
+  labs(x = NULL, y = "nuclei", title = "Total vs on-lineage nuclei") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid.major.x = element_blank())
+
+p_sens | p_omit | p_counts
 ```

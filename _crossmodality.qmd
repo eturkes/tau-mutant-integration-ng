@@ -108,16 +108,6 @@ geo_sens$fit_label <- c(unblocked = "unblocked AOI",
 geo_sens$fit_label[is.na(geo_sens$fit_label)] <- geo_sens$fit[is.na(geo_sens$fit_label)]
 geo_sens$fit_label <- factor(geo_sens$fit_label,
                              levels = c("unblocked AOI", "bio-unit collapsed"))
-geo_sens_long <- rbind(
-  data.frame(geo_sens[c("fit_label", "contrast")],
-             metric = "lost from primary", n = -geo_sens$n_lost,
-             stringsAsFactors = FALSE),
-  data.frame(geo_sens[c("fit_label", "contrast")],
-             metric = "gained in sensitivity", n = geo_sens$n_gained,
-             stringsAsFactors = FALSE)
-)
-geo_sens_long$metric <- factor(geo_sens_long$metric,
-                               levels = c("lost from primary", "gained in sensitivity"))
 
 pc_points <- cmf$phospho_raw_corrected$points
 pc_points$contrast <- plot_contrast(pc_points$contrast)
@@ -456,25 +446,67 @@ ggplot(geo_volc_points, aes(effect, neg_log10_fdr)) +
 
 ```{r}
 #| label: fig-crossmodality-geomx-sensitivity
-#| fig-width: 9.2
-#| fig-height: 4.8
+#| fig-width: 10
+#| fig-height: 5.8
 #| fig-cap: "GeoMx sensitivity marks rows gained or lost versus the primary model."
-#| fig-alt: "Signed heatmaps show GeoMx rows lost from or gained versus the primary model."
-geo_sens_plot <- geo_sens_long
-geo_sens_plot$contrast <- factor(as.character(geo_sens_plot$contrast),
-                                 levels = rev(levels(geo_sens_long$contrast)))
-geo_sens_plot$label <- ifelse(abs(geo_sens_plot$n) == 0, "", fmt_int(abs(geo_sens_plot$n)))
+#| fig-alt: "Two-part plate shows primary versus sensitivity GeoMx supported-row counts plus signed lost, gained and sign-flip counts."
+geo_sens_total <- rbind(
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             model = "primary", n = geo_sens$n_primary_sig, stringsAsFactors = FALSE),
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             model = "sensitivity", n = geo_sens$n_sensitivity_sig, stringsAsFactors = FALSE)
+)
+geo_sens_total$model <- factor(geo_sens_total$model, levels = c("primary", "sensitivity"))
+geo_sens_total$label <- ifelse(geo_sens_total$n == 0, "", fmt_int(geo_sens_total$n))
+geo_sens_change <- rbind(
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             metric = "lost", n_signed = -geo_sens$n_lost, stringsAsFactors = FALSE),
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             metric = "gained", n_signed = geo_sens$n_gained, stringsAsFactors = FALSE),
+  data.frame(geo_sens[c("fit_label", "contrast")],
+             metric = "sign flip", n_signed = geo_sens$n_sign_flip, stringsAsFactors = FALSE)
+)
+geo_sens_change$metric <- factor(geo_sens_change$metric,
+                                 levels = c("lost", "gained", "sign flip"))
+geo_sens_change$label <- ifelse(abs(geo_sens_change$n_signed) == 0, "",
+                                fmt_int(abs(geo_sens_change$n_signed)))
+geo_sens_change$label_x <- geo_sens_change$n_signed +
+  ifelse(geo_sens_change$n_signed < 0, -55, 55)
+geo_sens_change$label_hjust <- ifelse(geo_sens_change$n_signed < 0, 1, 0)
 
-ggplot(geo_sens_plot, aes(metric, contrast, fill = n)) +
-  geom_tile(colour = "#F8F6F1", linewidth = 0.28, width = 0.92, height = 0.88) +
-  geom_text(aes(label = label), size = 2.95, colour = "#262B2F") +
+p_geo_total <- ggplot(geo_sens_total, aes(model, contrast)) +
+  geom_point(aes(size = n, fill = model), shape = 21,
+             colour = "#262B2F", stroke = 0.28, alpha = 0.9) +
+  geom_text(aes(label = label), size = 2.55, colour = "#262B2F") +
   facet_wrap(~ fit_label, nrow = 1) +
-  scale_fill_rwb(name = "signed rows", midpoint = 0) +
-  labs(x = "GeoMx rows changed at FDR < 0.10", y = NULL,
-       title = "Spatial DE support depends on the replicate treatment") +
-  theme(panel.grid.major = element_blank(),
+  scale_fill_manual(values = c(primary = "#3F5F7F", sensitivity = "#C8841C"),
+                    guide = "none") +
+  scale_size_area(max_size = 10, guide = "none") +
+  labs(x = NULL, y = NULL, title = "Supported rows by model") +
+  theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_text(angle = 18, hjust = 1),
+        legend.position = "none")
+
+p_geo_change <- ggplot(geo_sens_change, aes(n_signed, contrast, colour = metric)) +
+  geom_vline(xintercept = 0, colour = "grey72", linewidth = 0.3) +
+  geom_segment(aes(x = 0, xend = n_signed, yend = contrast), linewidth = 0.56) +
+  geom_point(size = 2.2) +
+  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
+            size = 2.45, colour = "#333333") +
+  facet_wrap(~ fit_label, nrow = 1) +
+  scale_colour_manual(values = c(lost = tau_direction_colours[["down"]],
+                                 gained = tau_direction_colours[["up"]],
+                                 `sign flip` = "#7C838A"),
+                      name = NULL) +
+  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
+  labs(x = "rows changed at FDR < 0.10", y = NULL,
+       title = "Rows lost, gained or direction-flipped versus primary") +
+  coord_cartesian(clip = "off") +
+  theme(panel.grid.major.y = element_blank(),
         legend.position = "bottom")
+
+p_geo_total / p_geo_change +
+  plot_layout(heights = c(0.86, 1.14))
 ```
 
 ## Bulk Proteome And Phospho

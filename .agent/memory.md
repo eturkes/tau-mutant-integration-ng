@@ -1105,6 +1105,15 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   clearance axes with earned Apoe-Trem2 only in amyloid-on-P301S. QA: strict
   caption-only source+HTML gate includes `_story.qmd`; Chromium PDF story page
   clean; full `scripts/check.sh` green.
+- Figure elaboration pass (2026-07-03, CURRENT report surface): user feedback =
+  retained figures still too simplistic. Render-layer changes only, no new
+  inference: QC design plate adds the 16 genotype-batch support grid; story
+  mechanism plate uses a signed Myc/NF-kB/Gsk3b evidence ladder plus all
+  clearance-pair support rows; substate/trajectory audits expose replicate-unit
+  distributions; trajectory decomposition uses a signed reconstruction path;
+  NF-kB gate shows primary/supportive rows; GeoMx sensitivity shows model totals
+  plus lost/gained/flip changes. Keep future refinements elaborate but claim-
+  bounded: add visible data texture before decorative geometry.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

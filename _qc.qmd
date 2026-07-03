@@ -62,12 +62,17 @@ stopifnot(
 
 ```{r}
 #| label: fig-qc-study-design
-#| fig-width: 10
-#| fig-height: 4.8
+#| fig-width: 11
+#| fig-height: 5.3
 #| fig-cap: "The 2x2 genotype design has support across single-nucleus, spatial and bulk layers."
-#| fig-alt: "Panel A marks the tau by amyloid genotype grid as labelled tiles; panel B shows per-genotype sample counts as direct-labelled bars across modalities."
+#| fig-alt: "Panel A marks the tau by amyloid genotype grid as labelled tiles; panel B shows the sixteen genotype-batch single-nucleus replicate units; panel C shows per-genotype sample support across modalities."
 design_grid <- qc$study_design$genotype_grid
 design_grid$genotype <- factor(as.character(design_grid$genotype), levels = genotype_levels)
+batch_grid <- qc$genotype_batch
+batch_grid$genotype <- factor(as.character(batch_grid$genotype), levels = genotype_levels)
+batch_grid$batch <- factor(as.character(batch_grid$batch), levels = sort(unique(batch_grid$batch),
+                                                                          method = "radix"))
+batch_grid$label <- fmt_n(batch_grid$Freq)
 design_counts <- qc$study_design$sample_counts
 design_counts$genotype <- factor(as.character(design_counts$genotype), levels = genotype_levels)
 design_counts$modality <- factor(as.character(design_counts$modality),
@@ -84,25 +89,43 @@ p_grid <- ggplot(design_grid, aes(tau_background, amyloid)) +
   geom_text(aes(label = label), size = 3.05, fontface = "bold", lineheight = 0.9,
             colour = "#F8F6F1") +
   scale_fill_genotype(guide = "none") +
-  labs(x = "tau background", y = "amyloid", title = "Factorial genotype design") +
+  labs(x = "tau background", y = "amyloid", title = "2x2 genotype design") +
   coord_fixed(ratio = 1.05) +
   theme(panel.grid = element_blank(),
+        plot.title = element_text(size = 8.5, face = "bold"),
         axis.text.x = element_text(face = "bold"),
         axis.text.y = element_text(face = "bold"))
 
+p_batch <- ggplot(batch_grid, aes(genotype, batch, fill = Freq)) +
+  geom_tile(colour = "#F8F6F1", linewidth = 0.45, width = 0.92, height = 0.88) +
+  geom_text(aes(label = label), size = 2.4, colour = "#262B2F") +
+  scale_fill_rwb(name = "nuclei", midpoint = NULL) +
+  scale_x_discrete(labels = genotype_labels) +
+  labs(x = NULL, y = NULL, title = "16 snRNAseq replicate units") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank(),
+        plot.title = element_text(size = 8.5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.width = grid::unit(0.55, "cm"))
+
 p_counts <- ggplot(design_counts, aes(genotype, n, fill = genotype)) +
-  geom_col(width = 0.62, colour = "#F8F6F1", linewidth = 0.22, alpha = 0.9) +
+  geom_segment(aes(xend = genotype, y = 0, yend = n, colour = genotype),
+               linewidth = 0.62, alpha = 0.72) +
+  geom_point(shape = 21, size = 3.0, colour = "#262B2F", stroke = 0.28) +
   geom_text(aes(y = label_y, label = label), size = 2.7, colour = "#333333") +
   facet_wrap(~ modality, nrow = 1, scales = "free_y") +
   scale_fill_genotype(guide = "none") +
+  scale_colour_genotype(guide = "none") +
   scale_x_discrete(labels = genotype_labels) +
-  labs(x = NULL, y = "count", title = "Per-genotype support by layer") +
+  labs(x = NULL, y = "count", title = "Per-genotype layer support") +
   coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        plot.title = element_text(size = 8.5, face = "bold"),
+        strip.text = element_text(size = 6.9, face = "bold"),
         panel.grid.major.x = element_blank())
 
-(p_grid | p_counts) +
-  plot_layout(widths = c(0.9, 2.1)) +
+(p_grid | p_batch | p_counts) +
+  plot_layout(widths = c(0.82, 1.22, 1.8), guides = "collect") +
   plot_annotation(tag_levels = "A")
 ```
 
