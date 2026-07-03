@@ -8,13 +8,13 @@ contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "i
 focus <- c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
 
 manifest <- figure_manifest()
-stopifnot(nrow(manifest) == 21L,
+stopifnot(nrow(manifest) == 23L,
           !anyDuplicated(manifest$figure_id),
           all(grepl("^fig-", manifest$figure_id)),
           !any(grepl("_", manifest$figure_id, fixed = TRUE)),
-          all(c("microglia", "trajectory", "mechanism", "crossmodality") %in%
+          all(c("story", "microglia", "trajectory", "mechanism", "crossmodality") %in%
                 manifest$chapter))
-cat("ok - figure_manifest pins 21 hyphenated inline figure ids\n")
+cat("ok - figure_manifest pins 23 hyphenated inline figure ids\n")
 
 symbol_map <- data.frame(
   ensembl = paste0("ENSMUSG", sprintf("%08d", 1:80)),
@@ -378,6 +378,22 @@ stopifnot(all(c("study_design", "modality_table", "genotype_batch", "depth_distr
           nrow(qc$genotype_batch) == 16L,
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")
+
+story <- story_figure_data(qc, composition_results, pb_de_microglia,
+                           trajectory_report, mechanism_report,
+                           crossmodality_report, cmf)
+stopifnot(all(figure_manifest("story")$slot %in% names(story)),
+          all(c("sample_counts", "dam_response", "de_counts", "trajectory",
+                "mechanism", "pathway_axes", "clearance") %in% names(story)),
+          nrow(story$dam_response$unit) == length(units16),
+          nrow(story$de_counts$signed) == length(contrasts) * 2L,
+          all(c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic") %in%
+                story$trajectory$measure),
+          any(story$mechanism$track == "Myc TF"),
+          any(story$mechanism$track == "Gsk3b kinase"),
+          nrow(story$pathway_axes) > 0L,
+          nrow(story$clearance) > 0L)
+cat("ok - story_figure_data assembles compact publication story plates\n")
 
 replacement_manifest <- utils::read.delim(".agent/prose_replacement_manifest.tsv",
                                           stringsAsFactors = FALSE, check.names = FALSE)

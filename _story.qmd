@@ -1,0 +1,176 @@
+# Scientific story {#sec-story}
+
+```{r}
+#| label: story-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(patchwork)
+})
+options(warn = 2)
+targets::tar_source()
+targets::tar_load(story_figures)
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau(base_size = 10.5))
+
+sf <- story_figures
+contrast_labels <- c(
+  tau_alone = "tau alone",
+  nlgf_in_maptki = "amyloid on MAPTKI",
+  nlgf_in_p301s = "amyloid on P301S",
+  tau_in_nlgf = "tau in NLGF",
+  interaction = "interaction"
+)
+focus <- c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
+fmt_int <- function(x) format(as.integer(round(x)), big.mark = ",", trim = TRUE)
+plot_contrast <- function(x, levels = focus, reverse = FALSE) {
+  lv <- if (reverse) rev(levels) else levels
+  factor(x, levels = lv, labels = unname(contrast_labels[lv]))
+}
+
+dam_unit <- sf$dam_response$unit
+dam_unit$genotype <- factor(as.character(dam_unit$genotype), levels = genotype_levels)
+dam_unit$tau_background <- factor(as.character(dam_unit$tau_background),
+                                  levels = c("MAPTKI", "P301S"))
+dam_unit$amyloid <- factor(as.character(dam_unit$amyloid), levels = c("NLGF-", "NLGF+"))
+dam_mean <- sf$dam_response$mean
+dam_mean$tau_background <- factor(as.character(dam_mean$tau_background),
+                                  levels = c("MAPTKI", "P301S"))
+dam_mean$amyloid <- factor(as.character(dam_mean$amyloid), levels = c("NLGF-", "NLGF+"))
+
+de_signed <- sf$de_counts$signed
+de_signed <- de_signed[de_signed$contrast %in% names(contrast_labels), , drop = FALSE]
+de_signed$contrast <- factor(de_signed$contrast, levels = rev(names(contrast_labels)),
+                             labels = rev(unname(contrast_labels)))
+de_signed$label <- ifelse(de_signed$n == 0, "", fmt_int(de_signed$n))
+de_max <- max(1, max(abs(de_signed$n_signed), na.rm = TRUE))
+de_pad <- de_max * 0.035
+de_signed$label_x <- de_signed$n_signed + ifelse(de_signed$n_signed < 0, -de_pad, de_pad)
+de_signed$label_hjust <- ifelse(de_signed$n_signed < 0, 1, 0)
+
+traj <- sf$trajectory
+traj$supported <- factor(traj$supported, levels = c(FALSE, TRUE))
+
+path_axes <- sf$pathway_axes
+path_axes <- path_axes[path_axes$contrast %in% focus, , drop = FALSE]
+path_axes$contrast <- plot_contrast(path_axes$contrast)
+path_axes$direction <- factor(as.character(path_axes$direction),
+                              levels = c("positive", "negative", "mixed", "none"))
+path_axes$label <- ifelse(path_axes$n_modalities_sig > 0L, path_axes$n_modalities_sig, "")
+max_path_sig <- max(4L, max(path_axes$n_modalities_sig, na.rm = TRUE))
+
+mech <- sf$mechanism
+mech$item <- factor(mech$item, levels = rev(unique(mech$item)))
+mech$supported <- factor(mech$supported, levels = c(FALSE, TRUE))
+
+clearance <- sf$clearance
+clearance <- clearance[clearance$contrast %in% focus, , drop = FALSE]
+clearance$contrast <- plot_contrast(clearance$contrast)
+clearance$pair_label <- factor(clearance$pair_label, levels = rev(unique(clearance$pair_label)))
+clearance$supported <- factor(clearance$supported, levels = c(FALSE, TRUE))
+```
+
+## Core evidence
+
+```{r}
+#| label: fig-story-core
+#| fig-width: 11
+#| fig-height: 5.1
+#| fig-cap: "Amyloid drives DAM activation; P301S amplifies composition, not progression."
+#| fig-alt: "Composite figure with DAM fraction response, signed microglia DE counts, and trajectory interaction decomposition."
+p_dam <- ggplot(dam_unit, aes(amyloid, proportion, colour = tau_background,
+                              group = tau_background)) +
+  geom_point(position = position_jitter(width = 0.035, height = 0),
+             size = 1.45, alpha = 0.56) +
+  geom_line(data = dam_mean, aes(y = mean), linewidth = 0.72) +
+  geom_pointrange(data = dam_mean, aes(y = mean, ymin = lo, ymax = hi),
+                  linewidth = 0.42) +
+  scale_colour_tau_background(name = "tau background") +
+  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%")) +
+  labs(x = NULL, y = "DAM fraction", title = "DAM response") +
+  theme(legend.position = "bottom",
+        panel.grid.major.x = element_blank())
+
+p_de <- ggplot(de_signed, aes(n_signed, contrast, colour = direction)) +
+  geom_vline(xintercept = 0, colour = "grey65", linewidth = 0.35) +
+  geom_segment(aes(x = 0, xend = n_signed, yend = contrast),
+               linewidth = 0.58, alpha = 0.86) +
+  geom_point(size = 2.5) +
+  geom_text(aes(x = label_x, label = label, hjust = label_hjust),
+            size = 2.75, colour = "#333333") +
+  scale_colour_manual(values = tau_direction_colours, name = "direction") +
+  scale_x_continuous(labels = function(x) fmt_int(abs(x))) +
+  labs(x = "genes at FDR < 0.10", y = NULL,
+       title = "Amyloid DE dominates") +
+  coord_cartesian(xlim = c(-de_max * 1.24, de_max * 1.24), clip = "off") +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "bottom")
+
+p_traj <- ggplot(traj, aes(coef, measure_label, colour = supported)) +
+  geom_vline(xintercept = 0, colour = "grey70") +
+  geom_pointrange(aes(xmin = ci_l, xmax = ci_r), linewidth = 0.48) +
+  scale_colour_tau_binary(name = "FDR < 0.10") +
+  labs(x = "tau x amyloid effect", y = NULL,
+       title = "Composition channel") +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "bottom")
+
+(p_dam | p_de | p_traj) +
+  plot_layout(widths = c(1.1, 1.15, 1.05), guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+```
+
+## Mechanism and integration
+
+```{r}
+#| label: fig-story-mechanism-crossmodality
+#| fig-width: 11
+#| fig-height: 7.1
+#| fig-cap: "Cross-modality support narrows the mechanism to Myc and clearance context."
+#| fig-alt: "Composite figure with pathway-axis modality support, mechanism triage, and measured clearance-pair support."
+p_path <- ggplot(path_axes, aes(contrast, axis_label)) +
+  geom_point(aes(size = n_modalities_sig, fill = direction),
+             shape = 21, colour = "#262B2F", stroke = 0.25) +
+  geom_text(aes(label = label), size = 2.35, colour = "#F8F5ED", fontface = "bold") +
+  scale_size_continuous(name = "significant modalities", limits = c(0, max_path_sig),
+                        breaks = 0:max_path_sig, range = c(2.2, 7.6)) +
+  scale_fill_manual(values = c(positive = "#A63A50", negative = "#2F78A0",
+                               mixed = "#C8841C", none = "#D7D3CA"),
+                    drop = FALSE, name = "direction") +
+  labs(x = NULL, y = NULL, title = "Pathway axes across assay families") +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(angle = 28, hjust = 1),
+        legend.position = "bottom")
+
+p_mech <- ggplot(mech, aes(score, item, fill = supported)) +
+  geom_vline(xintercept = 0, colour = "grey75") +
+  geom_segment(aes(x = 0, xend = score, yend = item),
+               colour = "#B7B1A5", linewidth = 0.66) +
+  geom_point(aes(size = neg_log10_fdr), shape = 21, colour = "#262B2F", stroke = 0.28) +
+  facet_wrap(~ track, ncol = 1, scales = "free_y") +
+  scale_fill_tau_binary(name = "FDR < 0.10") +
+  scale_size_continuous(range = c(1.4, 4.8), name = "-log10 FDR") +
+  guides(fill = "none", size = "none") +
+  labs(x = "signed score", y = NULL, title = "Mechanism triage") +
+  theme(panel.grid.major.y = element_blank(),
+        legend.position = "none")
+
+p_clearance <- ggplot(clearance, aes(contrast, pair_label, fill = supported,
+                                     size = n_supported_modalities)) +
+  geom_point(shape = 21, colour = "#262B2F", stroke = 0.25, alpha = 0.94) +
+  geom_text(aes(label = ifelse(n_supported_modalities > 0L, n_supported_modalities, "")),
+            size = 2.2, colour = "#F8F5ED", fontface = "bold") +
+  scale_fill_tau_binary(name = "earned") +
+  scale_size_continuous(limits = c(0, 2), breaks = 0:2, range = c(1.6, 5.4),
+                        name = "supported modalities") +
+  guides(fill = "none", size = "none") +
+  labs(x = NULL, y = NULL, title = "Measured clearance pairs") +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(angle = 28, hjust = 1),
+        legend.position = "none")
+
+p_path / (p_mech | p_clearance) +
+  plot_layout(heights = c(1.08, 1)) +
+  plot_annotation(tag_levels = "A")
+```

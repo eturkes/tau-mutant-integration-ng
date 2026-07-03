@@ -21,6 +21,7 @@ from pathlib import Path
 DEFAULT_QMDS = (
     "index.qmd",
     "_qc.qmd",
+    "_story.qmd",
     "_microglia.qmd",
     "_trajectory.qmd",
     "_mechanism.qmd",
@@ -47,6 +48,9 @@ SECTION_SLOTS = {
     ("_qc.qmd", "snRNAseq microglia: design balance"): "fig-qc-genotype-batch",
     ("_qc.qmd", "snRNAseq microglia: quality metrics"): "fig-qc-depth;fig-qc-fractions",
     ("_qc.qmd", "Sanity bounds (enforced)"): "collapsed-qc-audit",
+    ("_story.qmd", "Scientific story"): "fig-story-core;fig-story-mechanism-crossmodality",
+    ("_story.qmd", "Core evidence"): "fig-story-core",
+    ("_story.qmd", "Mechanism and integration"): "fig-story-mechanism-crossmodality",
     ("_microglia.qmd", "Microglia: amyloid drives a homeostatic-to-DAM programme"): "fig-microglia-summary-board",
     ("_microglia.qmd", "Substate landscape"): "fig-microglia-umap-substate;fig-microglia-score-triptych",
     ("_microglia.qmd", "Amyloid expands the DAM compartment"): "fig-microglia-composition-shift;fig-microglia-unit-composition",

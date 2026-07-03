@@ -1049,6 +1049,17 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   crossmodality_report + crossmodality_figures. QA: rendered DOM = 36 figures /
   36 captions / 36 nonblank alts / 0 duplicate IDs; visual PDF pages inspected
   for the new panels; full `scripts/check.sh` green.
+- Story plate synthesis (2026-07-03, CURRENT report surface): report now opens
+  QC -> `_story.qmd` before detailed chapters. `story_figures` is compact (~4KB)
+  and does no new inference; it assembles existing result bundles into two
+  publication-style composite plates. Coherent story distilled from the live
+  targets = amyloid drives DAM activation; P301S amplifies DAM-cell composition;
+  trajectory interaction is composition-supported, not progression-supported;
+  Myc is the focused RNA mechanism signal; NF-kB attenuation/Gsk3b are not
+  recovered; cross-modality support is strong for amyloid-response / synaptic /
+  clearance axes with earned Apoe-Trem2 only in amyloid-on-P301S. QA: strict
+  caption-only source+HTML gate includes `_story.qmd`; Chromium PDF story page
+  clean; full `scripts/check.sh` green.
 
 ## Codex workflow
 - Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or

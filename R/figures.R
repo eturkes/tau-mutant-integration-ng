@@ -12,6 +12,8 @@
 figure_manifest <- function(chapter = NULL) {
   out <- data.frame(
     figure_id = c(
+      "fig-story-core",
+      "fig-story-mechanism-crossmodality",
       "fig-microglia-umap-substate",
       "fig-microglia-score-triptych",
       "fig-microglia-unit-composition",
@@ -35,18 +37,22 @@ figure_manifest <- function(chapter = NULL) {
       "fig-crossmodality-phospho-correction"
     ),
     chapter = c(
+      rep("story", 2),
       rep("microglia", 7),
       rep("trajectory", 4),
       rep("mechanism", 4),
       rep("crossmodality", 6)
     ),
     target = c(
+      rep("story_figures", 2),
       rep("microglia_figures", 7),
       rep("trajectory_figures", 4),
       rep("mechanism_figures", 4),
       rep("crossmodality_figures", 6)
     ),
     slot = c(
+      "core_story",
+      "mechanism_crossmodality",
       "umap_by_substate",
       "score_triptych",
       "unit_composition",
@@ -74,6 +80,232 @@ figure_manifest <- function(chapter = NULL) {
   stopifnot(!anyDuplicated(out$figure_id), !any(grepl("_", out$figure_id, fixed = TRUE)))
   if (!is.null(chapter)) out <- out[out$chapter %in% chapter, , drop = FALSE]
   rownames(out) <- NULL
+  out
+}
+
+.fig_story_dam_response <- function(composition_results) {
+  stopifnot(is.list(composition_results), !is.null(composition_results$counts))
+  comp <- .fig_unit_composition(composition_results$counts)
+  dam <- comp[comp$substate == "DAM", , drop = FALSE]
+  dam$tau_background <- factor(ifelse(grepl("P301S", as.character(dam$genotype)),
+                                      "P301S", "MAPTKI"),
+                               levels = c("MAPTKI", "P301S"))
+  dam$amyloid <- factor(ifelse(startsWith(as.character(dam$genotype), "NLGF"),
+                               "NLGF+", "NLGF-"),
+                        levels = c("NLGF-", "NLGF+"))
+  means <- stats::aggregate(proportion ~ tau_background + amyloid, data = dam, FUN = mean)
+  names(means)[3L] <- "mean"
+  se <- stats::aggregate(proportion ~ tau_background + amyloid, data = dam,
+                         FUN = function(x) if (length(x) > 1L) stats::sd(x) / sqrt(length(x)) else 0)
+  names(se)[3L] <- "se"
+  means <- merge(means, se, by = c("tau_background", "amyloid"), all.x = TRUE, sort = FALSE)
+  means$lo <- pmax(0, means$mean - means$se)
+  means$hi <- pmin(1, means$mean + means$se)
+  .fig_assert_finite(dam, c("n_cells", "unit_total", "proportion"), "story DAM unit response")
+  .fig_assert_finite(means, c("mean", "se", "lo", "hi"), "story DAM mean response")
+  list(unit = dam, mean = means)
+}
+
+.fig_story_de_counts <- function(pb_de_microglia) {
+  stopifnot(is.list(pb_de_microglia), is.list(pb_de_microglia$top))
+  alpha <- pb_de_microglia$thresholds$fdr %||% 0.10
+  lfc <- pb_de_microglia$thresholds$lfc %||% 0
+  counts <- .fig_bind(lapply(names(pb_de_microglia$top), function(cn) {
+    tt <- pb_de_microglia$top[[cn]]
+    .fig_require_cols(tt, c("logFC", "adj.P.Val"), paste0("pb_de_microglia$top$", cn))
+    sig <- is.finite(tt$adj.P.Val) & tt$adj.P.Val < alpha &
+      is.finite(tt$logFC) & abs(tt$logFC) > lfc
+    data.frame(
+      contrast = cn,
+      n = sum(sig),
+      up = sum(sig & tt$logFC > 0),
+      down = sum(sig & tt$logFC < 0),
+      stringsAsFactors = FALSE
+    )
+  }))
+  signed <- rbind(
+    data.frame(contrast = counts$contrast, direction = "up", n = counts$up,
+               n_signed = counts$up, stringsAsFactors = FALSE),
+    data.frame(contrast = counts$contrast, direction = "down", n = counts$down,
+               n_signed = -counts$down, stringsAsFactors = FALSE)
+  )
+  signed$direction <- factor(signed$direction, levels = c("down", "up"))
+  stage <- data.frame(n_interaction_stageR = NA_real_,
+                      median_abs_lfc = NA_real_,
+                      stringsAsFactors = FALSE)
+  if (is.list(pb_de_microglia$stageR) && is.matrix(pb_de_microglia$stageR$stage_padj) &&
+      "interaction" %in% colnames(pb_de_microglia$stageR$stage_padj) &&
+      "interaction" %in% names(pb_de_microglia$top)) {
+    hit <- pb_de_microglia$stageR$stage_padj[, "interaction"] <= pb_de_microglia$stageR$alpha
+    hit[is.na(hit)] <- FALSE
+    tt <- pb_de_microglia$top$interaction
+    .fig_require_cols(tt, c("gene", "logFC"), "pb_de_microglia$top$interaction")
+    idx <- match(rownames(pb_de_microglia$stageR$stage_padj)[hit], tt$gene)
+    l <- abs(tt$logFC[idx])
+    stage$n_interaction_stageR <- sum(hit)
+    stage$median_abs_lfc <- if (length(l)) stats::median(l, na.rm = TRUE) else NA_real_
+  }
+  .fig_assert_finite(counts, c("n", "up", "down"), "story DE counts")
+  .fig_assert_finite(signed, c("n", "n_signed"), "story signed DE counts")
+  list(counts = counts, signed = signed, stageR = stage)
+}
+
+.fig_story_trajectory <- function(trajectory_report) {
+  stopifnot(is.list(trajectory_report), is.data.frame(trajectory_report$interaction))
+  keep <- c("mean_pt", "comp_cf", "progression_cf", "within_homeostatic")
+  x <- trajectory_report$interaction[trajectory_report$interaction$measure %in% keep, , drop = FALSE]
+  .fig_require_cols(x, c("measure", "coef", "ci_l", "ci_r", "p_value", "fdr"),
+                    "trajectory_report$interaction")
+  x$measure_label <- c(
+    mean_pt = "mean position",
+    comp_cf = "composition",
+    progression_cf = "progression",
+    within_homeostatic = "within-homeostatic"
+  )[x$measure]
+  x$measure_label <- factor(x$measure_label,
+                            levels = rev(c("mean position", "composition",
+                                           "progression", "within-homeostatic")))
+  x$supported <- is.finite(x$fdr) & x$fdr < 0.10
+  .fig_assert_finite(x, c("coef", "ci_l", "ci_r", "p_value", "fdr"),
+                     "story trajectory decomposition")
+  x
+}
+
+.fig_story_mechanism <- function(mechanism_report, alpha = 0.10) {
+  stopifnot(is.list(mechanism_report), is.data.frame(mechanism_report$tf_highlights),
+            is.list(mechanism_report$nfkb), is.list(mechanism_report$kinase))
+  tf <- mechanism_report$tf_highlights
+  .fig_require_cols(tf, c("population", "source", "contrast", "score", "fdr"),
+                    "mechanism_report$tf_highlights")
+  myc <- tf[tf$source == "Myc" & tf$contrast == "interaction" &
+              tf$population %in% c("whole_microglia", "DAM"), , drop = FALSE]
+  stopifnot(nrow(myc) >= 1L)
+  myc <- data.frame(
+    track = "Myc TF",
+    item = ifelse(myc$population == "whole_microglia", "whole MG", "DAM"),
+    contrast = myc$contrast,
+    score = myc$score,
+    fdr = myc$fdr,
+    supported = is.finite(myc$fdr) & myc$fdr < alpha,
+    stringsAsFactors = FALSE
+  )
+
+  nf <- mechanism_report$nfkb$table
+  .fig_require_cols(nf, c("test", "score", "primary_test", "primary_family_fdr"),
+                    "mechanism_report$nfkb$table")
+  nf <- nf[nf$primary_test %in% TRUE & nf$contrast == "interaction", , drop = FALSE]
+  stopifnot(nrow(nf) >= 1L)
+  nf <- data.frame(
+    track = "NF-kB gate",
+    item = c(tf_family = "TF family", target_gsea = "target GSEA")[nf$test],
+    contrast = "interaction",
+    score = nf$score,
+    fdr = nf$primary_family_fdr,
+    supported = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  kin <- mechanism_report$kinase$table
+  .fig_require_cols(kin, c("source", "contrast", "score", "fdr", "significant"),
+                    "mechanism_report$kinase$table")
+  gsk <- kin[kin$source == "Gsk3b" & kin$contrast %in% c("interaction", "tau_in_nlgf"),
+             , drop = FALSE]
+  stopifnot(nrow(gsk) >= 1L)
+  gsk <- data.frame(
+    track = "Gsk3b kinase",
+    item = ifelse(gsk$contrast == "interaction", "interaction", "tau in NLGF"),
+    contrast = gsk$contrast,
+    score = gsk$score,
+    fdr = gsk$fdr,
+    supported = gsk$significant %in% TRUE,
+    stringsAsFactors = FALSE
+  )
+  out <- rbind(myc, nf, gsk)
+  out$track <- factor(out$track, levels = c("Myc TF", "NF-kB gate", "Gsk3b kinase"))
+  out$neg_log10_fdr <- -log10(pmax(out$fdr, 1e-300))
+  stopifnot(!anyNA(out$item), !anyNA(out$track))
+  .fig_assert_finite(out, c("score", "fdr", "neg_log10_fdr"), "story mechanism focus")
+  out
+}
+
+.fig_story_pathways <- function(crossmodality_figures, axes = c("DAM", "synaptic", "clearance",
+                                                                "antigen_presentation", "NFkB")) {
+  stopifnot(is.list(crossmodality_figures),
+            is.data.frame(crossmodality_figures$four_modality_pathways))
+  x <- crossmodality_figures$four_modality_pathways
+  .fig_require_cols(x, c("axis", "contrast", "n_modalities_present", "n_modalities_sig",
+                         "n_evidence_groups_sig", "direction", "rank_score"),
+                    "crossmodality_figures$four_modality_pathways")
+  x <- x[x$axis %in% axes, , drop = FALSE]
+  stopifnot(nrow(x) > 0L)
+  x$axis_label <- c(
+    DAM = "DAM",
+    synaptic = "synaptic",
+    clearance = "clearance",
+    antigen_presentation = "antigen presentation",
+    NFkB = "NF-kB"
+  )[x$axis]
+  x$axis_label <- factor(x$axis_label,
+                         levels = rev(c("DAM", "synaptic", "clearance",
+                                        "antigen presentation", "NF-kB")))
+  .fig_assert_finite(x, c("n_modalities_present", "n_modalities_sig",
+                          "n_evidence_groups_sig", "rank_score"),
+                     "story pathway axes")
+  x
+}
+
+.fig_story_clearance <- function(crossmodality_report) {
+  stopifnot(is.list(crossmodality_report), is.list(crossmodality_report$clearance),
+            is.data.frame(crossmodality_report$clearance$pair_support))
+  x <- crossmodality_report$clearance$pair_support
+  .fig_require_cols(x, c("pair", "contrast", "status", "coherent_supported_modalities"),
+                    "crossmodality_report$clearance$pair_support")
+  x$n_supported_modalities <- vapply(x$coherent_supported_modalities, function(z) {
+    length(.fig_semicolon_tokens(z))
+  }, integer(1), USE.NAMES = FALSE)
+  x$supported <- x$status == "earned"
+  x$pair_label <- gsub("_", "-", x$pair, fixed = TRUE)
+  .fig_assert_finite(x, "n_supported_modalities", "story clearance support")
+  x
+}
+
+story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
+                              trajectory_report, mechanism_report,
+                              crossmodality_report, crossmodality_figures,
+                              alpha = 0.10) {
+  stopifnot(is.list(qc_figures), is.list(composition_results),
+            is.list(pb_de_microglia), is.list(trajectory_report),
+            is.list(mechanism_report), is.list(crossmodality_report),
+            is.list(crossmodality_figures))
+  sample_counts <- qc_figures$study_design$sample_counts
+  .fig_require_cols(sample_counts, c("genotype", "modality", "n"),
+                    "qc_figures$study_design$sample_counts")
+  dam <- .fig_story_dam_response(composition_results)
+  de <- .fig_story_de_counts(pb_de_microglia)
+  traj <- .fig_story_trajectory(trajectory_report)
+  mech <- .fig_story_mechanism(mechanism_report, alpha)
+  path <- .fig_story_pathways(crossmodality_figures)
+  clr <- .fig_story_clearance(crossmodality_report)
+  out <- list(
+    manifest = figure_manifest("story"),
+    sample_counts = sample_counts,
+    dam_response = dam,
+    de_counts = de,
+    trajectory = traj,
+    mechanism = mech,
+    pathway_axes = path,
+    clearance = clr,
+    core_story = list(dam_response = dam, de_counts = de, trajectory = traj),
+    mechanism_crossmodality = list(pathway_axes = path, mechanism = mech, clearance = clr),
+    provenance = list(
+      source_targets = c("qc_figures", "composition_results", "pb_de_microglia",
+                         "trajectory_report", "mechanism_report",
+                         "crossmodality_report", "crossmodality_figures"),
+      alpha = alpha,
+      contract = "compact story-plate figure data; no new inference"
+    )
+  )
+  .fig_assert_finite(out$sample_counts, "n", "story sample counts")
   out
 }
 

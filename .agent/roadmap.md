@@ -34,9 +34,11 @@ the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: none
 Next `$session-prompt` mode = PLAN: confirm the next backlog phase with the
-user before writing a plan. Last closed = Figure elegance pass
-(ad hoc, 2026-07-03; replaced blocky bars/squares with traces, circular
-matrices, contours, and point-stems; 36 caption-only figures).
+user before writing a plan. Last closed = Story plate synthesis
+(ad hoc, 2026-07-03; added two front-of-report composite plates that distill
+the coherent story: amyloid->DAM, tau-amplified composition not progression,
+Myc-focused mechanism, and cross-modality clearance/context support; 38
+caption-only figures).
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
@@ -134,6 +136,14 @@ matrices, contours, and point-stems; 36 caption-only figures).
   Added theme print-overflow override after Chromium PDF QA exposed figure
   scrollbar chrome. Rendered main path remains 36 figures / 36 captions / 36
   role-img elements; full gate green; Chromium PDF contact sheet clean.
+- Story plate synthesis [DONE 2026-07-03]:
+  user asked to comb through the results and tease out a coherent scientific
+  story, then create publication-grade supporting figures. Added `story_figures`
+  and `_story.qmd` before the result chapters: a core-evidence plate (replicate
+  DAM response, signed whole-MG DE counts, interaction decomposition) and a
+  mechanism/integration plate (pathway-axis modality support, Myc/NF-kB/Gsk3b
+  triage, measured clearance-pair support). Strict caption-only gate counts the
+  new chapter; Chromium PDF story-page QA clean; full gate green.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset

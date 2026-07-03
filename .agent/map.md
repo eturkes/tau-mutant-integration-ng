@@ -236,6 +236,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       Current map is manifest-driven plus retained baseline figures; `visual_slot_coverage()` accepts an empty
       figure/schematic prose-replacement set after caption-only curation. QC target still carries compact checks;
       visible QC now uses only depth/fraction distributions.
+   + (Story plate synthesis 2026-07-03) figures.R: story_figure_data -> story_figures. Consumes compact
+      already-built bundles only (qc_figures, composition_results, pb_de_microglia, trajectory_report,
+      mechanism_report, crossmodality_report, crossmodality_figures) and assembles two front-of-report
+      publication story plates: core DAM/composition/progression evidence + mechanism/cross-modality triage.
   targets:
   - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
   - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
@@ -288,9 +292,10 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
        crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible four-modality count/pathway/symbol slots; no status/clearance grids; ~50KB qs live
-  - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
+       story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact front-of-report story plates; no new inference; ~4KB live
+  - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation
-    `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
+    `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures, story_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
        reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
                 no author metadata; execute.echo=false keeps visible path code-free;
@@ -300,6 +305,11 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
                 tar_load `qc_figures` only -> 2x2 study-design/sample-support node/stem panel plus depth/fraction
                 trace panels; hidden checks still enforce modality shapes, 16-run key, populated
                 genotype-batch grid, GeoMx count, and metric bounds)
+                                                          --{{< include >}}--> `_story.qmd`
+               (caption-only story chapter: setup `options(warn=2)`; tar_load story_figures [compact] ->
+                two composite publication plates. Core evidence = replicate DAM response, signed
+                whole-MG DE counts, and interaction decomposition. Mechanism/integration = selected
+                pathway-axis modality support, Myc/NF-kB/Gsk3b triage, and measured clearance-pair support.)
                                                           --{{< include >}}--> `_microglia.qmd`
                (caption-only microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
                 composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->
@@ -332,9 +342,8 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       figure elegance pass, 2026-07-03 (36 figures / 36 captions / 36 role-img elements,
-       no `geom_col`/`geom_tile`/`geom_rect`/`geom_bin2d` in QMDs; full gate green after
-       forced 85-chunk render; Chromium PDF contact sheet clean).
+       story plate synthesis, 2026-07-03 (38 figures / 38 captions / 38 role-img elements;
+       strict caption-only source+HTML gate counts `_story.qmd`; Chromium PDF story-page QA clean).
 
 ### Report prose inventory (Prose-to-figures S1)
 `scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):
@@ -384,7 +393,7 @@ from project root: `Rscript tests/test_<x>.R`.
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/substate/background/binary/direction/rwb +
                     concordance_plot class + wiring checks
-  - test_figures.R : curated 18-figure manifest + compact figure builder contracts for microglia /
+  - test_figures.R : curated figure manifest + compact figure builder contracts for story / microglia /
                     trajectory / mechanism / cross-modality; QC visual builders, manifest-driven slot coverage
                     (including empty figure/schematic manifest sets), synthetic finite guards for qmd geom inputs
   - test_report.R  : (Figure-caption-only S4) repair_embedded_lightbox rewrite/no-op/fail-loud cases for
@@ -414,7 +423,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _story.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md .agents/skills/** .codex/prompts/*.md
 regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + read-economy skip);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

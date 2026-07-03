@@ -241,6 +241,15 @@ list(
                                        crossmodality_table),
              format = "qs"),
 
+  # Story plates: compact synthesis figures over already-built compact result bundles.
+  # No new inference; this target just pre-assembles publication-grade front-of-report
+  # plotting data so the caption-only report can tell the coherent story first.
+  tar_target(story_figures,
+             story_figure_data(qc_figures, composition_results, pb_de_microglia,
+                               trajectory_report, mechanism_report,
+                               crossmodality_report, crossmodality_figures),
+             format = "qs"),
+
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # caption-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
@@ -248,8 +257,8 @@ list(
   # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
   tar_target(
     report_sources,
-    c("_quarto.yml", "index.qmd", "_qc.qmd", "_microglia.qmd", "_trajectory.qmd",
-      "_mechanism.qmd", "_crossmodality.qmd"),
+    c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd",
+      "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd"),
     format = "file"
   ),
   tar_target(
@@ -274,7 +283,8 @@ list(
       mechanism_report = mechanism_report,
       mechanism_figures = mechanism_figures,
       crossmodality_report = crossmodality_report,
-      crossmodality_figures = crossmodality_figures
+      crossmodality_figures = crossmodality_figures,
+      story_figures = story_figures
     ),
     format = "file"
   )
