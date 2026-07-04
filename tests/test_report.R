@@ -25,9 +25,21 @@ stopifnot(
   grepl('href="data:image/png;base64,AAA"', txt, fixed = TRUE),
   grepl('href="data:image/png;base64,BBB"', txt, fixed = TRUE),
   grepl('src="data:image/png;base64,AAA"', txt, fixed = TRUE),
-  grepl('src="data:image/png;base64,BBB"', txt, fixed = TRUE)
+  grepl('src="data:image/png;base64,BBB"', txt, fixed = TRUE),
+  # data-type="image" forces GLightbox to render the data: URI as an image, not a blank iframe
+  grepl('<a data-type="image" href="data:image/png;base64,AAA"', txt, fixed = TRUE),
+  grepl('<a data-type="image" href="data:image/png;base64,BBB"', txt, fixed = TRUE)
 )
-cat("ok - repair_embedded_lightbox rewrites local lightbox hrefs\n")
+cat("ok - repair_embedded_lightbox rewrites local lightbox hrefs + forces image type\n")
+
+# idempotent: re-running finds no local hrefs and does not double-inject data-type
+res2 <- repair_embedded_lightbox(tmp)
+txt2 <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
+stopifnot(
+  identical(res2$n_repaired, 0L),
+  identical(sum(gregexpr('data-type="image"', txt2, fixed = TRUE)[[1]] > 0L), 2L)
+)
+cat("ok - repair_embedded_lightbox idempotent (no double data-type)\n")
 
 tmp_clean <- tempfile(fileext = ".html")
 writeLines('<html><body><img src="data:image/png;base64,AAA"></body></html>', tmp_clean, useBytes = TRUE)

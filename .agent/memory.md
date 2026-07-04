@@ -786,6 +786,22 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - QA 2026-07-04: forced render clean, gate green; 37 `<details class="code-fold">` blocks + code-tools menu
   present in `report/index.html`.
 
+## Lightbox pop-out render fix (2026-07-04) -- `R/report.R::repair_embedded_lightbox()`
+- Symptom: clicking a figure opens the lightbox but the enlarged image is BLANK.
+- Root cause: GLightbox types each slide by the href's FILE EXTENSION (`/\.(jpeg|jpg|gif|png|...)/`,
+  matched anywhere). An embedded `data:image/png;base64,...` href has NO dotted extension -> GLightbox
+  falls back to an `<iframe>` slide -> blank. The earlier repair fixed the BROKEN LOCAL href (404) by
+  swapping in the data URI, but a bare data-URI href still mis-types. Structural QA (counting data-URI
+  hrefs) MISSED this -> the DOM looked correct; the failure only shows at render time.
+- Fix: repair now also injects `data-type="image"` on each lightbox anchor -> GLightbox builds
+  `<img src=href>` (the data URI already renders inline, so the pop-out renders). `tests/test_report.R`
+  locks the injection + idempotency (no double-inject on re-run).
+- LESSON -> verify lightbox VISUALLY, not just structurally: headless GLightbox probe (puppeteer-core
+  driving the bundled chromiumfish chrome) opens a real slide and asserts `mediaChildTag==='img' &&
+  naturalWidth>0`. 2026-07-04 probe on `report/index.html`: 37/37 anchors data-type=image, opened figure
+  renders img 2112x1017. Equivalent working overrides if `data-type` ever regresses: href `#.png`
+  fragment (rides the sourceType regex) or `data-glightbox="type: image"`.
+
 ## Prose-to-figures visual contract (S2, built; top-section slots removed 2026-07-03) -- `R/figures.R` -> `qc_figures`
 - Purpose = data contract only for the aggressive prose-reduction pass; no qmd
   prose rewrites yet and no new biological inference. `visual_reduction_slot_map`

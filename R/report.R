@@ -33,8 +33,16 @@ repair_embedded_lightbox <- function(html_file) {
     if (identical(src, anchor)) {
       stop("lightbox href repair could not extract embedded src", call. = FALSE)
     }
-    sub('href="index_files/figure-html/[^"]+\\.png"',
-        paste0('href="', src, '"'), anchor, perl = TRUE)
+    anchor <- sub('href="index_files/figure-html/[^"]+\\.png"',
+                  paste0('href="', src, '"'), anchor, perl = TRUE)
+    # GLightbox types each slide from the href's file extension; an embedded data: URI
+    # has none, so GLightbox falls back to an <iframe> and the pop-out renders BLANK.
+    # `data-type="image"` forces the image slide (empirically verified against the
+    # bundled GLightbox). Idempotent guard so a re-run never double-injects.
+    if (!grepl('data-type="image"', anchor, fixed = TRUE)) {
+      anchor <- sub("<a\\s", '<a data-type="image" ', anchor, perl = TRUE)
+    }
+    anchor
   }, character(1))
   repaired <- html
   regmatches(repaired, matches) <- list(repaired_anchors)
