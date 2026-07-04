@@ -6,8 +6,10 @@ format:
     embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
     lightbox: auto           # dense figures are clickable in the offline HTML
     toc: true
+    code-fold: true          # each echoed chunk -> native <details> "Code" toggle (offline HTML, no JS); include:false setup stays hidden
+    code-tools: true         # top-right menu: expand/collapse ALL code blocks + view source
 execute:
-  echo: false                # visible path stays figures, captions, and headings
+  echo: true                 # show plotting code as folded/togglable blocks; figures, captions, headings remain the default view
 ---
 
 {{< include _qc.qmd >}}
