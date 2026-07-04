@@ -83,7 +83,7 @@ render_report <- function(report_sources,
     quiet = FALSE,
     as_job = FALSE
   )
-  html_file <- file.path("_report", "index.html")
+  html_file <- file.path("report", "index.html")
   repair_embedded_lightbox(html_file)
   html_file
 }

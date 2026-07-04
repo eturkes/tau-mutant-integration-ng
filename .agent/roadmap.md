@@ -827,6 +827,16 @@ user before writing a new plan.
   `.serena/`) and slash-command session/review entry points; `.agent/context.sh`
   again reads Claude Code transcripts. Removed the Codex-only prompt/skill
   surface while preserving the current roadmap/report state.
+- 2026-07-04 infra repo hygiene: renamed the Quarto `output-dir` `_report/` -> `report/` (the ONE
+  free-choice name; the other leading-`_` names -- `_quarto.yml`, `_targets.R`/`_targets/`, `_*.qmd` --
+  are tool contracts, KEPT). Synced `_quarto.yml`, `R/report.R` html_file, `.gitignore` `/report/`,
+  `.claude/settings.json` deny-Read, map.md + memory.md; `report` is `format="file"` so the target value
+  just re-points -- no DAG change. Redirected OmnipathR API logs -> `storage/cache/omnipathr-log/` via
+  `.Rprofile` `options(omnipathr.logdir=)` set before load (was littering repo-root `./omnipathr-log/`).
+  Purged stray gitignored working-tree litter (`sccomp_draws_files/` ~174M, root `omnipathr-log/`, old
+  `_report/`; ~271M freed) + deleted stale `.agent/crossmodality_narrative_manifest.md` (completed-S1 audit
+  manifest, no live refs). No committed junk existed -- all tracked files legit, clutter was gitignored
+  caches. New memory.md "Repo layout" section locks the rule. Gate green before + after.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

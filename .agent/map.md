@@ -309,7 +309,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation
     `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures, story_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
-       reads `_quarto.yml` (type default; render index.qmd; output _report/; lang en-GB; freeze false)
+       reads `_quarto.yml` (type default; render index.qmd; output report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
                 no author metadata; execute.echo=false keeps visible path code-free;
                 immediately includes report chapters)
@@ -372,7 +372,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
   - S1 command:
     `python3 scripts/prose_inventory.py --manifest .agent/prose_replacement_manifest.tsv --summary-only`
   - Figure-caption-only S1 strict gate:
-    `uv run python scripts/prose_inventory.py --strict --html _report/index.html --summary-only`
+    `uv run python scripts/prose_inventory.py --strict --html report/index.html --summary-only`
     -> expected red until conversion is complete; source allows only headings/captions,
        rendered HTML fails visible body paragraphs, tables, text-only `.cell-output-display`,
        and stdout provenance.
@@ -442,5 +442,5 @@ tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targ
           _quarto.yml index.qmd _qc.qmd _story.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md CLAUDE.md
           .claude/settings.json .claude/commands/*.md .serena/*
-regen   : rv/library _targets/ _report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
+regen   : rv/library _targets/ report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

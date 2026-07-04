@@ -762,7 +762,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 ## Figure expansion UX + close (S5, built) -- `index.qmd` + rendered HTML QA
 - S5 kept the inline route and added no new inference/targets. `index.qmd` now sets
   Quarto `lightbox: auto` under the HTML format; with `embed-resources: true`, the
-  final `_report/index.html` remains self-contained and includes the lightbox assets.
+  final `report/index.html` remains self-contained and includes the lightbox assets.
   Quarto's current contract: `auto` lightboxes figures/block images; computational
   figures use their `fig-cap` metadata.
 - Captioned figure chunks are now consistently cross-reference-ready: every source
@@ -878,7 +878,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
 - render-log scan = `command grep -nE` (GNU, not the rg-fff shadow), ANCHORED forms only (`^[WARNING]` `^Warning:`
   `^Warning in ` `^Warning messages?:` `^WARN`) so benign "warn" substrings can't false-red; exit 0=fault/1=clean/
   >=2=infra, sits in an `if`-cond (exempt from set -e + ERR trap). NEGATIVE-TESTED both ways (chunk warning -> exit
-  1; benign lines ignored). Residual: out-of-band edits to `_report/` output aren't scanned (moot -- re-rendered each run).
+  1; benign lines ignored). Residual: out-of-band edits to `report/` output aren't scanned (moot -- re-rendered each run).
 - Committed tests `tests/test_*.R` = plain `stopifnot` fail-loud scripts (zero new deps), source the R/ files they
   exercise + `tests/helpers.R` (deterministic synthetic fixtures, NO RNG/clock; expect_error[+pattern]), print
   `ok - <x>`, non-zero exit on fail. Set: test_design, test_de_pb, test_io, test_plot, test_composition,
@@ -886,12 +886,24 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   live-data smoke-test still happens once before commit.
 - Reproducible: fresh clone -> bootstrap order (map.md) -> `scripts/check.sh` green end-to-end.
 
+## Repo layout (leading-`_` = tool contract, NOT style)
+- Underscore-prefixed names are tool-MANDATED -> never "tidy": `_quarto.yml` (Quarto config
+  filename), `_targets.R`+`_targets/` (targets script+store), `_*.qmd` (Quarto include-partial,
+  not rendered standalone). The ONE free-choice name -- Quarto `output-dir` -- is deliberately
+  un-underscored: `report/` (was `_report/`; tracked in `_quarto.yml`, `R/report.R` html_file,
+  `.gitignore` `/report/`, `.claude/settings.json` deny-Read, map.md). Re-underscoring it OR
+  stripping the functional `_` both break -> leave as-is.
+- OmnipathR API logs -> `storage/cache/omnipathr-log/` (gitignored), via `options(omnipathr.logdir=)`
+  in `.Rprofile` set BEFORE the pkg loads (reads it at load) -> keeps probe/download logs out of the
+  working tree; re-add if `rv` regenerates `.Rprofile`. sccomp/cmdstanr dumps `sccomp_draws_files/`
+  at build CWD on off-lock runs (gitignored, regenerable) -- expected litter, not junk.
+
 ## Operational
 - Prose register: British English; human-facing report/figure text uses hyphens over
   em/en-dashes (commas or parentheses for asides, colons for restatements). R `#`
   comments + code stay exempt (LLM-facing).
 - Read economy set lives in `AGENTS.md`: avoid generated/heavy trees (`storage/**`,
-  `_targets/`, `_report/`, `.quarto/`, `rv/library/`, `tools/`, `.venv/`, fonts,
+  `_targets/`, `report/`, `.quarto/`, `rv/library/`, `tools/`, `.venv/`, fonts,
   completed plans) unless the task requires them. For generated outputs, prefer compact
   targets, target metadata, or runtime indirection over large direct reads. storage/data
   is a symlink now -> `git check-ignore` on a path UNDER it fatals (`beyond a symbolic
@@ -976,7 +988,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   captioned figure has source `fig-alt`: 48 `fig-cap` + 48 `fig-alt`, visible
   caption max 12 words. Quarto gotcha: with `embed-resources: true` +
   `lightbox: auto`, figure `img src` values become data URIs but lightbox `href`
-  values can remain `index_files/figure-html/*.png`; `_report/index_files` is
+  values can remain `index_files/figure-html/*.png`; `report/index_files` is
   absent in the embedded artifact, so raw lightbox links break. The `report`
   target now uses `R/report.R::render_report()` and post-render
   `repair_embedded_lightbox()` to rewrite local lightbox hrefs to embedded data

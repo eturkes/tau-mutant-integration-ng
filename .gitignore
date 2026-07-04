@@ -15,7 +15,7 @@
 
 # targets store + Quarto render artefacts (regenerate via tar_make / quarto render)
 /_targets/
-/_report/
+/report/
 /_freeze/
 /.quarto/
 **/*.quarto_ipynb
