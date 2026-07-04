@@ -263,7 +263,8 @@ list(
   ),
   tar_target(
     report_extra_files,
-    c("theme.scss", list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
+    c("theme.scss", "assets/code-tools-fix.html",
+      list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
     format = "file"
   ),
   tar_target(

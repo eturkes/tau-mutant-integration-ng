@@ -8,6 +8,7 @@ format:
     toc: true
     code-fold: true          # each echoed chunk -> native <details> "Code" toggle (offline HTML, no JS); include:false setup stays hidden
     code-tools: true         # top-right menu: expand/collapse ALL code blocks + view source
+    include-after-body: assets/code-tools-fix.html   # re-bind Show/Hide All Code (stock selector misses the code-copy scaffold; see the file)
 execute:
   echo: true                 # show plotting code as folded/togglable blocks; figures, captions, headings remain the default view
 ---

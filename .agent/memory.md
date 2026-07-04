@@ -780,11 +780,22 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - `code-fold` = native `<details class="code-fold"><summary>Code</summary>` (no JS) -> works offline under
   `embed-resources: true`. `#| include:false` setup chunks stay hidden regardless of `echo`. Figure-first
   preserved: code collapsed-by-default, figures/captions/headings are the default view. Flip `code-fold: show`
-  for code-visible-by-default. `code-tools` = top-right menu (Show/Hide All Code + View Source).
+  for code-visible-by-default.
+- `code-tools` = top-right menu (Show/Hide All Code + View Source). Show/Hide All Code was BROKEN by default in
+  Quarto 1.9.38: the stock after-body handler (`quarto-html-after-body.ejs`) toggles folds via
+  `.cell > details > .sourceCode`, expecting `.sourceCode` a DIRECT child of `<details>`; but the code-copy
+  feature wraps it in `div.code-copy-outer-scaffold`, so the real nesting is
+  `.cell > details.code-fold > .code-copy-outer-scaffold > .sourceCode` -> the direct-child selector matches 0 of
+  the 37 folds (buttons bind, then iterate an empty NodeList -> inert). FIX = `include-after-body:
+  assets/code-tools-fix.html` (index.qmd YAML): a dependency-free inline script re-binds both buttons to toggle
+  `details.code-fold` directly (stable regardless of the copy scaffold; embed-resources-safe; stock inert listeners
+  stay attached, harmless). Per-chunk `<summary>` toggles + View Source were never affected (native `<details>` /
+  modal). File is tracked in `report_extra_files` -> an edit re-renders. VERIFIED functionally: headless Chromium
+  clicking the real buttons -> Show opens all 37, Hide closes all 37 (was 0/0 pre-fix).
 - Cost: echo of every chunk + code-tools' embedded source roughly DOUBLED the self-contained HTML
   (~8 -> ~18 MB). To trim, drop the source viewer: `code-tools: {source: false, toggle: true}`.
-- QA 2026-07-04: forced render clean, gate green; 37 `<details class="code-fold">` blocks + code-tools menu
-  present in `report/index.html`.
+- QA 2026-07-04: forced render clean, gate green; 37 `<details class="code-fold">` blocks + working code-tools
+  menu (Show/Hide All Code re-bound via the after-body fix) in `report/index.html`.
 
 ## Lightbox pop-out render fix (2026-07-04) -- `R/report.R::repair_embedded_lightbox()`
 - Symptom: clicking a figure opens the lightbox but the enlarged image is BLANK.

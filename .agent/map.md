@@ -307,11 +307,13 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible named evidence plates + conventional GeoMx/phospho boundary slots; generic dashboard reductions retained as audit data; ~3.6MB live after S3
        story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact story plates + closing model; no new inference; ~6.9KB live after S4
   - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
-    report_extra_files <- c("theme.scss", assets/fonts/*.woff2)  # file target; explicit theme/font invalidation
+    report_extra_files <- c("theme.scss", "assets/code-tools-fix.html", assets/fonts/*.woff2)  # file target; explicit theme/font/after-body invalidation
     `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures, story_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
        reads `_quarto.yml` (type default; render index.qmd; output report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
-                no author metadata; execute.echo=false keeps visible path code-free;
+                no author metadata; execute.echo=true + code-fold + code-tools -> chunk code shown as
+                collapsed <details> folds; include-after-body=assets/code-tools-fix.html re-binds
+                Show/Hide All Code (stock selector misses the code-copy scaffold);
                 immediately includes report chapters)
                                                           --{{< include >}}--> `_qc.qmd`
                (caption-only QC chapter: setup `options(warn=2)` -> chunk warnings fail the render;
@@ -439,7 +441,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd _story.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
+          _quarto.yml index.qmd _qc.qmd _story.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/code-tools-fix.html assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
           rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md CLAUDE.md
           .claude/settings.json .claude/commands/*.md .serena/*
 regen   : rv/library _targets/ report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
