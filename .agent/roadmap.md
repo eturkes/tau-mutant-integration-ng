@@ -29,7 +29,7 @@ Durable findings mined from v1 (the headline to rebuild around):
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
 REPORT SCOPE (current 2026-07-06): the rendered report = SEVEN figures: microglia (P1) + trajectory (P2) +
-two modality-context figures (four-method amyloid-response logFC scatter; GO-BP pathway/process overlap over
+two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over
 the scatter's off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho
 primary-DE targets solely for the modality figures. The mechanism/cross-modality/qc/story chapters, targets,
 R modules, and tests remain deleted (Ledger 2026-07-06). 31 targets remain. P3/P4/P5 + the figure-expansion
@@ -875,6 +875,12 @@ user before writing a new plan.
   `_modality.qmd` renders a modality x GO-BP bubble matrix (size = overlap count, fill = mean x-y, row
   subtitles = leading hit genes; FDR support now marked by an offset asterisk, not a hard-to-see ring). Target
   remains compact (~1.7MB); report now has 7 captions/alts.
+- 2026-07-06 Figure 7 functional-score rework DONE (ad hoc user task): replaced the GO-BP enrichment-style
+  bubble matrix with `fig-modality-functional-scores`. `modality_logfc_scatter_data` now returns `groups$summary`:
+  broad functional-role gene sets assembled from GO-BP keyword unions over the top off-diagonal genes/proteins,
+  scored by aggregate NLGF_MAPTKI amyloid logFC, aggregate NLGF_P301S amyloid logFC, and `delta=x-y`. The plot is
+  a per-modality dumbbell score facet (connected MAPTKI/P301S points; segment colour = P301S-MAPTKI; point size =
+  selected genes) and displays no enrichment/FDR result.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

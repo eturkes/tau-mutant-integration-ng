@@ -149,34 +149,35 @@ mp_bad <- modality_interaction_scatter(mdf_bad)
 stopifnot(nrow(mp_bad$data) == 20L, grepl("n = 20", mp_bad$labels$subtitle, fixed = TRUE))
 cat("ok - modality_interaction_scatter: 7-layer y=x scatter, finite filter, correlations\n")
 
-# --- offdiag_pathway_plot: compact pathway bubble matrix; finite filter; warning-free build ---
-pathway_summary <- data.frame(
+# --- functional_group_score_plot: paired aggregate scores; finite filter; warning-free build ---
+group_summary <- data.frame(
   modality = factor(c("snRNAseq", "GeoMx", "Proteome", "Phospho"),
                     levels = c("snRNAseq", "GeoMx", "Proteome", "Phospho")),
-  pathway_label_plot = factor(c("Immune response\nApoe, Trem2",
-                                "Immune response\nApoe, Trem2",
-                                "Endosome traffic\nRab11a, Hgs",
-                                "Tau phosphorylation\nMapt, Map3k10"),
-                              levels = rev(c("Immune response\nApoe, Trem2",
-                                             "Endosome traffic\nRab11a, Hgs",
-                                             "Tau phosphorylation\nMapt, Map3k10"))),
-  n_hit = c(3L, 2L, 4L, 2L),
-  signed_mean = c(-1.2, -0.4, 2.1, 1.6),
-  fdr = c(0.03, 0.40, 0.20, 0.10),
+  group_label_plot = factor(c("Immune activation\nApoe, Trem2",
+                              "Immune activation\nApoe, Trem2",
+                              "Endosome traffic\nRab11a, Hgs",
+                              "Tau phosphorylation\nMapt, Map3k10"),
+                            levels = rev(c("Immune activation\nApoe, Trem2",
+                                           "Endosome traffic\nRab11a, Hgs",
+                                           "Tau phosphorylation\nMapt, Map3k10"))),
+  n_gene = c(3L, 2L, 4L, 2L),
+  score_maptki = c(-0.7, -0.2, 0.4, 0.1),
+  score_p301s = c(-1.9, -0.6, 2.5, 1.7),
+  delta = c(-1.2, -0.4, 2.1, 1.6),
   stringsAsFactors = FALSE
 )
-opp <- offdiag_pathway_plot(pathway_summary, title = "Pathways")
+fgp <- functional_group_score_plot(group_summary, title = "Functional groups")
 stopifnot(
-  inherits(opp, "ggplot"), inherits(opp, "gg"),
-  length(opp$layers) == 2L,
-  identical(opp$labels$title, "Pathways"),
-  grepl("Top off-diagonal", opp$labels$subtitle, fixed = TRUE),
-  grepl("asterisks", opp$labels$subtitle, fixed = TRUE),
-  any(vapply(opp$scales$scales, function(s) "shape" %in% s$aesthetics, logical(1))),
-  inherits(ggplot2::ggplot_build(opp)$plot, "ggplot")
+  inherits(fgp, "ggplot"), inherits(fgp, "gg"),
+  length(fgp$layers) == 3L,
+  identical(fgp$labels$title, "Functional groups"),
+  grepl("P301S - MAPTKI", fgp$labels$subtitle, fixed = TRUE),
+  any(vapply(fgp$scales$scales, function(s) "colour" %in% s$aesthetics, logical(1))),
+  any(vapply(fgp$scales$scales, function(s) "fill" %in% s$aesthetics, logical(1))),
+  inherits(ggplot2::ggplot_build(fgp)$plot, "ggplot")
 )
-expect_error(offdiag_pathway_plot(pathway_summary[0, , drop = FALSE]), "no finite pathway")
-cat("ok - offdiag_pathway_plot builds a warning-free pathway bubble matrix\n")
+expect_error(functional_group_score_plot(group_summary[0, , drop = FALSE]), "no finite aggregate")
+cat("ok - functional_group_score_plot builds a warning-free aggregate-score dumbbell plot\n")
 
 # --- plate_support_matrix: cross-modality bubble matrix; builds warning-free with & without a
 #     not-observed layer. ggplot_build forces scale training so a shape scale left dangling when

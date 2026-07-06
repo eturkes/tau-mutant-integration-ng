@@ -225,58 +225,74 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
     theme_tau()
 }
 
-# Pathway/process overlap for the genes/proteins farthest from the y=x diagonal in the four-method
-# amyloid-response scatter. Rows carry pathway name plus leading hit genes; columns are modalities.
-# Fill = mean signed interaction (x - y) among the selected off-diagonal genes in that pathway;
-# size = number of selected genes. An offset asterisk flags descriptive FDR support.
-offdiag_pathway_plot <- function(pathway_summary, title = NULL, alpha = 0.25) {
-  stopifnot(is.data.frame(pathway_summary), is.numeric(alpha), length(alpha) == 1L,
-            alpha > 0, alpha < 1)
-  need <- c("modality", "pathway_label_plot", "n_hit", "signed_mean", "fdr")
-  miss <- setdiff(need, names(pathway_summary))
+# Functional-group aggregate scores for the genes/proteins farthest from the y=x diagonal in
+# the four-method amyloid-response scatter. Rows are broad roles, facets are modalities. Each
+# segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
+# P301S; segment colour is the requested contrast, P301S minus MAPTKI.
+functional_group_score_plot <- function(group_summary, title = NULL) {
+  stopifnot(is.data.frame(group_summary))
+  need <- c("modality", "group_label_plot", "n_gene", "score_maptki", "score_p301s", "delta")
+  miss <- setdiff(need, names(group_summary))
   if (length(miss)) {
-    stop("pathway_summary missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
+    stop("group_summary missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
   }
-  x <- pathway_summary[pathway_summary$n_hit > 0L &
-                         is.finite(pathway_summary$signed_mean) &
-                         is.finite(pathway_summary$fdr), , drop = FALSE]
-  if (!nrow(x)) stop("pathway_summary has no finite pathway overlaps", call. = FALSE)
-  support_level <- paste0("FDR < ", alpha)
-  x$support_star <- factor(ifelse(x$fdr < alpha, support_level, NA_character_),
-                           levels = support_level)
-  sig <- x[!is.na(x$support_star), , drop = FALSE]
-  lim <- max(abs(x$signed_mean), na.rm = TRUE)
+  x <- group_summary[group_summary$n_gene > 0L &
+                       is.finite(group_summary$score_maptki) &
+                       is.finite(group_summary$score_p301s) &
+                       is.finite(group_summary$delta), , drop = FALSE]
+  if (!nrow(x)) stop("group_summary has no finite aggregate scores", call. = FALSE)
+  lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
-  size_breaks <- pretty(range(x$n_hit, finite = TRUE), n = 5)
-  size_breaks <- size_breaks[size_breaks >= min(x$n_hit) & size_breaks <= max(x$n_hit)]
-  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_hit))
+  delta_lim <- max(abs(x$delta), na.rm = TRUE)
+  delta_lim <- if (is.finite(delta_lim) && delta_lim > 0) delta_lim else 1
+  size_breaks <- pretty(range(x$n_gene, finite = TRUE), n = 4)
+  size_breaks <- size_breaks[size_breaks >= min(x$n_gene) & size_breaks <= max(x$n_gene)]
+  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_gene))
+  point_df <- rbind(
+    data.frame(x[, c("modality", "group_label_plot", "n_gene", "delta"), drop = FALSE],
+               background = "MAPTKI", score = x$score_maptki, stringsAsFactors = FALSE),
+    data.frame(x[, c("modality", "group_label_plot", "n_gene", "delta"), drop = FALSE],
+               background = "P301S", score = x$score_p301s, stringsAsFactors = FALSE)
+  )
+  point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
+  bg_fill <- tau_background_colours[c("MAPTKI", "P301S")]
 
-  ggplot2::ggplot(x, ggplot2::aes(modality, pathway_label_plot)) +
-    ggplot2::geom_point(ggplot2::aes(size = n_hit, fill = signed_mean),
-                        shape = 21, colour = "#554D44", stroke = 0.25) +
-    ggplot2::geom_point(data = sig, ggplot2::aes(shape = support_star),
-                        position = ggplot2::position_nudge(x = 0.20, y = 0.18),
-                        colour = "#20242A", size = 2.1, stroke = 0.75) +
-    scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
-                   name = "mean x-y") +
-    ggplot2::scale_size_area(max_size = 8, breaks = size_breaks,
-                             name = "genes") +
-    ggplot2::scale_shape_manual(values = stats::setNames(8, support_level), name = NULL) +
+  ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_segment(
+      ggplot2::aes(x = score_maptki, xend = score_p301s, yend = group_label_plot,
+                   colour = delta),
+      linewidth = 0.75, lineend = "round") +
+    ggplot2::geom_point(
+      data = point_df,
+      ggplot2::aes(x = score, fill = background, size = n_gene),
+      shape = 21, colour = "#2B2A27", stroke = 0.25) +
+    scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
+                     name = "P301S - MAPTKI") +
+    ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
+                               labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
+                               name = "score") +
+    ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "genes") +
+    ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
+    ggplot2::scale_y_discrete(drop = FALSE) +
+    ggplot2::facet_wrap(ggplot2::vars(modality), ncol = 2) +
     ggplot2::guides(
-      fill = ggplot2::guide_colourbar(order = 1),
-      size = ggplot2::guide_legend(order = 2),
-      shape = ggplot2::guide_legend(order = 3,
-                                    override.aes = list(colour = "#20242A", size = 2.6))
+      colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
+                                        barwidth = grid::unit(4.5, "lines")),
+      fill = ggplot2::guide_legend(order = 2,
+                                   override.aes = list(size = 3.5, shape = 21,
+                                                       colour = "#2B2A27")),
+      size = ggplot2::guide_legend(order = 3)
     ) +
     ggplot2::labs(
-      x = NULL, y = NULL, title = title,
-      subtitle = "Top off-diagonal genes per method; asterisks mark FDR-supported GO-BP enrichment"
+      x = "Aggregate amyloid log2FC", y = NULL, title = title,
+      subtitle = "Segments connect functional-group means; colour is P301S - MAPTKI, size is selected genes"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(
       axis.text.y = ggplot2::element_text(size = 8, lineheight = 0.92),
       panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
-      legend.position = "right"
+      legend.position = "bottom"
     )
 }
 
