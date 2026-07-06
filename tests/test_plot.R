@@ -136,6 +136,12 @@ stopifnot(
   grepl("Pearson",  mp$labels$subtitle, fixed = TRUE),
   grepl("n = 20",   mp$labels$subtitle, fixed = TRUE)
 )
+# draw-path build promotes any stat/scale warning to an error (would red the warn=2 render); ggrepel
+# draw-time warnings are covered by the gate's full render.
+mp_built <- withCallingHandlers(
+  ggplot2::ggplot_build(mp),
+  warning = function(w) stop("modality_interaction_scatter build warned: ", conditionMessage(w)))
+stopifnot(length(mp_built$data) == 7L)                  # one built data frame per layer
 # non-finite rows dropped before plotting (NA + Inf -> 20 finite of 22)
 mdf_bad <- rbind(mdf, data.frame(label = c("fNA", "fInf"), x = c(NA, Inf), y = c(1, 1),
                                  stringsAsFactors = FALSE))

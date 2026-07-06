@@ -198,7 +198,10 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
   lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
   lim   <- if (is.finite(lim) && lim > 0) lim else 1
   ord   <- order(abs(df$y - df$x), decreasing = TRUE)                     # base order -> no temp col
-  top   <- df[utils::head(ord, n_label), , drop = FALSE]
+  # one label per feature: bulk assays reuse a site_id / gene across measured rows, so keep each label's
+  # most-divergent instance (order is |y-x| desc) before taking the top n_label -> no duplicate repel labels.
+  top   <- df[ord, , drop = FALSE]
+  top   <- utils::head(top[!duplicated(top[[label_col]]), , drop = FALSE], n_label)
   ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +

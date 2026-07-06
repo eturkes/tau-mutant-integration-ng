@@ -434,7 +434,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   background), x = logFC `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Signed distance
   from the dashed y=x identity (y - x) is EXACTLY the -interaction contrast per feature (interaction =
   nlgf_in_p301s - nlgf_in_maptki = the tau_nlgf coef), so off-diagonal = tau reshapes the amyloid response.
-  coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), top |y-x| features labelled,
+  coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), top |y-x| features labelled
+  (deduped to the most-divergent row per label -- bulk assays reuse a site_id/gene across measured rows),
   subtitle = Spearman/Pearson/n. patchwork::wrap_plots(ncol=2). Not in the vestigial `figure_manifest` (that relic
   lists cut figures; a rendered chunk id needs no manifest row) -> `test_figures.R` still asserts 11.
 - DE = LEAN restore of the pre-teardown P4 PRIMARY producers ONLY (auxiliary GeoMx sensitivity + decon-preflight

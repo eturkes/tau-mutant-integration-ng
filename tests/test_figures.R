@@ -215,4 +215,9 @@ stopifnot(nrow(ms_na$panels$snRNAseq$data) == 2L,
           ms_na$provenance$n_features[["snRNAseq"]] == 2L)
 pb_missing <- list(top = list(nlgf_in_maptki = pb$top$nlgf_in_maptki))
 expect_error(modality_logfc_scatter_data(pb_missing, symbol_map, gx, pr, ph))
-cat("ok - modality_logfc_scatter_data drops non-finite pairs and fails loud on a missing contrast\n")
+# a duplicated key in the x-contrast table (setequal ignores multiplicity) must fail loud, not first-match
+pb_dupx <- list(top = list(
+  nlgf_in_maptki = data.frame(gene = ens5[1:2],                    logFC = c(1, 2),    stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(gene = c(ens5[1], ens5[2], ens5[2]), logFC = c(4, 5, 6), stringsAsFactors = FALSE)))
+expect_error(modality_logfc_scatter_data(pb_dupx, symbol_map, gx, pr, ph))
+cat("ok - modality_logfc_scatter_data drops non-finite pairs, fails loud on missing / duplicated-key contrasts\n")

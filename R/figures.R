@@ -9,6 +9,10 @@
   c("interaction", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf")
 }
 
+# Vestigial figure registry (prose-reduction relic): a fixed-count drift tripwire, NOT a faithful
+# rendered-figure contract -- it lists 6 figures cut from the report + none of the 2026-07-06 additions
+# (e.g. fig-modality-amyloid-effect). The rendered set is defined by the qmd chunk ids, so new figures are
+# intentionally not registered here; test_figures.R pins the count (11) only to catch accidental drift.
 figure_manifest <- function(chapter = NULL) {
   out <- data.frame(
     figure_id = c(
@@ -1014,7 +1018,10 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     .fig_require_cols(ty, c(key_col, "logFC"), paste0(modality, " top$", y_contrast))
     .fig_require_cols(tx, c(key_col, "logFC"), paste0(modality, " top$", x_contrast))
     ky <- as.character(ty[[key_col]]); kx <- as.character(tx[[key_col]])
-    stopifnot(anyDuplicated(ky) == 0L, setequal(ky, kx))       # one fit both contrasts -> keys bijective
+    # one fit -> both contrasts share an identical, unique feature set. Assert BOTH keys unique + equal
+    # length before match(): setequal() ignores multiplicity, so a duplicated kx would first-match silently.
+    stopifnot(anyDuplicated(ky) == 0L, anyDuplicated(kx) == 0L,
+              length(ky) == length(kx), setequal(ky, kx))
     idx <- match(ky, kx)
     df <- data.frame(
       feature = ky,
