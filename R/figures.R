@@ -1014,15 +1014,12 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
                                          offdiag_tail_quantile = 0.998,
-                                         offdiag_robust_mad_min = 6,
                                          group_min_genes = 1L,
                                          group_max_groups = 10L) {
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
             is.list(proteome_de_24m), is.list(phospho_de_24m),
             is.numeric(offdiag_tail_quantile), length(offdiag_tail_quantile) == 1L,
-            offdiag_tail_quantile > 0, offdiag_tail_quantile < 1,
-            is.numeric(offdiag_robust_mad_min), length(offdiag_robust_mad_min) == 1L,
-            offdiag_robust_mad_min >= 0)
+            offdiag_tail_quantile > 0, offdiag_tail_quantile < 1)
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -1110,11 +1107,23 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                    phospho_gene, "phospho"))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
+  offdiag_cutoff <- modality_scatter_pooled_cutoff(panels, order,
+                                                   tail_quantile = offdiag_tail_quantile)
+  offdiag_cutoff_source <- sprintf("pooled |x-y| q%.3f across Figure 6 modalities",
+                                   offdiag_tail_quantile)
+  for (m in order) {
+    d <- panels[[m]]$data
+    attr(d, "offdiag_cutoff") <- offdiag_cutoff
+    attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
+    attr(d, "offdiag_tail_quantile") <- offdiag_tail_quantile
+    panels[[m]]$data <- d
+  }
   groups <- modality_offdiag_group_score_data(
     list(panels = panels, order = order),
     group_sets = group_gene_sets,
     tail_quantile = offdiag_tail_quantile,
-    robust_mad_min = offdiag_robust_mad_min,
+    offdiag_cutoff = offdiag_cutoff,
+    cutoff_source = offdiag_cutoff_source,
     min_genes = group_min_genes,
     max_groups = group_max_groups
   )
@@ -1129,6 +1138,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       y_meaning = "amyloid effect on the tau-KO (MAPTKI) background",
       x_meaning = "amyloid effect on the mutant-tau (P301S) background",
       interaction = "x - y is the tau-by-amyloid interaction contrast per feature; |x - y| ranks off-diagonal distance",
+      offdiag_cutoff = offdiag_cutoff,
+      offdiag_tail_quantile = offdiag_tail_quantile,
+      offdiag_cutoff_source = offdiag_cutoff_source,
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
       feature_key = c(snRNAseq = "Ensembl gene (symbol label)", GeoMx = "gene symbol",
                       Proteome = "protein group (gene_first label)",
@@ -1286,7 +1298,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 modality_offdiag_group_score_data <- function(modality_scatter_figures,
                                               group_sets = NULL,
                                               tail_quantile = 0.998,
-                                              robust_mad_min = 6,
+                                              offdiag_cutoff = NULL,
+                                              cutoff_source = NULL,
                                               min_genes = 1L,
                                               max_groups = 10L) {
   stopifnot(is.list(modality_scatter_figures), is.list(modality_scatter_figures$panels),
@@ -1294,7 +1307,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
             length(modality_scatter_figures$order) >= 1L,
             is.numeric(tail_quantile), length(tail_quantile) == 1L,
             tail_quantile > 0, tail_quantile < 1,
-            is.numeric(robust_mad_min), length(robust_mad_min) == 1L, robust_mad_min >= 0,
+            is.null(offdiag_cutoff) ||
+              (is.numeric(offdiag_cutoff) && length(offdiag_cutoff) == 1L),
             is.numeric(min_genes), length(min_genes) == 1L, min_genes >= 1L,
             is.numeric(max_groups), length(max_groups) == 1L, max_groups >= 1L)
   order <- modality_scatter_figures$order
@@ -1316,7 +1330,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
     d <- modality_scatter_figures$panels[[m]]$data
     d <- modality_scatter_label_rows(d, label_col = "label",
                                      tail_quantile = tail_quantile,
-                                     robust_mad_min = robust_mad_min)
+                                     cutoff = offdiag_cutoff,
+                                     cutoff_source = cutoff_source)
     d <- .fig_offdiag_gene_rows(list(.panel = list(data = d)), ".panel")
     if (nrow(d)) d$modality <- factor(m, levels = order)
     if (!nrow(d)) return(d)
@@ -1411,11 +1426,12 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
     provenance = list(
       group_set_source = group_set_source,
       offdiag_tail_quantile = tail_quantile,
-      offdiag_robust_mad_min = robust_mad_min,
+      offdiag_cutoff = offdiag_cutoff,
+      offdiag_cutoff_source = cutoff_source %||% "panel_tail_quantile",
       min_genes = as.integer(min_genes),
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
-      selection = "same empirical off-diagonal rule as fig-modality-amyloid-effect: |x-y| >= max(empirical tail quantile, median(|x-y|) + robust_mad_min * MAD(|x-y|)); duplicate display labels collapsed after thresholding",
+      selection = "same standardized off-diagonal rule as fig-modality-amyloid-effect: one pooled empirical |x-y| cutoff across all Figure 6 modalities; duplicate display labels collapsed after thresholding",
       category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
       phosphosite_scoring = "phosphosite labels score through the best-fit parent gene; duplicate threshold-passing sites keep the highest-|x-y| site",
       n_labeled_features = stats::setNames(

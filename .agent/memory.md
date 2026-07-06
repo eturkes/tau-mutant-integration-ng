@@ -18,7 +18,7 @@ REPORT SCOPE: the built report + pipeline cover snRNAseq microglia (P1) + activa
 four-method amyloid-response logFC scatter plus an off-diagonal functional-category score panel (2026-07-06 adds)
 -- 31 targets, 7 figures, `index.qmd` = YAML + `_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes.
 The modality figures RE-WIRED the GeoMx/proteome/phospho PRIMARY DE lean via `R/modality_de.R` (its own section
-below); Figure 7 categorizes empirical Figure 6 off-diagonal genes/proteins, not enrichment
+below); Figure 7 categorizes standardized pooled-cutoff Figure 6 off-diagonal genes/proteins, not enrichment
 support and not a resurrected mechanism/cross-modality chapter. The mechanism/cross-modality/qc/story chapters + their targets + R modules
 (`R/mechanism.R`, `R/crossmodality.R`) + tests STAY deleted (roadmap Ledger 2026-07-06); that science lives in
 git history + the Ledger.
@@ -440,8 +440,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   from the dashed y=x identity (y - x) is EXACTLY the -interaction contrast per feature (interaction =
   nlgf_in_p301s - nlgf_in_maptki = the tau_nlgf coef), so off-diagonal = tau reshapes the amyloid response.
   coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), empirical off-diagonal labels =
-  unique display labels with |x-y| >= max(Q99.8, median + 6*MAD of the method's |x-y| distribution), deduped to
-  the most-divergent row per label; subtitle = Spearman/Pearson/n + label cutoff. patchwork::wrap_plots(ncol=2).
+  unique display labels with |x-y| >= the pooled Q99.8 of |x-y| across all four methods, deduped to the most-
+  divergent row per label; subtitle = Spearman/Pearson/n + pooled label cutoff. patchwork::wrap_plots(ncol=2).
   Not in the vestigial `figure_manifest` (that relic
   lists cut figures; a rendered chunk id needs no manifest row) -> `test_figures.R` still asserts 11.
 - DE = LEAN restore of the pre-teardown P4 PRIMARY producers ONLY (auxiliary GeoMx sensitivity + decon-preflight
@@ -663,7 +663,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
-  `fig-modality-functional-scores` (modality-specific categories over empirical Figure 6 off-diagonal
+  `fig-modality-functional-scores` (modality-specific categories over standardized pooled-cutoff Figure 6 off-diagonal
   genes/proteins, with phosphosites substituted by parent gene; connected aggregate MAPTKI/P301S amyloid-score
   points, segment colour = P301S-MAPTKI, point size = scored genes/proteins).
   Every captioned chunk

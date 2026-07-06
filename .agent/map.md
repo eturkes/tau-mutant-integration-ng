@@ -56,9 +56,9 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
       midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
       modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
-      identity + zero crosshairs + OLS trend + empirical off-diagonal repel labels + coord_equal 1:1);
+      identity + zero crosshairs + OLS trend + pooled-Q99.8 |x-y| off-diagonal repel labels + coord_equal 1:1);
       functional_group_score_plot WIRED -> Figure 7 category-score dumbbell facets (per modality/free-y, primary
-      GO-BP keyword-union role or explicit fallback category per empirical Figure 6 off-diagonal gene/protein;
+      GO-BP keyword-union role or explicit fallback category per standardized pooled-cutoff Figure 6 off-diagonal gene/protein;
       phosphosites substituted by parent gene, segment colour = P301S-MAPTKI, size = scored items; no
       enrichment/FDR display).
       Report visual identity = theme.scss.
@@ -205,8 +205,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
-                identity + OLS + empirical off-diagonal labels) + off-diagonal functional-category score facets
-                `fig-modality-functional-scores` (functional_group_score_plot; empirical Figure 6 off-diagonal
+                identity + OLS + pooled-Q99.8 |x-y| off-diagonal labels) + off-diagonal functional-category score facets
+                `fig-modality-functional-scores` (functional_group_score_plot; standardized pooled-cutoff Figure 6 off-diagonal
                 genes/proteins, phosphosite labels substituted by parent gene before scoring, rows carry primary
                 role/fallback categories + leading score labels; connected points show aggregate NLGF_MAPTKI and NLGF_P301S scores,
                 segment colour = P301S-MAPTKI). The 6th and 7th

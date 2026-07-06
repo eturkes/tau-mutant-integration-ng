@@ -188,11 +188,12 @@ concordance_plot <- function(df, x_col, y_col, label_col = "gene",
 modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                                          label_col = "label",
                                          label_tail_quantile = 0.998,
-                                         label_robust_mad_min = 6,
                                          x_lab = "log2FC  NLGF_P301S vs P301S",
                                          y_lab = "log2FC  NLGF_MAPTKI vs MAPTKI",
                                          point_colour = "#6F7782", label_colour = "#A63A50") {
   stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)))
+  label_cutoff <- attr(df, "offdiag_cutoff", exact = TRUE)
+  label_cutoff_source <- attr(df, "offdiag_cutoff_source", exact = TRUE)
   df    <- df[is.finite(df$x) & is.finite(df$y), , drop = FALSE]
   stopifnot(nrow(df) > 0L)
   rho_s <- suppressWarnings(stats::cor(df$x, df$y, method = "spearman"))
@@ -203,13 +204,18 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   # most-divergent threshold-passing instance (order is |y-x| desc) -> no duplicate repel labels.
   top   <- modality_scatter_label_rows(df, n_label = n_label, label_col = label_col,
                                        tail_quantile = label_tail_quantile,
-                                       robust_mad_min = label_robust_mad_min)
-  label_subtitle <- if (nrow(top)) {
-    sprintf("labels = %s, cutoff |x-y| >= %.2f",
-            format(nrow(top), big.mark = ","), attr(top, "offdiag_cutoff"))
+                                       cutoff = label_cutoff,
+                                       cutoff_source = label_cutoff_source)
+  cutoff <- attr(top, "offdiag_cutoff")
+  cutoff_name <- if (grepl("^pooled", attr(top, "offdiag_cutoff_source") %||% "")) {
+    "pooled cutoff"
   } else {
-    "labels = 0"
+    "cutoff"
   }
+  label_subtitle <- if (is.finite(cutoff)) {
+    sprintf("labels = %s, %s |x-y| >= %.2f",
+            format(nrow(top), big.mark = ","), cutoff_name, cutoff)
+  } else "labels = 0"
   ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
@@ -301,7 +307,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ) +
     ggplot2::labs(
       x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Rows categorize empirical Figure 6 off-diagonal genes/proteins; colour is P301S - MAPTKI"
+      subtitle = "Rows categorize standardized Figure 6 off-diagonal genes/proteins; colour is P301S - MAPTKI"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(

@@ -199,7 +199,6 @@ group_sets <- list(
 ms <- modality_logfc_scatter_data(pb, symbol_map, gx, pr, ph,
                                   group_gene_sets = group_sets,
                                   offdiag_tail_quantile = 0.6,
-                                  offdiag_robust_mad_min = 0,
                                   group_min_genes = 1L,
                                   group_max_groups = 3L)
 sn  <- ms$panels$snRNAseq$data
@@ -230,6 +229,11 @@ cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and 
 
 gs <- ms$groups$summary
 gg <- ms$groups$selected_genes
+pooled_dist <- unlist(lapply(ms$order, function(m) {
+  abs(ms$panels[[m]]$data$y - ms$panels[[m]]$data$x)
+}), use.names = FALSE)
+pooled_cutoff <- as.numeric(stats::quantile(pooled_dist[pooled_dist > 0], 0.6,
+                                            names = FALSE, type = 8))
 stopifnot(
   is.data.frame(gs), nrow(gs) > 0L,
   all(c("modality", "group", "group_label_plot", "n_gene", "score_maptki",
@@ -243,13 +247,17 @@ stopifnot(
   any(gg$gene_symbol == "Lcp1" & gg$score_label == "Lcp1" &
         as.character(gg$modality) == "Phospho"),
   all(!grepl("_[A-Za-z][0-9]", gg$score_label[as.character(gg$modality) == "Phospho"])),
-  !any(gg$gene_symbol == "Gene1" & as.character(gg$modality) == "snRNAseq"), # below the empirical cutoff
-  max(gg$scatter_label_rank[as.character(gg$modality) == "snRNAseq"]) <= 3L,
+  !any(as.character(gg$modality) == "GeoMx"),                  # below the pooled cutoff
+  all(gg$offdiag_distance >= ms$groups$provenance$offdiag_cutoff),
   all(gs$n_feature <= 3L),
   all.equal(gs$delta, gs$score_p301s - gs$score_maptki, tolerance = 1e-12) == TRUE,
   ms$groups$provenance$group_set_source == "custom functional groups",
   ms$groups$provenance$offdiag_tail_quantile == 0.6,
-  ms$groups$provenance$offdiag_robust_mad_min == 0,
+  all.equal(ms$groups$provenance$offdiag_cutoff, pooled_cutoff, tolerance = 1e-12) == TRUE,
+  grepl("pooled", ms$groups$provenance$offdiag_cutoff_source, fixed = TRUE),
+  all(vapply(ms$order, function(m) {
+    identical(attr(ms$panels[[m]]$data, "offdiag_cutoff"), ms$groups$provenance$offdiag_cutoff)
+  }, logical(1))),
   ms$groups$provenance$min_genes == 1L)
 cat("ok - modality_logfc_scatter_data scores empirical off-diagonal labels with phosphosite parent-gene substitutes\n")
 
@@ -260,7 +268,6 @@ pb_na <- list(top = list(
 ms_na <- modality_logfc_scatter_data(pb_na, symbol_map, gx, pr, ph,
                                      group_gene_sets = group_sets,
                                      offdiag_tail_quantile = 0.6,
-                                     offdiag_robust_mad_min = 0,
                                      group_min_genes = 1L,
                                      group_max_groups = 3L)
 stopifnot(nrow(ms_na$panels$snRNAseq$data) == 2L,
