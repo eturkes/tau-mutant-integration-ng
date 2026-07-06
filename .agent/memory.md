@@ -622,8 +622,6 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   ignores script/style/code -- raw grep false-hits on embedded JS/data-URIs. The many 2026-07-03
   figure-refinement passes (caption-only, box curation, palette, four-modality/cross-modality narrative, story
   plates) are historical -> roadmap Ledger.
-## Subagents & skills
-Scan the available-skills list each session; invoke a matching Skill before
-improvising (scientific-writing, scientific-visualization, pathway-enrichment,
-pydeseq2, scanpy, anndata, bioservices). Spawn subagents to protect main context
-(Explore = cross-file search, Plan = design, general-purpose = research).
+## Subagents
+Spawn subagents to protect main context (Explore = cross-file search, Plan =
+design, general-purpose = research).
