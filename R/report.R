@@ -60,27 +60,11 @@ repair_embedded_lightbox <- function(html_file) {
 
 render_report <- function(report_sources,
                           report_extra_files,
-                          qc_figures,
                           microglia_report,
-                          composition_results,
-                          pb_de_microglia,
-                          pb_de_substate,
-                          symbol_map,
                           microglia_figures,
-                          trajectory_report,
-                          trajectory_figures,
-                          mechanism_report,
-                          mechanism_figures,
-                          crossmodality_report,
-                          crossmodality_figures,
-                          story_figures) {
+                          trajectory_figures) {
   stopifnot(all(file.exists(c(report_sources, report_extra_files))))
-  invisible(list(
-    qc_figures, microglia_report, composition_results, pb_de_microglia,
-    pb_de_substate, symbol_map, microglia_figures, trajectory_report,
-    trajectory_figures, mechanism_report, mechanism_figures,
-    crossmodality_report, crossmodality_figures, story_figures
-  ))
+  invisible(list(microglia_report, microglia_figures, trajectory_figures))
   quarto::quarto_render(
     input = ".",
     execute = TRUE,

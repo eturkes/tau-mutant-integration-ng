@@ -44,15 +44,10 @@ list(
 
   # --- raw input files (registered for DAG change-tracking; paths = data_paths, R/constants.R) ---
   tar_target(snrnaseq_file,   data_paths$snrnaseq,   format = "file"),
-  tar_target(geomx_file,      data_paths$geomx,      format = "file"),
-  tar_target(proteomics_file, data_paths$proteomics, format = "file"),
-  tar_target(phospho_file,    data_paths$phospho,    format = "file"),
-  tar_target(sample_key_file, data_paths$sample_key, format = "file"),
 
-  # --- analysis-ready modalities (P1-P5 read these via tar_load; qs2 serialization) ---
+  # --- analysis-ready modalities (P1-P2 read these via tar_load; qs2 serialization) ---
   tar_target(microglia_seurat_raw, load_snrnaseq(snrnaseq_file),          format = "qs"),
   tar_target(symbol_map,           build_symbol_map(microglia_seurat_raw), format = "qs"),
-  tar_target(geomx,                load_geomx(geomx_file),                 format = "qs"),
 
   # --- P1 snRNAseq microglia core ---
   # S1: reprocess (SCT-v2 + glmGamPoi) -> Harmony(batch) -> cluster (Louvain, multi-res) -> UMAP.
@@ -116,140 +111,6 @@ list(
              trajectory_figure_data(trajectory_report, composition_results),
              format = "qs"),
 
-  # --- P3 mechanism ---
-  # S2 RNA mechanism targets. Reuse the cached/fingerprinted direct-mouse CollecTRI prior from S1,
-  # then derive focused mouse gene sets, decoupleR ULM TF activity, fgsea preranked pathway scores,
-  # and the sign-aware predeclared NF-kB attenuation gate. Inputs are the existing replicate-corrected
-  # pseudobulk DE targets (whole microglia + fit substates); skipped substates travel as metadata.
-  tar_target(mechanism_collectri, {
-    net <- load_collectri_mouse()
-    assert_mechanism_prior_expectations(collectri = net)
-    net
-  }, format = "qs"),
-  tar_target(mechanism_gene_sets, build_mechanism_gene_sets(mechanism_collectri), format = "qs"),
-  tar_target(mechanism_tf, run_mechanism_tf(pb_de_microglia, pb_de_substate, symbol_map,
-                                           mechanism_collectri), format = "qs"),
-  tar_target(mechanism_pathway, run_mechanism_pathway(pb_de_microglia, pb_de_substate,
-                                                     symbol_map, mechanism_gene_sets), format = "qs"),
-  tar_target(nfkb_attenuation, build_nfkb_attenuation(mechanism_tf, mechanism_pathway,
-                                                     mechanism_gene_sets), format = "qs"),
-
-  tar_target(proteomics,           read_spectronaut_tsv(proteomics_file),  format = "qs"),
-  tar_target(phospho,              read_spectronaut_tsv(phospho_file),     format = "qs"),
-  tar_target(sample_key,           proteomics_sample_meta(sample_key_file), format = "qs"),
-  tar_target(qc_figures,
-             qc_figure_data(microglia_seurat_raw, geomx, proteomics, phospho, sample_key),
-             format = "qs"),
-
-  # S3 kinase layer. Minimal 24M bulk-phosphosite DE (16 sample-key-matched runs, no batch
-  # term) feeds decoupleR ULM activity over the fingerprinted direct-mouse OmniPath KSN. The
-  # summary carries significant kinases plus Gsk3b for every contrast, with run-index sensitivity
-  # columns so report prose can downgrade run-order-dependent support.
-  tar_target(phospho_de_24m, run_phospho_de_24m(phospho, sample_key), format = "qs"),
-  tar_target(kinase_activity, run_kinase_activity(phospho_de_24m), format = "qs"),
-  tar_target(kinase_mechanism_summary, build_kinase_mechanism_summary(kinase_activity), format = "qs"),
-
-  # S4 report bundle. Selects compact TF/pathway/NF-kB/kinase highlights plus P1/P2
-  # anchors for synthesis. No heavy Seurat object is read or stored.
-  tar_target(mechanism_report, mechanism_report_data(mechanism_tf, mechanism_pathway,
-                                                     nfkb_attenuation, kinase_mechanism_summary,
-                                                     composition_results, trajectory_report),
-             format = "qs"),
-  tar_target(mechanism_figures, mechanism_figure_data(mechanism_report), format = "qs"),
-
-  # --- P4 cross-modality ---
-  # S1 GeoMx spatial DE: RNA count layer (explicit, despite the object's SCT default) ->
-  # edgeR TMM + limma-voom, slide fixed effect, duplicateCorrelation block = genotype:bio_rep,
-  # plus unblocked and bio-unit-collapsed sensitivities. Deconvolution is NOT run here; the
-  # preflight records Q3/background/nuclei/reference/package feasibility for the S3 gate.
-  tar_target(geomx_de, run_geomx_de(geomx), format = "qs"),
-
-  # Spatial decon follow-up S1: compact full-reference profile. Loads the full snRNAseq RDS
-  # once, overlays retained microglia substates from microglia_annotated, caps cells per
-  # class before profile averaging, and stores only broad/substate profile matrices + QC.
-  tar_target(geomx_reference_profile,
-             geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx),
-             format = "qs"),
-
-  # Spatial decon follow-up S2: run SpatialDecon on GeoMx RNA/data Q3-normalised
-  # expression with Q3-scaled negative-probe background. Broad profile is primary;
-  # substate fit is gated separately and assembled back onto broad Microglia beta.
-  # Nuclei-based absolute count conversion stays disabled while nuclei sentinels remain.
-  tar_target(geomx_decon,
-             run_geomx_decon(geomx, geomx_reference_profile),
-             format = "qs"),
-
-  # Spatial decon follow-up S3: if SpatialDecon earns finite beta, fit log-beta abundance
-  # DE on the same GeoMx slide + bio-unit design; otherwise pass through the blocked state
-  # while retaining residual spatial diagnostics from the attempted fit.
-  tar_target(geomx_abundance_de,
-             run_geomx_abundance_de(geomx_decon, geomx),
-             format = "qs"),
-  tar_target(spatial_decon_report,
-             spatial_decon_report_data(geomx_decon, geomx_abundance_de,
-                                       geomx_reference_profile),
-             format = "qs"),
-
-  # S2 bulk proteome + corrected phospho: 24M 16-run sample-key-matched bulk hippocampus
-  # layers. Proteome aggregates raw positive rows to PG.ProteinGroups before log2/median
-  # normalisation/limma-trend. Corrected phospho subtracts matched parent-protein log2
-  # intensity from the existing phosphosite layer, then refits limma-trend. Summary is compact
-  # and report-oriented; P3's raw phospho target is reused, not duplicated.
-  tar_target(proteome_de_24m, run_proteome_de_24m(proteomics, sample_key), format = "qs"),
-  tar_target(phospho_corrected_24m,
-             run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m), format = "qs"),
-  tar_target(bulk_omics_summary,
-             bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m),
-             format = "qs"),
-
-  # Spatial-composition gate + clearance-axis CCC-lite. The follow-up report bundle carries
-  # the actual SpatialDecon attempted/blocked state into cross-modality + synthesis surfaces.
-  tar_target(clearance_axis,
-             clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
-                                 bulk_omics_summary, mechanism_gene_sets,
-                                 spatial_decon_report),
-             format = "qs"),
-
-  # S4 integrated gene/pathway divergence view. Evidence rows collapse duplicated RNA symbols,
-  # protein groups, and phosphosites to one symbol x contrast x modality_group row while retaining
-  # feature/site counts. Pathway/divergence leaves nulls and mixed signs explicit for the S5 report.
-  tar_target(crossmodality_table,
-             crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de,
-                                      proteome_de_24m, phospho_de_24m,
-                                      phospho_corrected_24m, mechanism_tf,
-                                      kinase_mechanism_summary),
-             format = "qs"),
-  tar_target(crossmodality_pathway,
-             crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets,
-                                        mechanism_pathway),
-             format = "qs"),
-  tar_target(crossmodality_divergence,
-             crossmodality_divergence_data(crossmodality_table, crossmodality_pathway,
-                                           clearance_axis),
-             format = "qs"),
-
-  # S5 compact report bundle. Selects GeoMx, bulk, clearance, pathway, and divergence
-  # slices for the chapter so _crossmodality.qmd loads one small object, never the full
-  # GeoMx/proteome/phospho targets or the 10MB harmonised evidence table.
-  tar_target(crossmodality_report,
-             crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis,
-                                       crossmodality_divergence, crossmodality_pathway),
-             format = "qs"),
-  tar_target(crossmodality_figures,
-             crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary,
-                                       phospho_de_24m, phospho_corrected_24m,
-                                       crossmodality_table),
-             format = "qs"),
-
-  # Story plates: compact synthesis figures over already-built compact result bundles.
-  # No new inference; this target just pre-assembles publication-grade front-of-report
-  # plotting data so the caption-only report can tell the coherent story first.
-  tar_target(story_figures,
-             story_figure_data(qc_figures, composition_results, pb_de_microglia,
-                               trajectory_report, mechanism_report,
-                               crossmodality_report, crossmodality_figures),
-             format = "qs"),
-
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # caption-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
@@ -257,8 +118,7 @@ list(
   # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
   tar_target(
     report_sources,
-    c("_quarto.yml", "index.qmd", "_qc.qmd", "_microglia.qmd",
-      "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd"),
+    c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd"),
     format = "file"
   ),
   tar_target(
@@ -272,20 +132,9 @@ list(
     render_report(
       report_sources = report_sources,
       report_extra_files = report_extra_files,
-      qc_figures = qc_figures,
       microglia_report = microglia_report,
-      composition_results = composition_results,
-      pb_de_microglia = pb_de_microglia,
-      pb_de_substate = pb_de_substate,
-      symbol_map = symbol_map,
       microglia_figures = microglia_figures,
-      trajectory_report = trajectory_report,
-      trajectory_figures = trajectory_figures,
-      mechanism_report = mechanism_report,
-      mechanism_figures = mechanism_figures,
-      crossmodality_report = crossmodality_report,
-      crossmodality_figures = crossmodality_figures,
-      story_figures = story_figures
+      trajectory_figures = trajectory_figures
     ),
     format = "file"
   )

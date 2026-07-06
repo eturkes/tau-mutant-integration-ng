@@ -12,8 +12,6 @@
 figure_manifest <- function(chapter = NULL) {
   out <- data.frame(
     figure_id = c(
-      "fig-story-core",
-      "fig-story-mechanism-crossmodality",
       "fig-microglia-umap-substate",
       "fig-microglia-score-triptych",
       "fig-microglia-unit-composition",
@@ -24,37 +22,17 @@ figure_manifest <- function(chapter = NULL) {
       "fig-trajectory-pt-density",
       "fig-trajectory-unit-pt-dam",
       "fig-trajectory-kitagawa-forest",
-      "fig-trajectory-audit",
-      "fig-mechanism-project-pathway",
-      "fig-mechanism-go-dotplot",
-      "fig-mechanism-tf-focus",
-      "fig-mechanism-kinase-heatmap",
-      "fig-crossmodality-amyloid-response",
-      "fig-crossmodality-synaptic-clearance",
-      "fig-crossmodality-interaction-boundary",
-      "fig-crossmodality-geomx-volcano",
-      "fig-crossmodality-geomx-sensitivity",
-      "fig-crossmodality-phospho-correction",
-      "fig-crossmodality-closing-model"
+      "fig-trajectory-audit"
     ),
     chapter = c(
-      rep("story", 2),
       rep("microglia", 7),
-      rep("trajectory", 4),
-      rep("mechanism", 4),
-      rep("crossmodality", 7)
+      rep("trajectory", 4)
     ),
     target = c(
-      rep("story_figures", 2),
       rep("microglia_figures", 7),
-      rep("trajectory_figures", 4),
-      rep("mechanism_figures", 4),
-      rep("crossmodality_figures", 6),
-      "story_figures"
+      rep("trajectory_figures", 4)
     ),
     slot = c(
-      "core_story",
-      "mechanism_crossmodality",
       "umap_by_substate",
       "score_triptych",
       "unit_composition",
@@ -65,18 +43,7 @@ figure_manifest <- function(chapter = NULL) {
       "pt_density",
       "unit_pt_vs_dam",
       "kitagawa_forest",
-      "trajectory_audit",
-      "project_pathway_heatmap",
-      "go_top_dotplot",
-      "tf_focus",
-      "kinase_heatmap",
-      "amyloid_response_plate",
-      "synaptic_clearance_plate",
-      "interaction_boundary_plate",
-      "geomx_volcano",
-      "geomx_sensitivity",
-      "phospho_raw_corrected",
-      "closing_model"
+      "trajectory_audit"
     ),
     stringsAsFactors = FALSE
   )
@@ -439,55 +406,6 @@ figure_manifest <- function(chapter = NULL) {
        ))
 }
 
-story_figure_data <- function(qc_figures, composition_results, pb_de_microglia,
-                              trajectory_report, mechanism_report,
-                              crossmodality_report, crossmodality_figures,
-                              alpha = 0.10) {
-  stopifnot(is.list(qc_figures), is.list(composition_results),
-            is.list(pb_de_microglia), is.list(trajectory_report),
-            is.list(mechanism_report), is.list(crossmodality_report),
-            is.list(crossmodality_figures))
-  sample_counts <- qc_figures$study_design$sample_counts
-  .fig_require_cols(sample_counts, c("genotype", "modality", "n"),
-                    "qc_figures$study_design$sample_counts")
-  dam <- .fig_story_dam_response(composition_results)
-  de <- .fig_story_de_counts(pb_de_microglia)
-  traj <- .fig_story_trajectory(trajectory_report)
-  mech <- .fig_story_mechanism(mechanism_report, alpha)
-  path <- .fig_story_pathways(crossmodality_figures)
-  clr <- .fig_story_clearance(crossmodality_report)
-  clr_effects <- .fig_story_clearance_effects(crossmodality_figures)
-  closing <- .fig_story_closing_model(dam, traj, mech, path, clr,
-                                      crossmodality_report, alpha)
-  manifest <- figure_manifest()
-  manifest <- manifest[manifest$target == "story_figures", , drop = FALSE]
-  rownames(manifest) <- NULL
-  out <- list(
-    manifest = manifest,
-    sample_counts = sample_counts,
-    dam_response = dam,
-    de_counts = de,
-    trajectory = traj,
-    mechanism = mech,
-    pathway_axes = path,
-    clearance = clr,
-    clearance_effects = clr_effects,
-    closing_model = closing,
-    core_story = list(dam_response = dam, de_counts = de, trajectory = traj),
-    mechanism_crossmodality = list(mechanism = mech, clearance = clr,
-                                   clearance_effects = clr_effects),
-    provenance = list(
-      source_targets = c("qc_figures", "composition_results", "pb_de_microglia",
-                         "trajectory_report", "mechanism_report",
-                         "crossmodality_report", "crossmodality_figures"),
-      alpha = alpha,
-      contract = "compact story-plate figure data; no new inference"
-    )
-  )
-  .fig_assert_finite(out$sample_counts, "n", "story sample counts")
-  out
-}
-
 visual_reduction_slot_map <- function(disposition = NULL) {
   pinned <- figure_manifest()
   out <- data.frame(
@@ -646,209 +564,6 @@ visual_slot_coverage <- function(manifest, disposition = c("figure", "schematic"
   })
   long <- .fig_bind(pieces)
   .fig_histogram(long, "value", c("genotype", "metric"), bins = bins, lower = lower)
-}
-
-qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sample_key) {
-  md <- .fig_meta_data(microglia_seurat_raw, "microglia_seurat_raw")
-  gd <- .fig_meta_data(geomx, "geomx")
-  .fig_require_cols(md, c("genotype", "batch", "genotype_batch", "nCount_RNA",
-                          "nFeature_RNA", "percent_mt", "percent_ribo",
-                          "percent_malat1", "percent_contam"),
-                    "microglia_seurat_raw@meta.data")
-  .fig_require_cols(gd, "genotype", "geomx metadata")
-  .fig_require_cols(sample_key, "genotype", "sample_key")
-  microglia_dim <- .fig_object_dim(microglia_seurat_raw, "microglia_seurat_raw")
-  geomx_dim <- .fig_object_dim(geomx, "geomx")
-  proteomics_dim <- .fig_object_dim(proteomics, "proteomics")
-  phospho_dim <- .fig_object_dim(phospho, "phospho")
-
-  modality_table <- data.frame(
-    modality = c("snRNAseq microglia", "GeoMx spatial", "proteomics PTM",
-                 "phosphoproteomics PTM", "proteomics sample key"),
-    feature_axis = c("genes", "genes", "sites", "sites", "rows"),
-    n_features = c(microglia_dim[1L], geomx_dim[1L], proteomics_dim[1L],
-                   phospho_dim[1L], nrow(sample_key)),
-    sample_axis = c("nuclei", "AOIs", "columns", "columns", "24M samples"),
-    n_samples = c(microglia_dim[2L], geomx_dim[2L], proteomics_dim[2L],
-                  phospho_dim[2L], nrow(sample_key)),
-    stringsAsFactors = FALSE
-  )
-  modality_table$shape <- paste(modality_table$n_features, modality_table$n_samples, sep = " x ")
-
-  genotype_batch <- as.data.frame(table(
-    genotype = factor(md$genotype, levels = genotype_levels),
-    batch = md$batch
-  ), stringsAsFactors = FALSE)
-  genotype_batch$genotype <- factor(as.character(genotype_batch$genotype), levels = genotype_levels)
-  genotype_batch$Freq <- as.numeric(genotype_batch$Freq)
-  genotype_batch <- genotype_batch[order(genotype_batch$batch, genotype_batch$genotype,
-                                         method = "radix"), , drop = FALSE]
-
-  geomx_genotype <- as.data.frame(table(
-    genotype = factor(gd$genotype, levels = genotype_levels)
-  ), stringsAsFactors = FALSE)
-  names(geomx_genotype)[2L] <- "n_aoi"
-  geomx_genotype$n_aoi <- as.numeric(geomx_genotype$n_aoi)
-
-  design_grid <- data.frame(
-    genotype = genotype_levels,
-    tau_background = ifelse(grepl("P301S", genotype_levels), "P301S", "MAPTKI"),
-    amyloid = ifelse(startsWith(genotype_levels, "NLGF"), "NLGF+", "NLGF-"),
-    label = c("MAPTKI", "P301S", "NLGF\nMAPTKI", "NLGF\nP301S"),
-    stringsAsFactors = FALSE
-  )
-  design_grid$genotype <- factor(design_grid$genotype, levels = genotype_levels)
-  design_grid$tau_background <- factor(design_grid$tau_background,
-                                       levels = c("MAPTKI", "P301S"))
-  design_grid$amyloid <- factor(design_grid$amyloid, levels = c("NLGF-", "NLGF+"))
-
-  sn_counts <- stats::aggregate(Freq ~ genotype, data = genotype_batch, FUN = sum)
-  names(sn_counts)[2L] <- "n"
-  sn_counts$modality <- "snRNAseq nuclei"
-  geo_counts <- geomx_genotype
-  names(geo_counts)[2L] <- "n"
-  geo_counts$modality <- "GeoMx AOIs"
-  sample_genotype <- factor(as.character(sample_key$genotype), levels = genotype_levels)
-  bulk_counts <- as.data.frame(table(genotype = sample_genotype), stringsAsFactors = FALSE)
-  names(bulk_counts)[2L] <- "n"
-  bulk_counts$n <- as.numeric(bulk_counts$n)
-  bulk_counts$modality <- "24M bulk runs"
-  sample_counts <- rbind(sn_counts[c("genotype", "modality", "n")],
-                         geo_counts[c("genotype", "modality", "n")],
-                         bulk_counts[c("genotype", "modality", "n")])
-  sample_counts$genotype <- factor(as.character(sample_counts$genotype), levels = genotype_levels)
-  sample_counts$modality <- factor(sample_counts$modality,
-                                   levels = c("snRNAseq nuclei", "GeoMx AOIs", "24M bulk runs"))
-
-  # Four-modality summary for the study-design schematic: every modality reads the SAME 2x2
-  # genotype design at its own resolution/n. All numbers derive from the tables above (no
-  # literals). Bulk count = the balanced 16-row 24M sample key (the design); proteome + phospho
-  # share that one key (shared_bulk) -> bracketed as the same 16 samples, not 32 independent.
-  # The 30/81 raw Spectronaut export columns (modality_table) subset to those 16 matched 24M
-  # runs in the DE layer, which proves the 16/16 column match (match_24m_bulk_columns).
-  n_snrna <- sum(sn_counts$n)
-  geo_rng <- range(geomx_genotype$n_aoi)
-  n_bulk <- nrow(sample_key)
-  per_geno_bulk <- n_bulk %/% length(genotype_levels)
-  bulk_support <- sprintf("bulk 24M hippocampus, %d per genotype", per_geno_bulk)
-  # snRNAseq row = the microglia SUBSET of the full all-cell-type snRNA-seq object (this study
-  # reprocesses microglia only, computationally isolated from the other captured cell types);
-  # the support line names that provenance so the schematic never reads as if every captured
-  # nucleus were a microglia.
-  design_modalities <- data.frame(
-    order = 1:4,
-    modality = c("snRNAseq microglia", "GeoMx", "bulk proteomics", "phosphoproteomics"),
-    n_total = c(n_snrna, sum(geomx_genotype$n_aoi), n_bulk, n_bulk),
-    count_lab = c(paste0(format(n_snrna, big.mark = ",", trim = TRUE), " nuclei"),
-                  paste0(sum(geomx_genotype$n_aoi), " spatial AOIs"),
-                  paste0(n_bulk, " samples"), paste0(n_bulk, " samples")),
-    support = c(sprintf("subset from all-cell-type snRNA-seq, %d units", nrow(genotype_batch)),
-                sprintf("spatial transcriptomics, %d-%d per genotype",
-                        as.integer(geo_rng[1L]), as.integer(geo_rng[2L])),
-                bulk_support, bulk_support),
-    shared_bulk = c(FALSE, FALSE, TRUE, TRUE),
-    stringsAsFactors = FALSE
-  )
-  # Contract the schematic's fixed geometry depends on: exact modality order + names, the
-  # bulk proteomics/phosphoproteomics pair as the only shared_bulk rows, and an equal shared
-  # count -> the qmd indexes mod_y by order and brackets "same N" without silently mislabelling.
-  stopifnot(
-    identical(design_modalities$order, 1:4),
-    identical(design_modalities$modality,
-              c("snRNAseq microglia", "GeoMx", "bulk proteomics", "phosphoproteomics")),
-    identical(design_modalities$shared_bulk, c(FALSE, FALSE, TRUE, TRUE)),
-    length(unique(design_modalities$n_total[design_modalities$shared_bulk])) == 1L
-  )
-  # Station-3 comparison ledger: the 5 canonical contrasts the pipeline runs on this design
-  # (constants.R contrast_definitions for the 4 simple pairs + the difference-of-differences
-  # interaction). Every formula is COMPOSED from contrast_definitions and cross-checked against
-  # R/design.R make_contrast_matrix() in tests/test_figures.R, so the ledger cannot silently drift
-  # from the analysed contrast algebra. ASCII "-"/"x" per the glyph rule (warn=2 base-pdf safe).
-  cd <- contrast_definitions
-  pair_fml <- function(p) paste0(p[1L], " - ", p[2L])
-  contrast_ids <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
-  design_contrasts <- data.frame(
-    order = 1:5,
-    id = contrast_ids,
-    gloss = c("mutant tau (no amyloid)", "amyloid (tau-KO)", "amyloid (mutant tau)",
-              "mutant tau (+amyloid)", "amyloid x tau interaction"),
-    formula = c(pair_fml(cd$tau_alone), pair_fml(cd$nlgf_in_maptki),
-                pair_fml(cd$nlgf_in_p301s), pair_fml(cd$tau_in_nlgf),
-                sprintf("(%s) - (%s)", pair_fml(cd$nlgf_in_p301s), pair_fml(cd$nlgf_in_maptki))),
-    is_interaction = c(FALSE, FALSE, FALSE, FALSE, TRUE),
-    stringsAsFactors = FALSE
-  )
-  stopifnot(
-    identical(design_contrasts$order, 1:5),
-    identical(design_contrasts$id, contrast_ids),
-    identical(design_contrasts$is_interaction, c(FALSE, FALSE, FALSE, FALSE, TRUE)),
-    all(vapply(1:4, function(i) design_contrasts$formula[i] == pair_fml(cd[[contrast_ids[i]]]), logical(1))),
-    design_contrasts$formula[5L] == "(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)"
-  )
-
-  depth_metrics <- c(nCount_RNA = "total counts", nFeature_RNA = "detected genes")
-  frac_metrics <- c(percent_mt = "mitochondrial %", percent_ribo = "ribosomal %",
-                    percent_malat1 = "MALAT1 %", percent_contam = "contamination %")
-  md$genotype <- factor(as.character(md$genotype), levels = genotype_levels)
-  depth_distribution <- .fig_metric_histogram(md, depth_metrics, depth_metrics,
-                                              transform = function(x) log10(pmax(x, 1)),
-                                              bins = 50L, lower = 0)
-  fraction_distribution <- .fig_metric_histogram(md, frac_metrics, frac_metrics,
-                                                 bins = 50L, lower = 0)
-
-  qc_metrics <- c("nCount_RNA", "nFeature_RNA", names(frac_metrics))
-  bounds <- data.frame(
-    metric = qc_metrics,
-    lower = c(1, 1, 0, 0, 0, 0),
-    upper = c(Inf, microglia_dim[1L], 100, 100, 100, 100),
-    rail = c("UMIs >= 1", "genes >= 1 and <= assayed genes",
-             rep("percentage 0-100", 4L)),
-    stringsAsFactors = FALSE
-  )
-  bounds$obs_min <- vapply(qc_metrics, function(cl) min(md[[cl]], na.rm = TRUE), numeric(1))
-  bounds$obs_max <- vapply(qc_metrics, function(cl) max(md[[cl]], na.rm = TRUE), numeric(1))
-  bounds$n_na <- vapply(qc_metrics, function(cl) sum(is.na(md[[cl]])), integer(1))
-  bounds$within <- bounds$n_na == 0 & bounds$obs_min >= bounds$lower & bounds$obs_max <= bounds$upper
-  stopifnot(all(bounds$within),
-            all(md$nFeature_RNA <= md$nCount_RNA),
-            all(genotype_batch$Freq > 0),
-            nrow(sample_key) == 16L,
-            !anyNA(sample_genotype),
-            !anyNA(sample_counts$genotype),
-            all(table(sample_genotype) == nrow(sample_key) %/% length(genotype_levels)),
-            setequal(as.character(unique(gd$genotype)), genotype_levels))
-
-  out <- list(
-    manifest = visual_reduction_slot_map("figure")[visual_reduction_slot_map("figure")$target == "qc_figures", ],
-    study_design = list(genotype_grid = design_grid,
-                        sample_counts = sample_counts,
-                        modalities = design_modalities,
-                        contrasts = design_contrasts),
-    modality_table = modality_table,
-    geomx_genotype = geomx_genotype,
-    genotype_batch = genotype_batch,
-    depth_distribution = depth_distribution,
-    fraction_distribution = fraction_distribution,
-    metric_bounds = bounds,
-    audit_notes = data.frame(
-      note = c("modality dimensions", "complete genotype-batch grid", "definitional metric bounds"),
-      status = "pass",
-      stringsAsFactors = FALSE
-    ),
-    provenance = list(
-      source_targets = c("microglia_seurat_raw", "geomx", "proteomics", "phospho", "sample_key"),
-      contract = "compact QC figure data; report layer need not read raw modality objects for QC visuals"
-    )
-  )
-  .fig_assert_finite(out$modality_table, c("n_features", "n_samples"), "qc modality_table")
-  .fig_assert_finite(out$study_design$sample_counts, "n", "qc study_design sample_counts")
-  .fig_assert_finite(out$study_design$modalities, "n_total", "qc study_design modalities")
-  .fig_assert_finite(out$genotype_batch, "Freq", "qc genotype_batch")
-  .fig_assert_finite(out$geomx_genotype, "n_aoi", "qc geomx_genotype")
-  .fig_assert_finite(out$depth_distribution, c("x_mid", "n"), "qc depth_distribution")
-  .fig_assert_finite(out$fraction_distribution, c("x_mid", "n"), "qc fraction_distribution")
-  .fig_assert_finite(out$metric_bounds, c("lower", "obs_min", "obs_max", "n_na"), "qc metric_bounds")
-  out
 }
 
 .fig_assert_nonempty <- function(x, label) {
@@ -1275,42 +990,6 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
   .fig_assert_finite(out$kitagawa_forest, c("coef", "ci_l", "ci_r", "p_value"), "kitagawa_forest")
   .fig_assert_finite(out$decomposition, c("coef", "ci_l", "ci_r", "p_value", "fdr"), "decomposition")
   .fig_assert_finite(out$concordance, c("x_mid", "y_mid", "n"), "trajectory concordance")
-  out
-}
-
-mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
-  stopifnot(is.list(mechanism_report))
-  project <- mechanism_report$pathway_project
-  go_top <- mechanism_report$pathway_go_top
-  tf <- mechanism_report$tf_highlights
-  kinase <- mechanism_report$kinase$table
-  .fig_require_cols(project, c("pathway", "population", "contrast", "NES", "fdr"),
-                    "mechanism pathway_project")
-  .fig_require_cols(go_top, c("pathway", "population", "contrast", "NES", "fdr", "size"),
-                    "mechanism pathway_go_top")
-  .fig_require_cols(tf, c("population", "source", "contrast", "score", "fdr", "selection"),
-                    "mechanism tf_highlights")
-  .fig_require_cols(kinase, c("source", "contrast", "score", "fdr", "significant",
-                              "run_index_score", "run_index_fdr", "run_index_supports",
-                              "include_reason"),
-                    "mechanism kinase")
-  out <- list(
-    manifest = figure_manifest("mechanism"),
-    project_pathway_heatmap = project,
-    go_top_dotplot = go_top,
-    tf_interaction = tf[tf$contrast == "interaction", , drop = FALSE],
-    tf_focus = tf,
-    kinase_heatmap = kinase,
-    provenance = list(
-      source_targets = "mechanism_report",
-      alpha = alpha,
-      contract = "compact mechanism figure data from the guarded report bundle"
-    )
-  )
-  .fig_assert_finite(out$project_pathway_heatmap, c("NES", "fdr"), "project_pathway_heatmap")
-  .fig_assert_finite(out$go_top_dotplot, c("NES", "fdr", "size"), "go_top_dotplot")
-  .fig_assert_finite(out$tf_focus, c("score", "fdr"), "tf_focus")
-  .fig_assert_finite(out$kinase_heatmap, c("score", "fdr", "run_index_score"), "kinase_heatmap")
   out
 }
 
@@ -2186,92 +1865,4 @@ mechanism_figure_data <- function(mechanism_report, alpha = 0.10) {
             any(effects$measured_state_chr == "blocked"),
             any(effects$measured_state_chr == "measured"))
   list(effects = effects)
-}
-
-crossmodality_figure_data <- function(crossmodality_report, geomx_de, bulk_omics_summary,
-                                      phospho_de_24m, phospho_corrected_24m,
-                                      crossmodality_table = NULL,
-                                      alpha = 0.10) {
-  stopifnot(is.list(crossmodality_report), is.list(geomx_de),
-            is.list(bulk_omics_summary), is.list(phospho_de_24m),
-            is.list(phospho_corrected_24m))
-  if (is.null(crossmodality_table)) {
-    stop("crossmodality_figure_data needs crossmodality_table for four-modality figures",
-         call. = FALSE)
-  }
-  contrasts <- .fig_focus_contrasts()
-  geomx_volcano <- .fig_volcano_data(geomx_de$primary$top, contrasts,
-                                     alpha = alpha, n_label = 8L)
-  geomx_sens <- .fig_sensitivity_counts(geomx_de$primary$top, geomx_de$sensitivity,
-                                        contrasts, alpha = alpha)
-  geomx_counts <- crossmodality_report$geomx$counts
-  bulk_counts <- crossmodality_report$bulk$significant_counts
-  .fig_require_cols(geomx_counts, c("contrast", "n_up_fdr_0_10", "n_down_fdr_0_10", "n_fdr_0_10"),
-                    "crossmodality geomx counts")
-  .fig_require_cols(bulk_counts, c("layer", "contrast", "n_fdr_0_10"), "crossmodality bulk counts")
-  geomx_counts$n_sig <- geomx_counts$n_fdr_0_10
-  geomx_counts$n_up <- geomx_counts$n_up_fdr_0_10
-  geomx_counts$n_down <- geomx_counts$n_down_fdr_0_10
-  bulk_counts$n_sig <- bulk_counts$n_fdr_0_10
-  phospho_correction <- .fig_phospho_correction(phospho_de_24m$top,
-                                                phospho_corrected_24m$top,
-                                                contrasts, alpha = alpha)
-  four_counts <- .fig_four_modality_counts(crossmodality_table, contrasts, alpha)
-  four_pathways <- .fig_four_modality_pathways(crossmodality_report, contrasts)
-  four_symbols <- .fig_four_modality_symbols(crossmodality_report, contrasts)
-  axis_effect <- .fig_axis_effect_spine(crossmodality_report, crossmodality_table,
-                                        alpha)
-  amyloid_response <- .fig_crossmodality_amyloid_response_plate(axis_effect$spine)
-  synaptic_clearance <- .fig_crossmodality_synaptic_clearance_plate(axis_effect$spine)
-  interaction_boundary <- .fig_crossmodality_interaction_boundary_plate(axis_effect$spine)
-
-  manifest <- figure_manifest("crossmodality")
-  manifest <- manifest[manifest$target == "crossmodality_figures", , drop = FALSE]
-  rownames(manifest) <- NULL
-  out <- list(
-    manifest = manifest,
-    axis_effect_spine = axis_effect$spine,
-    axis_effect_selection = axis_effect$selection,
-    amyloid_response_plate = amyloid_response,
-    synaptic_clearance_plate = synaptic_clearance,
-    interaction_boundary_plate = interaction_boundary,
-    four_modality_counts = four_counts,
-    four_modality_pathways = four_pathways,
-    four_modality_symbols = four_symbols,
-    geomx_counts = geomx_counts,
-    geomx_volcano = geomx_volcano,
-    geomx_sensitivity = geomx_sens,
-    bulk_counts = bulk_counts,
-    phospho_raw_corrected = phospho_correction,
-    provenance = list(
-      source_targets = c("crossmodality_report", "geomx_de",
-                         "bulk_omics_summary", "phospho_de_24m",
-                         "phospho_corrected_24m", "crossmodality_table"),
-      alpha = alpha,
-      axis_effect_axes = .fig_axis_effect_axes(),
-      axis_effect_contrasts = .fig_axis_effect_contrasts(),
-      axis_effect_states = levels(axis_effect$spine$measured_state),
-      contract = "compact cross-modality figure data; heavy top tables reduced to points and bins"
-    )
-  )
-  .fig_assert_finite(out$axis_effect_spine[
-    out$axis_effect_spine$measured_state == "measured", , drop = FALSE],
-    "effect", "axis_effect_spine measured effects")
-  .fig_assert_finite(out$geomx_sensitivity,
-                     c("n_primary_sig", "n_sensitivity_sig", "n_lost", "n_gained", "n_sign_flip"),
-                     "geomx_sensitivity")
-  .fig_assert_finite(out$four_modality_counts,
-                     c("n_symbols", "n_sig", "n_up_sig", "n_down_sig",
-                       "signed_balance", "log_n_sig"),
-                     "four_modality_counts")
-  .fig_assert_finite(out$four_modality_pathways,
-                     c("n_modalities_present", "n_modalities_sig",
-                       "n_evidence_groups_sig", "modality_fraction"),
-                     "four_modality_pathways")
-  .fig_assert_finite(out$four_modality_symbols,
-                     c("min_fdr", "n_modalities_present", "n_modalities_sig"),
-                     "four_modality_symbols")
-  .fig_assert_finite(out$geomx_counts, c("n_up", "n_down", "n_sig"), "geomx_counts")
-  .fig_assert_finite(out$bulk_counts, "n_sig", "bulk_counts")
-  out
 }

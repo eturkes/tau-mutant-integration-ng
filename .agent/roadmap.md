@@ -22,12 +22,17 @@ Durable findings mined from v1 (the headline to rebuild around):
    compositional DAM-cell synergy: amyloid adds more DAM cells on the mutant-tau
    background than additivity predicts. P2 does NOT detect a supported
    progression-beyond-composition signal along the activation trajectory.
-3. Mechanism rebuild is asymmetric: RNA supports a Myc-linked DAM interaction signal; targeted
-   NF-kB attenuation is discordant / not supported; 24M bulk phospho covers but does NOT recover
-   Gsk3b interaction or tau-in-NLGF support.
-4. Cross-modality corroborates the amyloid-response spine and secondary synaptic/clearance axis;
-   measured Apoe-Trem2 support is focused, while SpatialDecon abundance is blocked after attempted
-   fitting and full CCC is not called.
+3. [TORN DOWN 2026-07-06] Mechanism (Myc-linked DAM interaction; NF-kB attenuation discordant/not supported;
+   Gsk3b not recovered in 24M bulk phospho) -- chapter + targets + `R/mechanism.R` deleted from report + pipeline;
+   science in git history + Ledger.
+4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
+   SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
+   in git history + Ledger.
+REPORT SCOPE (2026-07-06 permanent pivot): the rendered report = FIVE figures, microglia (P1) + trajectory (P2)
+ONLY -- findings 1 + 2. The pipeline loads snRNAseq only and runs the microglia+trajectory targets; the
+GeoMx/proteome/phospho modalities and the mechanism/cross-modality/qc/story chapters, targets, R modules, and
+tests were deleted (Ledger 2026-07-06). 19 targets remain. P3/P4/P5 + the figure-expansion passes below stay as
+historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
@@ -837,6 +842,25 @@ user before writing a new plan.
   `_report/`; ~271M freed) + deleted stale `.agent/crossmodality_narrative_manifest.md` (completed-S1 audit
   manifest, no live refs). No committed junk existed -- all tracked files legit, clutter was gitignored
   caches. New memory.md "Repo layout" section locks the rule. Gate green before + after.
+- 2026-07-06 Report figure-cut / chapter teardown DONE (user task, confirmed full-teardown scope): permanent
+  pivot to a FIVE-figure microglia+trajectory report. Cut the rendered document to exactly old figures
+  2,3,4,7,16 (renumber 1-5): fig-microglia-substate-markers, fig-microglia-umap, fig-microglia-umap-substate,
+  fig-microglia-unit-composition, fig-trajectory-pt-density. DELETED the qc/mechanism/cross-modality chapters +
+  every one of their targets + R modules + tests: `_qc.qmd`/`_mechanism.qmd`/`_crossmodality.qmd`, `R/mechanism.R`,
+  `R/crossmodality.R`, `tests/test_mechanism.R`, `tests/test_crossmodality.R`; dropped all geomx/proteome/phospho +
+  mechanism + cross-modality + spatial-decon + story + qc targets from `_targets.R` (and the story/qc/mechanism/
+  crossmodality builders from `R/figures.R`). `_targets.R` now = 19 targets (microglia P1 + trajectory P2 pipelines
+  intact, cached, gate-cheap). `figure_manifest()` trimmed 24->11 rows (microglia 7 + trajectory 4);
+  `tests/test_figures.R` updated in lockstep (11-row assertion). `index.qmd` = YAML + `{{< include _microglia.qmd >}}`
+  + `{{< include _trajectory.qmd >}}`; `render_report()`/`report_sources` trimmed. Full `scripts/check.sh` green:
+  render processed exactly 5 figure chunks, microglia_figures/trajectory_figures rebuilt cheaply, tar_meta clean
+  across 19 targets, render-log clean. Findings 3 (mechanism) + 4 (cross-modality) science preserved in git history
+  + this Ledger, dropped from report + pipeline. Residual dead code, deferred as a separate hygiene unit: (a) io.R geomx/proteome/phospho loaders +
+  constants.R data_paths + rbc_marker_symbols -- dead but KEPT (test_io-covered) for possible modality re-add
+  (memory.md "Raw data" note); (b) figures.R story/mechanism/crossmodality builders + their `.fig_*` helpers +
+  qc_figure_data -- pure dead weight referencing permanently-deleted targets, NOT test-covered, removable; plus
+  plot.R concordance_plot (P4-only). The two kept builders (microglia/trajectory) still emit unrendered manifest
+  slots (11 built, 5 rendered).
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

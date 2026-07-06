@@ -1,8 +1,14 @@
 # Map - codebase wiring (grows with the build)
 
-Fresh rebuild; modules land per phase. Shows STRUCTURE (what calls what, what lives
-where); `memory.md` holds the WHY (facts/gotchas/decisions). Keep current: load order,
-the data -> module -> output flow, and any cache producer -> consumer pairs.
+Cut to a FIVE-figure report (2026-07-06 teardown): snRNAseq microglia (P1) + activation
+trajectory (P2) only. Shows STRUCTURE (what calls what, what lives where); `memory.md` holds
+the WHY (facts/gotchas/decisions), `roadmap.md` the trajectory. The GeoMx/proteome/phospho
+modalities + mechanism/cross-modality/qc/story chapters, their targets, `R/mechanism.R`,
+`R/crossmodality.R`, and their tests were DELETED (roadmap Ledger 2026-07-06). Residual dead code
+(io.R geomx/proteome/phospho loaders, figures.R story/mechanism/crossmodality builders +
+`.fig_*` helpers + qc_figure_data, plot.R concordance_plot, constants data_paths/rbc) is UNWIRED
+-> not in this map (roadmap Ledger tracks it). Keep current: load order, data -> module -> output
+flow, cache producer -> consumer pairs.
 
 ## P0 spine
 
@@ -29,19 +35,25 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
        -> sccomp cross-check arm; absent -> propeller-only (fresh clone still green)
   - tar_option_set(packages="quarto", memory="transient", garbage_collection=TRUE, trust_timestamps=TRUE)
   - tar_source("R")                                     # loads every R/*.R pure fn
-  R/ pure fns (S2): constants.R (genotype_levels, contrast_definitions, marker lists,
-      rbc_marker_symbols, data_paths) | utils.R (`%||%`, write_tsv_safe) | io.R (loaders) | spine.R
-   + (S3) design.R: factorial_design (treatment ~tau+nlgf+tau_nlgf[+batch]) + make_contrast_matrix
+  R/ pure fns:
+   constants.R (genotype_levels, contrast_definitions, microglia_identity_markers,
+      canonical_microglia_markers, microglia_substate_levels, contam_signatures; data_paths -- only
+      $snrnaseq wired now, geomx/proteomics/phospho/sample_key entries dead; rbc_marker_symbols dead) |
+      utils.R (`%||%`, write_tsv_safe) | io.R (load_snrnaseq + build_symbol_map wired; load_geomx /
+      read_spectronaut_tsv / proteomics_sample_meta / match_intensity_columns / normalise_ptm_stub
+      retained but UNWIRED) | spine.R (spine_versions)
+   + design.R: factorial_design (treatment ~tau+nlgf+tau_nlgf[+batch]) + make_contrast_matrix
       (cell-means ~0+genotype) -> the 5 canonical contrasts; two equivalent parameterisations |
       de_pb.R: pseudobulk_counts/build_pseudobulk (replicate=genotype_batch; `cells=` -> per-substate
       subset pre-aggregation), fit_limma_voom (voomWQW default + confint) / fit_limma_log (log-intensity),
-      median_normalise, prevalence_filter. S3 = machinery only; P1-S4 wires the DE targets.
-   + (S4) plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free; installs
-      saturated-but-controlled ggplot discrete defaults for the render session) + manual scale_colour/fill_genotype
-      (+ scale_color_ alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate /
-      tau-background / binary / direction scales + richer continuous scales (`scale_fill_rwb`,
-      `scale_colour_rwb`; signed panels pass midpoint=0; count panels use a neutral sequential gradient) +
-      concordance_plot (two-effect scatter, P4 cross-modality). Report visual identity = theme.scss.
+      median_normalise, prevalence_filter, de_pseudobulk, stage_wise_test (stageR screen df1=rank=3 +
+      Holm confirm), interaction_power, assert_complete_crossing.
+   + plot.R: theme_tau (ggplot base theme; base_family="" -> device font, warning-free; installs
+      saturated-but-controlled ggplot discrete defaults) + manual scale_colour/fill_genotype (+ scale_color_
+      alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate / tau-background / binary /
+      direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
+      midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained but UNWIRED
+      (P4-only). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
       marker_mean_by_cluster (post-Harmony substate-separation check; map symbols->ensembl first) +
@@ -52,9 +64,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       ORCHESTRATES pure helpers: marker_sets_to_ensembl (symbol sets->present ensembl, error empty/near-empty
       min_n, n_used) | zscale_signatures (per-signature z; non-finite->0) | assign_substate (argmax +
       ambiguous/unassigned buckets, eps-floor) | cluster_mean_z (per-cluster mean z) | flag_contaminant_clusters
-      (id_med<0.15 OR mglike_frac<0.30, finite-guard). constants.R now carries microglia_identity_markers (pan QC) +
-      canonical_microglia_markers (Homeostatic/DAM/IFN/Proliferative+MHC_APC) + microglia_substate_levels +
-      contam_signatures (Oligo/Neuron/Astro).
+      (id_med<0.15 OR mglike_frac<0.30, finite-guard).
    + (P1-S3) composition.R: test_composition (orchestrator) -> composition_results. composition_counts (per-sample
       [genotype_batch] x substate count table; drops globally-empty levels; covariate-constancy fail-loud) |
       run_propeller (CELL-MEANS ~0+genotype+batch via make_contrast_matrix -- speckle PropRatio needs per-genotype
@@ -69,12 +79,14 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (scripts/install-cmdstan.sh -> tools/rlib-stan + tools/cmdstan).
    + (P1-S4) de_pb.R: run_pb_de_microglia (whole-MG) / run_pb_de_substate (per-substate, min-cell floor fit-or-skip)
       -> de_pseudobulk (build_pseudobulk -> factorial_design -> fit_limma_voom[voomWQW+robust eBayes] -> stage_wise_test
-      -> interaction_power). stage_wise_test = stageR screen (omnibus F, df1=rank=3) + modified-Holm per-contrast confirm. dam_direction =
-      amyloid->DAM concordance vs v1. stageR added (rproject.toml, BioCsoft).
-   + (P1-S5) microglia.R: microglia_report_data (extracts a COMPACT report frame from the 612MB
-      microglia_annotated -- per-cell {umap_1/2, genotype, substate, *_UCell_z} cell_frame + n_cells +
-      prune/provenance summaries; asserts finite z + non-NA factors) -> the `microglia_report` target keeps
-      _microglia.qmd (+ every gate force-render) reading ~0.5MB, NOT the 612MB Seurat.
+      -> interaction_power). stage_wise_test = stageR screen (omnibus F, df1=rank=3) + modified-Holm per-contrast confirm.
+      dam_direction = amyloid->DAM concordance vs v1.
+   + (P1-S5) microglia.R: microglia_report_data(microglia_annotated, symbol_map) -- extracts a COMPACT report
+      frame from the 612MB microglia_annotated (per-cell {umap_1/2, genotype, substate, *_UCell_z} cell_frame +
+      n_cells + prune/provenance summaries; asserts finite z + non-NA factors) PLUS the substate-marker dot-plot
+      slot via substate_marker_panel (per-substate mean_expr+pct_expr + per-gene z off SCT `data`; maps marker
+      symbols -> SCT ensembl via symbols_to_ensembl; SOLE heavy-object access) -> the `microglia_report` target
+      keeps _microglia.qmd (+ every gate force-render) reading ~0.5MB, NOT the 612MB Seurat.
    + (P2-S1) trajectory.R: build_activation_trajectory (orchestrator -> microglia_trajectory) -- slingshot on
       harmony[1:15] of microglia_annotated, FORCED single Homeostatic->DAM lineage (2 substate super-clusters), IFN/
       Proliferative omitted (on_lineage flag + NA pt); compact per-cell frame + per-unit omitted fraction + dims
@@ -82,7 +94,7 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       run_slingshot_lineage (slingshot fit -> DAM-terminal lineage pt; branch-safe) | score_axis_pseudotime (raw
       DAM_UCell-Homeostatic_UCell) | squeeze_unit_interval (Smithson-Verkuilen -> open (0,1) for the S3 beta GLMM) |
       trajectory_concordance (Spearman pt vs score-axis) | trajectory_provenance (pkg versions/seed/RNG/threads).
-      rproject.toml += slingshot (BioCsoft; pulls princurve/TrajectoryUtils). helpers.R += make_trajectory_embedding.
+      helpers.R += make_trajectory_embedding.
    + (P2-S2a/b) trajectory.R: run_trajectory_progression (orchestrator -> trajectory_progression) -- collapses
       microglia_trajectory on-lineage pt to 16 genotype_batch summaries (pseudotime_per_replicate) -> factorial_design
       (9 resid df) -> weighted/OLS/bounded limma interaction fits (fit_trajectory_contrasts) + exact 3-channel Kitagawa
@@ -90,346 +102,100 @@ the data -> module -> output flow, and any cache producer -> consumer pairs.
       (freedman_lane_interaction; WLS-as-OLS, pivot-free chol2inv, RNG-pure, SENSITIVITY not nominal-exact);
       PRE-REGISTERED primary BH {progression_cf, within_homeostatic} vs separate exploratory BH; mean_pt FLAGGED
       composition-conflated. S2a estimation primitives (pure, crossing-agnostic): derive_batch | pseudotime_per_replicate
-      | ordinary_t_table | fit_trajectory_contrasts | kitagawa_channels | within_state_col (col-name sanitizer S2a
-      writes / S2b reads). Pure-R, NO new dep; reads the COMPACT S1 target (never the 612MB Seurat).
+      | ordinary_t_table | fit_trajectory_contrasts | kitagawa_channels | within_state_col. Pure-R; reads the COMPACT
+      S1 target (never the 612MB Seurat).
    + (P2-S3) trajectory.R: glmmtmb_pt_sensitivity (-> trajectory_glmm_sensitivity) -- per-cell beta GLMM
       pt01 ~ tau*amyloid + batch + (1|unit) on the COMPACT S1 cell_frame; SUPPORTIVE (composition-conflated, like
       mean_pt -> corroborates the position shift, NOT progression). Degrade cascade: nonestimable / singular RE /
       !pdHess / non-convergence / degenerate se|z|p -> rank-normal LMM (same gate) -> RECORDED method="failed"
-      (NA + fail_reason). A FIT failure never throws; MALFORMED INPUT (missing cols / boundary pt01 / unknown
-      genotype / broken genotype_batch) fails LOUD. Records n_units (asymptotics basis, NOT asserted) + fail_reason.
-      Helpers: .capture_quietly (muffle+record warnings AND messages, sccomp lesson) + .fit_health_ok (PURE
-      unit-tested battery gate: pdHess & converged & finite est & se>0 & finite z & valid p & non-singular) +
-      .fit_pt_interaction (fit + Wald-row-by-POSITION + positional-integrity guard [z==est/se, p==2*pnorm(-|z|)]).
-      rproject.toml += glmmTMB (CRAN -> P3M trixie BINARY, ABI-clean; namespace-qualified, NOT in tar_option_set packages).
+      (NA + fail_reason). A FIT failure never throws; MALFORMED INPUT fails LOUD. Records n_units + fail_reason.
+      Helpers: .capture_quietly (muffle+record warnings AND messages) + .fit_health_ok (PURE unit-tested battery
+      gate) + .fit_pt_interaction (fit + Wald-row-by-POSITION + positional-integrity guard).
    + (P2-S4a) trajectory.R: trajectory_report_data (-> trajectory_report target) -- bundles the 3 COMPACT
       trajectory targets (microglia_trajectory / trajectory_progression / trajectory_glmm_sensitivity, NEVER the
       612MB Seurat) into ONE ~0.34MB object: slim per-cell plotting frame + interaction table (primary+exploratory
       families; coef/CI/perm_p/FDR -- the comp_cf/progression_cf/cross decomposition channels are ROWS here) +
       per_unit + lineage_per_unit + sensitivity + glmm 13-name subset + provenance (incl. the 3 decomposition
-      loadings) -> keeps _trajectory.qmd (+ every gate force-render) compact. NO separate `decomposition` field
-      (S4b, codex 955): the qmd reads loadings from provenance + per-channel coefs from interaction rows -> a
-      decomposition bundle would only duplicate those two live sources.
-      Two guard layers: up-front stopifnot validates the 3 INPUTS' schema; render-cleanliness POSTCONDITIONS
-      validate the ASSEMBLED bundle -- interaction col-EXISTENCE asserted BEFORE is.finite (a dropped rbind-sourced
-      col fails loud, not vacuously via all(is.finite(NULL))==TRUE) + measure uniqueness + finite coef/ci/p/fdr/perm_p;
-      weighted mean_pt coef/CI/p_value present+finite on all 5 canonical contrasts; per_unit/sensitivity non-empty +
-      finite; glmm method-enum + finite estimate/CI/p/re_sd; provenance fin1/int1/str1 scalars + logical concordant;
-      labelled genotype/substate. Pure: no RNG/IO. (_trajectory.qmd render layer = the report include chain below, S4b DONE.)
-   + (P3-S1) mechanism.R: pure mechanism-contract helpers (NO source-time package loads). add_symbol_to_top /
-      extract_rank_matrix convert pseudobulk topTables to symbol x contrast statistic matrices with duplicate symbols
-      collapsed by max |stat|; run_decoupler_matrix wraps decoupleR::run_ulm into canonical
-      {statistic,source,condition,score,p_value}; set_mechanism_prior_cache pins OmniPath cache under
-      storage/cache/omnipath and sets TZ=UTC before OmnipathR load (container /etc/localtime warning guard);
-      prior_fingerprint hashes sorted prior table + query args + package versions; mechanism_prior_expectations +
-      assert_mechanism_prior_expectations pin S1 live prior/coverage drift gates; load_collectri_mouse /
-      load_omnipath_ksn_mouse default to official OmniPath REST endpoints (cached TSV) because OmnipathR 4.0.0
-      postprocessing currently fails on live schema missing ncbi_tax_id, while try_package=TRUE remains an explicit
-      drift probe; standardise_collectri_table / standardise_ksn_table validate direct mouse source-target-mor priors
-      (consensus signs, unresolved ambiguous rows dropped, conflicting duplicate signed pairs dropped);
-      phospho_site_ids builds `SYMBOL_AApos` from {PG.Genes, PTM.SiteAA, PTM.SiteLocation} with drop counts;
-      ksn_coverage_probe reports matched sites, minsize-pass kinases, Gsk3b coverage, and source-case diagnostics.
-   + (P3-S2) mechanism.R: RNA mechanism orchestration. collect_rna_rank_matrices converts `pb_de_microglia` +
-      fit `pb_de_substate` topTables to symbol x contrast t-stat matrices (whole_microglia + Homeostatic + DAM;
-      skipped IFN/Proliferative metadata carried). build_mechanism_gene_sets pulls native mouse MSigDB GO BP/CC/MF
-      via msigdbr plus project sets (DAM/Homeostatic/MHC_APC/IFN/NF-kB union + activated/repressed CollecTRI
-      targets) and pins a sorted gene-set payload hash. run_mechanism_tf -> decoupleR ULM activity, FDR BH within
-      population x contrast. run_mechanism_pathway -> fgseaMultilevel NES, FDR/padj within population x collection
-      x contrast; GO maxSize=500, project sets uncapped; known sub-1e-10 fgsea p-floor warning captured, any other
-      fgsea warning fails. build_nfkb_attenuation -> NF-kB TF family best source after BH + sign-aware target GSEA
-      (activated NES, repressed -NES); support gate only whole_microglia interaction, requires concordant negative
-      primary rows after BH across {tf_family,target_gsea}; discordant signs -> `discordant`; tau_in_nlgf/substates
-      supportive-only.
-   + (P3-S3) mechanism.R: phospho/kinase orchestration. match_24m_intensity_columns asserts exactly 16/16
-      sample-key-matched 24M phospho columns, 4/genotype, no duplicate stubs. phospho_feature_frame builds traceable
-      feature ids `row<idx>|<PTM.CollapseKey>` + biological site ids `SYMBOL_AApos`, recording blank/multi-gene/
-      missing-site counts; positive_log2_matrix converts nonpositive intensities to NA + counts them.
-      run_phospho_de_24m -> log2 + median-normalise + prevalence filter (2 samples in all 4 genotypes) ->
-      factorial_design(add_batch=FALSE) -> limma-trend 5 contrasts + additive run-index sensitivity fit.
-      phospho_site_stat_matrix collapses duplicate biological sites per contrast by highest phosphosite probability,
-      then max |t|, then original row. run_kinase_activity loads drift-gated KSN, gates coverage, runs decoupleR ULM
-      for primary + run-index fits; build_kinase_mechanism_summary keeps significant kinases plus Gsk3b on every
-      contrast with run-index support/confounding columns.
-   + (P3-S4) mechanism.R: mechanism_report_data (-> mechanism_report target) -- bundles compact S2/S3 mechanism
-      results + P1/P2 anchors into one ~26KB report object: project gene-set rows + top GO survey rows + TF
-      highlights (top rows plus key Myc/NF-kB/v1 candidates) + NF-kB gate table/verdict + kinase summary/coverage
-      + DAM composition interaction + trajectory composition/progression anchors. Guard layer checks required cols
-      and build-fatal chapter anchors (Myc whole interaction, 2 NF-kB primary rows, Gsk3b all contrasts, DAM
-      composition interaction, trajectory anchors). No heavy Seurat object.
-   + (P4-S1) crossmodality.R: GeoMx DE + decon preflight. geomx_count_matrix explicitly reads RNA/counts
-      (GeoMx object default is SCT), drops empty genes, records non-integer residues, and only rounds integer-ish
-      matrices. geomx_meta aligns AOI metadata (genotype, slide_rep, bio_unit=genotype:bio_rep, roi/SampleID,
-      ROI XY, Q3, negative background, nuclei). fit_geomx_de -> edgeR TMM + limma-voom with `~0+genotype+slide`,
-      duplicateCorrelation(block=bio_unit), robust eBayes, canonical 5 contrasts; stores unblocked AOI and
-      bio-unit-collapsed sensitivities separately. geomx_decon_preflight records SpatialDecon pinned-repo
-      availability + Q3/background/nuclei/reference/profile/memory feasibility; no SpatialDecon install/run in P4-S1.
-   + (Spatial decon follow-up S1) crossmodality.R: geomx_reference_profile_data -> geomx_reference_profile.
-      Heavy-once full-reference loader: read full snrnaseq_file RNA/counts, map ENSMUSG->symbol via symbol_map,
-      overlay retained microglia substates by barcode from microglia_annotated, cap cells/class under fixed seed,
-      full-library-normalise selected cells, sparse-average expression over GeoMx-overlap genes, and return only
-      broad/substate profile matrices + QC.
-      Helpers: spatialdecon_package_info (warn/message capture), reference_label_sets, reference_gene_map,
-      reference_select_cells, reference_profile_from_counts, profile_condition_number.
-   + (Spatial decon follow-up S2) crossmodality.R: run_geomx_decon -> geomx_decon. Reads GeoMx RNA/data
-      (Q3-normalised linear expression) via geomx_norm_matrix, broadcasts geomx_background_matrix
-      (NegGeoMean / q_norm_qFactors) over genes, and calls SpatialDecon::spatialdecon under .capture_spatialdecon
-      for independent broad + substate arms. normalise_spatialdecon_result stores beta, beta-derived proportions,
-      unresolved AOI counts, and residual QC; unresolved beta totals block the arm but retain diagnostics.
-      assemble_microglia_substate_abundance anchors substate fractions to broad Microglia beta only if both arms fit.
-      Live S2 target is warning-clean but blocked: both arms have 4 unresolved AOIs, so no abundance claim yet.
-   + (Spatial decon follow-up S3) crossmodality.R: run_geomx_abundance_de -> geomx_abundance_de. Fits
-      fit_geomx_abundance_de (log beta + slide fixed + duplicateCorrelation bio-unit block + unblocked sensitivity)
-      only for decon arms with status fit; blocked arms return canonical empty 5-contrast top tables plus reasons.
-      geomx_spatial_residual_audit joins SpatialDecon residual QC to GeoMx coordinates and emits per-slide
-      nearest-neighbour summaries of genotype-residualised AOI RMS residuals (descriptive QC only). Live S3 target
-      is warning-clean but abundance-blocked by the same 4 unresolved AOIs; broad/substate residual audit stored.
-   + (Spatial decon follow-up S4) crossmodality.R: spatial_decon_report_data -> spatial_decon_report. Compact
-      report handoff over geomx_decon + geomx_abundance_de + geomx_reference_profile: reference QC, decon/abundance
-      arm summaries, unresolved AOIs, residual-audit summary, nuclei policy, provenance; NO beta matrices. Live
-      status is blocked/action attempted because 4 AOIs have beta_total=0; residual QC remains descriptive.
-   + (P4-S2) crossmodality.R: bulk proteome + corrected phospho. match_24m_bulk_columns asserts exact 16-run
-      sample-key matching for proteome/phospho-style exports. protein_group_features + aggregate_proteome_raw +
-      prepare_proteome_24m_matrix sum raw positive intensities to `PG.ProteinGroups` (NO zero-imputation),
-      log2/median-normalise/prevalence-filter, and carry gene-symbol/raw-row provenance. run_proteome_de_24m ->
-      limma-trend + additive run-index sensitivity. prepare_phospho_corrected_24m_matrix reuses P3 phosphosite
-      prep, asserts identical sample order, subtracts matched filtered parent-protein log2 intensity by exact
-      `PG.ProteinGroups`, drops no-parent rows with counts, and re-filters. run_phospho_corrected_24m -> limma-
-      trend + run-index. bulk_omics_summary_data compacts feature/significance/run-index/anchor coverage for S4/S5.
-   + (P4-S3) crossmodality.R: spatial-composition gate + clearance-axis CCC-lite. geomx_q3_scaled_background
-      divides negative-probe background by Q3 factor; profile_collinearity records max abs profile correlation;
-      geomx_decon now carries blocked/fit beta + residual diagnostics; fit_geomx_abundance_de is the S3
-      log-beta abundance DE path (slide fixed + duplicateCorrelation bio-unit block, unblocked sensitivity).
-      clearance_axis_data -> clearance_axis now accepts optional spatial_decon_report; without it an earned preflight
-      still fails loud, with it the real follow-up status flows downstream. It harmonises measured Apoe/Trem2/App/Cd74/Pros1/Mertk,
-      complement, and synaptic anchors across microglia RNA, GeoMx, and bulk layers with a conservative
-      pair-support verdict.
-   + (P4-S4) crossmodality.R: integration helpers. crossmodality_table_data -> crossmodality_table harmonises
-      snRNAseq whole/substate RNA, GeoMx, proteome, raw/corrected phospho, TF activity, and kinase summary rows to
-      one symbol x contrast x modality_group x feature_type table, collapsing duplicate RNA/protein/phosphosite
-      symbols by best FDR then abs(statistic) while retaining feature/site counts + missingness reasons. Carries
-      both modality_group (layer-level evidence) and modality_class (broad count semantics). crossmodality_pathway_data
-      selects project sets + top RNA-mechanism GO sets, scores each selected set from ranked modality statistics,
-      and summarises n_modalities_present/sig + n_evidence_groups_present/sig + sign consistency. crossmodality_divergence_data
-      focuses {interaction,nlgf_in_maptki,nlgf_in_p301s,tau_in_nlgf}, keeps mixed signs explicit, and outputs compact
-      symbol/pathway/clearance highlights for S5.
-   + (P4-S5) crossmodality.R: crossmodality_report_data -> crossmodality_report compact chapter bundle. Selects
-      GeoMx DE counts/top rows, bulk feature/significance/run-index/anchor slices, clearance/decon verdicts, divergence
-      symbol/pathway highlights, and axis-level pathway summaries. Guard layer validates every field _crossmodality.qmd
-      reads; render target stays small and does not load GeoMx/proteome/phospho or the 10MB evidence table.
-   + (Figure curation 2026-07-03) figures.R: figure_manifest (23 current hyphenated fig-* ids) + compact inline
-      figure-data builders: microglia_figure_data / trajectory_figure_data / mechanism_figure_data /
-      crossmodality_figure_data. Builders emit qmd-ready slots, finite geom guards, and pre-binned/top-row
-      reductions for heavy shapes (whole/substate volcanoes, GeoMx volcanoes, raw-vs-corrected phospho) so
-      qmd chunks tar_load compact figure targets rather than raw/heavy analysis tables. Pure status/logic/checklist
-      board slots were removed from the visible report contract.
-   + (Four-modality integration figures 2026-07-03) figures.R: crossmodality_figure_data now also consumes
-      crossmodality_table during target build (not render) and reduces the harmonised evidence table to compact
-      audit slots: four_modality_counts (contrast x assay-family FDR counts), four_modality_pathways
-      (axis x contrast n_modalities_sig/direction), and four_modality_symbols (selected axis genes x four assay
-      families: not observed / measured / FDR<0.10). These dashboard reductions are retained in the target but
-      no longer visible after Cross-modality narrative S3. Render still loads only crossmodality_report +
-      crossmodality_figures.
-   + (Cross-modality narrative S2 2026-07-03) figures.R: crossmodality_figure_data also emits
-      axis_effect_spine + axis_effect_selection. The spine is the S3/S4 replacement-plate data contract:
-      fixed named axes x selected features x focal contrasts x declared modalities, with effect/FDR/support/direction
-      and explicit measured / not_observed / blocked / not_applicable states. Selection rules are stored alongside
-      the rows; live target build remains compact enough for report use.
-   + (Cross-modality narrative S3 2026-07-03) figures.R: crossmodality_figure_data emits visible plate slots
-      amyloid_response_plate, synaptic_clearance_plate, and interaction_boundary_plate from axis_effect_spine.
-      _crossmodality.qmd uses those effect-size plates instead of the generic four-modality dashboards and standalone
-      GeoMx/bulk count panels. story_figure_data adds clearance_effects and _story.qmd redraws Figure 5 as Myc
-      effect forest + NF-kB/Gsk3b boundary + Apoe/Trem2 clearance-effect strip.
-   + (Figure-caption-only S4) report.R: render_report (-> report target) calls quarto::quarto_render
-      with quiet=FALSE, then repair_embedded_lightbox. Repair rewrites Quarto embedded-lightbox anchors from
-      absent local `index_files/figure-html/*.png` hrefs to the already embedded data-URI img src values; fails
-      loud if a local lightbox href has no embedded image shape.
-   + (Figure curation 2026-07-03) figures.R: visual_reduction_slot_map + visual_slot_coverage + qc_figure_data.
-      Current map is manifest-driven plus retained baseline figures; `visual_slot_coverage()` accepts an empty
-      figure/schematic prose-replacement set after caption-only curation. QC target still carries compact checks;
-      visible QC now uses only depth/fraction distributions.
-   + (Story plate synthesis 2026-07-03) figures.R: story_figure_data -> story_figures. Consumes compact
-      already-built bundles only (qc_figures, composition_results, pb_de_microglia, trajectory_report,
-      mechanism_report, crossmodality_report, crossmodality_figures) and assembles compact publication synthesis
-      data: two front-of-report story plates plus the final cross-modality closing model. Core plate = DAM/
-      composition/progression evidence; mechanism/cross-modality plate = Myc/NF-kB/Gsk3b + Apoe/Trem2; closing
-      model = node/edge support-boundary synthesis.
-  targets:
-  - `spine` <- spine_versions()  [R/spine.R]            # R + core-pkg version provenance df
-  - input files (format="file"): snrnaseq_file/geomx_file/proteomics_file/phospho_file/sample_key_file
-       = data_paths$* (storage/data/*); change-tracked by mtime (trust_timestamps)
-  - modalities (format="qs"; P1-P5 read via tar_load/tar_read):
+      loadings). NO separate `decomposition` field (the qmd reads loadings from provenance + per-channel coefs from
+      interaction rows). Two guard layers: up-front stopifnot validates the 3 INPUTS' schema; render-cleanliness
+      POSTCONDITIONS validate the ASSEMBLED bundle (col-EXISTENCE before is.finite; measure uniqueness; finite
+      coef/ci/p/fdr/perm_p; weighted mean_pt present+finite on all 5 contrasts; glmm/provenance scalars). Pure: no RNG/IO.
+   + figures.R (LIVE surface after teardown): figure_manifest (11 hyphenated fig-* ids: microglia 7 + trajectory 4;
+      only 5 are rendered by the qmds) + compact inline builders microglia_figure_data / trajectory_figure_data
+      (qmd-ready slots, finite geom guards, pre-binned/top-row reductions for heavy shapes) + visual_reduction_slot_map
+      + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
+      helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
+   + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
+      repair_embedded_lightbox (rewrites Quarto embedded-lightbox anchors from absent local
+      `index_files/figure-html/*.png` hrefs to the already embedded data-URI img src; fails loud if a local
+      lightbox href has no embedded image shape).
+  targets (19):
+  - `spine` <- spine_versions()  [R/spine.R]                       # R + core-pkg version provenance df
+  - `snrnaseq_file` <- data_paths$snrnaseq  (format="file")        # the ONLY raw input; mtime-tracked (trust_timestamps)
+  - modalities (format="qs"):
        microglia_seurat_raw <- load_snrnaseq(snrnaseq_file)            # RNA-only microglia 33683 x 26104
        symbol_map           <- build_symbol_map(microglia_seurat_raw)  # {ensembl,symbol} 33683 x 2
-       geomx                <- load_geomx(geomx_file)                  # Seurat 19963 x 91 AOIs
-       proteomics           <- read_spectronaut_tsv(proteomics_file)   # tibble 45972 x 30
-       phospho              <- read_spectronaut_tsv(phospho_file)      # tibble 64328 x 81
-       sample_key           <- proteomics_sample_meta(sample_key_file) # tibble 16 x 4 (24M timepoint)
-       qc_figures           <- qc_figure_data(microglia_seurat_raw, geomx, proteomics, phospho, sample_key)  # Compact QC slots/checks; visible report uses depth/fraction distributions only; ~4.45KB live
   - P1 microglia core (format="qs"; consumes the snRNAseq modality):
        microglia_processed  <- reprocess_microglia(microglia_seurat_raw)  # SCT+pca+harmony+12 clusters@0.4+umap (687MB)
        microglia_annotated  <- annotate_microglia(microglia_processed, symbol_map)  # UCell substates + prune {6,7,8,11}; 23160 cells, 612MB
        composition_results  <- test_composition(microglia_annotated)  # propeller(logit+asin) [+gated sccomp] x 5 contrasts; counts+stats+concordance (small qs)
        pb_de_microglia      <- run_pb_de_microglia(microglia_annotated, symbol_map)  # whole-MG pseudobulk DE x 5 contrasts (voomWQW+stageR) + DAM concordance (4.7MB)
        pb_de_substate       <- run_pb_de_substate(microglia_annotated)  # per-substate DE: Homeo+DAM fit, IFN/Prolif skip (min-cell floor); cell_counts (7MB)
-       microglia_report     <- microglia_report_data(microglia_annotated)  # compact report frame (umap+substate+z) + prune/provenance; ~0.5MB (keeps gate render cheap)
-       microglia_figures    <- microglia_figure_data(microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map)  # Curated microglia figure slots, pre-binned DE volcanoes, composition aliases; no summary/concordance board; ~429KB qs live
+       microglia_report     <- microglia_report_data(microglia_annotated, symbol_map)  # compact report frame (umap+substate+z) + substate_markers + prune/provenance; ~0.5MB (keeps gate render cheap)
+       microglia_figures    <- microglia_figure_data(microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map)  # microglia figure slots, pre-binned DE volcanoes, composition aliases; ~429KB qs live
   - P2 interaction trajectory (format="qs"; consumes microglia_annotated):
        microglia_trajectory <- build_activation_trajectory(microglia_annotated)  # slingshot H->D pseudotime; per-cell frame + per-unit omitted-frac + sensitivity + concordance; serialized ~0.8MB / in-mem ~3.3MB
-       trajectory_progression <- run_trajectory_progression(microglia_trajectory)  # S2b: 16-unit pseudotime summaries -> weighted/ols/bounded interaction fits + 3-channel Kitagawa decompose + Freedman-Lane null; primary BH {progression_cf, within_homeostatic}; reads COMPACT S1 target (no 612MB load)
-       trajectory_glmm_sensitivity <- glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame)  # S3: per-cell beta GLMM tau:amyloid (degrade -> rank-normal LMM -> method="failed"); supportive, INDEPENDENT of trajectory_progression; ~0.3KB
-       trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # S4a: bundles the 3 compact targets -> one ~0.34MB render object (slim cell_frame + interaction table [decomposition channels as rows] + weighted_top + per_unit + lineage_per_unit + sensitivity + glmm row + provenance [incl. decomposition loadings]); two-layer guards (input schema + assembled-bundle postconditions: col-existence-before-finiteness, weighted mean_pt p on all 5 contrasts, glmm/provenance scalars); keeps gate force-render cheap
-       trajectory_figures   <- trajectory_figure_data(trajectory_report, composition_results)  # Pseudotime density, DAM-fraction join, Kitagawa forest, decomposition/concordance/audit slots; no logic board; ~18KB live
-  - P3 mechanism (format="qs"; consumes compact P1 pseudobulk DE + S1 prior helpers + minimal phospho/sample-key layer):
-       mechanism_collectri <- load_collectri_mouse() + assert_mechanism_prior_expectations(collectri)  # cached direct-mouse CollecTRI prior; drift-gated
-       mechanism_gene_sets <- build_mechanism_gene_sets(mechanism_collectri)  # GO_BP/GO_CC/GO_MF native mouse MSigDB + project sets incl. signed NF-kB target arms; hash-pinned
-       mechanism_tf        <- run_mechanism_tf(pb_de_microglia, pb_de_substate, symbol_map, mechanism_collectri)  # decoupleR ULM TF activity x populations x 5 contrasts; skipped substates carried
-       mechanism_pathway   <- run_mechanism_pathway(pb_de_microglia, pb_de_substate, symbol_map, mechanism_gene_sets)  # fgsea NES x populations x {GO/project} x contrasts; GO maxSize=500
-       nfkb_attenuation    <- build_nfkb_attenuation(mechanism_tf, mechanism_pathway, mechanism_gene_sets)  # sign-aware primary whole-MG interaction gate + supportive rows
-       phospho_de_24m      <- run_phospho_de_24m(phospho, sample_key)  # minimal 24M bulk phosphosite limma-trend DE; no batch; run-index sensitivity stored
-       kinase_activity     <- run_kinase_activity(phospho_de_24m)  # decoupleR ULM over direct-mouse KSN; KSN coverage gate + primary/run-index activity tables
-       kinase_mechanism_summary <- build_kinase_mechanism_summary(kinase_activity)  # significant kinases + explicit Gsk3b rows with run-index support flags
-       mechanism_report    <- mechanism_report_data(mechanism_tf, mechanism_pathway, nfkb_attenuation, kinase_mechanism_summary, composition_results, trajectory_report)  # S4: one compact report object (~26KB) for _mechanism.qmd; no heavy Seurat
-       mechanism_figures   <- mechanism_figure_data(mechanism_report)  # Pathway/GO/TF/kinase figure slots; no status/NF-kB-discordance board; ~24KB live
-  - P4 cross-modality:
-       geomx_de <- run_geomx_de(geomx)  # S1: GeoMx RNA/counts DE; slide fixed + duplicateCorrelation bio-unit block primary; unblocked/collapsed sensitivities; decon preflight status/reasons, no SpatialDecon run
-       geomx_reference_profile <- geomx_reference_profile_data(snrnaseq_file, microglia_annotated, symbol_map, geomx)  # spatial-decon follow-up S1: full-snRNAseq compact broad/substate reference profile + QC; serialized 1.88MB live
-       geomx_decon <- run_geomx_decon(geomx, geomx_reference_profile)  # spatial-decon follow-up S2: SpatialDecon broad/substate beta + proportions + residual QC; live blocked by 4 unresolved AOIs, no abundance claim
-       geomx_abundance_de <- run_geomx_abundance_de(geomx_decon, geomx)  # spatial-decon follow-up S3: abundance-DE pass-through + residual audit; live blocked, 5.93KB compact target
-       spatial_decon_report <- spatial_decon_report_data(geomx_decon, geomx_abundance_de, geomx_reference_profile)  # S4: tiny compact handoff for report; status blocked/action attempted; no beta matrices
-       proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # S2: protein-group bulk proteome limma-trend + run-index; raw positive rows summed before log2
-       phospho_corrected_24m <- run_phospho_corrected_24m(phospho, sample_key, proteome_de_24m)  # S2: phosphosite minus matched parent protein, re-filter/refit; raw phospho target reused from P3
-       bulk_omics_summary <- bulk_omics_summary_data(proteome_de_24m, phospho_de_24m, phospho_corrected_24m)  # S2 compact feature/FDR/run-index/anchor summary (~23KB)
-       clearance_axis <- clearance_axis_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, bulk_omics_summary, mechanism_gene_sets, spatial_decon_report)  # compact measured-axis table; carries target-derived SpatialDecon blocked state + CCC-lite pair support
-       crossmodality_table <- crossmodality_table_data(pb_de_microglia, pb_de_substate, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m, phospho_corrected_24m, mechanism_tf, kinase_mechanism_summary)  # S4 harmonised symbol evidence table (~10MB; 337k rows live), broad modality_class + layer-level modality_group
-       crossmodality_pathway <- crossmodality_pathway_data(crossmodality_table, mechanism_gene_sets, mechanism_pathway)  # S4 selected gene-set x modality-class scoring (~108KB live)
-       crossmodality_divergence <- crossmodality_divergence_data(crossmodality_table, crossmodality_pathway, clearance_axis)  # S4 compact divergence summary (~1.9MB live), mixed signs + highlights for S5
-       crossmodality_report <- crossmodality_report_data(geomx_de, bulk_omics_summary, clearance_axis, crossmodality_divergence, crossmodality_pathway)  # S5 compact report object (~23KB qs live); _crossmodality.qmd reads this plus crossmodality_figures
-       crossmodality_figures <- crossmodality_figure_data(crossmodality_report, geomx_de, bulk_omics_summary, phospho_de_24m, phospho_corrected_24m, crossmodality_table)  # GeoMx/phospho heavy tables + harmonised evidence table reduced to compact plot data; visible named evidence plates + conventional GeoMx/phospho boundary slots; generic dashboard reductions retained as audit data; ~3.6MB live after S3
-       story_figures <- story_figure_data(qc_figures, composition_results, pb_de_microglia, trajectory_report, mechanism_report, crossmodality_report, crossmodality_figures)  # compact story plates + closing model; no new inference; ~6.9KB live after S4
-  - report_sources <- c("_quarto.yml", "index.qmd", "_qc.qmd", "_story.qmd", "_microglia.qmd", "_trajectory.qmd", "_mechanism.qmd", "_crossmodality.qmd")  # file target; explicit qmd invalidation
+       trajectory_progression <- run_trajectory_progression(microglia_trajectory)  # 16-unit pseudotime summaries -> weighted/ols/bounded interaction fits + 3-channel Kitagawa decompose + Freedman-Lane null; primary BH {progression_cf, within_homeostatic}; reads COMPACT S1 target (no 612MB load)
+       trajectory_glmm_sensitivity <- glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame)  # per-cell beta GLMM tau:amyloid (degrade -> rank-normal LMM -> method="failed"); supportive, INDEPENDENT of trajectory_progression; ~0.3KB
+       trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # bundles the 3 compact targets -> one ~0.34MB render object; two-layer guards (input schema + assembled-bundle postconditions); keeps gate force-render cheap
+       trajectory_figures   <- trajectory_figure_data(trajectory_report, composition_results)  # pseudotime density, DAM-fraction join, Kitagawa forest, decomposition/concordance/audit slots; ~18KB live
+  - report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", "assets/code-tools-fix.html", assets/fonts/*.woff2)  # file target; explicit theme/font/after-body invalidation
-    `report` <- render_report(report_sources, report_extra_files, qc_figures, microglia_report, composition_results, pb_de_microglia, pb_de_substate, symbol_map, microglia_figures, trajectory_report, trajectory_figures, mechanism_report, mechanism_figures, crossmodality_report, crossmodality_figures, story_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
+    `report` <- render_report(report_sources, report_extra_files, microglia_report, microglia_figures, trajectory_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
        reads `_quarto.yml` (type default; render index.qmd; output report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
                 no author metadata; execute.echo=true + code-fold + code-tools -> chunk code shown as
                 collapsed <details> folds; include-after-body=assets/code-tools-fix.html re-binds
-                Show/Hide All Code (stock selector misses the code-copy scaffold);
-                immediately includes report chapters)
-                                                          --{{< include >}}--> `_qc.qmd`
-               (caption-only QC chapter: setup `options(warn=2)` -> chunk warnings fail the render;
-                tar_load `qc_figures` only -> 2x2 study-design/sample-support node/stem panel plus depth/fraction
-                trace panels; hidden checks still enforce modality shapes, 16-run key, populated
-                genotype-batch grid, GeoMx count, and metric bounds)
-                                                          --{{< include >}}--> `_story.qmd`
-               (caption-only story chapter: setup `options(warn=2)`; tar_load story_figures [compact] ->
-                two composite publication plates. Core evidence = replicate DAM response, signed
-                whole-MG DE counts, and interaction decomposition. Mechanism/integration = Myc effect forest,
-                unsupported NF-kB/Gsk3b boundary rows, and focused Apoe/Trem2 clearance-effect + CCC-lite support.)
+                Show/Hide All Code (stock selector misses the code-copy scaffold); immediately includes the 2 chapters)
                                                           --{{< include >}}--> `_microglia.qmd`
-               (caption-only microglia chapter: setup `options(warn=2)`; tar_load microglia_report +
-                composition_results + pb_de_microglia + pb_de_substate + symbol_map + microglia_figures ->
-                substate UMAPs/score maps, composition shift + direct tau x amyloid DAM-response panel +
-                unit composition, composition forest,
-                amyloid + all-contrast volcanoes, substate fit/DE audit, pruning audit.
-                Hidden finite-check replaces visible sccomp stdout. Claims remain source-derived:
-                amyloid->DAM, DAM composition interaction, interaction DE under-powered not absent.)
+               (microglia chapter {#sec-microglia}: setup `options(warn=2)` -> chunk warnings fail the render;
+                tar_load microglia_report + microglia_figures [compact] -> "Substate landscape" (substate-marker
+                per-gene-z dot plot `fig-microglia-substate-markers`, substate + DAM-score UMAPs `fig-microglia-umap`,
+                genotype-faceted substate UMAP `fig-microglia-umap-substate`) + "Amyloid expands the DAM compartment"
+                (replicate-unit stacked substate bars `fig-microglia-unit-composition`). 4 of the 5 figures.)
                                                           --{{< include >}}--> `_trajectory.qmd`
-               (caption-only trajectory chapter, {#sec-trajectory}: setup `options(warn=2)`; tar_load
-                trajectory_report + trajectory_figures [compact targets] -> pseudotime shift/density,
-                3-channel decomposition, unit DAM-fraction/mean-pt scatter, Kitagawa forest, score-axis
-                concordance, robustness/omission audit. Headline = synergy adds DAM cells;
-                progression and within-homeostatic advance are explicitly not supported; per-cell arm is
-                position-only support.)
-                                                          --{{< include >}}--> `_mechanism.qmd`
-               (caption-only mechanism chapter, {#sec-mechanism}: setup `options(warn=2)`; tar_load
-                mechanism_report + mechanism_figures [compact targets] -> project/GO pathway dot matrices,
-                Myc/NF-kB-family TF focus panels, NF-kB signed primary-score point stems, kinase/run-index matrix.
-                Live read = Myc supported, NF-kB discordant/not supported, Gsk3b not recovered; kinase caveat =
-                24M bulk hippocampus, not microglia-sorted, genotype-blocked run order.)
-                                                          --{{< include >}}--> `_crossmodality.qmd`
-               (caption-only cross-modality chapter, {#sec-crossmodality}: setup `options(warn=2)`;
-                tar_load crossmodality_report + crossmodality_figures + story_figures [compact targets] ->
-                named evidence plates for amyloid-response DAM/AP anchors, synaptic/clearance context,
-                and interaction boundaries, followed by GeoMx volcano/sensitivity and phospho correction.
-                Final closing model uses `story_figures$closing_model` to show support/boundary flow without
-                reloading heavy sources.
-                Generic four-modality dashboards and standalone count panels stay out of the visible path.
-                Modality wording keeps bulk
-                hippocampus != microglia-sorted, GeoMx AOIs repeated, SpatialDecon attempted but blocked by
-                unresolved AOIs, and CCC-lite != full CCC.)
+               (trajectory chapter {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_figures ->
+                genotype x substate pseudotime density `fig-trajectory-pt-density` (geom_area,
+                facet_grid(substate~genotype)). The 5th figure. @sec cross-refs resolve across the full doc.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
-       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id. Last rendered HTML QA:
-       cross-modality closing model, 2026-07-03 (37 figures / 37 captions / 37 nonblank alts;
-       strict caption-only source+HTML gate green; Chromium PDF closing-model page clean).
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (5 total).
 
-### Report prose inventory (Prose-to-figures S1)
-`scripts/prose_inventory.py` (stdlib Python; no env deps, non-DAG utility):
-  - parses `index.qmd` + `_*.qmd`; skips YAML, executable code bodies, hidden
-    setup/helper code, and ordinary source comments.
-  - keeps Quarto caption metadata (`fig-cap` / `tbl-cap` / `fig-alt`) as
-    report-facing text.
-  - emits chapter baseline summary + block-level TSV manifest with qmd, block id,
-    line, kind, section, word count, disposition, target slot, label, and text.
-  - S1 command:
-    `python3 scripts/prose_inventory.py --manifest .agent/prose_replacement_manifest.tsv --summary-only`
-  - Figure-caption-only S1 strict gate:
-    `uv run python scripts/prose_inventory.py --strict --html report/index.html --summary-only`
-    -> expected red until conversion is complete; source allows only headings/captions,
-       rendered HTML fails visible body paragraphs, tables, text-only `.cell-output-display`,
-       and stdout provenance.
-    -> baseline 5,111 words / 119 blocks; 33 headings kept as navigation;
-    86/86 prose/caption blocks assigned non-keep dispositions; selected target
-    >=55% reduction (<=2,300 counted words), stretch <=1,800.
-  - S5 final: same command -> 1,164 words / 117 blocks (77% reduction, stretch
-    met); manifest remains the compact source of qmd block/disposition/slot state.
+### Report prose inventory (vestigial after teardown)
+`scripts/prose_inventory.py` (stdlib Python; non-DAG utility) + `.agent/prose_replacement_manifest.tsv`:
+  now gate-wired ONLY through test_figures.R's `visual_slot_coverage()` assertion (the figure/schematic
+  prose-replacement set was emptied during caption-only curation -> passes trivially). Retained because the
+  test still sources the manifest. Full prose-reduction history -> roadmap Ledger.
 
-### Tests (S3; gate-wired at S5)
-`tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error,
-make_meta16, make_fake_seurat = synthetic Seurat fixtures, make_trajectory_embedding = synthetic
-slingshot embedding), run stopifnot checks (fail-loud, no testthat dep), print `ok - <name>`. Run
-from project root: `Rscript tests/test_<x>.R`.
+### Tests
+`tests/test_*.R` each: source the R/ files it exercises + `tests/helpers.R` (expect_error, make_meta16,
+make_fake_seurat = synthetic Seurat fixtures, make_trajectory_embedding = synthetic slingshot embedding),
+run stopifnot checks (fail-loud, no testthat dep), print `ok - <name>`. Run from project root:
+`Rscript tests/test_<x>.R`.
   - test_design.R : 5-contrast exact weights + factorial==cell-means equivalence (property)
   - test_composition.R : composition_counts shapes/empty-drop/constancy-guard + propeller direction (logit+asin) + balance-guard + concordance (incl. completeness fail-loud) + sccomp-gate logical
-  - test_crossmodality.R : (P4-S1) GeoMx RNA/count extraction + meta alignment + slide rank guard +
-                    duplicateCorrelation primary + unblocked/collapsed sensitivity status +
-                    malformed metadata + decon preflight defer/block/earned reasons; (spatial-decon S2/S3)
-                    background broadcast + SpatialDecon-result normalisation + unresolved-AOI blocked diagnostics +
-                    warning/message capture + two-stage assembly + abundance-DE earned/blocked orchestration +
-                    canonical empty top tables + residualised nearest-neighbour spatial audit; (P4-S2) 16-run bulk matching +
-                    protein aggregation/no-imputation + parent-protein correction/sample-order guard +
-                    missing-parent counts + run-index summary + duplicate/multi-gene provenance; (P4-S3) Q3
-                    background scaling + profile-collinearity + abundance-DE design shape + clearance-axis
-                    earned/not-earned classification + fail-loud decon-earned guard + spatial_decon_report compact
-                    blocked-state handoff; (P4-S4) duplicate RNA/protein/
-                    phosphosite collapse + missingness + canonical-contrast guard + pathway modality-score invariants
-                    + divergence mixed-sign / clearance-highlight checks; (P4-S5) compact crossmodality_report_data
-                    bundle structure + malformed-input schema guards
   - test_microglia.R : reprocess/annotate pure-helper + synthetic-Seurat fixtures (S1/S2) + microglia_report_data extract/guards (S5)
   - test_de_pb.R  : pseudobulk -> 16 cols, median/prevalence, fit_limma_voom/log smokes (S3) + cells= subset,
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/substate/background/binary/direction/rwb +
                     concordance_plot class + wiring checks
-  - test_figures.R : curated figure manifest + compact figure builder contracts for story / microglia /
-                    trajectory / mechanism / cross-modality; QC visual builders, manifest-driven slot coverage
-                    (including empty figure/schematic manifest sets), synthetic finite guards for qmd geom inputs
-  - test_report.R  : (Figure-caption-only S4) repair_embedded_lightbox rewrite/no-op/fail-loud cases for
-                    embedded Quarto lightbox anchors
-  - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity: beta success (glmmTMB_beta, n_units=16) / singular->failed / non-estimable->failed (fail_reason + captured messages) / unknown-genotype fail-loud; (P2-S4a) trajectory_report_data field/measure/contrast presence + finite interaction inference on the jitter>0 fixture (per-unit DAM composition VARIED so comp_cf/cross fdr stay non-degenerate) + a positive finite-bundle assertion + 13 malformed-input expect_error cases (up-front schema + assembled-bundle postconditions: col-drop/measure/weighted-p/per_unit/sensitivity/glmm-enum/provenance-scalar/NaN-endpoint; fixed=TRUE patterns match the TRUNCATED stopifnot deparse prefix)
-  - test_mechanism.R  : (P3-S1) symbol mapping/drop counts + duplicate max-|stat| collapse + decoupleR ULM schema +
-                    cache/TZ preflight + prior fingerprint determinism + synthetic CollecTRI/KSN standardisers +
-                    phosphosite ID/drop counts + KSN coverage/Gsk3b assertions + prior drift assertion helper;
-                    (P3-S2) RNA rank-matrix population/skipped propagation + gene-set filtering/sign splitting +
-                    NF-kB source extraction + TF/pathway FDR/direction conventions + p-floor propagation +
-                    tau_in_nlgf-supportive-only / discordant / supported attenuation rules; (P3-S3) 16-column
-                    phospho match + log2 nonpositive guard + site-id/drop counts + add_batch=FALSE design +
-                    run-index sensitivity design + duplicate biological-site collapse + KSN coverage gate +
-                    explicit Gsk3b summary carry-through; (P3-S4) mechanism_report_data compact bundle shape +
-                    top-row capping + no heavy cell_frame + fail-loud dropped Myc/Gsk3b/trajectory anchors
+  - test_figures.R : figure_manifest (11) + microglia_figure_data / trajectory_figure_data builder contracts +
+                    visual_slot_coverage (manifest-driven slot coverage) + synthetic finite guards for qmd geom inputs
+  - test_report.R  : repair_embedded_lightbox rewrite/no-op/fail-loud cases for embedded Quarto lightbox anchors
+  - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity (beta success / singular->failed / nonestimable->failed / unknown-genotype fail-loud); (P2-S4a) trajectory_report_data field/measure/contrast presence + finite inference + malformed-input expect_error cases
 
-### Quality gate (S5; review-hardened)
-`scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync):
+### Quality gate -- `scripts/check.sh` (fail-loud, `set -euo pipefail`; `CHECK_SKIP_SYNC=1` skips env sync)
   1. `rv sync` + `uv sync`  2. loop `tests/test_*.R` (each `options(warn=2)` -> stray warnings = errors)
   3. FORCE-render report (`tar_invalidate(any_of("report")); tar_make()`, tee'd to a log, `if !`-wrapped) ->
      two render-time catches in the SOURCES: every included `_*.qmd` setup `options(warn=2)`
@@ -441,8 +207,8 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _qc.qmd _story.qmd _microglia.qmd _trajectory.qmd _mechanism.qmd _crossmodality.qmd theme.scss assets/code-tools-fix.html assets/fonts/*.woff2 | .Rprofile rv/scripts/*.R
-          rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md CLAUDE.md
+          _quarto.yml index.qmd _microglia.qmd _trajectory.qmd theme.scss assets/code-tools-fix.html assets/fonts/*.woff2 |
+          .Rprofile rv/scripts/*.R rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md CLAUDE.md
           .claude/settings.json .claude/commands/*.md .serena/*
 regen   : rv/library _targets/ report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);
           sccomp_draws_files/ (sccomp per-chain CSV draws at build CWD; gitignored)

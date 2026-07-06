@@ -13,12 +13,6 @@ execute:
   echo: true                 # show plotting code as folded/togglable blocks; figures, captions, headings remain the default view
 ---
 
-{{< include _qc.qmd >}}
-
 {{< include _microglia.qmd >}}
 
 {{< include _trajectory.qmd >}}
-
-{{< include _mechanism.qmd >}}
-
-{{< include _crossmodality.qmd >}}
