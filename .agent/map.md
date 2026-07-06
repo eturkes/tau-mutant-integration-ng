@@ -57,7 +57,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
       modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
       identity + zero crosshairs + OLS trend + top|y-x| repel labels + coord_equal 1:1); offdiag_pathway_plot
-      WIRED -> Figure 7 pathway/process bubble matrix (modality x GO-BP term; size=count, fill=mean x-y).
+      WIRED -> Figure 7 pathway/process bubble matrix (modality x GO-BP term; size=count, fill=mean x-y,
+      asterisk=FDR-supported enrichment).
       Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
@@ -204,7 +205,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
                 identity + OLS + top|x-y| labels) + GO-BP off-diagonal pathway/process bubble matrix
                 `fig-modality-offdiag-pathways` (offdiag_pathway_plot; top 250 unique off-diagonal genes/proteins
-                per method, rows carry leading genes). The 6th and 7th figures.)
+                per method, rows carry leading genes, asterisk marks FDR-supported enrichment). The 6th and 7th
+                figures.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
        Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (7 total).

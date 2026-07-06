@@ -873,7 +873,8 @@ user before writing a new plan.
   interaction `x-y`, and `pathways$summary`: mouse MSigDB GO Biological Process overlap over the top 250
   unique off-diagonal genes/proteins per method by |x-y| (descriptive, not a restored mechanism chapter).
   `_modality.qmd` renders a modality x GO-BP bubble matrix (size = overlap count, fill = mean x-y, row
-  subtitles = leading hit genes). Target remains compact (~1.7MB); report now has 7 captions/alts.
+  subtitles = leading hit genes; FDR support now marked by an offset asterisk, not a hard-to-see ring). Target
+  remains compact (~1.7MB); report now has 7 captions/alts.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

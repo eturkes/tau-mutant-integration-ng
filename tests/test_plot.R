@@ -168,9 +168,11 @@ pathway_summary <- data.frame(
 opp <- offdiag_pathway_plot(pathway_summary, title = "Pathways")
 stopifnot(
   inherits(opp, "ggplot"), inherits(opp, "gg"),
-  length(opp$layers) == 1L,
+  length(opp$layers) == 2L,
   identical(opp$labels$title, "Pathways"),
   grepl("Top off-diagonal", opp$labels$subtitle, fixed = TRUE),
+  grepl("asterisks", opp$labels$subtitle, fixed = TRUE),
+  any(vapply(opp$scales$scales, function(s) "shape" %in% s$aesthetics, logical(1))),
   inherits(ggplot2::ggplot_build(opp)$plot, "ggplot")
 )
 expect_error(offdiag_pathway_plot(pathway_summary[0, , drop = FALSE]), "no finite pathway")

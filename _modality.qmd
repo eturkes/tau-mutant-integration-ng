@@ -36,7 +36,7 @@ wrap_plots(panels, ncol = 2)
 #| label: fig-modality-offdiag-pathways
 #| fig-width: 10.5
 #| fig-height: 8.2
-#| fig-cap: "Mouse MSigDB GO Biological Process terms represented among the genes or proteins farthest from the Figure 6 diagonal. Dot size is the number of selected off-diagonal genes in the term; fill is the mean tau-by-amyloid interaction (x minus y), so cranberry marks stronger amyloid response on the mutant-tau background and blue marks stronger response on the tau-KO background."
-#| fig-alt: "Bubble matrix with modalities as columns and GO Biological Process rows. Rows include leading off-diagonal genes or proteins; larger bubbles mark more genes in the term and colour marks whether the off-diagonal effect is stronger in mutant tau or tau-KO."
+#| fig-cap: "Mouse MSigDB GO Biological Process terms represented among the genes or proteins farthest from the Figure 6 diagonal. Dot size is the number of selected off-diagonal genes in the term; fill is the mean tau-by-amyloid interaction (x minus y), so cranberry marks stronger amyloid response on the mutant-tau background and blue marks stronger response on the tau-KO background. Asterisks mark descriptive FDR-supported enrichment."
+#| fig-alt: "Bubble matrix with modalities as columns and GO Biological Process rows. Rows include leading off-diagonal genes or proteins; larger bubbles mark more genes in the term, colour marks whether the off-diagonal effect is stronger in mutant tau or tau-KO, and an asterisk marks FDR-supported enrichment."
 offdiag_pathway_plot(msf$pathways$summary, title = "Pathways carried by off-diagonal genes and proteins")
 ```

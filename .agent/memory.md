@@ -457,7 +457,8 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   contrasts' topTables by feature key (one fit -> bijective keys) + drops non-finite pairs -> compact
   {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `pathways$summary`: mouse MSigDB
   GO Biological Process overlap over the top 250 unique off-diagonal genes/proteins per method by |x-y|; rows are
-  descriptive context for Figure 6, NOT restored mechanism/cross-modality inference. The qmd tar_loads ONLY that
+  descriptive context for Figure 6, NOT restored mechanism/cross-modality inference. Figure 7 encodes size =
+  overlap count, fill = mean x-y, and offset asterisk = FDR-supported enrichment. The qmd tar_loads ONLY that
   ~1.7MB target (cheap-render invariant).
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
@@ -658,7 +659,8 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); pathway/process (1):
   `fig-modality-offdiag-pathways` (mouse MSigDB GO Biological Process overlap over the top 250 unique
-  off-diagonal genes/proteins per method by |x-y|, with dot size = overlap count and fill = mean x-y).
+  off-diagonal genes/proteins per method by |x-y|, with dot size = overlap count, fill = mean x-y, and asterisk =
+  FDR-supported enrichment).
   Every captioned chunk
   = hyphenated `fig-*` id + `fig-cap` + `fig-alt`; palette/fonts per the theme.scss bullet above
   (saturated-but-controlled journal grammar). HTML-QA gotcha (durable): use a PARSER-based HTML check that
