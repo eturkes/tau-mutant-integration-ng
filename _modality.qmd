@@ -1,0 +1,31 @@
+# The amyloid response across tau backgrounds, method by method {#sec-modality}
+
+```{r}
+#| label: modality-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(patchwork)
+})
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
+targets::tar_source()                                # constants, plot theme + the modality scatter helper
+targets::tar_load(modality_scatter_figures)          # compact per-modality logFC pairs (no heavy DE object)
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau())
+
+msf <- modality_scatter_figures
+```
+
+## Per-method amyloid effect: tau-KO versus mutant-tau background
+
+```{r}
+#| label: fig-modality-amyloid-effect
+#| fig-width: 10.5
+#| fig-height: 10.4
+#| fig-cap: "Per-method amyloid (NLGF) log2 fold change on the tau-KO background (NLGF_MAPTKI vs MAPTKI, y) against the mutant-tau background (NLGF_P301S vs P301S, x). The dashed line is y=x, the null of a tau-independent amyloid response; distance from it is the tau-by-amyloid interaction. The solid line is the OLS trend."
+#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and the most divergent features labelled."
+panels <- lapply(msf$order, function(m) {
+  modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title)
+})
+wrap_plots(panels, ncol = 2)
+```

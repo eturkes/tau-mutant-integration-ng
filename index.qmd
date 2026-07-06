@@ -16,3 +16,5 @@ execute:
 {{< include _microglia.qmd >}}
 
 {{< include _trajectory.qmd >}}
+
+{{< include _modality.qmd >}}

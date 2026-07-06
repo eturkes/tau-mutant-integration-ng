@@ -44,10 +44,21 @@ list(
 
   # --- raw input files (registered for DAG change-tracking; paths = data_paths, R/constants.R) ---
   tar_target(snrnaseq_file,   data_paths$snrnaseq,   format = "file"),
+  tar_target(geomx_file,      data_paths$geomx,      format = "file"),
+  tar_target(proteomics_file, data_paths$proteomics, format = "file"),
+  tar_target(phospho_file,    data_paths$phospho,    format = "file"),
+  tar_target(sample_key_file, data_paths$sample_key, format = "file"),
 
   # --- analysis-ready modalities (P1-P2 read these via tar_load; qs2 serialization) ---
   tar_target(microglia_seurat_raw, load_snrnaseq(snrnaseq_file),          format = "qs"),
   tar_target(symbol_map,           build_symbol_map(microglia_seurat_raw), format = "qs"),
+
+  # GeoMx spatial + 24M bulk proteome / phosphosite loads feed the cross-tau amyloid-response
+  # scatter (below). Small tables (parsed Spectronaut exports + a Seurat object), not the 8G snRNAseq.
+  tar_target(geomx,      load_geomx(geomx_file),               format = "qs"),
+  tar_target(proteomics, read_spectronaut_tsv(proteomics_file), format = "qs"),
+  tar_target(phospho,    read_spectronaut_tsv(phospho_file),    format = "qs"),
+  tar_target(sample_key, proteomics_sample_meta(sample_key_file), format = "qs"),
 
   # --- P1 snRNAseq microglia core ---
   # S1: reprocess (SCT-v2 + glmGamPoi) -> Harmony(batch) -> cluster (Louvain, multi-res) -> UMAP.
@@ -111,6 +122,23 @@ list(
              trajectory_figure_data(trajectory_report, composition_results),
              format = "qs"),
 
+  # --- cross-tau amyloid-response (four-method logFC scatter) ---
+  # Primary per-contrast DE for the three non-snRNAseq modalities (R/modality_de.R): GeoMx
+  # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation; 24M bulk proteome and
+  # phosphosite limma-trend on log2 median-normalised, prevalence-filtered intensities (no batch).
+  # Each returns per-contrast topTables with logFC keyed by the 5 canonical contrasts.
+  tar_target(geomx_de,        run_geomx_de(geomx),                       format = "qs"),
+  tar_target(proteome_de_24m, run_proteome_de_24m(proteomics, sample_key), format = "qs"),
+  tar_target(phospho_de_24m,  run_phospho_de_24m(phospho, sample_key),   format = "qs"),
+
+  # Compact per-modality amyloid-response logFC pairs: y = nlgf_in_maptki (amyloid on the tau-KO
+  # background), x = nlgf_in_p301s (amyloid on the mutant-tau background). Distance from y=x is
+  # the tau-by-amyloid interaction. Reads only the compact DE topTables (no heavy object).
+  tar_target(modality_scatter_figures,
+             modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de,
+                                         proteome_de_24m, phospho_de_24m),
+             format = "qs"),
+
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # caption-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
@@ -118,7 +146,7 @@ list(
   # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
   tar_target(
     report_sources,
-    c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd"),
+    c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd"),
     format = "file"
   ),
   tar_target(
@@ -134,7 +162,8 @@ list(
       report_extra_files = report_extra_files,
       microglia_report = microglia_report,
       microglia_figures = microglia_figures,
-      trajectory_figures = trajectory_figures
+      trajectory_figures = trajectory_figures,
+      modality_scatter_figures = modality_scatter_figures
     ),
     format = "file"
   )

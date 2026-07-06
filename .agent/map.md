@@ -1,14 +1,15 @@
 # Map - codebase wiring (grows with the build)
 
-Cut to a FIVE-figure report (2026-07-06 teardown): snRNAseq microglia (P1) + activation
-trajectory (P2) only. Shows STRUCTURE (what calls what, what lives where); `memory.md` holds
-the WHY (facts/gotchas/decisions), `roadmap.md` the trajectory. The GeoMx/proteome/phospho
-modalities + mechanism/cross-modality/qc/story chapters, their targets, `R/mechanism.R`,
-`R/crossmodality.R`, and their tests were DELETED (roadmap Ledger 2026-07-06). Residual dead code
-(io.R geomx/proteome/phospho loaders, figures.R story/mechanism/crossmodality builders +
-`.fig_*` helpers + qc_figure_data, plot.R concordance_plot, constants data_paths/rbc) is UNWIRED
--> not in this map (roadmap Ledger tracks it). Keep current: load order, data -> module -> output
-flow, cache producer -> consumer pairs.
+SIX-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + a four-method
+amyloid-response logFC scatter (2026-07-06 add: re-wires the GeoMx / proteome / phospho PRIMARY
+DE via the lean `R/modality_de.R`). Shows STRUCTURE (what calls what, what lives where);
+`memory.md` holds the WHY (facts/gotchas/decisions), `roadmap.md` the trajectory. The
+mechanism / cross-modality / qc / story chapters + their targets + `R/mechanism.R` +
+`R/crossmodality.R` + their tests stay DELETED (roadmap Ledger 2026-07-06). Residual dead code
+(figures.R story/mechanism/crossmodality builders + `.fig_*` helpers + qc_figure_data, plot.R
+concordance_plot, constants rbc) stays UNWIRED -> not in this map. The io.R geomx/proteome/phospho
+loaders + data_paths geomx/proteomics/phospho/sample_key are RE-WIRED (modality DE). Keep current:
+load order, data -> module -> output flow, cache producer -> consumer pairs.
 
 ## P0 spine
 
@@ -37,11 +38,11 @@ flow, cache producer -> consumer pairs.
   - tar_source("R")                                     # loads every R/*.R pure fn
   R/ pure fns:
    constants.R (genotype_levels, contrast_definitions, microglia_identity_markers,
-      canonical_microglia_markers, microglia_substate_levels, contam_signatures; data_paths -- only
-      $snrnaseq wired now, geomx/proteomics/phospho/sample_key entries dead; rbc_marker_symbols dead) |
-      utils.R (`%||%`, write_tsv_safe) | io.R (load_snrnaseq + build_symbol_map wired; load_geomx /
+      canonical_microglia_markers, microglia_substate_levels, contam_signatures; data_paths -- all 5
+      entries wired (snrnaseq + geomx/proteomics/phospho/sample_key [modality DE]); rbc_marker_symbols dead) |
+      utils.R (`%||%`, write_tsv_safe) | io.R (load_snrnaseq + build_symbol_map + load_geomx /
       read_spectronaut_tsv / proteomics_sample_meta / match_intensity_columns / normalise_ptm_stub
-      retained but UNWIRED) | spine.R (spine_versions)
+      ALL wired [snRNAseq + modality DE]) | spine.R (spine_versions)
    + design.R: factorial_design (treatment ~tau+nlgf+tau_nlgf[+batch]) + make_contrast_matrix
       (cell-means ~0+genotype) -> the 5 canonical contrasts; two equivalent parameterisations |
       de_pb.R: pseudobulk_counts/build_pseudobulk (replicate=genotype_batch; `cells=` -> per-substate
@@ -52,8 +53,9 @@ flow, cache producer -> consumer pairs.
       saturated-but-controlled ggplot discrete defaults) + manual scale_colour/fill_genotype (+ scale_color_
       alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate / tau-background / binary /
       direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
-      midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained but UNWIRED
-      (P4-only). Report visual identity = theme.scss.
+      midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
+      modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
+      identity + zero crosshairs + OLS trend + top|y-x| repel labels + coord_equal 1:1). Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
       marker_mean_by_cluster (post-Harmony substate-separation check; map symbols->ensembl first) +
@@ -120,21 +122,39 @@ flow, cache producer -> consumer pairs.
       interaction rows). Two guard layers: up-front stopifnot validates the 3 INPUTS' schema; render-cleanliness
       POSTCONDITIONS validate the ASSEMBLED bundle (col-EXISTENCE before is.finite; measure uniqueness; finite
       coef/ci/p/fdr/perm_p; weighted mean_pt present+finite on all 5 contrasts; glmm/provenance scalars). Pure: no RNG/IO.
+   + (modality DE) modality_de.R: run_geomx_de / run_proteome_de_24m / run_phospho_de_24m -> the
+      geomx_de / proteome_de_24m / phospho_de_24m targets = PRIMARY per-contrast topTables (logFC keyed by the 5
+      canonical contrasts) for the 3 non-snRNAseq modalities, restored LEAN from the deleted P4 crossmodality/
+      mechanism (auxiliary sensitivity / run-index / decon-preflight arms NOT restored). GeoMx = voom+TMM + slide
+      fixed effect + bio-unit duplicateCorrelation (geomx_count_matrix / geomx_meta / geomx_slide_design /
+      .fit_geomx_voom / .geomx_top_tables -> $primary$top); proteome = protein-group-summed log2 median-normalised
+      limma-trend (protein_group_features / aggregate_proteome_raw / prepare_proteome_24m_matrix /
+      .limma_log_de_from_matrix -> $top); phospho = log2 median-normalised phosphosite limma-trend
+      (phospho_feature_frame / positive_log2_matrix / prepare_phospho_24m_matrix -> $top). match_24m_bulk_columns
+      (16/16 balanced 4/genotype, shared by both bulk arms) + reuses fit_limma_log / median_normalise /
+      prevalence_filter (de_pb.R) + factorial_design(add_batch=FALSE) + io.R loaders.
    + figures.R (LIVE surface after teardown): figure_manifest (11 hyphenated fig-* ids: microglia 7 + trajectory 4;
-      only 5 are rendered by the qmds) + compact inline builders microglia_figure_data / trajectory_figure_data
-      (qmd-ready slots, finite geom guards, pre-binned/top-row reductions for heavy shapes) + visual_reduction_slot_map
+      report renders 6 figures -- 5 manifest + fig-modality-amyloid-effect, NOT in the vestigial manifest) + compact
+      inline builders microglia_figure_data / trajectory_figure_data / modality_logfc_scatter_data (qmd-ready slots,
+      finite geom guards, pre-binned/top-row reductions; modality_logfc_scatter_data = per-modality
+      {feature, label, y=nlgf_in_maptki, x=nlgf_in_p301s} logFC-pair frames, key-aligned) + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
       repair_embedded_lightbox (rewrites Quarto embedded-lightbox anchors from absent local
       `index_files/figure-html/*.png` hrefs to the already embedded data-URI img src; fails loud if a local
       lightbox href has no embedded image shape).
-  targets (19):
+  targets (31):
   - `spine` <- spine_versions()  [R/spine.R]                       # R + core-pkg version provenance df
-  - `snrnaseq_file` <- data_paths$snrnaseq  (format="file")        # the ONLY raw input; mtime-tracked (trust_timestamps)
+  - raw inputs (format="file"; mtime-tracked via trust_timestamps):
+       snrnaseq_file <- data_paths$snrnaseq  |  geomx_file / proteomics_file / phospho_file / sample_key_file (modality DE)
   - modalities (format="qs"):
        microglia_seurat_raw <- load_snrnaseq(snrnaseq_file)            # RNA-only microglia 33683 x 26104
        symbol_map           <- build_symbol_map(microglia_seurat_raw)  # {ensembl,symbol} 33683 x 2
+       geomx      <- load_geomx(geomx_file)                            # GeoMx WTA Seurat 19963 x 91 AOIs
+       proteomics <- read_spectronaut_tsv(proteomics_file)            # 24M proteome PTM export tibble
+       phospho    <- read_spectronaut_tsv(phospho_file)               # 24M phospho PTM export tibble
+       sample_key <- proteomics_sample_meta(sample_key_file)          # 16-run 24M key {genotype, col_stub}
   - P1 microglia core (format="qs"; consumes the snRNAseq modality):
        microglia_processed  <- reprocess_microglia(microglia_seurat_raw)  # SCT+pca+harmony+12 clusters@0.4+umap (687MB)
        microglia_annotated  <- annotate_microglia(microglia_processed, symbol_map)  # UCell substates + prune {6,7,8,11}; 23160 cells, 612MB
@@ -149,14 +169,19 @@ flow, cache producer -> consumer pairs.
        trajectory_glmm_sensitivity <- glmmtmb_pt_sensitivity(microglia_trajectory$cell_frame)  # per-cell beta GLMM tau:amyloid (degrade -> rank-normal LMM -> method="failed"); supportive, INDEPENDENT of trajectory_progression; ~0.3KB
        trajectory_report    <- trajectory_report_data(microglia_trajectory, trajectory_progression, trajectory_glmm_sensitivity)  # bundles the 3 compact targets -> one ~0.34MB render object; two-layer guards (input schema + assembled-bundle postconditions); keeps gate force-render cheap
        trajectory_figures   <- trajectory_figure_data(trajectory_report, composition_results)  # pseudotime density, DAM-fraction join, Kitagawa forest, decomposition/concordance/audit slots; ~18KB live
-  - report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd")  # file target; explicit qmd invalidation
+  - four-method amyloid-response scatter (format="qs"; consumes the 3 modalities + P1 pb_de_microglia/symbol_map):
+       geomx_de        <- run_geomx_de(geomx)                          # GeoMx primary voom DE x 5 contrasts ($primary$top; 19959 genes kept)
+       proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # 24M proteome limma-trend x 5 contrasts ($top; 3379 groups)
+       phospho_de_24m  <- run_phospho_de_24m(phospho, sample_key)      # 24M phosphosite limma-trend x 5 contrasts ($top; 17707 rows)
+       modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)  # 4 compact per-modality logFC-pair frames (y=nlgf_in_maptki, x=nlgf_in_p301s); ~1MB
+  - report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", "assets/code-tools-fix.html", assets/fonts/*.woff2)  # file target; explicit theme/font/after-body invalidation
-    `report` <- render_report(report_sources, report_extra_files, microglia_report, microglia_figures, trajectory_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
+    `report` <- render_report(report_sources, report_extra_files, microglia_report, microglia_figures, trajectory_figures, modality_scatter_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
        reads `_quarto.yml` (type default; render index.qmd; output report/; lang en-GB; freeze false)
             -> `index.qmd` (format html, embed-resources, lightbox=auto, theme=theme.scss; no prose body;
                 no author metadata; execute.echo=true + code-fold + code-tools -> chunk code shown as
                 collapsed <details> folds; include-after-body=assets/code-tools-fix.html re-binds
-                Show/Hide All Code (stock selector misses the code-copy scaffold); immediately includes the 2 chapters)
+                Show/Hide All Code (stock selector misses the code-copy scaffold); immediately includes the 3 chapters)
                                                           --{{< include >}}--> `_microglia.qmd`
                (microglia chapter {#sec-microglia}: setup `options(warn=2)` -> chunk warnings fail the render;
                 tar_load microglia_report + microglia_figures [compact] -> "Substate landscape" (substate-marker
@@ -167,9 +192,14 @@ flow, cache producer -> consumer pairs.
                (trajectory chapter {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_figures ->
                 genotype x substate pseudotime density `fig-trajectory-pt-density` (geom_area,
                 facet_grid(substate~genotype)). The 5th figure. @sec cross-refs resolve across the full doc.)
+                                                          --{{< include >}}--> `_modality.qmd`
+               (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
+                four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
+                via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
+                identity + OLS + top|y-x| labels). The 6th figure.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
-       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (5 total).
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (6 total).
 
 ### Report prose inventory (vestigial after teardown)
 `scripts/prose_inventory.py` (stdlib Python; non-DAG utility) + `.agent/prose_replacement_manifest.tsv`:
@@ -189,9 +219,14 @@ run stopifnot checks (fail-loud, no testthat dep), print `ok - <name>`. Run from
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/substate/background/binary/direction/rwb +
-                    concordance_plot class + wiring checks
-  - test_figures.R : figure_manifest (11) + microglia_figure_data / trajectory_figure_data builder contracts +
+                    concordance_plot + modality_interaction_scatter (7-layer y=x panel, coord_equal 1:1, finite filter) class/wiring
+  - test_figures.R : figure_manifest (11) + microglia_figure_data / trajectory_figure_data /
+                    modality_logfc_scatter_data (y=nlgf_in_maptki / x=nlgf_in_p301s axis mapping + key-align +
+                    per-modality labels + finite-drop / missing-contrast fail-loud) builder contracts +
                     visual_slot_coverage (manifest-driven slot coverage) + synthetic finite guards for qmd geom inputs
+  - test_modality_de.R : restored DE pure helpers -- positive_log2_matrix (nonpositive->NA before log2),
+                    protein_group_features + aggregate_proteome_raw (group sum, present->NA), geomx_slide_design
+                    (full-rank cell-means + 5 canonical contrasts, <2-slide fail), match_24m_bulk_columns (16/16 balanced fail-loud)
   - test_report.R  : repair_embedded_lightbox rewrite/no-op/fail-loud cases for embedded Quarto lightbox anchors
   - test_trajectory.R : (P2-S1) score-axis/squeeze/concordance + run_slingshot_lineage (single H->D + branched DAM-terminal) + provenance; (P2-S2a) derive_batch + per-replicate summary + contrast fit + Kitagawa exact-pure reconstruction; (P2-S2b) freedman_lane_interaction (null/signal/determinism/RNG-purity/weighted) + run_trajectory_progression structure on the jitter>0 non-additive fixture [sources R/de_pb.R for assert_complete_crossing]; (P2-S3) .fit_health_ok degrade-gate branches + glmmtmb_pt_sensitivity (beta success / singular->failed / nonestimable->failed / unknown-genotype fail-loud); (P2-S4a) trajectory_report_data field/measure/contrast presence + finite inference + malformed-input expect_error cases
 
@@ -207,7 +242,7 @@ negative tests) -> memory.md Quality gate.
 
 ### Config: tracked vs regenerated
 tracked : rproject.toml rv.lock | pyproject.toml uv.lock .python-version | _targets.R R/*.R tests/*.R |
-          _quarto.yml index.qmd _microglia.qmd _trajectory.qmd theme.scss assets/code-tools-fix.html assets/fonts/*.woff2 |
+          _quarto.yml index.qmd _microglia.qmd _trajectory.qmd _modality.qmd theme.scss assets/code-tools-fix.html assets/fonts/*.woff2 |
           .Rprofile rv/scripts/*.R rv/.gitignore | scripts/install-*.sh scripts/prose_inventory.py | AGENTS.md CLAUDE.md
           .claude/settings.json .claude/commands/*.md .serena/*
 regen   : rv/library _targets/ report/ _freeze/ .quarto/ .venv tools/  (gitignored + deny-Read);

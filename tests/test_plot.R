@@ -116,6 +116,33 @@ df_bad <- rbind(df, data.frame(gene = c("gNA", "gInf"), x = c(NA, Inf), y = c(1,
 p_bad <- concordance_plot(df_bad, "x", "y")
 stopifnot(nrow(p_bad$data) == 20L, grepl("n = 20", p_bad$labels$subtitle, fixed = TRUE))
 
+# --- modality_interaction_scatter: 7-layer amyloid-response panel; y=x line; finite filter;
+#     symmetric coord_equal; axis labels pin y=tau-KO effect and x=mutant-tau effect ----------
+mdf <- data.frame(
+  label = paste0("f", 1:20),
+  x     = seq(-2, 2, length.out = 20),
+  y     = seq(-2, 2, length.out = 20) + rep(c(-0.05, 0.05), 10),   # near-diagonal, correlated
+  stringsAsFactors = FALSE
+)
+mp <- modality_interaction_scatter(mdf, title = "M")
+stopifnot(
+  inherits(mp, "ggplot"), inherits(mp, "gg"),
+  length(mp$layers) == 7L,                             # hline, vline, abline(y=x), point, smooth, point(top), text_repel
+  isTRUE(mp$coordinates$ratio == 1),                   # coord_equal (1:1 aspect) -> diagonal reads at 45 deg
+  identical(mp$labels$title, "M"),
+  grepl("NLGF_P301S", mp$labels$x, fixed = TRUE),      # x-axis = amyloid effect on the mutant-tau background
+  grepl("NLGF_MAPTKI", mp$labels$y, fixed = TRUE),     # y-axis = amyloid effect on the tau-KO background
+  grepl("Spearman", mp$labels$subtitle, fixed = TRUE),
+  grepl("Pearson",  mp$labels$subtitle, fixed = TRUE),
+  grepl("n = 20",   mp$labels$subtitle, fixed = TRUE)
+)
+# non-finite rows dropped before plotting (NA + Inf -> 20 finite of 22)
+mdf_bad <- rbind(mdf, data.frame(label = c("fNA", "fInf"), x = c(NA, Inf), y = c(1, 1),
+                                 stringsAsFactors = FALSE))
+mp_bad <- modality_interaction_scatter(mdf_bad)
+stopifnot(nrow(mp_bad$data) == 20L, grepl("n = 20", mp_bad$labels$subtitle, fixed = TRUE))
+cat("ok - modality_interaction_scatter: 7-layer y=x scatter, finite filter, correlations\n")
+
 # --- plate_support_matrix: cross-modality bubble matrix; builds warning-free with & without a
 #     not-observed layer. ggplot_build forces scale training so a shape scale left dangling when
 #     `missing` is empty would raise "no shared levels" -> under warn=2 that is an error here. ----

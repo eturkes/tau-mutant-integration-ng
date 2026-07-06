@@ -993,6 +993,96 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
   out
 }
 
+# Per-modality amyloid-response logFC pairs for fig-modality-amyloid-effect (one scatter per
+# method). y = logFC of `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI background),
+# x = logFC of `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Both
+# per-contrast topTables come from ONE fit per modality (identical feature rows), aligned by
+# the modality's feature key. Compact per-modality frames {feature, label, x, y} -> the qmd
+# reads this small target, never a heavy DE object. Feature keys / display labels differ by
+# assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, proteome = protein
+# group (gene_first label), phospho = phosphosite row (site_id label).
+modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
+                                         proteome_de_24m, phospho_de_24m,
+                                         y_contrast = "nlgf_in_maptki",
+                                         x_contrast = "nlgf_in_p301s") {
+  stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
+            is.list(proteome_de_24m), is.list(phospho_de_24m))
+
+  pair <- function(top_list, key_col, label_fun, modality) {
+    stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
+    ty <- top_list[[y_contrast]]; tx <- top_list[[x_contrast]]
+    .fig_require_cols(ty, c(key_col, "logFC"), paste0(modality, " top$", y_contrast))
+    .fig_require_cols(tx, c(key_col, "logFC"), paste0(modality, " top$", x_contrast))
+    ky <- as.character(ty[[key_col]]); kx <- as.character(tx[[key_col]])
+    stopifnot(anyDuplicated(ky) == 0L, setequal(ky, kx))       # one fit both contrasts -> keys bijective
+    idx <- match(ky, kx)
+    df <- data.frame(
+      feature = ky,
+      label = as.character(label_fun(ty)),
+      y = as.numeric(ty$logFC),                                # nlgf_in_maptki (amyloid | MAPTKI)
+      x = as.numeric(tx$logFC)[idx],                           # nlgf_in_p301s  (amyloid | P301S)
+      stringsAsFactors = FALSE
+    )
+    df <- df[is.finite(df$x) & is.finite(df$y), , drop = FALSE]
+    blank <- is.na(df$label) | df$label == ""
+    df$label[blank] <- df$feature[blank]
+    .fig_assert_nonempty(df, paste0(modality, " logFC pairs"))
+    .fig_assert_finite(df, c("x", "y"), paste0(modality, " logFC pairs"))
+    rownames(df) <- NULL
+    df
+  }
+
+  gene_first_label <- function(tt) {
+    lab <- if ("gene_first" %in% names(tt)) as.character(tt$gene_first) else rep(NA_character_, nrow(tt))
+    bad <- is.na(lab) | lab == ""
+    lab[bad] <- as.character(tt$feature)[bad]
+    lab
+  }
+  site_id_label <- function(tt) {
+    lab <- if ("site_id" %in% names(tt)) as.character(tt$site_id) else rep(NA_character_, nrow(tt))
+    bad <- is.na(lab) | lab == ""
+    lab[bad] <- as.character(tt$feature)[bad]
+    lab
+  }
+
+  panels <- list(
+    snRNAseq = list(
+      title = "snRNAseq microglia (pseudobulk)",
+      data  = pair(pb_de_microglia$top, "gene",
+                   function(tt) .fig_symbol_labels(tt, symbol_map), "snRNAseq")),
+    GeoMx = list(
+      title = "GeoMx spatial (WTA)",
+      data  = pair(geomx_de$primary$top, "symbol",
+                   function(tt) as.character(tt$symbol), "GeoMx")),
+    Proteome = list(
+      title = "Bulk proteome (24M)",
+      data  = pair(proteome_de_24m$top, "feature", gene_first_label, "proteome")),
+    Phospho = list(
+      title = "Bulk phosphosite (24M)",
+      data  = pair(phospho_de_24m$top, "feature", site_id_label, "phospho"))
+  )
+  order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
+
+  list(
+    panels = panels,
+    order = order,
+    provenance = list(
+      y_contrast = y_contrast,
+      x_contrast = x_contrast,
+      y_meaning = "amyloid effect on the tau-KO (MAPTKI) background",
+      x_meaning = "amyloid effect on the mutant-tau (P301S) background",
+      interaction = "signed distance from y=x (y - x) is the -interaction contrast per feature",
+      n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
+      feature_key = c(snRNAseq = "Ensembl gene (symbol label)", GeoMx = "gene symbol",
+                      Proteome = "protein group (gene_first label)",
+                      Phospho = "phosphosite row (site_id label)"),
+      source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
+                         "proteome_de_24m", "phospho_de_24m"),
+      contract = "compact per-modality amyloid-response logFC pairs; no heavy DE object"
+    )
+  )
+}
+
 .fig_sensitivity_counts <- function(primary_top, sensitivity, contrasts, alpha = 0.10) {
   stopifnot(is.list(primary_top), is.list(sensitivity), all(contrasts %in% names(primary_top)))
   fits <- names(sensitivity)

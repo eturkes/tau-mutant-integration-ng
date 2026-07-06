@@ -166,3 +166,53 @@ bad <- mf
 bad$whole_de_volcano$bins$x_mid[1] <- Inf
 expect_error(.fig_assert_finite(bad$whole_de_volcano$bins, c("x_mid"), "bad bins"), "finite")
 cat("ok - figure finite guards fail loud on malformed geom inputs\n")
+
+# --- modality_logfc_scatter_data: y=nlgf_in_maptki, x=nlgf_in_p301s, key-aligned, labelled ---
+ens5 <- symbol_map$ensembl[1:5]
+# snRNAseq: nlgf_in_p301s rows deliberately REVERSED -> exercises the match()-by-key alignment.
+pb <- list(top = list(
+  nlgf_in_maptki = data.frame(gene = ens5,       logFC = c(1, 2, 3, 4, 5),      stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(gene = rev(ens5),  logFC = c(50, 40, 30, 20, 10), stringsAsFactors = FALSE)))
+gx <- list(primary = list(top = list(
+  nlgf_in_maptki = data.frame(symbol = paste0("G", 1:4), logFC = c(0.1, 0.2, 0.3, 0.4),     stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(symbol = paste0("G", 1:4), logFC = c(-0.1, -0.2, -0.3, -0.4), stringsAsFactors = FALSE))))
+pr <- list(top = list(
+  nlgf_in_maptki = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
+                              logFC = c(1, 2, 3), stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
+                              logFC = c(4, 5, 6), stringsAsFactors = FALSE)))
+ph <- list(top = list(
+  nlgf_in_maptki = data.frame(feature = paste0("row", 1:3, "|k"), site_id = c("Mapt_S404", NA, ""),
+                              logFC = c(0.5, -0.5, 1.0), stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(feature = paste0("row", 1:3, "|k"), site_id = c("Mapt_S404", NA, ""),
+                              logFC = c(1.5, -1.5, 2.0), stringsAsFactors = FALSE)))
+ms <- modality_logfc_scatter_data(pb, symbol_map, gx, pr, ph)
+sn  <- ms$panels$snRNAseq$data
+sn_i1 <- match(ens5[1], sn$feature); sn_i5 <- match(ens5[5], sn$feature)
+pr_d <- ms$panels$Proteome$data; ph_d <- ms$panels$Phospho$data
+stopifnot(
+  identical(ms$order, c("snRNAseq", "GeoMx", "Proteome", "Phospho")),
+  all(ms$order %in% names(ms$panels)),
+  # AXIS INVARIANT: y is the tau-KO amyloid effect (nlgf_in_maptki), x the mutant-tau one (nlgf_in_p301s)
+  sn$y[sn_i1] == 1, sn$x[sn_i1] == 10, sn$y[sn_i5] == 5, sn$x[sn_i5] == 50,
+  setequal(sn$label, symbol_map$symbol[1:5]),                    # Ensembl gene keys -> symbol labels
+  pr_d$label[match("PG1", pr_d$feature)] == "Apoe",             # gene_first label
+  pr_d$label[match("PG3", pr_d$feature)] == "PG3",              # blank gene_first -> feature id
+  ph_d$label[match("row1|k", ph_d$feature)] == "Mapt_S404",     # site_id label
+  ph_d$label[match("row2|k", ph_d$feature)] == "row2|k",        # NA site_id -> feature id
+  ms$provenance$y_contrast == "nlgf_in_maptki",
+  ms$provenance$x_contrast == "nlgf_in_p301s",
+  ms$provenance$n_features[["snRNAseq"]] == 5L,
+  ms$provenance$n_features[["Phospho"]] == 3L)
+cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and labels each modality\n")
+
+# non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
+pb_na <- list(top = list(
+  nlgf_in_maptki = data.frame(gene = ens5[1:3], logFC = c(1, NA, 3), stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(gene = ens5[1:3], logFC = c(4, 5, 6),  stringsAsFactors = FALSE)))
+ms_na <- modality_logfc_scatter_data(pb_na, symbol_map, gx, pr, ph)
+stopifnot(nrow(ms_na$panels$snRNAseq$data) == 2L,
+          ms_na$provenance$n_features[["snRNAseq"]] == 2L)
+pb_missing <- list(top = list(nlgf_in_maptki = pb$top$nlgf_in_maptki))
+expect_error(modality_logfc_scatter_data(pb_missing, symbol_map, gx, pr, ph))
+cat("ok - modality_logfc_scatter_data drops non-finite pairs and fails loud on a missing contrast\n")

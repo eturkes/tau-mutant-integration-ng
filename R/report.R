@@ -62,9 +62,11 @@ render_report <- function(report_sources,
                           report_extra_files,
                           microglia_report,
                           microglia_figures,
-                          trajectory_figures) {
+                          trajectory_figures,
+                          modality_scatter_figures) {
   stopifnot(all(file.exists(c(report_sources, report_extra_files))))
-  invisible(list(microglia_report, microglia_figures, trajectory_figures))
+  invisible(list(microglia_report, microglia_figures, trajectory_figures,
+                 modality_scatter_figures))
   quarto::quarto_render(
     input = ".",
     execute = TRUE,

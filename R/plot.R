@@ -177,6 +177,51 @@ concordance_plot <- function(df, x_col, y_col, label_col = "gene",
     theme_tau()
 }
 
+# Amyloid-response interaction scatter (ONE modality panel) --------------------------------
+# Per-feature amyloid effect on the tau-KO background (y = logFC NLGF_MAPTKI vs MAPTKI)
+# against the mutant-tau background (x = logFC NLGF_P301S vs P301S). The dashed y=x identity
+# line is the null of a tau-INDEPENDENT amyloid response; signed distance from it (y - x) is
+# exactly the -interaction contrast, so features far off the diagonal are where mutant tau
+# reshapes the amyloid response. Faint points, zero crosshairs, an OLS trend (tilt vs the
+# diagonal = systematic interaction), and the top |y - x| features labelled. coord_equal on a
+# symmetric square so the diagonal reads at 45 deg. `df` needs numeric x/y + a label column.
+modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
+                                         label_col = "label",
+                                         x_lab = "log2FC  NLGF_P301S vs P301S",
+                                         y_lab = "log2FC  NLGF_MAPTKI vs MAPTKI",
+                                         point_colour = "#6F7782", label_colour = "#A63A50") {
+  stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)))
+  df    <- df[is.finite(df$x) & is.finite(df$y), , drop = FALSE]
+  stopifnot(nrow(df) > 0L)
+  rho_s <- suppressWarnings(stats::cor(df$x, df$y, method = "spearman"))
+  rho_p <- suppressWarnings(stats::cor(df$x, df$y, method = "pearson"))
+  lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
+  lim   <- if (is.finite(lim) && lim > 0) lim else 1
+  ord   <- order(abs(df$y - df$x), decreasing = TRUE)                     # base order -> no temp col
+  top   <- df[utils::head(ord, n_label), , drop = FALSE]
+  ggplot2::ggplot(df, ggplot2::aes(x, y)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
+    ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
+    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+                         colour = "grey55", linewidth = 0.4) +
+    ggplot2::geom_point(alpha = 0.25, size = 0.5, colour = point_colour) +
+    # formula spelt out -> silence geom_smooth()'s default-formula message (keeps render logs clean)
+    ggplot2::geom_smooth(method = "lm", formula = y ~ x, se = FALSE,
+                         colour = "#2F7EA8", linewidth = 0.6) +
+    ggplot2::geom_point(data = top, ggplot2::aes(x, y), size = 1.1, colour = label_colour) +
+    # max.overlaps = Inf + fixed seed -> deterministic layout, no "unlabeled points" warning (warn=2)
+    ggrepel::geom_text_repel(data = top, ggplot2::aes(x, y, label = .data[[label_col]]),
+                             size = 2.6, colour = "#20242A", max.overlaps = Inf,
+                             seed = 42L, min.segment.length = 0, segment.colour = "grey65") +
+    ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
+    ggplot2::labs(
+      x = x_lab, y = y_lab, title = title,
+      subtitle = sprintf("Spearman rho = %.2f, Pearson r = %.2f, n = %s",
+                         rho_s, rho_p, format(nrow(df), big.mark = ","))
+    ) +
+    theme_tau()
+}
+
 # Cross-modality support matrix ------------------------------------------------------------
 # One bubble per (feature x modality) cell of a cross-modality effect plate. Modality sits on
 # the x-axis -- never colour -- so a reader scans a single feature row across assays for
