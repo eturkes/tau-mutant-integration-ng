@@ -15,8 +15,6 @@ execute:
 
 {{< include _qc.qmd >}}
 
-{{< include _story.qmd >}}
-
 {{< include _microglia.qmd >}}
 
 {{< include _trajectory.qmd >}}
