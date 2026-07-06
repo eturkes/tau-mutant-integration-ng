@@ -47,6 +47,11 @@ tau_background_colours <- c(
   P301S  = "#0B7A75"
 )
 
+figure7_score_fill_colours <- c(
+  MAPTKI = "#245A9A",
+  P301S  = "#C65A1E"
+)
+
 set_tau_plot_defaults <- function() {
   options(
     ggplot2.discrete.colour = tau_discrete_scale_types,
@@ -276,7 +281,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                background = "P301S", score = x$score_p301s, stringsAsFactors = FALSE)
   )
   point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
-  bg_fill <- tau_background_colours[c("MAPTKI", "P301S")]
+  bg_fill <- figure7_score_fill_colours
 
   ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
     ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
@@ -313,7 +318,9 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ggplot2::theme(
       axis.text.y = ggplot2::element_text(size = 8, lineheight = 0.92),
       panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
-      legend.position = "bottom"
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.spacing.y = grid::unit(0.1, "lines")
     )
 }
 

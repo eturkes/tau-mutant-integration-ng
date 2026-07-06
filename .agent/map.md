@@ -59,8 +59,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       identity + zero crosshairs + OLS trend + pooled-Q99 |x-y| off-diagonal repel labels + coord_equal 1:1);
       functional_group_score_plot WIRED -> Figure 7 category-score dumbbell facets (per modality/free-y, primary
       GO-BP keyword-union role or explicit fallback category per standardized pooled-cutoff Figure 6 off-diagonal gene/protein;
-      phosphoproteomics uses Figure 6 parent-protein mean points, segment colour = P301S-MAPTKI, size = scored items; no
-      enrichment/FDR display).
+      phosphoproteomics uses Figure 6 parent-protein mean points, segment colour = P301S-MAPTKI, fill = dedicated
+      high-separation MAPTKI/P301S endpoint pair, bottom guides stacked, size = scored items; no enrichment/FDR display).
       Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +

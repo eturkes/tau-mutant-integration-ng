@@ -170,6 +170,7 @@ group_summary <- data.frame(
   stringsAsFactors = FALSE
 )
 fgp <- functional_group_score_plot(group_summary, title = "Functional groups")
+fgp_fill <- Filter(function(s) "fill" %in% s$aesthetics, fgp$scales$scales)[[1]]
 stopifnot(
   inherits(fgp, "ggplot"), inherits(fgp, "gg"),
   length(fgp$layers) == 3L,
@@ -179,6 +180,7 @@ stopifnot(
   grepl("off-diagonal genes/proteins", fgp$labels$subtitle, fixed = TRUE),
   any(vapply(fgp$scales$scales, function(s) "colour" %in% s$aesthetics, logical(1))),
   any(vapply(fgp$scales$scales, function(s) "fill" %in% s$aesthetics, logical(1))),
+  identical(fgp_fill$palette(2), figure7_score_fill_colours),
   inherits(ggplot2::ggplot_build(fgp)$plot, "ggplot")
 )
 expect_error(functional_group_score_plot(group_summary[0, , drop = FALSE]), "no finite aggregate")

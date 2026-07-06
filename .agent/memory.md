@@ -462,8 +462,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (predicted/unannotated loci, olfactory receptor/GPCR, other annotated). Phosphoproteomics category scores use the
   same parent-protein mean points displayed in Figure 6. Figure 7 scores each category by mean `y` (NLGF_MAPTKI
   amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot uses free-y per-modality dumbbell
-  facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins. NO enrichment/FDR result is displayed. The qmd
-  tar_loads ONLY that compact target (cheap-render invariant).
+  facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins, bottom guides stacked to avoid clipping,
+  and a dedicated high-separation score-endpoint fill pair (MAPTKI blue / P301S burnt orange; not the global tau-background blue/green). NO
+  enrichment/FDR result is displayed. The qmd tar_loads ONLY that compact target (cheap-render invariant).
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho parent-protein means r~0.30). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 3092 parent

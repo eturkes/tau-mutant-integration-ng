@@ -907,6 +907,9 @@ user before writing a new plan.
   Q99.8 to Q99 to capture more transcriptomic off-diagonal points while retaining the parent-protein phospho collapse.
   Live compact target: pooled Q99 `|x-y| >= 2.009746`; Figure 6 labels snRNAseq 65 / GeoMx 0 / Proteome 247 /
   Phospho 97; Figure 7 rows snRNAseq 7 / GeoMx 0 / Proteome 9 / Phospho 9.
+- 2026-07-06 Figure 7 endpoint colour separation DONE (ad hoc user correction): kept global tau-background
+  palette unchanged, but Figure 7 aggregate-score endpoint fills now use a dedicated high-separation blue/burnt-orange
+  pair instead of the similar blue/green pair; stacked bottom guides to prevent the size legend from clipping.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
