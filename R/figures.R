@@ -727,21 +727,22 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   # The 30/81 raw Spectronaut export columns (modality_table) subset to those 16 matched 24M
   # runs in the DE layer, which proves the 16/16 column match (match_24m_bulk_columns).
   n_snrna <- sum(sn_counts$n)
-  sn_unit_rng <- range(genotype_batch$Freq)
   geo_rng <- range(geomx_genotype$n_aoi)
   n_bulk <- nrow(sample_key)
   per_geno_bulk <- n_bulk %/% length(genotype_levels)
   bulk_support <- sprintf("bulk 24M hippocampus, %d per genotype", per_geno_bulk)
+  # snRNAseq row = the microglia SUBSET of the full all-cell-type snRNA-seq object (this study
+  # reprocesses microglia only, computationally isolated from the other captured cell types);
+  # the support line names that provenance so the schematic never reads as if every captured
+  # nucleus were a microglia.
   design_modalities <- data.frame(
     order = 1:4,
-    modality = c("snRNAseq", "GeoMx", "proteome", "phospho"),
+    modality = c("snRNAseq microglia", "GeoMx", "bulk proteomics", "phosphoproteomics"),
     n_total = c(n_snrna, sum(geomx_genotype$n_aoi), n_bulk, n_bulk),
     count_lab = c(paste0(format(n_snrna, big.mark = ",", trim = TRUE), " nuclei"),
                   paste0(sum(geomx_genotype$n_aoi), " spatial AOIs"),
                   paste0(n_bulk, " samples"), paste0(n_bulk, " samples")),
-    support = c(sprintf("single-nucleus RNA, %d units (%s-%s)", nrow(genotype_batch),
-                        format(sn_unit_rng[1L], big.mark = ",", trim = TRUE),
-                        format(sn_unit_rng[2L], big.mark = ",", trim = TRUE)),
+    support = c(sprintf("subset from all-cell-type snRNA-seq, %d units", nrow(genotype_batch)),
                 sprintf("spatial transcriptomics, %d-%d per genotype",
                         as.integer(geo_rng[1L]), as.integer(geo_rng[2L])),
                 bulk_support, bulk_support),
@@ -749,13 +750,35 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
     stringsAsFactors = FALSE
   )
   # Contract the schematic's fixed geometry depends on: exact modality order + names, the
-  # proteome/phospho pair as the only shared_bulk rows, and an equal shared count -> the qmd
-  # indexes mod_y by order and brackets "same N" without silently mislabelling.
+  # bulk proteomics/phosphoproteomics pair as the only shared_bulk rows, and an equal shared
+  # count -> the qmd indexes mod_y by order and brackets "same N" without silently mislabelling.
   stopifnot(
     identical(design_modalities$order, 1:4),
-    identical(design_modalities$modality, c("snRNAseq", "GeoMx", "proteome", "phospho")),
+    identical(design_modalities$modality,
+              c("snRNAseq microglia", "GeoMx", "bulk proteomics", "phosphoproteomics")),
     identical(design_modalities$shared_bulk, c(FALSE, FALSE, TRUE, TRUE)),
     length(unique(design_modalities$n_total[design_modalities$shared_bulk])) == 1L
+  )
+  # Station-3 comparison ledger: the 5 canonical contrasts the pipeline runs on this design
+  # (constants.R contrast_definitions + the difference-of-differences interaction). Symbolic
+  # design constants, but sourced from the ONE canonical definition so the schematic can never
+  # drift from the analysis contrasts. ASCII "-"/"x" per the glyph rule (warn=2 base-pdf safe).
+  cd <- contrast_definitions
+  pair_fml <- function(p) paste0(p[1L], " - ", p[2L])
+  design_contrasts <- data.frame(
+    order = 1:5,
+    gloss = c("mutant tau (no amyloid)", "amyloid (tau-KO)", "amyloid (mutant tau)",
+              "mutant tau (+amyloid)", "amyloid x tau interaction"),
+    formula = c(pair_fml(cd$tau_alone), pair_fml(cd$nlgf_in_maptki),
+                pair_fml(cd$nlgf_in_p301s), pair_fml(cd$tau_in_nlgf),
+                sprintf("(%s) - (%s)", pair_fml(cd$nlgf_in_p301s), pair_fml(cd$nlgf_in_maptki))),
+    is_interaction = c(FALSE, FALSE, FALSE, FALSE, TRUE),
+    stringsAsFactors = FALSE
+  )
+  stopifnot(
+    identical(design_contrasts$order, 1:5),
+    identical(design_contrasts$is_interaction, c(FALSE, FALSE, FALSE, FALSE, TRUE)),
+    design_contrasts$formula[5L] == "(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)"
   )
 
   depth_metrics <- c(nCount_RNA = "total counts", nFeature_RNA = "detected genes")
@@ -794,7 +817,8 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
     manifest = visual_reduction_slot_map("figure")[visual_reduction_slot_map("figure")$target == "qc_figures", ],
     study_design = list(genotype_grid = design_grid,
                         sample_counts = sample_counts,
-                        modalities = design_modalities),
+                        modalities = design_modalities,
+                        contrasts = design_contrasts),
     modality_table = modality_table,
     geomx_genotype = geomx_genotype,
     genotype_batch = genotype_batch,

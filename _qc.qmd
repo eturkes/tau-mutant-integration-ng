@@ -30,11 +30,12 @@ stopifnot(
   is.list(qc),
   all(c("modality_table", "geomx_genotype", "genotype_batch", "depth_distribution",
         "fraction_distribution", "metric_bounds", "audit_notes", "study_design") %in% names(qc)),
-  all(c("genotype_grid", "sample_counts", "modalities") %in% names(qc$study_design)),
+  all(c("genotype_grid", "sample_counts", "modalities", "contrasts") %in% names(qc$study_design)),
   nrow(qc$modality_table) == 5L,
   nrow(qc$study_design$genotype_grid) == 4L,
   nrow(qc$study_design$sample_counts) == 12L,
   nrow(qc$study_design$modalities) == 4L,
+  nrow(qc$study_design$contrasts) == 5L,
   sum(sample_key_row) == 1L,
   !anyNA(metric_names),
   nrow(qc$geomx_genotype) == 4L,
@@ -52,10 +53,10 @@ stopifnot(
 
 ```{r}
 #| label: fig-qc-study-design
-#| fig-width: 11
-#| fig-height: 4.6
-#| fig-cap: "One 2x2 tau-by-amyloid genotype design, read by four modalities at their own resolution and sample count, converging on the amyloid-by-tau interaction contrast."
-#| fig-alt: "A left-to-right schematic. Left: the 2x2 genotype grid -- tau background (MAPTKI, P301S) across the amyloid axis (NLGF minus, NLGF plus) -- as four coloured tiles. Middle: four modality nodes -- single-nucleus RNA, GeoMx spatial, and bulk proteome and phospho -- each reading that same grid at its own resolution and sample count, with proteome and phospho bracketed as the same set of 24-month samples. Right: converging arrows meet the interaction-contrast target, glossed as whether amyloid reshapes microglia differently under mutant tau."
+#| fig-width: 12.5
+#| fig-height: 4.8
+#| fig-cap: "One 2x2 tau-by-amyloid genotype design, read by four modalities -- snRNAseq microglia (subset from the full all-cell-type dataset), GeoMx spatial, bulk proteomics and phosphoproteomics -- each at its own resolution, supporting the five factorial contrasts headlined by the amyloid-by-tau interaction."
+#| fig-alt: "A left-to-right schematic. Left: the 2x2 genotype grid -- tau background (MAPTKI, P301S) across the amyloid axis (NLGF minus, NLGF plus) -- as four coloured tiles. Middle: four modality nodes -- snRNAseq microglia subset from the full all-cell-type dataset, GeoMx spatial, and bulk proteomics and phosphoproteomics -- each reading that same grid at its own resolution and sample count, with the two bulk modalities bracketed as the same set of 24-month samples. Right: converging arrows meet a panel listing the five factorial contrasts -- four simple tau and amyloid effects plus the emphasized amyloid-by-tau interaction -- glossed as whether amyloid reshapes microglia differently under mutant tau."
 
 # Graphical-abstract schematic, three stations left to right: the shared 2x2 genotype design ->
 # four modality readouts at their own resolution/n -> the difference-in-differences interaction
@@ -79,20 +80,28 @@ mods$my <- mod_y[mods$order]
 mods$mx <- 5.25
 mods$node_text <- sprintf("%s\n%s", mods$modality, mods$count_lab)
 
-ix <- 8.8
-iy <- 2.62
-interaction_text <- "interaction contrast\n(NLGF_P301S - P301S)\n- (NLGF_MAPTKI - MAPTKI)"
-# proteome + phospho are the same 16 24M samples -> bracket the shared_bulk rows as one set.
+# bulk proteomics + phospho are the same 16 24M samples -> bracket the shared_bulk rows as one set.
 shared <- mods[mods$shared_bulk, , drop = FALSE]
 shared_y <- range(shared$my)
 shared_lab <- sprintf("same %s\n24M samples", format(shared$n_total[1L], big.mark = ",", trim = TRUE))
 
+# station 3 = the five factorial comparisons run on the shared design (data-backed from
+# qc$study_design$contrasts). Four simple tau/amyloid effects as a gloss|formula ledger; the
+# difference-in-differences interaction emphasised below as the primary integration target.
+ctr <- qc$study_design$contrasts
+simple <- ctr[!ctr$is_interaction, , drop = FALSE]
+simple$ry <- c(3.5, 3.0, 2.5, 2.0)
+simple$gloss_x <- 9.5
+simple$form_x <- 9.65
+inter <- ctr[ctr$is_interaction, , drop = FALSE]
+inter_text <- sprintf("%s (primary target)\n%s", inter$gloss, inter$formula)
+
 bands <- data.frame(
-  xmin = c(0.15, 4.05, 7.75), xmax = c(3.05, 6.95, 9.9), ymin = 0.55, ymax = 3.95,
-  label = c("GENOTYPE DESIGN", "FOUR MODALITIES", "INTEGRATION TARGET"), stringsAsFactors = FALSE)
+  xmin = c(0.15, 4.05, 7.7), xmax = c(3.05, 6.95, 12.05), ymin = 0.55, ymax = 3.95,
+  label = c("GENOTYPE DESIGN", "FOUR MODALITIES", "COMPARISONS"), stringsAsFactors = FALSE)
 bands$label_x <- (bands$xmin + bands$xmax) / 2
 big_arrow <- data.frame(x = 3.2, xend = 3.95, y = 2.3, yend = 2.3)
-conv <- data.frame(x = 6.05, y = mod_y, xend = ix - 1.02, yend = iy)
+conv <- data.frame(x = 6.05, y = mod_y, xend = 7.5, yend = 2.4)
 
 ggplot() +
   geom_rect(data = bands, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
@@ -135,13 +144,19 @@ ggplot() +
            colour = "#B0AA9E", linewidth = 0.4) +
   annotate("text", x = 6.82, y = mean(shared_y), label = shared_lab, hjust = 0, size = 1.85,
            colour = "#8A857B", fontface = "italic", lineheight = 0.9) +
-  # station 3: interaction-contrast target
-  annotate("label", x = ix, y = iy, label = interaction_text, fill = "#EFE0DD", colour = "#262B2F",
-           linewidth = 0.3, label.r = grid::unit(0.12, "lines"), size = 2.7,
+  # station 3: five-contrast comparison ledger (four simple effects + emphasised interaction)
+  geom_text(data = simple, aes(gloss_x, ry, label = gloss), inherit.aes = FALSE, hjust = 1,
+            size = 2.0, colour = "#333333") +
+  geom_text(data = simple, aes(form_x, ry, label = formula), inherit.aes = FALSE, hjust = 0,
+            size = 2.0, colour = "#7E7A70") +
+  annotate("segment", x = 7.85, xend = 11.95, y = 1.74, yend = 1.74,
+           colour = "#D8D2C6", linewidth = 0.4) +
+  annotate("label", x = 9.9, y = 1.26, label = inter_text, fill = "#EFE0DD", colour = "#262B2F",
+           linewidth = 0.3, label.r = grid::unit(0.12, "lines"), size = 2.35,
            fontface = "bold", lineheight = 1.0) +
-  annotate("text", x = ix, y = 1.55, label = "does amyloid reshape microglia\ndifferently under mutant tau?",
-           size = 2.15, colour = "#53504A", fontface = "italic", lineheight = 0.95) +
-  coord_cartesian(xlim = c(0.1, 9.95), ylim = c(0.5, 4.35), clip = "off") +
+  annotate("text", x = 9.9, y = 0.66, label = "does amyloid reshape microglia\ndifferently under mutant tau?",
+           size = 2.1, colour = "#53504A", fontface = "italic", lineheight = 0.95) +
+  coord_cartesian(xlim = c(0.1, 12.2), ylim = c(0.45, 4.4), clip = "off") +
   theme_void(base_size = 11) +
   theme(plot.margin = margin(6, 8, 6, 8))
 ```
