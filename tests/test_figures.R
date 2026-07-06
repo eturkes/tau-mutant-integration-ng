@@ -1,6 +1,7 @@
 options(warn = 2)
 source("R/constants.R")
 source("R/utils.R")
+source("R/design.R")
 source("R/figures.R")
 source("tests/helpers.R")
 
@@ -455,9 +456,6 @@ stopifnot(all(c("study_design", "modality_table", "genotype_batch", "depth_distr
                     c("snRNAseq microglia", "GeoMx", "bulk proteomics", "phosphoproteomics")),
           identical(qc$study_design$modalities$shared_bulk, c(FALSE, FALSE, TRUE, TRUE)),
           nrow(qc$study_design$contrasts) == 5L,
-          identical(qc$study_design$contrasts$is_interaction, c(FALSE, FALSE, FALSE, FALSE, TRUE)),
-          qc$study_design$contrasts$formula[5L] == "(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)",
-          all(nzchar(qc$study_design$contrasts$gloss)),
           qc$study_design$modalities$n_total[1L] == sum(qc$genotype_batch$Freq),
           qc$study_design$modalities$n_total[2L] == sum(qc$geomx_genotype$n_aoi),
           all(qc$study_design$modalities$n_total[3:4] == 16L),
@@ -465,6 +463,33 @@ stopifnot(all(c("study_design", "modality_table", "genotype_batch", "depth_distr
           nrow(qc$genotype_batch) == 16L,
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")
+
+# fig-qc-study-design station-3 ledger must not drift from the analysed contrasts: pin the
+# human-readable rows, then tie EVERY displayed formula to R/design.R's canonical contrast
+# algebra (make_contrast_matrix) so a sign/order change there fails this test loudly.
+ctr <- qc$study_design$contrasts
+ident <- diag(length(genotype_levels))
+dimnames(ident) <- list(genotype_levels, genotype_levels)
+cm_canon <- make_contrast_matrix(ident)                    # levels x 5, columns = canonical ids
+stopifnot(
+  identical(ctr$order, 1:5),
+  identical(ctr$id, colnames(cm_canon)),                   # figure id order == design.R canonical order
+  identical(ctr$is_interaction, c(FALSE, FALSE, FALSE, FALSE, TRUE)),
+  identical(ctr$gloss, c("mutant tau (no amyloid)", "amyloid (tau-KO)", "amyloid (mutant tau)",
+                         "mutant tau (+amyloid)", "amyloid x tau interaction")),
+  all(nzchar(ctr$formula))
+)
+# read each figure formula (linear in genotype symbols) back to its per-level signed coefficients.
+formula_coef <- function(fml)
+  vapply(genotype_levels,
+         function(g) eval(parse(text = fml),
+                          setNames(as.list(as.integer(genotype_levels == g)), genotype_levels)),
+         numeric(1))
+stopifnot(all(vapply(seq_len(nrow(ctr)),
+                     function(i) isTRUE(all.equal(unname(formula_coef(ctr$formula[i])),
+                                                  unname(cm_canon[genotype_levels, ctr$id[i]]))),
+                     logical(1))))
+cat("ok - study-design ledger formulas match R/design.R contrast algebra\n")
 
 story <- story_figure_data(qc, composition_results, pb_de_microglia,
                            trajectory_report, mechanism_report,

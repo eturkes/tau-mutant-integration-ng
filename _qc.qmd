@@ -89,6 +89,7 @@ shared_lab <- sprintf("same %s\n24M samples", format(shared$n_total[1L], big.mar
 # qc$study_design$contrasts). Four simple tau/amyloid effects as a gloss|formula ledger; the
 # difference-in-differences interaction emphasised below as the primary integration target.
 ctr <- qc$study_design$contrasts
+ctr <- ctr[order(ctr$order), , drop = FALSE]
 simple <- ctr[!ctr$is_interaction, , drop = FALSE]
 simple$ry <- c(3.5, 3.0, 2.5, 2.0)
 simple$gloss_x <- 9.5

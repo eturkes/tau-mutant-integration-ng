@@ -760,13 +760,16 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
     length(unique(design_modalities$n_total[design_modalities$shared_bulk])) == 1L
   )
   # Station-3 comparison ledger: the 5 canonical contrasts the pipeline runs on this design
-  # (constants.R contrast_definitions + the difference-of-differences interaction). Symbolic
-  # design constants, but sourced from the ONE canonical definition so the schematic can never
-  # drift from the analysis contrasts. ASCII "-"/"x" per the glyph rule (warn=2 base-pdf safe).
+  # (constants.R contrast_definitions for the 4 simple pairs + the difference-of-differences
+  # interaction). Every formula is COMPOSED from contrast_definitions and cross-checked against
+  # R/design.R make_contrast_matrix() in tests/test_figures.R, so the ledger cannot silently drift
+  # from the analysed contrast algebra. ASCII "-"/"x" per the glyph rule (warn=2 base-pdf safe).
   cd <- contrast_definitions
   pair_fml <- function(p) paste0(p[1L], " - ", p[2L])
+  contrast_ids <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s", "tau_in_nlgf", "interaction")
   design_contrasts <- data.frame(
     order = 1:5,
+    id = contrast_ids,
     gloss = c("mutant tau (no amyloid)", "amyloid (tau-KO)", "amyloid (mutant tau)",
               "mutant tau (+amyloid)", "amyloid x tau interaction"),
     formula = c(pair_fml(cd$tau_alone), pair_fml(cd$nlgf_in_maptki),
@@ -777,7 +780,9 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   )
   stopifnot(
     identical(design_contrasts$order, 1:5),
+    identical(design_contrasts$id, contrast_ids),
     identical(design_contrasts$is_interaction, c(FALSE, FALSE, FALSE, FALSE, TRUE)),
+    all(vapply(1:4, function(i) design_contrasts$formula[i] == pair_fml(cd[[contrast_ids[i]]]), logical(1))),
     design_contrasts$formula[5L] == "(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)"
   )
 
