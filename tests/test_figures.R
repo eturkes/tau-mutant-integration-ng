@@ -450,6 +450,14 @@ stopifnot(all(c("study_design", "modality_table", "genotype_batch", "depth_distr
           nrow(qc$study_design$modalities) == 4L,
           all(is.finite(qc$study_design$modalities$n_total)),
           all(nzchar(qc$study_design$modalities$count_lab)),
+          identical(qc$study_design$modalities$order, 1:4),
+          identical(qc$study_design$modalities$modality,
+                    c("snRNAseq", "GeoMx", "proteome", "phospho")),
+          identical(qc$study_design$modalities$shared_bulk, c(FALSE, FALSE, TRUE, TRUE)),
+          qc$study_design$modalities$n_total[1L] == sum(qc$genotype_batch$Freq),
+          qc$study_design$modalities$n_total[2L] == sum(qc$geomx_genotype$n_aoi),
+          all(qc$study_design$modalities$n_total[3:4] == 16L),
+          all(qc$study_design$modalities$count_lab[3:4] == "16 samples"),
           nrow(qc$genotype_batch) == 16L,
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")

@@ -55,7 +55,7 @@ stopifnot(
 #| fig-width: 11
 #| fig-height: 4.6
 #| fig-cap: "One 2x2 tau-by-amyloid genotype design, read by four modalities at their own resolution and sample count, converging on the amyloid-by-tau interaction contrast."
-#| fig-alt: "A left-to-right schematic. Left: the 2x2 genotype grid -- tau background (MAPTKI, P301S) across the amyloid axis (NLGF minus, NLGF plus) -- as four coloured tiles. Middle: four modality nodes, single-nucleus RNA at 26,104 nuclei, GeoMx spatial at 91 AOIs, and bulk proteome and bulk phospho at 16 samples each, with proteome and phospho bracketed as the same sixteen 24-month samples. Right: converging arrows meet the interaction-contrast target, glossed as whether amyloid reshapes microglia differently under mutant tau."
+#| fig-alt: "A left-to-right schematic. Left: the 2x2 genotype grid -- tau background (MAPTKI, P301S) across the amyloid axis (NLGF minus, NLGF plus) -- as four coloured tiles. Middle: four modality nodes -- single-nucleus RNA, GeoMx spatial, and bulk proteome and phospho -- each reading that same grid at its own resolution and sample count, with proteome and phospho bracketed as the same set of 24-month samples. Right: converging arrows meet the interaction-contrast target, glossed as whether amyloid reshapes microglia differently under mutant tau."
 
 # Graphical-abstract schematic, three stations left to right: the shared 2x2 genotype design ->
 # four modality readouts at their own resolution/n -> the difference-in-differences interaction
@@ -81,7 +81,7 @@ mods$node_text <- sprintf("%s\n%s", mods$modality, mods$count_lab)
 
 ix <- 8.8
 iy <- 2.62
-interaction_text <- "interaction contrast\n(NLGF·P301S − P301S)\n− (NLGF·MAPTKI − MAPTKI)"
+interaction_text <- "interaction contrast\n(NLGF_P301S - P301S)\n- (NLGF_MAPTKI - MAPTKI)"
 # proteome + phospho are the same 16 24M samples -> bracket the shared_bulk rows as one set.
 shared <- mods[mods$shared_bulk, , drop = FALSE]
 shared_y <- range(shared$my)
@@ -107,7 +107,7 @@ ggplot() +
   scale_fill_genotype(guide = "none") +
   annotate("text", x = tx["MAPTKI"], y = 1.28, label = "MAPTKI", size = 2.3, colour = "#53504A") +
   annotate("text", x = tx["P301S"], y = 1.28, label = "P301S", size = 2.3, colour = "#53504A") +
-  annotate("text", x = 0.5, y = ay["NLGF-"], label = "NLGF −", angle = 90, size = 2.3, colour = "#53504A") +
+  annotate("text", x = 0.5, y = ay["NLGF-"], label = "NLGF -", angle = 90, size = 2.3, colour = "#53504A") +
   annotate("text", x = 0.5, y = ay["NLGF+"], label = "NLGF +", angle = 90, size = 2.3, colour = "#53504A") +
   annotate("text", x = 0.26, y = mean(ay), label = "amyloid", angle = 90, size = 2.5,
            colour = "#333333", fontface = "bold") +
