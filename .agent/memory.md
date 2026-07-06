@@ -222,6 +222,14 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (all compact) -> render stays cheap. The extractor
   ASSERTS finite z + non-NA genotype/substate (a downstream NA -> a ggplot "removed rows" warning -> warn=2 gate
   fail) -> the plotting data is render-clean by construction.
+- SUBSTATE-MARKER dot plot (`fig-microglia-substate-markers`, first figure under "Substate landscape"): microglia_report_data
+  GAINED a REQUIRED 2nd arg `symbol_map` (_targets.R passes it) + a `substate_markers` slot, built by the pure helper
+  `substate_marker_panel` (per-substate mean_expr + pct_expr of the canonical Homeostatic/DAM/IFN sets off the SCT `data`
+  layer, ~40 genes x 3 substates; maps marker symbols -> SCT ensembl rownames via symbols_to_ensembl, fail-loud on an absent
+  substate or <min_present genes). Aggregation lives HERE (the SOLE heavy-object access), NOT microglia_figure_data (compact-in
+  only) -> upholds the cheap-render invariant. The qmd z-scores mean_expr PER GENE across the 3 substates (Seurat DotPlot
+  scale=TRUE idiom; sd 0 -> 0 via stats::ave, never NaN under warn=2) as a DISPLAY transform -- raw mean/pct stay in the target
+  (testable). Renders a clean diagonal (each set lights its own substate; IFN dots small = sparse 797-cell pop, still red on-diagonal).
 - _microglia.qmd setup `options(warn=2)` + tar_source(); included in index.qmd AFTER _qc.qmd (section flow in map.md).
   RENDER-WARNING avoidance (warn=2 INSIDE the qmd): ggrepel on the small labelled DAM subset uses max.overlaps=Inf
   (else "unlabeled data points"); volcano y = -log10(pmax(P.Value, 1e-300)) (caps zero-p -> Inf -> drop-warning);

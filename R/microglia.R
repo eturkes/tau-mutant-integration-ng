@@ -380,20 +380,88 @@ annotate_microglia <- function(seurat_obj, symbol_map,
 
 # --- P1-S5: compact report-data extraction (keeps the gate render cheap) --------------------
 
+# Per-substate marker-expression panel -- the "genes that DEFINE each substate" dot-plot data.
+# For every marker SET (signature) and each of its genes present in `assay`, compute the mean
+# expression and the fraction of cells expressing (layer value > 0) WITHIN each substate group.
+# Symbols map -> ensembl via symbol_map (the SCT/RNA rownames are ensembl); genes absent from the
+# assay drop, a signature left under `min_present` errors (a near-empty set would misrepresent the
+# state). Substate groups default to the set names (Homeostatic/DAM/IFN) and must each carry >= 1
+# cell in `substate_col`. Returns a long data.frame {signature, gene(symbol), ensembl, substate,
+# n_cells, mean_expr, pct_expr}; signature/gene/substate are factors ordered as given so the qmd
+# renders a clean signature-blocked, marker-ordered dot grid. All numeric finite, pct in [0,1].
+# Pure: no RNG, no I/O. Feeds microglia_report$substate_markers -> the Substate-landscape dot plot.
+substate_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
+                                  substates = names(marker_sets),
+                                  substate_col = "microglia_substate",
+                                  assay = "SCT", layer = "data", min_present = 2L) {
+  stopifnot(
+    inherits(seurat_obj, "Seurat"),
+    is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)),
+    is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
+    is.character(substates), length(substates) >= 1L, !anyDuplicated(substates),
+    substate_col %in% colnames(seurat_obj@meta.data)
+  )
+  expr        <- SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer)
+  present_ids <- rownames(expr)
+  sub         <- as.character(seurat_obj@meta.data[[substate_col]])
+  stopifnot(length(sub) == ncol(expr))
+  miss <- setdiff(substates, unique(sub))
+  if (length(miss))                                    # a requested state with no cells would give NaN means
+    stop("substate_marker_panel: substate(s) absent from ", substate_col, ": ",
+         paste(miss, collapse = ", "))
+  pieces <- lapply(names(marker_sets), function(sig) {
+    hit <- symbols_to_ensembl(marker_sets[[sig]], symbol_map)   # named: names=symbol, values=ensembl (input order)
+    hit <- hit[hit %in% present_ids]                            # keep only genes present in the assay
+    if (length(hit) < min_present)                              # a single-gene panel row misrepresents the signature
+      stop("substate_marker_panel: under ", min_present, " present gene(s) for signature '", sig,
+           "' -- widen the set or map more symbols")
+    set_mat <- expr[unname(hit), , drop = FALSE]                # genes x cells for this signature
+    do.call(rbind, lapply(substates, function(st) {
+      m <- set_mat[, sub == st, drop = FALSE]
+      data.frame(
+        signature = sig,
+        gene      = names(hit),
+        ensembl   = unname(hit),
+        substate  = st,
+        n_cells   = ncol(m),
+        mean_expr = as.numeric(Matrix::rowMeans(m)),
+        pct_expr  = as.numeric(Matrix::rowMeans(m > 0)),
+        stringsAsFactors = FALSE
+      )
+    }))
+  })
+  out <- do.call(rbind, pieces)
+  out$signature <- factor(out$signature, levels = names(marker_sets))
+  out$substate  <- factor(out$substate, levels = substates)
+  out$gene      <- factor(out$gene, levels = unique(out$gene))   # signature-then-marker order preserved
+  rownames(out) <- NULL
+  stopifnot(
+    all(is.finite(out$mean_expr)), all(is.finite(out$pct_expr)),
+    all(out$pct_expr >= 0 & out$pct_expr <= 1), all(out$n_cells > 0L)
+  )
+  out
+}
+
 # Extract ONLY what _microglia.qmd plots/tabulates from the ~612MB annotated Seurat, so the
 # force-rendered report (hence EVERY scripts/check.sh run) reads a ~0.5MB target instead of
 # deserialising the full object -- this preserves the documented cheap-render gate property
 # (the QC chapter already loads the 340MB raw subset; we must not add the heavy annotated one
 # on top). Returns a per-cell plotting frame (UMAP coords + genotype + primary substate + the
 # activation z-scores) plus the small prune / substate-provenance summaries the section reports
-# (both already compact -- passed through verbatim). Pure: no RNG, no I/O. UMAP rows are asserted
-# cell-aligned to meta.data, z-scores asserted finite (annotate_microglia coerces non-finite -> 0
-# upstream) so the report never hits a ggplot missing-value warning (warn=2 -> render error).
-microglia_report_data <- function(seurat_obj,
+# (both already compact -- passed through verbatim) and the substate marker panel (the genes that
+# DEFINE each substate). Pure: no RNG, no I/O. UMAP rows are asserted cell-aligned to meta.data,
+# z-scores asserted finite (annotate_microglia coerces non-finite -> 0 upstream) so the report
+# never hits a ggplot missing-value warning (warn=2 -> render error). symbol_map maps the marker
+# symbols -> the assay's ensembl rownames for substate_marker_panel.
+microglia_report_data <- function(seurat_obj, symbol_map,
                                   substate_col = "microglia_substate",
-                                  z_cols = c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z")) {
+                                  z_cols = c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z"),
+                                  marker_sets = canonical_microglia_markers[c("Homeostatic", "DAM", "IFN")],
+                                  marker_substates = c("Homeostatic", "DAM", "IFN"),
+                                  marker_layer = "data") {
   stopifnot(
     inherits(seurat_obj, "Seurat"),
+    is.data.frame(symbol_map),
     "umap" %in% SeuratObject::Reductions(seurat_obj),
     substate_col %in% colnames(seurat_obj@meta.data),
     "genotype" %in% colnames(seurat_obj@meta.data),
@@ -427,5 +495,12 @@ microglia_report_data <- function(seurat_obj,
     identical(as.integer(colSums(prov$substate_table)), as.integer(sub_counts)),  # provenance == per-cell counts
     isTRUE(prune$n_retained == ncol(seurat_obj))               # retained count == frame rows
   )
-  list(cell_frame = cell_frame, n_cells = ncol(seurat_obj), prune = prune, provenance = prov)
+  # Genes-that-define-each-substate dot-plot data (compact: ~40 genes x 3 substates). Computed
+  # here (the sole point with the heavy annotated object + its SCT layer) so the qmd reads it off
+  # the ~0.5MB target like cell_frame -- no extra heavy load at render.
+  substate_markers <- substate_marker_panel(
+    seurat_obj, symbol_map, marker_sets = marker_sets, substates = marker_substates,
+    substate_col = substate_col, assay = "SCT", layer = marker_layer)
+  list(cell_frame = cell_frame, n_cells = ncol(seurat_obj), prune = prune, provenance = prov,
+       substate_markers = substate_markers)
 }

@@ -126,11 +126,50 @@ expect_error(annotate_microglia(obj_a, sm3,
              marker_sets = list(Homeostatic = "A", DAM = "A", IFN = "A", Proliferative = "A")), "MHC_APC")
 expect_error(annotate_microglia(obj_a, sm3), "percent_contam")   # required QC meta absent -> fail at the gate
 
+# --- substate_marker_panel: per-substate marker means/pct, order + fail-loud guards --------
+obj_p <- make_fake_seurat(cells_per = 4L, n_genes = 12L, with_sct = TRUE)   # SCT assay (counts layer only)
+sm_p  <- build_symbol_map(obj_p)                                            # ENSMUSG <-> Sym1..Sym12
+obj_p$microglia_substate <- factor(rep(c("Homeostatic", "DAM", "IFN"), length.out = ncol(obj_p)),
+                                   levels = c(microglia_substate_levels, "ambiguous", "unassigned"))
+sets_p <- list(Homeostatic = c("Sym1", "Sym2", "Sym3"),
+               DAM          = c("Sym4", "Sym5", "Sym6"),
+               IFN          = c("Sym7", "Sym8", "Sym9"))
+panel <- substate_marker_panel(obj_p, sm_p, marker_sets = sets_p,
+                               substates = c("Homeostatic", "DAM", "IFN"), layer = "counts")
+stopifnot(
+  is.data.frame(panel), nrow(panel) == 9L * 3L,
+  identical(names(panel),
+            c("signature", "gene", "ensembl", "substate", "n_cells", "mean_expr", "pct_expr")),
+  identical(levels(panel$signature), c("Homeostatic", "DAM", "IFN")),
+  identical(levels(panel$substate), c("Homeostatic", "DAM", "IFN")),
+  identical(levels(panel$gene), paste0("Sym", 1:9)),                  # signature-then-marker order preserved
+  all(panel$pct_expr >= 0 & panel$pct_expr <= 1), all(is.finite(panel$mean_expr)),
+  all(panel$n_cells > 0L)
+)
+# exact mean: Sym1 within Homeostatic cells, read off the SCT counts layer
+expr_p  <- as.matrix(SeuratObject::GetAssayData(obj_p, assay = "SCT", layer = "counts"))
+ens1    <- sm_p$ensembl[match("Sym1", sm_p$symbol)]
+h_cells <- colnames(obj_p)[obj_p$microglia_substate == "Homeostatic"]
+stopifnot(isTRUE(all.equal(
+  panel$mean_expr[panel$gene == "Sym1" & panel$substate == "Homeostatic"],
+  mean(expr_p[ens1, h_cells]))))
+# absent substate + under-min signature fail loud; an unmapped gene drops but keeps a >=2 set
+expect_error(substate_marker_panel(obj_p, sm_p, sets_p,
+             substates = c("Homeostatic", "Nope"), layer = "counts"), "substate")
+expect_error(substate_marker_panel(obj_p, sm_p,
+             list(Homeostatic = c("Sym1", "NOPE"), DAM = c("Sym4", "Sym5")),
+             substates = c("Homeostatic", "DAM"), layer = "counts"), "present gene")
+panel2 <- substate_marker_panel(obj_p, sm_p,
+             list(Homeostatic = c("Sym1", "Sym2", "NOPE"), DAM = c("Sym4", "Sym5", "Sym6")),
+             substates = c("Homeostatic", "DAM"), layer = "counts")
+stopifnot(setequal(levels(panel2$gene), c("Sym1", "Sym2", "Sym4", "Sym5", "Sym6")))   # NOPE dropped, kept >=2
+
 # --- microglia_report_data: compact extraction from the annotated object -------------------
 # Build a minimal "annotated" fixture (umap reduction + primary substate + z-scores + the two
 # @misc summaries) and confirm the extractor returns a cell-aligned plotting frame + passes the
 # small summaries through, with the heavy-object guards firing loud.
-obj_r <- make_fake_seurat(cells_per = 4L, n_genes = 30L)         # 16 cells, genotype/batch meta
+obj_r <- make_fake_seurat(cells_per = 4L, n_genes = 30L, with_sct = TRUE)   # 16 cells; SCT assay for the marker panel
+sm_r  <- build_symbol_map(obj_r)                                            # ENSMUSG <-> Sym1..Sym30
 nc    <- ncol(obj_r)
 emb   <- matrix(as.double(seq_len(nc * 2L)), nrow = nc,
                 dimnames = list(colnames(obj_r), c("UMAP_1", "UMAP_2")))
@@ -143,7 +182,9 @@ obj_r@misc$microglia_prune <- list(n_retained = nc, n_dropped = 0L)
 obj_r@misc$substate_provenance <- list(
   substate_table = table(genotype = obj_r$genotype, substate = obj_r$microglia_substate))
 
-rd <- microglia_report_data(obj_r)
+rd <- microglia_report_data(obj_r, sm_r,
+        marker_sets = list(Homeostatic = c("Sym1", "Sym2", "Sym3"), DAM = c("Sym4", "Sym5", "Sym6")),
+        marker_substates = c("Homeostatic", "DAM"), marker_layer = "counts")   # SCT has a counts layer only
 stopifnot(
   is.data.frame(rd$cell_frame), nrow(rd$cell_frame) == nc,
   all(c("umap_1", "umap_2", "genotype", "substate",
@@ -152,29 +193,32 @@ stopifnot(
   is.factor(rd$cell_frame$substate),
   isTRUE(all.equal(rd$cell_frame$umap_1, as.double(seq_len(nc)))),   # umap col 1 carried through, order-stable
   rd$n_cells == nc, identical(rd$prune$n_retained, nc),
-  !is.null(rd$provenance$substate_table)
+  !is.null(rd$provenance$substate_table),
+  is.data.frame(rd$substate_markers), nrow(rd$substate_markers) == 6L * 2L,   # 6 genes x 2 substates
+  identical(levels(rd$substate_markers$signature), c("Homeostatic", "DAM")),
+  identical(levels(rd$substate_markers$gene), paste0("Sym", 1:6))              # substate_marker_panel slot wired through
 )
 # guards: missing umap / missing z column / missing substate column fail loud (no silent partial frame)
 obj_nou <- obj_r; obj_nou[["umap"]] <- NULL
-expect_error(microglia_report_data(obj_nou), "umap")
-expect_error(microglia_report_data(obj_r, z_cols = "NOPE_UCell_z"), "z_cols")
-expect_error(microglia_report_data(obj_r, substate_col = "nope"), "substate_col")
+expect_error(microglia_report_data(obj_nou, sm_r), "umap")
+expect_error(microglia_report_data(obj_r, sm_r, z_cols = "NOPE_UCell_z"), "z_cols")
+expect_error(microglia_report_data(obj_r, sm_r, substate_col = "nope"), "substate_col")
 
 # S5-hardening guards (review): non-finite coords/z and provenance-vs-per-cell drift fail loud
 emb_inf <- emb; emb_inf[1, 1] <- Inf
 obj_inf <- obj_r
 obj_inf[["umap"]] <- SeuratObject::CreateDimReducObject(embeddings = emb_inf, key = "UMAP_", assay = "RNA")
-expect_error(microglia_report_data(obj_inf), "finite")            # non-finite UMAP coord rejected
+expect_error(microglia_report_data(obj_inf, sm_r), "finite")      # non-finite UMAP coord rejected
 
 obj_z <- obj_r; obj_z@meta.data[["DAM_UCell_z"]][1] <- NA_real_
-expect_error(microglia_report_data(obj_z), "finite")              # non-finite activation z rejected
+expect_error(microglia_report_data(obj_z, sm_r), "finite")        # non-finite activation z rejected
 
 obj_st <- obj_r
 obj_st@misc$substate_provenance$substate_table[1] <-
   obj_st@misc$substate_provenance$substate_table[1] + 5L
-expect_error(microglia_report_data(obj_st))                       # provenance table disagreeing with per-cell counts
+expect_error(microglia_report_data(obj_st, sm_r))                 # provenance table disagreeing with per-cell counts
 
 obj_nr <- obj_r; obj_nr@misc$microglia_prune$n_retained <- nc - 1L
-expect_error(microglia_report_data(obj_nr))                       # n_retained != frame rows rejected
+expect_error(microglia_report_data(obj_nr, sm_r))                 # n_retained != frame rows rejected
 
 cat("ok - test_microglia\n")

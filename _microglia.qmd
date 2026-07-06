@@ -106,6 +106,18 @@ mf_umap$genotype <- factor(as.character(mf_umap$genotype), levels = genotype_lev
 mf_score <- mf$score_triptych
 mf_score$score_name <- factor(mf_score$score_name, levels = names(score_labels),
                               labels = unname(score_labels))
+
+# Substate marker panel: the genes that DEFINE Homeostatic / DAM / IFN. Per-gene z-score of the
+# mean expression across the three substates (the Seurat DotPlot scale=TRUE idiom) surfaces the
+# state each gene marks regardless of its absolute level; a flat gene (sd 0) -> 0, never NaN.
+marker_states <- c("Homeostatic", "DAM", "IFN")
+sm <- mrd$substate_markers
+sm$signature <- factor(as.character(sm$signature), levels = marker_states)
+sm$substate  <- factor(as.character(sm$substate),  levels = marker_states)
+sm$expr_z <- stats::ave(sm$mean_expr, as.character(sm$gene), FUN = function(x) {
+  s <- stats::sd(x); if (!is.finite(s) || s == 0) rep(0, length(x)) else (x - mean(x)) / s
+})
+
 mf_unit <- mf$unit_composition
 mf_unit$substate <- factor(as.character(mf_unit$substate), levels = present_sub)
 mf_unit$genotype <- factor(as.character(mf_unit$genotype), levels = genotype_levels)
@@ -167,6 +179,29 @@ mf_audit$label <- format(round(mf_audit$min_cells_unit), big.mark = ",", trim = 
 ```
 
 ## Substate landscape
+
+```{r}
+#| label: fig-microglia-substate-markers
+#| fig-width: 11
+#| fig-height: 4.3
+#| fig-cap: "Canonical marker genes that define the homeostatic, DAM and interferon substates."
+#| fig-alt: "Dot-plot grid with the three substates as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of cells expressing, so each gene set lights up its matching substate along the diagonal."
+ggplot(sm, aes(gene, substate)) +
+  geom_point(aes(colour = expr_z, size = pct_expr)) +
+  facet_grid(. ~ signature, scales = "free_x", space = "free_x") +
+  scale_colour_rwb(name = "scaled mean\nexpression", midpoint = 0) +
+  scale_size_area(name = "% expressing", max_size = 5.2,
+                  breaks = c(0.1, 0.25, 0.5, 0.75),
+                  labels = function(x) paste0(round(100 * x), "%")) +
+  scale_y_discrete(limits = rev) +
+  labs(x = NULL, y = NULL, title = "Genes defining each microglia substate") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
+                                   size = 6.6, face = "italic"),
+        panel.grid.major = element_line(linewidth = 0.2),
+        panel.spacing.x = grid::unit(3.5, "pt"),
+        legend.position = "right",
+        legend.key.height = grid::unit(9, "pt"))
+```
 
 ```{r}
 #| label: fig-microglia-umap

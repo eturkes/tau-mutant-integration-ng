@@ -52,7 +52,7 @@ SECTION_SLOTS = {
     ("_story.qmd", "Core evidence"): "fig-story-core",
     ("_story.qmd", "Mechanism and integration"): "fig-story-mechanism-crossmodality",
     ("_microglia.qmd", "Microglia: amyloid drives a homeostatic-to-DAM programme"): "fig-microglia-summary-board",
-    ("_microglia.qmd", "Substate landscape"): "fig-microglia-umap-substate;fig-microglia-score-triptych",
+    ("_microglia.qmd", "Substate landscape"): "fig-microglia-substate-markers;fig-microglia-umap-substate;fig-microglia-score-triptych",
     ("_microglia.qmd", "Amyloid expands the DAM compartment"): "fig-microglia-composition-shift;fig-microglia-unit-composition",
     ("_microglia.qmd", "Composition is tested across the genotype contrasts"): "fig-microglia-composition-forest;fig-microglia-composition-concordance",
     ("_microglia.qmd", "The amyloid-to-DAM expression programme"): "fig-microglia-whole-volcano",
