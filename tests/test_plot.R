@@ -174,6 +174,7 @@ stopifnot(
   identical(fgp$labels$title, "Functional groups"),
   grepl("P301S - MAPTKI", fgp$labels$subtitle, fixed = TRUE),
   grepl("Figure 6", fgp$labels$subtitle, fixed = TRUE),
+  grepl("derived genes/proteins", fgp$labels$subtitle, fixed = TRUE),
   any(vapply(fgp$scales$scales, function(s) "colour" %in% s$aesthetics, logical(1))),
   any(vapply(fgp$scales$scales, function(s) "fill" %in% s$aesthetics, logical(1))),
   inherits(ggplot2::ggplot_build(fgp)$plot, "ggplot")

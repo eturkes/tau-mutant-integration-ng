@@ -5,7 +5,7 @@
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 # Shared Figure 6 label rule: finite x/y rows, ranked by distance from y=x, one row per display
-# label. Figure 7 reuses this so aggregate scores are computed only from visible Figure 6 labels.
+# label. Figure 7 starts from this visible-label set, then substitutes parent genes for phosphosites.
 modality_scatter_label_rows <- function(df, n_label = 12L, label_col = "label") {
   stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)),
             is.numeric(n_label), length(n_label) == 1L, n_label >= 1L)

@@ -224,7 +224,8 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
 }
 
 # Functional-group aggregate scores for the genes/proteins labelled in the four-method
-# amyloid-response scatter. Rows are broad roles, facets are modalities. Each
+# amyloid-response scatter; phosphosite labels are scored through their parent-gene substitute.
+# Rows are broad roles, facets are modalities. Each
 # segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
 # P301S; segment colour is the requested contrast, P301S minus MAPTKI.
 functional_group_score_plot <- function(group_summary, title = NULL) {
@@ -276,7 +277,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "score") +
-    ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "Figure 6 labels") +
+    ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = FALSE) +
     ggplot2::facet_wrap(ggplot2::vars(modality), ncol = 2) +
@@ -290,7 +291,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ) +
     ggplot2::labs(
       x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Segments connect means over labelled Figure 6 features; colour is P301S - MAPTKI"
+      subtitle = "Segments connect means over Figure 6-derived genes/proteins; colour is P301S - MAPTKI"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(

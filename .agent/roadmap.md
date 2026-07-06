@@ -882,6 +882,10 @@ user before writing a new plan.
   NLGF_MAPTKI amyloid logFC, aggregate NLGF_P301S amyloid logFC, and `delta=x-y`. The plot is a per-modality
   dumbbell score facet (connected MAPTKI/P301S points; segment colour = P301S-MAPTKI; point size = Figure 6
   labels) and displays no enrichment/FDR result.
+- 2026-07-06 Figure 7 phosphosite parent-gene scoring DONE (ad hoc user follow-up): phosphosite labels still enter
+  through the Figure 6 label rule, but group scoring substitutes the best-fit parent gene (`gene` when usable,
+  otherwise site_id prefix) and collapses duplicate labelled phosphosites to the highest-|x-y| site per parent.
+  Legend/caption now say scored genes/proteins/items rather than raw Figure 6 labels.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

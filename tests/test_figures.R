@@ -184,14 +184,16 @@ pr <- list(top = list(
                               gene_symbols = c("Apoe;Trem2", "Trem2", ""),
                               logFC = c(4, 5, 6), stringsAsFactors = FALSE)))
 ph <- list(top = list(
-  nlgf_in_maptki = data.frame(feature = paste0("row", 1:3, "|k"), site_id = c("Mapt_S404", NA, ""),
-                              gene = c("Mapt", "Apoe", "hMapt"),
-                              logFC = c(0.5, -0.5, 1.0), stringsAsFactors = FALSE),
-  nlgf_in_p301s  = data.frame(feature = paste0("row", 1:3, "|k"), site_id = c("Mapt_S404", NA, ""),
-                              gene = c("Mapt", "Apoe", "hMapt"),
-                              logFC = c(1.5, -1.5, 2.0), stringsAsFactors = FALSE)))
+  nlgf_in_maptki = data.frame(feature = paste0("row", 1:5, "|k"),
+                              site_id = c("Mapt_S404", NA, "", "Sfr1_T102", "Lcp1_S5"),
+                              gene = c("Mapt", "Apoe", "hMapt", NA, "Lcp1_S5"),
+                              logFC = c(0.5, -0.5, 1.0, -3.0, -4.0), stringsAsFactors = FALSE),
+  nlgf_in_p301s  = data.frame(feature = paste0("row", 1:5, "|k"),
+                              site_id = c("Mapt_S404", NA, "", "Sfr1_T102", "Lcp1_S5"),
+                              gene = c("Mapt", "Apoe", "hMapt", NA, "Lcp1_S5"),
+                              logFC = c(1.5, -1.5, 2.0, 4.0, 5.0), stringsAsFactors = FALSE)))
 group_sets <- list(
-  `Immune activation` = c("Gene1", "Gene5", "Apoe", "Trem2"),
+  `Immune activation` = c("Gene1", "Gene5", "Apoe", "Trem2", "Lcp1", "Sfr1"),
   `Neuronal axis` = c("Mapt", "Gene2")
 )
 ms <- modality_logfc_scatter_data(pb, symbol_map, gx, pr, ph,
@@ -216,11 +218,13 @@ stopifnot(
   pr_d$label[match("PG3", pr_d$feature)] == "PG3",              # blank gene_first -> feature id
   ph_d$label[match("row1|k", ph_d$feature)] == "Mapt_S404",     # site_id label
   ph_d$gene_symbols[match("row3|k", ph_d$feature)] == "Mapt",    # hMapt normalised to mouse Mapt
+  ph_d$gene_symbols[match("row4|k", ph_d$feature)] == "Sfr1",     # blank gene -> parent from site_id
+  ph_d$gene_symbols[match("row5|k", ph_d$feature)] == "Lcp1",     # site-like gene -> parent gene substitute
   ph_d$label[match("row2|k", ph_d$feature)] == "row2|k",        # NA site_id -> feature id
   ms$provenance$y_contrast == "nlgf_in_maptki",
   ms$provenance$x_contrast == "nlgf_in_p301s",
   ms$provenance$n_features[["snRNAseq"]] == 5L,
-  ms$provenance$n_features[["Phospho"]] == 3L)
+  ms$provenance$n_features[["Phospho"]] == 5L)
 cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and labels each modality\n")
 
 gs <- ms$groups$summary
@@ -232,6 +236,12 @@ stopifnot(
   is.factor(gs$modality), is.factor(gs$group_label_plot),
   any(as.character(gs$group) == "Immune activation"),
   any(gg$gene_symbol == "Gene5" & as.character(gg$modality) == "snRNAseq"),
+  all(c("score_feature", "score_label") %in% names(gg)),
+  any(gg$gene_symbol == "Sfr1" & gg$score_label == "Sfr1" &
+        as.character(gg$modality) == "Phospho"),
+  any(gg$gene_symbol == "Lcp1" & gg$score_label == "Lcp1" &
+        as.character(gg$modality) == "Phospho"),
+  all(!grepl("_[A-Za-z][0-9]", gg$score_label[as.character(gg$modality) == "Phospho"])),
   !any(gg$gene_symbol == "Gene1" & as.character(gg$modality) == "snRNAseq"), # unlabeled in Fig 6
   max(gg$scatter_label_rank[as.character(gg$modality) == "snRNAseq"]) <= 3L,
   all(gs$n_feature <= 3L),
@@ -239,7 +249,7 @@ stopifnot(
   ms$groups$provenance$group_set_source == "custom functional groups",
   ms$groups$provenance$figure6_label_n == 3L,
   ms$groups$provenance$min_genes == 1L)
-cat("ok - modality_logfc_scatter_data scores only Figure 6 labelled genes/proteins\n")
+cat("ok - modality_logfc_scatter_data scores Figure 6 labels with phosphosite parent-gene substitutes\n")
 
 # non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
 pb_na <- list(top = list(

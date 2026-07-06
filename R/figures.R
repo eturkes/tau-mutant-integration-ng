@@ -1072,14 +1072,16 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     lab[bad] <- as.character(tt$feature)[bad]
     lab
   }
+  phosphosite_parent_gene <- function(x) {
+    lab <- site_id_label(x)
+    lab <- sub("_[A-Za-z][0-9].*$", "", lab, perl = TRUE)
+    lab
+  }
   phospho_gene <- function(tt) {
     lab <- if ("gene" %in% names(tt)) as.character(tt$gene) else rep(NA_character_, nrow(tt))
-    bad <- is.na(lab) | lab == ""
-    if (any(bad)) {
-      fallback <- site_id_label(tt)
-      fallback <- sub("_[A-Za-z][0-9].*$", "", fallback, perl = TRUE)
-      lab[bad] <- fallback[bad]
-    }
+    fallback <- phosphosite_parent_gene(tt)
+    bad <- is.na(lab) | lab == "" | grepl("_[A-Za-z][0-9].*$", lab, perl = TRUE)
+    lab[bad] <- fallback[bad]
     lab
   }
 
@@ -1226,6 +1228,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
         modality = m,
         feature = d$feature[i],
         label = d$label[i],
+        score_feature = d$feature[i],
+        score_label = d$label[i],
         gene_symbol = g,
         scatter_label_rank = label_rank,
         x = d$x[i],
@@ -1281,6 +1285,11 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
     d <- d[d$gene_symbol %in% set_genes_all, , drop = FALSE]
     if (!nrow(d)) return(d)
     d <- d[order(d$scatter_label_rank, d$gene_symbol, d$feature, method = "radix"), , drop = FALSE]
+    if (identical(m, "Phospho")) {
+      d$score_feature <- paste0("phospho_gene:", d$gene_symbol)
+      d$score_label <- d$gene_symbol
+      d <- d[!duplicated(d$score_feature), , drop = FALSE]
+    }
     d$figure6_labelled <- TRUE
     d
   }))
@@ -1294,12 +1303,12 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       if (!nrow(gene_hits)) return(data.frame())
       gene_hits <- gene_hits[order(gene_hits$scatter_label_rank, gene_hits$gene_symbol,
                                    gene_hits$feature, method = "radix"), , drop = FALSE]
-      feature_hits <- gene_hits[!duplicated(gene_hits$feature), , drop = FALSE]
+      feature_hits <- gene_hits[!duplicated(gene_hits$score_feature), , drop = FALSE]
       k_gene <- length(unique(gene_hits$gene_symbol))
-      k_feature <- length(unique(feature_hits$feature))
+      k_feature <- length(unique(feature_hits$score_feature))
       if (k_feature < min_genes) return(data.frame())
       top_genes <- paste(utils::head(unique(gene_hits$gene_symbol), 6L), collapse = ", ")
-      top_features <- paste(utils::head(unique(feature_hits$label), 6L), collapse = ", ")
+      top_features <- paste(utils::head(unique(feature_hits$score_label), 6L), collapse = ", ")
       score_maptki <- mean(feature_hits$y)
       score_p301s <- mean(feature_hits$x)
       delta <- score_p301s - score_maptki
@@ -1309,8 +1318,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
         group_label = .fig_pathway_label(grp),
         n_gene = k_gene,
         n_feature = k_feature,
-        n_selected = length(unique(sel$feature)),
-        n_labeled_feature = length(unique(sel$feature)),
+        n_selected = length(unique(sel$score_feature)),
+        n_labeled_feature = length(unique(sel$score_feature)),
         score_maptki = score_maptki,
         score_p301s = score_p301s,
         delta = delta,
@@ -1335,8 +1344,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   rownames(rows) <- NULL
 
   hit_detail <- merge(
-    selected[, c("modality", "feature", "gene_symbol", "label", "interaction", "abs_interaction",
-                 "scatter_label_rank")],
+    selected[, c("modality", "feature", "score_feature", "score_label", "gene_symbol", "label",
+                 "interaction", "abs_interaction", "scatter_label_rank")],
     .fig_bind(lapply(keep_groups, function(grp) {
       data.frame(group = grp, gene_symbol = group_sets[[grp]], stringsAsFactors = FALSE)
     })),
@@ -1344,8 +1353,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   )
   group_gene_labels <- vapply(keep_groups, function(grp) {
     h <- hit_detail[hit_detail$group == grp, , drop = FALSE]
-    h <- h[order(h$scatter_label_rank, h$label, method = "radix"), , drop = FALSE]
-    paste(utils::head(unique(h$label), 5L), collapse = ", ")
+    h <- h[order(h$scatter_label_rank, h$score_label, method = "radix"), , drop = FALSE]
+    paste(utils::head(unique(h$score_label), 5L), collapse = ", ")
   }, character(1), USE.NAMES = TRUE)
   rows$group_label_plot <- paste0(rows$group_label, "\n", group_gene_labels[rows$group])
   group_levels <- rev(unique(rows$group_label_plot[
@@ -1372,8 +1381,9 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same display-label rule as fig-modality-amyloid-effect: top |y-x| rows after duplicate-label collapse",
+      phosphosite_scoring = "phosphosite labels score through the best-fit parent gene; duplicate labelled sites keep the highest-|x-y| site",
       n_labeled_features = stats::setNames(
-        vapply(order, function(m) length(unique(selected$feature[as.character(selected$modality) == m])),
+        vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
                integer(1)), order)
     )
   )
