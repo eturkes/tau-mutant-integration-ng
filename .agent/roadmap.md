@@ -877,10 +877,11 @@ user before writing a new plan.
   remains compact (~1.7MB); report now has 7 captions/alts.
 - 2026-07-06 Figure 7 functional-score rework DONE (ad hoc user task): replaced the GO-BP enrichment-style
   bubble matrix with `fig-modality-functional-scores`. `modality_logfc_scatter_data` now returns `groups$summary`:
-  broad functional-role gene sets assembled from GO-BP keyword unions over the top off-diagonal genes/proteins,
-  scored by aggregate NLGF_MAPTKI amyloid logFC, aggregate NLGF_P301S amyloid logFC, and `delta=x-y`. The plot is
-  a per-modality dumbbell score facet (connected MAPTKI/P301S points; segment colour = P301S-MAPTKI; point size =
-  selected genes) and displays no enrichment/FDR result.
+  broad functional-role gene sets assembled from GO-BP keyword unions over the same genes/proteins labelled in
+  Figure 6 (top 12 display labels per method by |x-y| after duplicate-label collapse), scored by aggregate
+  NLGF_MAPTKI amyloid logFC, aggregate NLGF_P301S amyloid logFC, and `delta=x-y`. The plot is a per-modality
+  dumbbell score facet (connected MAPTKI/P301S points; segment colour = P301S-MAPTKI; point size = Figure 6
+  labels) and displays no enrichment/FDR result.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

@@ -197,11 +197,9 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
   rho_p <- suppressWarnings(stats::cor(df$x, df$y, method = "pearson"))
   lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
   lim   <- if (is.finite(lim) && lim > 0) lim else 1
-  ord   <- order(abs(df$y - df$x), decreasing = TRUE)                     # base order -> no temp col
   # one label per feature: bulk assays reuse a site_id / gene across measured rows, so keep each label's
   # most-divergent instance (order is |y-x| desc) before taking the top n_label -> no duplicate repel labels.
-  top   <- df[ord, , drop = FALSE]
-  top   <- utils::head(top[!duplicated(top[[label_col]]), , drop = FALSE], n_label)
+  top   <- modality_scatter_label_rows(df, n_label = n_label, label_col = label_col)
   ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
@@ -225,18 +223,18 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
     theme_tau()
 }
 
-# Functional-group aggregate scores for the genes/proteins farthest from the y=x diagonal in
-# the four-method amyloid-response scatter. Rows are broad roles, facets are modalities. Each
+# Functional-group aggregate scores for the genes/proteins labelled in the four-method
+# amyloid-response scatter. Rows are broad roles, facets are modalities. Each
 # segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
 # P301S; segment colour is the requested contrast, P301S minus MAPTKI.
 functional_group_score_plot <- function(group_summary, title = NULL) {
   stopifnot(is.data.frame(group_summary))
-  need <- c("modality", "group_label_plot", "n_gene", "score_maptki", "score_p301s", "delta")
+  need <- c("modality", "group_label_plot", "n_feature", "score_maptki", "score_p301s", "delta")
   miss <- setdiff(need, names(group_summary))
   if (length(miss)) {
     stop("group_summary missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
   }
-  x <- group_summary[group_summary$n_gene > 0L &
+  x <- group_summary[group_summary$n_feature > 0L &
                        is.finite(group_summary$score_maptki) &
                        is.finite(group_summary$score_p301s) &
                        is.finite(group_summary$delta), , drop = FALSE]
@@ -245,13 +243,19 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   lim <- if (is.finite(lim) && lim > 0) lim else 1
   delta_lim <- max(abs(x$delta), na.rm = TRUE)
   delta_lim <- if (is.finite(delta_lim) && delta_lim > 0) delta_lim else 1
-  size_breaks <- pretty(range(x$n_gene, finite = TRUE), n = 4)
-  size_breaks <- size_breaks[size_breaks >= min(x$n_gene) & size_breaks <= max(x$n_gene)]
-  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_gene))
+  n_min <- min(x$n_feature)
+  n_max <- max(x$n_feature)
+  size_breaks <- if (n_max - n_min <= 8L) {
+    as.integer(unique(round(seq(n_min, n_max, length.out = min(3L, n_max - n_min + 1L)))))
+  } else {
+    pretty(c(n_min, n_max), n = 4)
+  }
+  size_breaks <- size_breaks[size_breaks >= n_min & size_breaks <= n_max]
+  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_feature))
   point_df <- rbind(
-    data.frame(x[, c("modality", "group_label_plot", "n_gene", "delta"), drop = FALSE],
+    data.frame(x[, c("modality", "group_label_plot", "n_feature", "delta"), drop = FALSE],
                background = "MAPTKI", score = x$score_maptki, stringsAsFactors = FALSE),
-    data.frame(x[, c("modality", "group_label_plot", "n_gene", "delta"), drop = FALSE],
+    data.frame(x[, c("modality", "group_label_plot", "n_feature", "delta"), drop = FALSE],
                background = "P301S", score = x$score_p301s, stringsAsFactors = FALSE)
   )
   point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
@@ -265,14 +269,14 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       linewidth = 0.75, lineend = "round") +
     ggplot2::geom_point(
       data = point_df,
-      ggplot2::aes(x = score, fill = background, size = n_gene),
+      ggplot2::aes(x = score, fill = background, size = n_feature),
       shape = 21, colour = "#2B2A27", stroke = 0.25) +
     scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
                      name = "P301S - MAPTKI") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "score") +
-    ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "genes") +
+    ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "Figure 6 labels") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = FALSE) +
     ggplot2::facet_wrap(ggplot2::vars(modality), ncol = 2) +
@@ -286,7 +290,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ) +
     ggplot2::labs(
       x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Segments connect functional-group means; colour is P301S - MAPTKI, size is selected genes"
+      subtitle = "Segments connect means over labelled Figure 6 features; colour is P301S - MAPTKI"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(

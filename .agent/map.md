@@ -58,8 +58,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
       identity + zero crosshairs + OLS trend + top|y-x| repel labels + coord_equal 1:1);
       functional_group_score_plot WIRED -> Figure 7 role-score dumbbell facets (per modality, broad functional
-      rows from GO-BP keyword-union gene sets; points = aggregate NLGF_MAPTKI/NLGF_P301S amyloid scores,
-      segment colour = P301S-MAPTKI, size = selected genes; no enrichment/FDR display).
+      rows from GO-BP keyword-union gene sets; points = aggregate NLGF_MAPTKI/NLGF_P301S amyloid scores over
+      Figure 6 labels, segment colour = P301S-MAPTKI, size = Figure 6 labels; no enrichment/FDR display).
       Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
@@ -144,8 +144,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       inline builders microglia_figure_data / trajectory_figure_data / modality_logfc_scatter_data (qmd-ready slots,
       finite geom guards, pre-binned/top-row reductions; modality_logfc_scatter_data = per-modality
       {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
-      key-aligned, plus `groups$summary` = broad functional-group aggregate scores over top 250 unique
-      off-diagonal genes/proteins per method) + visual_reduction_slot_map
+      key-aligned, plus `groups$summary` = broad functional-group aggregate scores over the same top 12
+      display labels drawn in Figure 6 per method) + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
@@ -205,9 +205,9 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
                 identity + OLS + top|x-y| labels) + off-diagonal functional-group score facets
-                `fig-modality-functional-scores` (functional_group_score_plot; top 250 unique off-diagonal
-                genes/proteins per method, rows carry broad functional roles + leading genes; connected points show
-                aggregate NLGF_MAPTKI and NLGF_P301S scores, segment colour = P301S-MAPTKI). The 6th and 7th
+                `fig-modality-functional-scores` (functional_group_score_plot; Figure 6 labelled genes/proteins
+                only, rows carry broad functional roles + leading labels; connected points show aggregate
+                NLGF_MAPTKI and NLGF_P301S scores, segment colour = P301S-MAPTKI). The 6th and 7th
                 figures.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).

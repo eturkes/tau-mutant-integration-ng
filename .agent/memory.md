@@ -455,12 +455,13 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (key $feature = row<n>|collapsekey, label $site_id = gene_AAloc, may repeat across rows); pb_de_microglia$top[[c]]$logFC
   (key $gene = ENSEMBL -> map to symbol via symbol_map, NOT a bare grep). modality_logfc_scatter_data aligns the two
   contrasts' topTables by feature key (one fit -> bijective keys) + drops non-finite pairs -> compact
-  {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `groups$summary`: top 250 unique
-  off-diagonal genes/proteins per method by |x-y| are assigned to broad functional-role gene sets assembled from
-  mouse GO-BP keyword unions (or custom groups in tests). Figure 7 scores each group by mean `y`
-  (NLGF_MAPTKI amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot shows connected
-  MAPTKI/P301S aggregate points, segment colour = P301S-MAPTKI, point size = selected genes. NO enrichment/FDR
-  result is displayed. The qmd tar_loads ONLY that compact target (cheap-render invariant).
+  {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `groups$summary`: the same top
+  12 display labels per method used in Figure 6 (rank |x-y|, collapse duplicate labels) are assigned to broad
+  functional-role gene sets assembled from mouse GO-BP keyword unions (or custom groups in tests). Figure 7 scores
+  each group by mean `y` (NLGF_MAPTKI amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the
+  plot shows connected MAPTKI/P301S aggregate points, segment colour = P301S-MAPTKI, point size = Figure 6 labels
+  in the group. NO enrichment/FDR result is displayed. The qmd tar_loads ONLY that compact target (cheap-render
+  invariant).
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho r~0.20). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 17707. Consistent with P1 (amyloid->DAM
@@ -659,8 +660,8 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
-  `fig-modality-functional-scores` (broad functional groups over top off-diagonal genes/proteins; connected
-  aggregate MAPTKI/P301S amyloid-score points, segment colour = P301S-MAPTKI, point size = selected genes).
+  `fig-modality-functional-scores` (broad functional groups over Figure 6 labelled genes/proteins; connected
+  aggregate MAPTKI/P301S amyloid-score points, segment colour = P301S-MAPTKI, point size = Figure 6 labels).
   Every captioned chunk
   = hyphenated `fig-*` id + `fig-cap` + `fig-alt`; palette/fonts per the theme.scss bullet above
   (saturated-but-controlled journal grammar). HTML-QA gotcha (durable): use a PARSER-based HTML check that

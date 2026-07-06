@@ -228,15 +228,18 @@ gg <- ms$groups$selected_genes
 stopifnot(
   is.data.frame(gs), nrow(gs) > 0L,
   all(c("modality", "group", "group_label_plot", "n_gene", "score_maptki",
-        "score_p301s", "delta", "top_genes") %in% names(gs)),
+        "score_p301s", "delta", "top_genes", "top_features") %in% names(gs)),
   is.factor(gs$modality), is.factor(gs$group_label_plot),
   any(as.character(gs$group) == "Immune activation"),
   any(gg$gene_symbol == "Gene5" & as.character(gg$modality) == "snRNAseq"),
+  !any(gg$gene_symbol == "Gene1" & as.character(gg$modality) == "snRNAseq"), # unlabeled in Fig 6
+  max(gg$scatter_label_rank[as.character(gg$modality) == "snRNAseq"]) <= 3L,
+  all(gs$n_feature <= 3L),
   all.equal(gs$delta, gs$score_p301s - gs$score_maptki, tolerance = 1e-12) == TRUE,
   ms$groups$provenance$group_set_source == "custom functional groups",
-  ms$groups$provenance$top_n_genes == 3L,
+  ms$groups$provenance$figure6_label_n == 3L,
   ms$groups$provenance$min_genes == 1L)
-cat("ok - modality_logfc_scatter_data adds off-diagonal functional-group scores from selected genes\n")
+cat("ok - modality_logfc_scatter_data scores only Figure 6 labelled genes/proteins\n")
 
 # non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
 pb_na <- list(top = list(

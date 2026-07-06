@@ -161,6 +161,7 @@ group_summary <- data.frame(
                                            "Endosome traffic\nRab11a, Hgs",
                                            "Tau phosphorylation\nMapt, Map3k10"))),
   n_gene = c(3L, 2L, 4L, 2L),
+  n_feature = c(2L, 2L, 3L, 1L),
   score_maptki = c(-0.7, -0.2, 0.4, 0.1),
   score_p301s = c(-1.9, -0.6, 2.5, 1.7),
   delta = c(-1.2, -0.4, 2.1, 1.6),
@@ -172,6 +173,7 @@ stopifnot(
   length(fgp$layers) == 3L,
   identical(fgp$labels$title, "Functional groups"),
   grepl("P301S - MAPTKI", fgp$labels$subtitle, fixed = TRUE),
+  grepl("Figure 6", fgp$labels$subtitle, fixed = TRUE),
   any(vapply(fgp$scales$scales, function(s) "colour" %in% s$aesthetics, logical(1))),
   any(vapply(fgp$scales$scales, function(s) "fill" %in% s$aesthetics, logical(1))),
   inherits(ggplot2::ggplot_build(fgp)$plot, "ggplot")
