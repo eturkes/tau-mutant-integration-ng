@@ -256,7 +256,7 @@ offdiag_pathway_plot <- function(pathway_summary, title = NULL, alpha = 0.25) {
                         shape = 21, colour = "#554D44", stroke = 0.25) +
     ggplot2::geom_point(data = sig, ggplot2::aes(shape = support_star),
                         position = ggplot2::position_nudge(x = 0.20, y = 0.18),
-                        colour = "#20242A", size = 2.7, stroke = 0.9) +
+                        colour = "#20242A", size = 2.1, stroke = 0.75) +
     scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
                    name = "mean x-y") +
     ggplot2::scale_size_area(max_size = 8, breaks = size_breaks,
@@ -266,7 +266,7 @@ offdiag_pathway_plot <- function(pathway_summary, title = NULL, alpha = 0.25) {
       fill = ggplot2::guide_colourbar(order = 1),
       size = ggplot2::guide_legend(order = 2),
       shape = ggplot2::guide_legend(order = 3,
-                                    override.aes = list(colour = "#20242A", size = 3.2))
+                                    override.aes = list(colour = "#20242A", size = 2.6))
     ) +
     ggplot2::labs(
       x = NULL, y = NULL, title = title,
