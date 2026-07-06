@@ -10,9 +10,10 @@
 }
 
 # Vestigial figure registry (prose-reduction relic): a fixed-count drift tripwire, NOT a faithful
-# rendered-figure contract -- it lists 6 figures cut from the report + none of the 2026-07-06 additions
-# (e.g. fig-modality-amyloid-effect). The rendered set is defined by the qmd chunk ids, so new figures are
-# intentionally not registered here; test_figures.R pins the count (11) only to catch accidental drift.
+# rendered-figure contract -- it lists 6 figures cut from the report + none of the
+# 2026-07-06 additions (e.g. fig-modality-amyloid-effect / fig-modality-offdiag-pathways).
+# The rendered set is defined by the qmd chunk ids, so new figures are intentionally not
+# registered here; test_figures.R pins the count (11) only to catch accidental drift.
 figure_manifest <- function(chapter = NULL) {
   out <- data.frame(
     figure_id = c(
@@ -998,21 +999,27 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
 }
 
 # Per-modality amyloid-response logFC pairs for fig-modality-amyloid-effect (one scatter per
-# method). y = logFC of `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI background),
-# x = logFC of `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Both
-# per-contrast topTables come from ONE fit per modality (identical feature rows), aligned by
-# the modality's feature key. Compact per-modality frames {feature, label, x, y} -> the qmd
-# reads this small target, never a heavy DE object. Feature keys / display labels differ by
-# assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, proteome = protein
-# group (gene_first label), phospho = phosphosite row (site_id label).
+# method), plus a compact pathway summary for the off-diagonal features. y = logFC of
+# `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI background), x = logFC of
+# `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Both per-contrast
+# topTables come from ONE fit per modality (identical feature rows), aligned by the modality's
+# feature key. Compact per-modality frames {feature, label, gene_symbols, x, y, interaction}
+# -> the qmd reads this small target, never a heavy DE object. Feature keys / display labels
+# differ by assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, proteome =
+# protein group (gene_first label, all group symbols for pathway scoring), phospho =
+# phosphosite row (site_id label, parent gene for pathway scoring).
 modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m,
                                          y_contrast = "nlgf_in_maptki",
-                                         x_contrast = "nlgf_in_p301s") {
+                                         x_contrast = "nlgf_in_p301s",
+                                         pathway_gene_sets = NULL,
+                                         pathway_top_n = 250L,
+                                         pathway_min_overlap = 2L,
+                                         pathway_max_pathways = 12L) {
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
             is.list(proteome_de_24m), is.list(phospho_de_24m))
 
-  pair <- function(top_list, key_col, label_fun, modality) {
+  pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
     ty <- top_list[[y_contrast]]; tx <- top_list[[x_contrast]]
     .fig_require_cols(ty, c(key_col, "logFC"), paste0(modality, " top$", y_contrast))
@@ -1026,6 +1033,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     df <- data.frame(
       feature = ky,
       label = as.character(label_fun(ty)),
+      gene_symbols = vapply(gene_fun(ty), function(z) {
+        paste(.fig_gene_tokens(z), collapse = ";")
+      }, character(1), USE.NAMES = FALSE),
       y = as.numeric(ty$logFC),                                # nlgf_in_maptki (amyloid | MAPTKI)
       x = as.numeric(tx$logFC)[idx],                           # nlgf_in_p301s  (amyloid | P301S)
       stringsAsFactors = FALSE
@@ -1033,16 +1043,27 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     df <- df[is.finite(df$x) & is.finite(df$y), , drop = FALSE]
     blank <- is.na(df$label) | df$label == ""
     df$label[blank] <- df$feature[blank]
+    df$interaction <- df$x - df$y
+    df$abs_interaction <- abs(df$interaction)
     .fig_assert_nonempty(df, paste0(modality, " logFC pairs"))
-    .fig_assert_finite(df, c("x", "y"), paste0(modality, " logFC pairs"))
+    .fig_assert_finite(df, c("x", "y", "interaction", "abs_interaction"),
+                       paste0(modality, " logFC pairs"))
     rownames(df) <- NULL
     df
   }
 
+  symbol_label <- function(tt) .fig_symbol_labels(tt, symbol_map)
+  symbol_gene <- function(tt) symbol_label(tt)
   gene_first_label <- function(tt) {
     lab <- if ("gene_first" %in% names(tt)) as.character(tt$gene_first) else rep(NA_character_, nrow(tt))
     bad <- is.na(lab) | lab == ""
     lab[bad] <- as.character(tt$feature)[bad]
+    lab
+  }
+  protein_group_genes <- function(tt) {
+    lab <- if ("gene_symbols" %in% names(tt)) as.character(tt$gene_symbols) else gene_first_label(tt)
+    bad <- is.na(lab) | lab == ""
+    lab[bad] <- gene_first_label(tt)[bad]
     lab
   }
   site_id_label <- function(tt) {
@@ -1051,41 +1072,269 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     lab[bad] <- as.character(tt$feature)[bad]
     lab
   }
+  phospho_gene <- function(tt) {
+    lab <- if ("gene" %in% names(tt)) as.character(tt$gene) else rep(NA_character_, nrow(tt))
+    bad <- is.na(lab) | lab == ""
+    if (any(bad)) {
+      fallback <- site_id_label(tt)
+      fallback <- sub("_[A-Za-z][0-9].*$", "", fallback, perl = TRUE)
+      lab[bad] <- fallback[bad]
+    }
+    lab
+  }
 
   panels <- list(
     snRNAseq = list(
       title = "snRNAseq microglia (pseudobulk)",
       data  = pair(pb_de_microglia$top, "gene",
-                   function(tt) .fig_symbol_labels(tt, symbol_map), "snRNAseq")),
+                   symbol_label, symbol_gene, "snRNAseq")),
     GeoMx = list(
       title = "GeoMx spatial (WTA)",
       data  = pair(geomx_de$primary$top, "symbol",
+                   function(tt) as.character(tt$symbol),
                    function(tt) as.character(tt$symbol), "GeoMx")),
     Proteome = list(
       title = "Bulk proteome (24M)",
-      data  = pair(proteome_de_24m$top, "feature", gene_first_label, "proteome")),
+      data  = pair(proteome_de_24m$top, "feature", gene_first_label,
+                   protein_group_genes, "proteome")),
     Phospho = list(
       title = "Bulk phosphosite (24M)",
-      data  = pair(phospho_de_24m$top, "feature", site_id_label, "phospho"))
+      data  = pair(phospho_de_24m$top, "feature", site_id_label,
+                   phospho_gene, "phospho"))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
+  pathways <- modality_offdiag_pathway_data(
+    list(panels = panels, order = order),
+    gene_sets = pathway_gene_sets,
+    top_n_genes = pathway_top_n,
+    min_overlap = pathway_min_overlap,
+    max_pathways = pathway_max_pathways
+  )
 
   list(
     panels = panels,
     order = order,
+    pathways = pathways,
     provenance = list(
       y_contrast = y_contrast,
       x_contrast = x_contrast,
       y_meaning = "amyloid effect on the tau-KO (MAPTKI) background",
       x_meaning = "amyloid effect on the mutant-tau (P301S) background",
-      interaction = "signed distance from y=x (y - x) is the -interaction contrast per feature",
+      interaction = "x - y is the tau-by-amyloid interaction contrast per feature; |x - y| ranks off-diagonal distance",
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
       feature_key = c(snRNAseq = "Ensembl gene (symbol label)", GeoMx = "gene symbol",
                       Proteome = "protein group (gene_first label)",
                       Phospho = "phosphosite row (site_id label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + off-diagonal GO-BP pathway summary; no heavy DE object"
+    )
+  )
+}
+
+.fig_gene_tokens <- function(x) {
+  if (!length(x)) return(character())
+  raw <- unlist(strsplit(paste(as.character(x), collapse = ";"), "[;,]", perl = TRUE),
+                use.names = FALSE)
+  raw <- trimws(raw)
+  raw <- raw[!is.na(raw) & raw != ""]
+  raw[raw %in% c("hMapt", "hMAPT", "MAPT")] <- "Mapt"
+  unique(raw)
+}
+
+.fig_pathway_label <- function(x) {
+  lab <- gsub("^(HALLMARK|GOBP|REACTOME)_", "", as.character(x))
+  lab <- gsub("_", " ", lab, fixed = TRUE)
+  lab <- tools::toTitleCase(tolower(lab))
+  lab <- gsub("\\bDna\\b", "DNA", lab)
+  lab <- gsub("\\bUv\\b", "UV", lab)
+  lab <- gsub("\\bGtpase\\b", "GTPase", lab)
+  lab <- gsub("\\bIl([0-9]+)\\b", "IL\\1", lab)
+  lab <- gsub("\\bTnfa\\b", "TNFA", lab)
+  lab <- gsub("\\bNfkb\\b", "NF-kB", lab)
+  lab <- gsub("Signaling", "signalling", lab, fixed = TRUE)
+  lab
+}
+
+.fig_default_pathway_sets <- function(collection = "M5", subcollection = "GO:BP",
+                                      min_size = 10L, max_size = 500L) {
+  x <- suppressMessages(msigdbr::msigdbr(db_species = "MM", species = "Mus musculus",
+                                         collection = collection,
+                                         subcollection = subcollection))
+  .fig_require_cols(x, c("gene_symbol", "gs_name"), "msigdbr pathway gene sets")
+  sets <- split(as.character(x$gene_symbol), as.character(x$gs_name))
+  sets <- lapply(sets, .fig_gene_tokens)
+  n <- vapply(sets, length, integer(1))
+  sets[n >= min_size & n <= max_size]
+}
+
+.fig_offdiag_gene_rows <- function(panels, order) {
+  .fig_bind(lapply(order, function(m) {
+    stopifnot(m %in% names(panels), is.data.frame(panels[[m]]$data))
+    d <- panels[[m]]$data
+    .fig_require_cols(d, c("feature", "label", "gene_symbols", "x", "y", "interaction",
+                           "abs_interaction"),
+                      paste0("modality panel ", m))
+    rows <- lapply(seq_len(nrow(d)), function(i) {
+      g <- .fig_gene_tokens(d$gene_symbols[i])
+      if (!length(g)) return(NULL)
+      data.frame(
+        modality = m,
+        feature = d$feature[i],
+        label = d$label[i],
+        gene_symbol = g,
+        x = d$x[i],
+        y = d$y[i],
+        interaction = d$interaction[i],
+        abs_interaction = d$abs_interaction[i],
+        stringsAsFactors = FALSE
+      )
+    })
+    out <- .fig_bind(rows)
+    if (!nrow(out)) return(out)
+    out$modality <- factor(out$modality, levels = order)
+    out
+  }))
+}
+
+# Pathway summary for the genes/proteins farthest from the y=x diagonal in
+# fig-modality-amyloid-effect. The default gene sets are mouse-native MSigDB GO Biological
+# Process terms from the locked local msigdbr package. This is a compact descriptive overlap,
+# not a new broad discovery layer: each modality first collapses feature rows to unique gene
+# symbols, keeps the top `top_n_genes` by |x - y|, then tests pathway over-representation
+# against that modality's measured gene universe. qmd plotting uses only the returned summary.
+modality_offdiag_pathway_data <- function(modality_scatter_figures,
+                                          gene_sets = NULL,
+                                          top_n_genes = 250L,
+                                          min_overlap = 2L,
+                                          max_pathways = 12L,
+                                          alpha = 0.25) {
+  stopifnot(is.list(modality_scatter_figures), is.list(modality_scatter_figures$panels),
+            is.character(modality_scatter_figures$order),
+            length(modality_scatter_figures$order) >= 1L,
+            is.numeric(top_n_genes), length(top_n_genes) == 1L, top_n_genes >= 1L,
+            is.numeric(min_overlap), length(min_overlap) == 1L, min_overlap >= 1L,
+            is.numeric(max_pathways), length(max_pathways) == 1L, max_pathways >= 1L,
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
+  order <- modality_scatter_figures$order
+  gene_set_source <- if (is.null(gene_sets)) "MSigDB mouse GO Biological Process via msigdbr" else "custom"
+  gene_sets <- gene_sets %||% .fig_default_pathway_sets()
+  stopifnot(is.list(gene_sets), length(gene_sets) >= 1L, !is.null(names(gene_sets)),
+            !any(names(gene_sets) == ""))
+  gene_sets <- lapply(gene_sets, .fig_gene_tokens)
+  gene_sets <- gene_sets[vapply(gene_sets, length, integer(1)) > 0L]
+  stopifnot(length(gene_sets) >= 1L)
+  set_genes_all <- unique(unlist(gene_sets, use.names = FALSE))
+
+  all_gene_rows <- .fig_offdiag_gene_rows(modality_scatter_figures$panels, order)
+  .fig_assert_nonempty(all_gene_rows, "off-diagonal gene rows")
+  selected <- .fig_bind(lapply(order, function(m) {
+    d <- all_gene_rows[as.character(all_gene_rows$modality) == m, , drop = FALSE]
+    d <- d[d$gene_symbol %in% set_genes_all, , drop = FALSE]
+    if (!nrow(d)) return(d)
+    d <- d[order(-d$abs_interaction, d$gene_symbol, d$feature, method = "radix"), , drop = FALSE]
+    d <- d[!duplicated(d$gene_symbol), , drop = FALSE]
+    d$offdiag_rank <- seq_len(nrow(d))
+    d <- utils::head(d, top_n_genes)
+    d$offdiag_selected <- TRUE
+    d
+  }))
+  .fig_assert_nonempty(selected, "selected off-diagonal genes")
+
+  rows <- .fig_bind(lapply(order, function(m) {
+    universe <- unique(all_gene_rows$gene_symbol[as.character(all_gene_rows$modality) == m])
+    universe <- intersect(universe, set_genes_all)
+    sel <- selected[as.character(selected$modality) == m, , drop = FALSE]
+    sel <- sel[sel$gene_symbol %in% universe, , drop = FALSE]
+    if (!length(universe) || !nrow(sel)) return(data.frame())
+    N <- length(universe)
+    n <- length(unique(sel$gene_symbol))
+    out <- .fig_bind(lapply(names(gene_sets), function(gs) {
+      set <- intersect(gene_sets[[gs]], universe)
+      K <- length(set)
+      hits <- sel[sel$gene_symbol %in% set, , drop = FALSE]
+      k <- length(unique(hits$gene_symbol))
+      p <- if (K > 0L && k > 0L) {
+        stats::phyper(k - 1L, K, N - K, n, lower.tail = FALSE)
+      } else {
+        1
+      }
+      enrichment <- if (K > 0L && n > 0L) (k / n) / (K / N) else NA_real_
+      hits <- hits[order(-hits$abs_interaction, hits$gene_symbol, method = "radix"), , drop = FALSE]
+      top_genes <- paste(utils::head(unique(hits$gene_symbol), 6L), collapse = ", ")
+      top_features <- paste(utils::head(unique(hits$label), 6L), collapse = ", ")
+      data.frame(
+        modality = m,
+        pathway = gs,
+        pathway_label = .fig_pathway_label(gs),
+        n_hit = k,
+        n_selected = n,
+        n_universe = N,
+        pathway_size_universe = K,
+        p_value = p,
+        enrichment = enrichment,
+        signed_mean = if (k > 0L) mean(hits$interaction) else NA_real_,
+        signed_median = if (k > 0L) stats::median(hits$interaction) else NA_real_,
+        abs_mean = if (k > 0L) mean(hits$abs_interaction) else NA_real_,
+        top_genes = top_genes,
+        top_features = top_features,
+        stringsAsFactors = FALSE
+      )
+    }))
+    out$fdr <- stats::p.adjust(out$p_value, method = "BH")
+    out
+  }))
+  .fig_assert_nonempty(rows, "off-diagonal pathway summary")
+  rows <- rows[rows$n_hit >= min_overlap & is.finite(rows$signed_mean), , drop = FALSE]
+  .fig_assert_nonempty(rows, "off-diagonal pathway summary after overlap filter")
+  rows$supported <- rows$fdr < alpha
+  rows$rank_score <- -log10(pmax(rows$p_value, 1e-300)) * log1p(rows$n_hit)
+  rank <- stats::aggregate(rank_score ~ pathway + pathway_label, data = rows, FUN = max)
+  rank <- rank[order(-rank$rank_score, rank$pathway_label, method = "radix"), , drop = FALSE]
+  keep_pathways <- utils::head(rank$pathway, max_pathways)
+  rows <- rows[rows$pathway %in% keep_pathways, , drop = FALSE]
+  rownames(rows) <- NULL
+
+  hit_detail <- merge(
+    selected[, c("modality", "gene_symbol", "label", "interaction", "abs_interaction")],
+    .fig_bind(lapply(keep_pathways, function(gs) {
+      data.frame(pathway = gs, gene_symbol = gene_sets[[gs]], stringsAsFactors = FALSE)
+    })),
+    by = "gene_symbol", sort = FALSE
+  )
+  pathway_gene_labels <- vapply(keep_pathways, function(gs) {
+    h <- hit_detail[hit_detail$pathway == gs, , drop = FALSE]
+    h <- h[order(-h$abs_interaction, h$gene_symbol, method = "radix"), , drop = FALSE]
+    paste(utils::head(unique(h$gene_symbol), 5L), collapse = ", ")
+  }, character(1), USE.NAMES = TRUE)
+  rows$pathway_label_plot <- paste0(rows$pathway_label, "\n",
+                                    pathway_gene_labels[rows$pathway])
+  pathway_levels <- rev(unique(rows$pathway_label_plot[
+    order(match(rows$pathway, keep_pathways), rows$pathway_label_plot, method = "radix")
+  ]))
+  rows$pathway_label_plot <- factor(rows$pathway_label_plot, levels = pathway_levels)
+  rows$pathway_label <- factor(rows$pathway_label,
+                               levels = rev(.fig_pathway_label(keep_pathways)))
+  rows$modality <- factor(rows$modality, levels = order)
+  .fig_assert_finite(rows, c("n_hit", "n_selected", "n_universe", "pathway_size_universe",
+                            "p_value", "enrichment", "signed_mean", "signed_median",
+                            "abs_mean", "fdr", "rank_score"),
+                     "off-diagonal pathway summary")
+  .fig_assert_finite(selected, c("x", "y", "interaction", "abs_interaction", "offdiag_rank"),
+                     "selected off-diagonal genes")
+  list(
+    summary = rows[order(as.integer(rows$pathway_label_plot), as.integer(rows$modality),
+                         method = "radix"), , drop = FALSE],
+    selected_genes = selected,
+    provenance = list(
+      gene_set_source = gene_set_source,
+      top_n_genes = as.integer(top_n_genes),
+      min_overlap = as.integer(min_overlap),
+      max_pathways = as.integer(max_pathways),
+      alpha = alpha,
+      n_gene_sets = length(gene_sets),
+      n_selected_genes = stats::setNames(
+        vapply(order, function(m) sum(as.character(selected$modality) == m), integer(1)), order)
     )
   )
 }

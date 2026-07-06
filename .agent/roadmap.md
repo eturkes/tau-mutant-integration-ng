@@ -28,11 +28,13 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (2026-07-06 permanent pivot): the rendered report = FIVE figures, microglia (P1) + trajectory (P2)
-ONLY -- findings 1 + 2. The pipeline loads snRNAseq only and runs the microglia+trajectory targets; the
-GeoMx/proteome/phospho modalities and the mechanism/cross-modality/qc/story chapters, targets, R modules, and
-tests were deleted (Ledger 2026-07-06). 19 targets remain. P3/P4/P5 + the figure-expansion passes below stay as
-historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
+REPORT SCOPE (current 2026-07-06): the rendered report = SEVEN figures: microglia (P1) + trajectory (P2) +
+two modality-context figures (four-method amyloid-response logFC scatter; GO-BP pathway/process overlap over
+the scatter's off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho
+primary-DE targets solely for the modality figures. The mechanism/cross-modality/qc/story chapters, targets,
+R modules, and tests remain deleted (Ledger 2026-07-06). 31 targets remain. P3/P4/P5 + the figure-expansion
+passes below stay as historical DONE records (this roadmap holds the trajectory); their report chapters no
+longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
@@ -866,6 +868,12 @@ user before writing a new plan.
   via `.agents/skills/session-prompt` + `.codex/prompts/session.md`, `.agent/context.sh` reads Codex JSONL
   sessions, and `CLAUDE.md` / `.claude/` / `.serena/` are retired untracked/ignored state. Synced memory/map/
   history wording from deny-Read/Serena back to Codex read-economy.
+- 2026-07-06 Off-diagonal pathway figure DONE (ad hoc user task): added `fig-modality-offdiag-pathways`
+  immediately after Figure 6. `modality_logfc_scatter_data` now carries gene-symbol tokens, signed
+  interaction `x-y`, and `pathways$summary`: mouse MSigDB GO Biological Process overlap over the top 250
+  unique off-diagonal genes/proteins per method by |x-y| (descriptive, not a restored mechanism chapter).
+  `_modality.qmd` renders a modality x GO-BP bubble matrix (size = overlap count, fill = mean x-y, row
+  subtitles = leading hit genes). Target remains compact (~1.7MB); report now has 7 captions/alts.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

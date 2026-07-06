@@ -1,8 +1,9 @@
 # Map - codebase wiring (grows with the build)
 
-SIX-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + a four-method
-amyloid-response logFC scatter (2026-07-06 add: re-wires the GeoMx / proteome / phospho PRIMARY
-DE via the lean `R/modality_de.R`). Shows STRUCTURE (what calls what, what lives where);
+SEVEN-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + a four-method
+amyloid-response logFC scatter + off-diagonal GO-BP pathway/process panel (2026-07-06 adds:
+re-wire the GeoMx / proteome / phospho PRIMARY DE via the lean `R/modality_de.R`). Shows STRUCTURE
+(what calls what, what lives where);
 `memory.md` holds the WHY (facts/gotchas/decisions), `roadmap.md` the trajectory. The
 mechanism / cross-modality / qc / story chapters + their targets + `R/mechanism.R` +
 `R/crossmodality.R` + their tests stay DELETED (roadmap Ledger 2026-07-06). Residual dead code
@@ -55,7 +56,9 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
       midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
       modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
-      identity + zero crosshairs + OLS trend + top|y-x| repel labels + coord_equal 1:1). Report visual identity = theme.scss.
+      identity + zero crosshairs + OLS trend + top|y-x| repel labels + coord_equal 1:1); offdiag_pathway_plot
+      WIRED -> Figure 7 pathway/process bubble matrix (modality x GO-BP term; size=count, fill=mean x-y).
+      Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
       marker_mean_by_cluster (post-Harmony substate-separation check; map symbols->ensembl first) +
@@ -134,10 +137,13 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       (16/16 balanced 4/genotype, shared by both bulk arms) + reuses fit_limma_log / median_normalise /
       prevalence_filter (de_pb.R) + factorial_design(add_batch=FALSE) + io.R loaders.
    + figures.R (LIVE surface after teardown): figure_manifest (11 hyphenated fig-* ids: microglia 7 + trajectory 4;
-      report renders 6 figures -- 5 manifest + fig-modality-amyloid-effect, NOT in the vestigial manifest) + compact
+      report renders 7 figures -- 5 manifest + fig-modality-amyloid-effect + fig-modality-offdiag-pathways, NOT
+      in the vestigial manifest) + compact
       inline builders microglia_figure_data / trajectory_figure_data / modality_logfc_scatter_data (qmd-ready slots,
       finite geom guards, pre-binned/top-row reductions; modality_logfc_scatter_data = per-modality
-      {feature, label, y=nlgf_in_maptki, x=nlgf_in_p301s} logFC-pair frames, key-aligned) + visual_reduction_slot_map
+      {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
+      key-aligned, plus `pathways$summary` = mouse MSigDB GO-BP overlap over top 250 unique off-diagonal genes/
+      proteins per method) + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
@@ -173,7 +179,7 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
        geomx_de        <- run_geomx_de(geomx)                          # GeoMx primary voom DE x 5 contrasts ($primary$top; 19959 genes kept)
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # 24M proteome limma-trend x 5 contrasts ($top; 3379 groups)
        phospho_de_24m  <- run_phospho_de_24m(phospho, sample_key)      # 24M phosphosite limma-trend x 5 contrasts ($top; 17707 rows)
-       modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)  # 4 compact per-modality logFC-pair frames (y=nlgf_in_maptki, x=nlgf_in_p301s); ~1MB
+       modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)  # 4 compact per-modality logFC-pair frames (y=nlgf_in_maptki, x=nlgf_in_p301s) + GO-BP off-diagonal pathway/process summary; ~1.7MB
   - report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", "assets/code-tools-fix.html", assets/fonts/*.woff2)  # file target; explicit theme/font/after-body invalidation
     `report` <- render_report(report_sources, report_extra_files, microglia_report, microglia_figures, trajectory_figures, modality_scatter_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
@@ -187,7 +193,7 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                 tar_load microglia_report + microglia_figures [compact] -> "Substate landscape" (substate-marker
                 per-gene-z dot plot `fig-microglia-substate-markers`, substate + DAM-score UMAPs `fig-microglia-umap`,
                 genotype-faceted substate UMAP `fig-microglia-umap-substate`) + "Amyloid expands the DAM compartment"
-                (replicate-unit stacked substate bars `fig-microglia-unit-composition`). 4 of the 5 figures.)
+                (replicate-unit stacked substate bars `fig-microglia-unit-composition`). 4 of the 7 figures.)
                                                           --{{< include >}}--> `_trajectory.qmd`
                (trajectory chapter {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_figures ->
                 genotype x substate pseudotime density `fig-trajectory-pt-density` (geom_area,
@@ -196,10 +202,12 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
-                identity + OLS + top|y-x| labels). The 6th figure.)
+                identity + OLS + top|x-y| labels) + GO-BP off-diagonal pathway/process bubble matrix
+                `fig-modality-offdiag-pathways` (offdiag_pathway_plot; top 250 unique off-diagonal genes/proteins
+                per method, rows carry leading genes). The 6th and 7th figures.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
-       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (6 total).
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (7 total).
 
 ### Report prose inventory (vestigial after teardown)
 `scripts/prose_inventory.py` (stdlib Python; non-DAG utility) + `.agent/prose_replacement_manifest.tsv`:
@@ -219,10 +227,12 @@ run stopifnot checks (fail-loud, no testthat dep), print `ok - <name>`. Run from
                     de_pseudobulk/stageR matrix/interaction MDE, run_pb_de_substate fit-or-skip, dam_direction (S4)
   - test_io.R     : io contract tests (pure helpers + loader fail-loud asserts on tempfiles)
   - test_plot.R   : device-free -- theme_tau/scale_*_genotype/substate/background/binary/direction/rwb +
-                    concordance_plot + modality_interaction_scatter (7-layer y=x panel, coord_equal 1:1, finite filter) class/wiring
+                    concordance_plot + modality_interaction_scatter (7-layer y=x panel, coord_equal 1:1, finite filter) +
+                    offdiag_pathway_plot (warning-free bubble matrix) class/wiring
   - test_figures.R : figure_manifest (11) + microglia_figure_data / trajectory_figure_data /
                     modality_logfc_scatter_data (y=nlgf_in_maptki / x=nlgf_in_p301s axis mapping + key-align +
-                    per-modality labels + finite-drop / missing-contrast fail-loud) builder contracts +
+                    per-modality labels + gene-symbol tokens + off-diagonal pathway summary + finite-drop /
+                    missing-contrast fail-loud) builder contracts +
                     visual_slot_coverage (manifest-driven slot coverage) + synthetic finite guards for qmd geom inputs
   - test_modality_de.R : restored DE pure helpers -- positive_log2_matrix (nonpositive->NA before log2),
                     protein_group_features + aggregate_proteome_raw (group sum, present->NA), geomx_slide_design

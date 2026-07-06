@@ -178,15 +178,27 @@ gx <- list(primary = list(top = list(
   nlgf_in_p301s  = data.frame(symbol = paste0("G", 1:4), logFC = c(-0.1, -0.2, -0.3, -0.4), stringsAsFactors = FALSE))))
 pr <- list(top = list(
   nlgf_in_maptki = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
+                              gene_symbols = c("Apoe;Trem2", "Trem2", ""),
                               logFC = c(1, 2, 3), stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
+                              gene_symbols = c("Apoe;Trem2", "Trem2", ""),
                               logFC = c(4, 5, 6), stringsAsFactors = FALSE)))
 ph <- list(top = list(
   nlgf_in_maptki = data.frame(feature = paste0("row", 1:3, "|k"), site_id = c("Mapt_S404", NA, ""),
+                              gene = c("Mapt", "Apoe", "hMapt"),
                               logFC = c(0.5, -0.5, 1.0), stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(feature = paste0("row", 1:3, "|k"), site_id = c("Mapt_S404", NA, ""),
+                              gene = c("Mapt", "Apoe", "hMapt"),
                               logFC = c(1.5, -1.5, 2.0), stringsAsFactors = FALSE)))
-ms <- modality_logfc_scatter_data(pb, symbol_map, gx, pr, ph)
+pathway_sets <- list(
+  HALLMARK_IMMUNE_RESPONSE = c("Gene1", "Gene5", "Apoe", "Trem2"),
+  HALLMARK_NEURONAL_AXIS = c("Mapt", "Gene2")
+)
+ms <- modality_logfc_scatter_data(pb, symbol_map, gx, pr, ph,
+                                  pathway_gene_sets = pathway_sets,
+                                  pathway_top_n = 3L,
+                                  pathway_min_overlap = 1L,
+                                  pathway_max_pathways = 2L)
 sn  <- ms$panels$snRNAseq$data
 sn_i1 <- match(ens5[1], sn$feature); sn_i5 <- match(ens5[5], sn$feature)
 pr_d <- ms$panels$Proteome$data; ph_d <- ms$panels$Phospho$data
@@ -195,10 +207,15 @@ stopifnot(
   all(ms$order %in% names(ms$panels)),
   # AXIS INVARIANT: y is the tau-KO amyloid effect (nlgf_in_maptki), x the mutant-tau one (nlgf_in_p301s)
   sn$y[sn_i1] == 1, sn$x[sn_i1] == 10, sn$y[sn_i5] == 5, sn$x[sn_i5] == 50,
+  sn$interaction[sn_i1] == sn$x[sn_i1] - sn$y[sn_i1],
+  sn$abs_interaction[sn_i1] == abs(sn$interaction[sn_i1]),
   setequal(sn$label, symbol_map$symbol[1:5]),                    # Ensembl gene keys -> symbol labels
+  setequal(sn$gene_symbols, symbol_map$symbol[1:5]),
   pr_d$label[match("PG1", pr_d$feature)] == "Apoe",             # gene_first label
+  pr_d$gene_symbols[match("PG1", pr_d$feature)] == "Apoe;Trem2", # all group genes feed pathways
   pr_d$label[match("PG3", pr_d$feature)] == "PG3",              # blank gene_first -> feature id
   ph_d$label[match("row1|k", ph_d$feature)] == "Mapt_S404",     # site_id label
+  ph_d$gene_symbols[match("row3|k", ph_d$feature)] == "Mapt",    # hMapt normalised to mouse Mapt
   ph_d$label[match("row2|k", ph_d$feature)] == "row2|k",        # NA site_id -> feature id
   ms$provenance$y_contrast == "nlgf_in_maptki",
   ms$provenance$x_contrast == "nlgf_in_p301s",
@@ -206,18 +223,39 @@ stopifnot(
   ms$provenance$n_features[["Phospho"]] == 3L)
 cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and labels each modality\n")
 
+ps <- ms$pathways$summary
+pg <- ms$pathways$selected_genes
+stopifnot(
+  is.data.frame(ps), nrow(ps) > 0L,
+  all(c("modality", "pathway", "pathway_label_plot", "n_hit", "signed_mean", "fdr",
+        "top_genes") %in% names(ps)),
+  is.factor(ps$modality), is.factor(ps$pathway_label_plot),
+  any(as.character(ps$pathway) == "HALLMARK_IMMUNE_RESPONSE"),
+  any(pg$gene_symbol == "Gene5" & as.character(pg$modality) == "snRNAseq"),
+  ms$pathways$provenance$gene_set_source == "custom",
+  ms$pathways$provenance$top_n_genes == 3L)
+cat("ok - modality_logfc_scatter_data adds an off-diagonal pathway summary from selected genes\n")
+
 # non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
 pb_na <- list(top = list(
   nlgf_in_maptki = data.frame(gene = ens5[1:3], logFC = c(1, NA, 3), stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(gene = ens5[1:3], logFC = c(4, 5, 6),  stringsAsFactors = FALSE)))
-ms_na <- modality_logfc_scatter_data(pb_na, symbol_map, gx, pr, ph)
+ms_na <- modality_logfc_scatter_data(pb_na, symbol_map, gx, pr, ph,
+                                     pathway_gene_sets = pathway_sets,
+                                     pathway_top_n = 3L,
+                                     pathway_min_overlap = 1L,
+                                     pathway_max_pathways = 2L)
 stopifnot(nrow(ms_na$panels$snRNAseq$data) == 2L,
           ms_na$provenance$n_features[["snRNAseq"]] == 2L)
 pb_missing <- list(top = list(nlgf_in_maptki = pb$top$nlgf_in_maptki))
-expect_error(modality_logfc_scatter_data(pb_missing, symbol_map, gx, pr, ph))
+expect_error(modality_logfc_scatter_data(pb_missing, symbol_map, gx, pr, ph,
+                                         pathway_gene_sets = pathway_sets,
+                                         pathway_min_overlap = 1L))
 # a duplicated key in the x-contrast table (setequal ignores multiplicity) must fail loud, not first-match
 pb_dupx <- list(top = list(
   nlgf_in_maptki = data.frame(gene = ens5[1:2],                    logFC = c(1, 2),    stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(gene = c(ens5[1], ens5[2], ens5[2]), logFC = c(4, 5, 6), stringsAsFactors = FALSE)))
-expect_error(modality_logfc_scatter_data(pb_dupx, symbol_map, gx, pr, ph))
+expect_error(modality_logfc_scatter_data(pb_dupx, symbol_map, gx, pr, ph,
+                                         pathway_gene_sets = pathway_sets,
+                                         pathway_min_overlap = 1L))
 cat("ok - modality_logfc_scatter_data drops non-finite pairs, fails loud on missing / duplicated-key contrasts\n")

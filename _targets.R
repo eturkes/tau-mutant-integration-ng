@@ -133,8 +133,9 @@ list(
 
   # Compact per-modality amyloid-response logFC pairs: y = nlgf_in_maptki (amyloid on the tau-KO
   # background), x = nlgf_in_p301s (amyloid on the mutant-tau background). The interaction contrast is
-  # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Reads only the
-  # compact DE topTables (no heavy object).
+  # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
+  # a descriptive mouse GO-BP overlap over the top off-diagonal genes/proteins for the pathway panel.
+  # Reads only the compact DE topTables (no heavy object).
   tar_target(modality_scatter_figures,
              modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m),

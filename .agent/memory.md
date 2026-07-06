@@ -15,11 +15,13 @@ NLGF_MAPTKI (amyloid alone), NLGF_P301S (amyloid + tau). Design = tau (MAPTKI vs
 P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 REPORT SCOPE: the built report + pipeline cover snRNAseq microglia (P1) + activation trajectory (P2) + a
-four-method amyloid-response logFC scatter (2026-07-06 add) -- 31 targets, 6 figures, `index.qmd` = YAML +
-`_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes. The four-method figure RE-WIRED the GeoMx/
-proteome/phospho PRIMARY DE lean via `R/modality_de.R` (its own section below). The mechanism/cross-modality/
-qc/story chapters + their targets + R modules (`R/mechanism.R`, `R/crossmodality.R`) + tests STAY deleted
-(roadmap Ledger 2026-07-06); that science lives in git history + the Ledger.
+four-method amyloid-response logFC scatter plus a GO-BP off-diagonal pathway/process panel (2026-07-06 adds)
+-- 31 targets, 7 figures, `index.qmd` = YAML + `_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes.
+The modality figures RE-WIRED the GeoMx/proteome/phospho PRIMARY DE lean via `R/modality_de.R` (its own section
+below); the pathway panel is descriptive overlap on the Figure 6 off-diagonal genes/proteins, not a resurrected
+mechanism/cross-modality chapter. The mechanism/cross-modality/qc/story chapters + their targets + R modules
+(`R/mechanism.R`, `R/crossmodality.R`) + tests STAY deleted (roadmap Ledger 2026-07-06); that science lives in
+git history + the Ledger.
 
 ## Raw data (storage/data = symlink -> host Documents tree, shared/external read-only copy;
 gitignored via /storage/* + Codex read-economy skip; Rscript can read it when a task needs live data.
@@ -428,10 +430,11 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - CHAPTER (title "The tau-amyloid synergy adds DAM cells rather than advancing them"): amyloid-axis-shift ->
   composition-not-progression 3-channel decomposition -> per-cell glmmTMB supportive (composition-conflated) ->
   reconciliation/robustness/concordance -> 5 caveats+provenance (activation-ordering not time; position not rate;
-  lineage-conditioning balanced; cell-weighted anchors; transcriptionally-close substates). Full report render
-  0-warning; the render now spans only the microglia + trajectory chapters (5 figures, 19 targets).
+  lineage-conditioning balanced; cell-weighted anchors; transcriptionally-close substates). At P2 close, the full
+  report render was 0-warning over the then-current microglia + trajectory surface; current report scope is the
+  Project section above.
 
-## Four-method amyloid-response scatter (2026-07-06, built) -- `R/modality_de.R` + `modality_logfc_scatter_data` (R/figures.R) + `modality_interaction_scatter` (R/plot.R) + `_modality.qmd`
+## Four-method amyloid-response scatter + off-diagonal pathway panel (2026-07-06, built) -- `R/modality_de.R` + `modality_logfc_scatter_data` (R/figures.R) + `modality_interaction_scatter`/`offdiag_pathway_plot` (R/plot.R) + `_modality.qmd`
 - FIGURE = 4 scatter panels (one per method), y = logFC `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI
   background), x = logFC `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Signed distance
   from the dashed y=x identity (y - x) is EXACTLY the -interaction contrast per feature (interaction =
@@ -451,14 +454,18 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   proteome_de_24m$top[[c]]$logFC (key $feature = protein group, label $gene_first); phospho_de_24m$top[[c]]$logFC
   (key $feature = row<n>|collapsekey, label $site_id = gene_AAloc, may repeat across rows); pb_de_microglia$top[[c]]$logFC
   (key $gene = ENSEMBL -> map to symbol via symbol_map, NOT a bare grep). modality_logfc_scatter_data aligns the two
-  contrasts' topTables by feature key (one fit -> bijective keys) + drops non-finite pairs -> compact {feature,label,x,y}
-  per modality; the qmd tar_loads ONLY that ~1MB target (cheap-render invariant).
+  contrasts' topTables by feature key (one fit -> bijective keys) + drops non-finite pairs -> compact
+  {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `pathways$summary`: mouse MSigDB
+  GO Biological Process overlap over the top 250 unique off-diagonal genes/proteins per method by |x-y|; rows are
+  descriptive context for Figure 6, NOT restored mechanism/cross-modality inference. The qmd tar_loads ONLY that
+  ~1.7MB target (cheap-render invariant).
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho r~0.20). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 17707. Consistent with P1 (amyloid->DAM
   strong, interaction sub-threshold) + P2 (interaction = composition not progression): tau MODULATES weakly.
-- GATE green: test_modality_de.R (restored pure helpers), test_plot.R (+modality_interaction_scatter 7-layer/coord_equal),
-  test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/fail-loud), + live tar_make build of the DE targets.
+- GATE green: test_modality_de.R (restored pure helpers), test_plot.R (+modality_interaction_scatter 7-layer/coord_equal
+  + offdiag_pathway_plot warning-free build), test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/
+  gene-symbol/pathway/fail-loud), + live tar_make build of the DE/pathway target.
 
 ## Code-fold display (built 2026-07-04) -- `index.qmd` YAML
 - Report now SHOWS chunk code, folded/togglable (was `echo: false`). `index.qmd`: `execute: echo: true`
@@ -644,12 +651,15 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   is generated/heavy -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
   script), not a large-tree read. Inspect the output HTML the same way: build the path inside a python/R
   script ("report") + `.count` substrings (a `#hex` regex proved flaky).
-- Report figures (CURRENT surface, 2026-07-06 modality scatter add): the rendered report = SIX captioned
+- Report figures (CURRENT surface, 2026-07-06 modality scatter + pathway add): the rendered report = SEVEN captioned
   figures -- microglia (4): `fig-microglia-substate-markers` (per-gene-z dot plot of Homeostatic/DAM/IFN
   marker sets), `fig-microglia-umap` (substate + DAM-score UMAP panels), `fig-microglia-umap-substate`
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
-  `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter). Every captioned chunk
+  `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); pathway/process (1):
+  `fig-modality-offdiag-pathways` (mouse MSigDB GO Biological Process overlap over the top 250 unique
+  off-diagonal genes/proteins per method by |x-y|, with dot size = overlap count and fill = mean x-y).
+  Every captioned chunk
   = hyphenated `fig-*` id + `fig-cap` + `fig-alt`; palette/fonts per the theme.scss bullet above
   (saturated-but-controlled journal grammar). HTML-QA gotcha (durable): use a PARSER-based HTML check that
   ignores script/style/code -- raw grep false-hits on embedded JS/data-URIs. The many 2026-07-03

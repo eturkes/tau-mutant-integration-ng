@@ -225,6 +225,52 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
     theme_tau()
 }
 
+# Pathway/process overlap for the genes/proteins farthest from the y=x diagonal in the four-method
+# amyloid-response scatter. Rows carry pathway name plus leading hit genes; columns are modalities.
+# Fill = mean signed interaction (x - y) among the selected off-diagonal genes in that pathway;
+# size = number of selected genes. Ring colour flags descriptive FDR support.
+offdiag_pathway_plot <- function(pathway_summary, title = NULL, alpha = 0.25) {
+  stopifnot(is.data.frame(pathway_summary), is.numeric(alpha), length(alpha) == 1L,
+            alpha > 0, alpha < 1)
+  need <- c("modality", "pathway_label_plot", "n_hit", "signed_mean", "fdr")
+  miss <- setdiff(need, names(pathway_summary))
+  if (length(miss)) {
+    stop("pathway_summary missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+  x <- pathway_summary[pathway_summary$n_hit > 0L &
+                         is.finite(pathway_summary$signed_mean) &
+                         is.finite(pathway_summary$fdr), , drop = FALSE]
+  if (!nrow(x)) stop("pathway_summary has no finite pathway overlaps", call. = FALSE)
+  x$support <- factor(ifelse(x$fdr < alpha, paste0("FDR < ", alpha), "overlap"),
+                      levels = c(paste0("FDR < ", alpha), "overlap"))
+  lim <- max(abs(x$signed_mean), na.rm = TRUE)
+  lim <- if (is.finite(lim) && lim > 0) lim else 1
+  ring <- c("#20242A", "#B8B1A5")
+  names(ring) <- levels(x$support)
+  size_breaks <- pretty(range(x$n_hit, finite = TRUE), n = 5)
+  size_breaks <- size_breaks[size_breaks >= min(x$n_hit) & size_breaks <= max(x$n_hit)]
+  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_hit))
+
+  ggplot2::ggplot(x, ggplot2::aes(modality, pathway_label_plot)) +
+    ggplot2::geom_point(ggplot2::aes(size = n_hit, fill = signed_mean, colour = support),
+                        shape = 21, stroke = 0.65) +
+    scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
+                   name = "mean x-y") +
+    ggplot2::scale_colour_manual(values = ring, name = NULL, drop = FALSE) +
+    ggplot2::scale_size_area(max_size = 8, breaks = size_breaks,
+                             name = "genes") +
+    ggplot2::labs(
+      x = NULL, y = NULL, title = title,
+      subtitle = "Top off-diagonal genes per method; row subtitles list leading hit genes"
+    ) +
+    theme_tau(base_size = 10) +
+    ggplot2::theme(
+      axis.text.y = ggplot2::element_text(size = 8, lineheight = 0.92),
+      panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
+      legend.position = "right"
+    )
+}
+
 # Cross-modality support matrix ------------------------------------------------------------
 # One bubble per (feature x modality) cell of a cross-modality effect plate. Modality sits on
 # the x-axis -- never colour -- so a reader scans a single feature row across assays for
