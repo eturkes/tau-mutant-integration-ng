@@ -59,7 +59,7 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       identity + zero crosshairs + OLS trend + pooled-Q99.8 |x-y| off-diagonal repel labels + coord_equal 1:1);
       functional_group_score_plot WIRED -> Figure 7 category-score dumbbell facets (per modality/free-y, primary
       GO-BP keyword-union role or explicit fallback category per standardized pooled-cutoff Figure 6 off-diagonal gene/protein;
-      phosphosites substituted by parent gene, segment colour = P301S-MAPTKI, size = scored items; no
+      phosphoproteomics uses Figure 6 parent-protein mean points, segment colour = P301S-MAPTKI, size = scored items; no
       enrichment/FDR display).
       Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
@@ -146,7 +146,7 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       finite geom guards, pre-binned/top-row reductions; modality_logfc_scatter_data = per-modality
       {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
       key-aligned, plus `groups$summary` = primary functional-category aggregate scores over empirical Figure 6
-      off-diagonal labels per method; phospho scoring uses parent-gene substitutes) + visual_reduction_slot_map
+      off-diagonal labels per method; phospho scatter collapses finite sites to parent-protein mean points) + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
@@ -205,9 +205,10 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
-                identity + OLS + pooled-Q99.8 |x-y| off-diagonal labels) + off-diagonal functional-category score facets
+                identity + OLS + pooled-Q99.8 |x-y| off-diagonal labels; phospho = parent-protein mean points)
+                + off-diagonal functional-category score facets
                 `fig-modality-functional-scores` (functional_group_score_plot; standardized pooled-cutoff Figure 6 off-diagonal
-                genes/proteins, phosphosite labels substituted by parent gene before scoring, rows carry primary
+                genes/proteins, phosphoproteomics uses displayed parent-protein mean points, rows carry primary
                 role/fallback categories + leading score labels; connected points show aggregate NLGF_MAPTKI and NLGF_P301S scores,
                 segment colour = P301S-MAPTKI). The 6th and 7th
                 figures.)

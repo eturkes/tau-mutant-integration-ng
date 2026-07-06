@@ -240,8 +240,8 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
 }
 
 # Functional-category aggregate scores for empirical off-diagonal genes/proteins in the
-# four-method amyloid-response scatter; phosphosite labels are scored through their parent-gene
-# substitute. Rows are modality-specific role categories, facets are modalities. Each
+# four-method amyloid-response scatter; phosphoproteomics uses the parent-protein means displayed
+# in Figure 6. Rows are modality-specific role categories, facets are modalities. Each
 # segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
 # P301S; segment colour is the requested contrast, P301S minus MAPTKI.
 functional_group_score_plot <- function(group_summary, title = NULL) {

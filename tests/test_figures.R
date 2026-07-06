@@ -216,15 +216,20 @@ stopifnot(
   pr_d$label[match("PG1", pr_d$feature)] == "Apoe",             # gene_first label
   pr_d$gene_symbols[match("PG1", pr_d$feature)] == "Apoe;Trem2", # all group genes feed group scoring
   pr_d$label[match("PG3", pr_d$feature)] == "PG3",              # blank gene_first -> feature id
-  ph_d$label[match("row1|k", ph_d$feature)] == "Mapt_S404",     # site_id label
-  ph_d$gene_symbols[match("row3|k", ph_d$feature)] == "Mapt",    # hMapt normalised to mouse Mapt
-  ph_d$gene_symbols[match("row4|k", ph_d$feature)] == "Sfr1",     # blank gene -> parent from site_id
-  ph_d$gene_symbols[match("row5|k", ph_d$feature)] == "Lcp1",     # site-like gene -> parent gene substitute
-  ph_d$label[match("row2|k", ph_d$feature)] == "row2|k",        # NA site_id -> feature id
+  nrow(ph_d) == 4L,                                             # duplicate Mapt phosphosites -> one protein point
+  ph_d$label[match("phospho_protein:Mapt", ph_d$feature)] == "Mapt",
+  ph_d$gene_symbols[match("phospho_protein:Mapt", ph_d$feature)] == "Mapt",
+  ph_d$n_phosphosite[match("phospho_protein:Mapt", ph_d$feature)] == 2L,
+  ph_d$y[match("phospho_protein:Mapt", ph_d$feature)] == mean(c(0.5, 1.0)),
+  ph_d$x[match("phospho_protein:Mapt", ph_d$feature)] == mean(c(1.5, 2.0)),
+  ph_d$gene_symbols[match("phospho_protein:Sfr1", ph_d$feature)] == "Sfr1", # blank gene -> parent from site_id
+  ph_d$gene_symbols[match("phospho_protein:Lcp1", ph_d$feature)] == "Lcp1", # site-like gene -> parent substitute
   ms$provenance$y_contrast == "nlgf_in_maptki",
   ms$provenance$x_contrast == "nlgf_in_p301s",
   ms$provenance$n_features[["snRNAseq"]] == 5L,
-  ms$provenance$n_features[["Phospho"]] == 5L)
+  ms$provenance$n_features[["Phospho"]] == 4L,
+  ms$provenance$phospho_site_features == 5L,
+  ms$provenance$phospho_parent_proteins == 4L)
 cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and labels each modality\n")
 
 gs <- ms$groups$summary
@@ -242,8 +247,6 @@ stopifnot(
   any(as.character(gs$group) == "Immune activation"),
   any(gg$gene_symbol == "Gene5" & as.character(gg$modality) == "snRNAseq"),
   all(c("score_feature", "score_label") %in% names(gg)),
-  any(gg$gene_symbol == "Sfr1" & gg$score_label == "Sfr1" &
-        as.character(gg$modality) == "Phospho"),
   any(gg$gene_symbol == "Lcp1" & gg$score_label == "Lcp1" &
         as.character(gg$modality) == "Phospho"),
   all(!grepl("_[A-Za-z][0-9]", gg$score_label[as.character(gg$modality) == "Phospho"])),
@@ -259,7 +262,7 @@ stopifnot(
     identical(attr(ms$panels[[m]]$data, "offdiag_cutoff"), ms$groups$provenance$offdiag_cutoff)
   }, logical(1))),
   ms$groups$provenance$min_genes == 1L)
-cat("ok - modality_logfc_scatter_data scores empirical off-diagonal labels with phosphosite parent-gene substitutes\n")
+cat("ok - modality_logfc_scatter_data scores empirical off-diagonal labels after phospho parent-protein collapse\n")
 
 # non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
 pb_na <- list(top = list(

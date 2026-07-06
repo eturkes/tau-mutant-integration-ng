@@ -1007,7 +1007,7 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
 # -> the qmd reads this small target, never a heavy DE object. Feature keys / display labels
 # differ by assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, proteome =
 # protein group (gene_first label, all group symbols for group scoring), phospho =
-# phosphosite row (site_id label, parent gene for category scoring).
+# parent-protein mean of phosphosite rows (best-fit gene label for display + scoring).
 modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m,
                                          y_contrast = "nlgf_in_maptki",
@@ -1086,6 +1086,49 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     lab[bad] <- fallback[bad]
     lab
   }
+  phospho_parent_label <- function(gene_symbols, labels, features) {
+    vapply(seq_along(gene_symbols), function(i) {
+      for (z in list(gene_symbols[i], labels[i], features[i])) {
+        tok <- .fig_gene_tokens(z)
+        if (length(tok)) return(tok[[1]])
+      }
+      fallback <- as.character(features[i])
+      if (!is.na(fallback) && fallback != "") fallback else paste0("phospho_feature_", i)
+    }, character(1), USE.NAMES = FALSE)
+  }
+  collapse_phospho_by_protein <- function(df) {
+    .fig_require_cols(df, c("feature", "label", "gene_symbols", "x", "y"),
+                      "phospho logFC pairs")
+    parent <- phospho_parent_label(df$gene_symbols, df$label, df$feature)
+    parent <- trimws(parent)
+    parent[is.na(parent) | parent == ""] <- paste0("phospho_feature_",
+                                                   which(is.na(parent) | parent == ""))
+    idx <- split(seq_len(nrow(df)), parent, drop = TRUE)
+    parents <- sort(names(idx))
+    out <- .fig_bind(lapply(parents, function(p) {
+      z <- df[idx[[p]], , drop = FALSE]
+      y <- mean(z$y)
+      x <- mean(z$x)
+      data.frame(
+        feature = paste0("phospho_protein:", p),
+        label = p,
+        gene_symbols = p,
+        y = y,
+        x = x,
+        interaction = x - y,
+        abs_interaction = abs(x - y),
+        n_phosphosite = nrow(z),
+        stringsAsFactors = FALSE
+      )
+    }))
+    .fig_assert_nonempty(out, "phospho parent-protein logFC pairs")
+    .fig_assert_finite(out, c("x", "y", "interaction", "abs_interaction", "n_phosphosite"),
+                       "phospho parent-protein logFC pairs")
+    attr(out, "phospho_site_n") <- nrow(df)
+    attr(out, "phospho_parent_collapse") <- "mean x/y by best-fit parent gene"
+    rownames(out) <- NULL
+    out
+  }
 
   panels <- list(
     snRNAseq = list(
@@ -1102,9 +1145,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       data  = pair(proteome_de_24m$top, "feature", gene_first_label,
                    protein_group_genes, "proteome")),
     Phospho = list(
-      title = "Bulk phosphosite (24M)",
-      data  = pair(phospho_de_24m$top, "feature", site_id_label,
-                   phospho_gene, "phospho"))
+      title = "Bulk phosphoproteome (24M, protein means)",
+      data  = collapse_phospho_by_protein(pair(phospho_de_24m$top, "feature", site_id_label,
+                                               phospho_gene, "phospho")))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
   offdiag_cutoff <- modality_scatter_pooled_cutoff(panels, order,
@@ -1142,9 +1185,12 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       offdiag_tail_quantile = offdiag_tail_quantile,
       offdiag_cutoff_source = offdiag_cutoff_source,
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
+      phospho_site_features = attr(panels$Phospho$data, "phospho_site_n", exact = TRUE),
+      phospho_parent_proteins = nrow(panels$Phospho$data),
+      phospho_scatter = "phosphosite rows collapsed to best-fit parent proteins; x/y are arithmetic means across finite sites per protein",
       feature_key = c(snRNAseq = "Ensembl gene (symbol label)", GeoMx = "gene symbol",
                       Proteome = "protein group (gene_first label)",
-                      Phospho = "phosphosite row (site_id label)"),
+                      Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
       contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores; no heavy DE object"
@@ -1268,6 +1314,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 # Functional-category score summary for empirical off-diagonal features in
 # fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions, but every
 # threshold-passing item is retained: unmapped symbols fall into explicit fallback categories.
+# The phosphoproteomics panel is already parent-protein-collapsed upstream, so category scores use
+# the same averaged protein points that Figure 6 displays.
 .fig_fallback_role <- function(gene_symbol, label) {
   token <- .fig_gene_tokens(c(gene_symbol, label))
   if (!length(token)) token <- as.character(label)
@@ -1433,7 +1481,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       n_group_sets = length(group_sets),
       selection = "same standardized off-diagonal rule as fig-modality-amyloid-effect: one pooled empirical |x-y| cutoff across all Figure 6 modalities; duplicate display labels collapsed after thresholding",
       category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
-      phosphosite_scoring = "phosphosite labels score through the best-fit parent gene; duplicate threshold-passing sites keep the highest-|x-y| site",
+      phosphoproteomics_scoring = "phosphoproteomics points are parent-protein means of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
                integer(1)), order),

@@ -135,7 +135,7 @@ list(
   # background), x = nlgf_in_p301s (amyloid on the mutant-tau background). The interaction contrast is
   # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
   # Figure 7 functional-category scores over standardized pooled-cutoff off-diagonal genes/proteins from Figure 6
-  # (phosphosite labels score via parent-gene substitutes; unmapped symbols kept in fallback categories).
+  # (phosphoproteomics scatter points are parent-protein means; unmapped symbols kept in fallback categories).
   # Reads only the compact DE topTables (no heavy object).
   tar_target(modality_scatter_figures,
              modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de,

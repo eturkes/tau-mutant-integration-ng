@@ -882,7 +882,8 @@ user before writing a new plan.
   NLGF_MAPTKI amyloid logFC, aggregate NLGF_P301S amyloid logFC, and `delta=x-y`. The plot is a per-modality
   dumbbell score facet (connected MAPTKI/P301S points; segment colour = P301S-MAPTKI; point size = Figure 6
   labels) and displays no enrichment/FDR result.
-- 2026-07-06 Figure 7 phosphosite parent-gene scoring DONE (ad hoc user follow-up): phosphosite labels still enter
+- 2026-07-06 Figure 7 phosphosite parent-gene scoring DONE (ad hoc user follow-up; superseded by parent-protein
+  mean scatter collapse below): phosphosite labels still enter
   through the Figure 6 label rule, but group scoring substitutes the best-fit parent gene (`gene` when usable,
   otherwise site_id prefix) and collapses duplicate labelled phosphosites to the highest-|x-y| site per parent.
   Legend/caption now say scored genes/proteins/items rather than raw Figure 6 labels.
@@ -891,10 +892,16 @@ user before writing a new plan.
   and duplicate display-label collapse. Reworked Figure 7 from shared functional-group rows to
   modality-specific/free-y primary categories over those empirical outliers: GO-BP keyword-union roles first,
   explicit fallback categories for unmapped/predicted/olfactory labels, phosphosites scored through parent genes.
-- 2026-07-06 Figure 6/7 standardized off-diagonal cutoff DONE (ad hoc user correction): replaced the per-modality
+- 2026-07-06 Figure 6/7 standardized off-diagonal cutoff DONE (ad hoc user correction; live threshold/counts
+  superseded by parent-protein mean scatter collapse below): replaced the per-modality
   empirical threshold with one pooled Q99.8 cutoff over finite `|x-y|` distances from all four Figure 6 methods
   (`|x-y| >= 4.480587` live). Live labels now reflect shared absolute distance: snRNAseq 0, GeoMx 0, Proteome 18,
   Phospho 87; Figure 7 scores Proteome 18 + Phospho 59 parent-gene/protein items after phosphosite collapse.
+- 2026-07-06 Figure 6 phosphoproteomics readability DONE (ad hoc user correction): phospho DE remains site-level,
+  but `modality_logfc_scatter_data` collapses finite phosphosite logFC pairs to best-fit parent-protein means before
+  pooled cutoff, labels, and Figure 7 scoring. Live compact target: phospho 17707 finite sites -> 3092 parent
+  proteins; pooled Q99.8 `|x-y| >= 3.307601`; Figure 6 labels snRNAseq 5 / GeoMx 0 / Proteome 57 / Phospho 20;
+  Figure 7 rows snRNAseq 4 / GeoMx 0 / Proteome 8 / Phospho 5.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

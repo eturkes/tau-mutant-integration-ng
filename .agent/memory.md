@@ -453,22 +453,24 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   batch) + io.R loaders; match_24m_bulk_columns (16/16 matched, balanced 4/genotype) shared by both bulk arms.
 - ACCESS PATHS (all 4 $top lists carry the 5 canonical contrasts): geomx_de$primary$top[[c]]$logFC (key $symbol);
   proteome_de_24m$top[[c]]$logFC (key $feature = protein group, label $gene_first); phospho_de_24m$top[[c]]$logFC
-  (key $feature = row<n>|collapsekey, label $site_id = gene_AAloc, may repeat across rows); pb_de_microglia$top[[c]]$logFC
+  (key $feature = row<n>|collapsekey, site-level label $site_id = gene_AAloc, may repeat); pb_de_microglia$top[[c]]$logFC
   (key $gene = ENSEMBL -> map to symbol via symbol_map, NOT a bare grep). modality_logfc_scatter_data aligns the two
-  contrasts' topTables by feature key (one fit -> bijective keys) + drops non-finite pairs -> compact
-  {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `groups$summary`: the empirical
-  Figure 6 off-diagonal labels are assigned one primary category per scored item. GO-BP keyword-union roles get
-  priority; unmapped labels are retained as fallback categories (predicted/unannotated loci, olfactory receptor/GPCR,
-  other annotated). Phosphosite labels score through their best-fit parent gene; duplicate threshold-passing sites
-  for the same parent keep the highest-|x-y| site as the gene substitute. Figure 7 scores each category by mean `y`
-  (NLGF_MAPTKI amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot uses free-y
-  per-modality dumbbell facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins. NO enrichment/FDR
-  result is displayed. The qmd
+  contrasts' topTables by feature key (one fit -> bijective keys), drops non-finite pairs, then collapses phospho
+  site rows to best-fit parent-protein means -> compact {feature,label,gene_symbols,x,y,interaction=x-y} per modality.
+  It also builds `groups$summary`: the empirical Figure 6 off-diagonal labels are assigned one primary category per
+  scored item. GO-BP keyword-union roles get priority; unmapped labels are retained as fallback categories
+  (predicted/unannotated loci, olfactory receptor/GPCR, other annotated). Phosphoproteomics category scores use the
+  same parent-protein mean points displayed in Figure 6. Figure 7 scores each category by mean `y` (NLGF_MAPTKI
+  amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot uses free-y per-modality dumbbell
+  facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins. NO enrichment/FDR result is displayed. The qmd
   tar_loads ONLY that compact target (cheap-render invariant).
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
-  phospho r~0.20). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 17707. Consistent with P1 (amyloid->DAM
-  strong, interaction sub-threshold) + P2 (interaction = composition not progression): tau MODULATES weakly.
+  phospho parent-protein means r~0.30). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 3092 parent
+  proteins from 17707 finite phosphosite rows. Pooled-Q99.8 cutoff = |x-y| >= 3.307601; Figure 6 labels =
+  snRNAseq 5 / GeoMx 0 / Proteome 57 / Phospho 20; Figure 7 category rows = snRNAseq 4 / GeoMx 0 / Proteome 8 /
+  Phospho 5. Consistent with P1 (amyloid->DAM strong, interaction sub-threshold) + P2 (interaction = composition
+  not progression): tau MODULATES weakly.
 - GATE green: test_modality_de.R (restored pure helpers), test_plot.R (+modality_interaction_scatter 7-layer/coord_equal
   + functional_group_score_plot warning-free build), test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/
   gene-symbol/group-score/fail-loud), + live tar_make build of the DE/group-score target.
@@ -664,7 +666,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
   `fig-modality-functional-scores` (modality-specific categories over standardized pooled-cutoff Figure 6 off-diagonal
-  genes/proteins, with phosphosites substituted by parent gene; connected aggregate MAPTKI/P301S amyloid-score
+  genes/proteins, with phosphoproteomics scored from parent-protein mean points; connected aggregate MAPTKI/P301S amyloid-score
   points, segment colour = P301S-MAPTKI, point size = scored genes/proteins).
   Every captioned chunk
   = hyphenated `fig-*` id + `fig-cap` + `fig-alt`; palette/fonts per the theme.scss bullet above
