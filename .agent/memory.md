@@ -1,6 +1,8 @@
 # Memory - standing contract (read every session)
 
-Durable facts / decisions / gotchas surviving all plans. Companions: `roadmap.md`
+Durable facts / decisions / gotchas surviving all plans. Codex-only repo:
+`AGENTS.md` is canonical; repo-scoped `$` skills live under `.agents/skills/`;
+prompt source templates live under `.codex/prompts/`. Companions: `roadmap.md`
 (direction), `map.md` (wiring), `history.md` (new decision digests),
 `archive_digest.md` (v1 reference). This is a FRESH streamlined rebuild; v1 lives
 on branch `archive`.
@@ -20,7 +22,7 @@ qc/story chapters + their targets + R modules (`R/mechanism.R`, `R/crossmodality
 (roadmap Ledger 2026-07-06); that science lives in git history + the Ledger.
 
 ## Raw data (storage/data = symlink -> host Documents tree, shared/external read-only copy;
-gitignored via /storage/* + deny-Read; Rscript reads resolve through it, bypassing the deny.
+gitignored via /storage/* + Codex read-economy skip; Rscript can read it when a task needs live data.
 Shapes VERIFIED live in S2 via the R/io.R loaders; data is immutable so numbers are stable.)
 - PIPELINE LOADS all 4 modalities: snrnaseq (P1/P2) + geomx / proteomics / phospho + sample_key (the
   four-method amyloid-response DE, `R/modality_de.R`; 2026-07-06 re-wire). `R/io.R` loaders + `data_paths`
@@ -572,7 +574,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   filename), `_targets.R`+`_targets/` (targets script+store), `_*.qmd` (Quarto include-partial,
   not rendered standalone). The ONE free-choice name -- Quarto `output-dir` -- is deliberately
   un-underscored: `report/` (was `_report/`; tracked in `_quarto.yml`, `R/report.R` html_file,
-  `.gitignore` `/report/`, `.claude/settings.json` deny-Read, map.md). Re-underscoring it OR
+  `.gitignore` `/report/`, map.md). Re-underscoring it OR
   stripping the functional `_` both break -> leave as-is.
 - OmnipathR API logs -> `storage/cache/omnipathr-log/` (gitignored), via `options(omnipathr.logdir=)`
   in `.Rprofile` set BEFORE the pkg loads (reads it at load) -> keeps probe/download logs out of the
@@ -608,8 +610,9 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   is deprecated -> use `format="file"` + `tar_option_set(trust_timestamps=TRUE)` (set in
   `_targets.R`) so the 8G snrnaseq input is change-detected by mtime/size, not re-hashed each
   run. Heavy seurat target: `memory="transient"` + `garbage_collection=TRUE` release the load.
-- Commit `.serena/` (project.yml + .gitignore); Serena language changes are
-  startup-only (restart Claude Code to apply).
+- Codex-only project config: keep `CLAUDE.md`, `.claude/`, and `.serena/` untracked/ignored.
+  Repo-specific skills belong in `.agents/skills/` (Codex-discoverable `$...` surface);
+  reusable prompt source belongs in `.codex/prompts/`.
 
 ## Reports (Quarto; built P0-S4)
 - Report = ONE self-contained OFFLINE HTML: a standalone `format: html` doc (`index.qmd`,
@@ -625,7 +628,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   ($font-family-sans-serif/$headings-font-family/$font-family-monospace) + 9 `@font-face` (scss:rules)
   with a relative `url("assets/fonts/<n>.woff2") format("woff2")`. Quarto base64-INLINES each woff2 into
   the embedded CSS under embed-resources -> ONE offline file (render PROVED: 9 faces inlined, magic d09GMg,
-  0 external). The 9 woff2 are COMMITTED (assets/fonts/, deny-Read `**/*.woff2`, Serena ignored_paths);
+  0 external). The 9 woff2 are COMMITTED (assets/fonts/; avoid direct reads via `AGENTS.md` read economy);
   list them in `report_extra_files` -- inspection misses them, `list.files("assets/fonts",
   pattern="woff2", full.names=TRUE)` keeps the list in sync. ggplot panels keep `theme_tau(base_family="")`
   (device font); `theme_tau()` installs saturated steel-blue/teal/amber/cranberry ggplot discrete defaults,
@@ -638,19 +641,25 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   woff2 magic -> `d09GMg`); RAW `.count` reads ~0 theme-side and URLdecoding the ~1MB blob is very slow. Figures
   embed as `data:image/png` base64, so their colours are not raw either.
 - Quarto caches the Sass compile in `.quarto/` -> a theme edit is invisible until cleared; `.quarto`
-  is deny-Read -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
-  script), not a Bash `rm`. Inspect the output HTML the same way (output dir is deny-Read): build the
-  path inside a python/R script ("_"+"report") + `.count` substrings (a `#hex` regex proved flaky).
-- Report figures (CURRENT surface, 2026-07-06 five-figure cut): the rendered report = FIVE captioned
+  is generated/heavy -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
+  script), not a large-tree read. Inspect the output HTML the same way: build the path inside a python/R
+  script ("report") + `.count` substrings (a `#hex` regex proved flaky).
+- Report figures (CURRENT surface, 2026-07-06 modality scatter add): the rendered report = SIX captioned
   figures -- microglia (4): `fig-microglia-substate-markers` (per-gene-z dot plot of Homeostatic/DAM/IFN
   marker sets), `fig-microglia-umap` (substate + DAM-score UMAP panels), `fig-microglia-umap-substate`
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
-  trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density). Every captioned chunk
+  trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
+  `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter). Every captioned chunk
   = hyphenated `fig-*` id + `fig-cap` + `fig-alt`; palette/fonts per the theme.scss bullet above
   (saturated-but-controlled journal grammar). HTML-QA gotcha (durable): use a PARSER-based HTML check that
   ignores script/style/code -- raw grep false-hits on embedded JS/data-URIs. The many 2026-07-03
   figure-refinement passes (caption-only, box curation, palette, four-modality/cross-modality narrative, story
   plates) are historical -> roadmap Ledger.
-## Subagents
-Spawn subagents to protect main context (Explore = cross-file search, Plan =
-design, general-purpose = research).
+## Codex workflow
+- Fresh session: invoke `$session-prompt` (skill reads `.codex/prompts/session.md`) or
+  manually follow that prompt's load order.
+- Self-review: inspect uncommitted work directly; accept/reject concrete findings explicitly,
+  fix accepted ones, then commit one scoped unit.
+- Headroom: `.agent/context.sh` scans newest Codex JSONL session for this cwd and parses
+  latest `token_count` (`last_token_usage.input_tokens`, `model_context_window`); override
+  the window with `CODEX_CONTEXT_WINDOW`.

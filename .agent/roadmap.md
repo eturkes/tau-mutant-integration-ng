@@ -38,7 +38,7 @@ corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dyna
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
 ## Active plan: (none)
-Next `/session-prompt` mode = PLAN. Confirm the next roadmap direction with the
+Next `$session-prompt` mode = PLAN. Confirm the next roadmap direction with the
 user before writing a new plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -835,7 +835,7 @@ user before writing a new plan.
 - 2026-07-04 infra repo hygiene: renamed the Quarto `output-dir` `_report/` -> `report/` (the ONE
   free-choice name; the other leading-`_` names -- `_quarto.yml`, `_targets.R`/`_targets/`, `_*.qmd` --
   are tool contracts, KEPT). Synced `_quarto.yml`, `R/report.R` html_file, `.gitignore` `/report/`,
-  `.claude/settings.json` deny-Read, map.md + memory.md; `report` is `format="file"` so the target value
+  map.md + memory.md; `report` is `format="file"` so the target value
   just re-points -- no DAG change. Redirected OmnipathR API logs -> `storage/cache/omnipathr-log/` via
   `.Rprofile` `options(omnipathr.logdir=)` set before load (was littering repo-root `./omnipathr-log/`).
   Purged stray gitignored working-tree litter (`sccomp_draws_files/` ~174M, root `omnipathr-log/`, old
@@ -861,6 +861,11 @@ user before writing a new plan.
   qc_figure_data -- pure dead weight referencing permanently-deleted targets, NOT test-covered, removable; plus
   plot.R concordance_plot (P4-only). The two kept builders (microglia/trajectory) still emit unrendered manifest
   slots (11 built, 5 rendered).
+- 2026-07-06 infra Codex project restore: reversed the `f946306` Claude-workflow surface while preserving
+  newer report/pipeline state. Tracked contract is again Codex-only: `AGENTS.md` canonical, `$session-prompt`
+  via `.agents/skills/session-prompt` + `.codex/prompts/session.md`, `.agent/context.sh` reads Codex JSONL
+  sessions, and `CLAUDE.md` / `.claude/` / `.serena/` are retired untracked/ignored state. Synced memory/map/
+  history wording from deny-Read/Serena back to Codex read-economy.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
