@@ -720,6 +720,34 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   sample_counts$modality <- factor(sample_counts$modality,
                                    levels = c("snRNAseq nuclei", "GeoMx AOIs", "24M bulk runs"))
 
+  # Four-modality summary for the study-design schematic: every modality reads the SAME 2x2
+  # genotype design at its own resolution/n. All numbers derive from the tables above (no
+  # literals). proteome + phospho share the one 16-row 24M sample key (shared_bulk) -> the
+  # schematic brackets them as the same sample set, not 32 independent samples; the 30/81 raw
+  # Spectronaut export columns (modality_table) subset to those 16 matched 24M runs downstream.
+  n_snrna <- sum(sn_counts$n)
+  sn_unit_rng <- range(genotype_batch$Freq)
+  geo_rng <- range(geomx_genotype$n_aoi)
+  n_bulk <- nrow(sample_key)
+  per_geno_bulk <- n_bulk %/% length(genotype_levels)
+  bulk_support <- sprintf("bulk 24M hippocampus · %d per genotype", per_geno_bulk)
+  design_modalities <- data.frame(
+    order = 1:4,
+    modality = c("snRNAseq", "GeoMx", "proteome", "phospho"),
+    n_total = c(n_snrna, sum(geomx_genotype$n_aoi), n_bulk, n_bulk),
+    count_lab = c(paste0(format(n_snrna, big.mark = ",", trim = TRUE), " nuclei"),
+                  paste0(sum(geomx_genotype$n_aoi), " spatial AOIs"),
+                  paste0(n_bulk, " samples"), paste0(n_bulk, " samples")),
+    support = c(sprintf("single-nucleus RNA · %d units (%s–%s)", nrow(genotype_batch),
+                        format(sn_unit_rng[1L], big.mark = ",", trim = TRUE),
+                        format(sn_unit_rng[2L], big.mark = ",", trim = TRUE)),
+                sprintf("spatial transcriptomics · %d–%d per genotype",
+                        as.integer(geo_rng[1L]), as.integer(geo_rng[2L])),
+                bulk_support, bulk_support),
+    shared_bulk = c(FALSE, FALSE, TRUE, TRUE),
+    stringsAsFactors = FALSE
+  )
+
   depth_metrics <- c(nCount_RNA = "total counts", nFeature_RNA = "detected genes")
   frac_metrics <- c(percent_mt = "mitochondrial %", percent_ribo = "ribosomal %",
                     percent_malat1 = "MALAT1 %", percent_contam = "contamination %")
@@ -755,7 +783,8 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   out <- list(
     manifest = visual_reduction_slot_map("figure")[visual_reduction_slot_map("figure")$target == "qc_figures", ],
     study_design = list(genotype_grid = design_grid,
-                        sample_counts = sample_counts),
+                        sample_counts = sample_counts,
+                        modalities = design_modalities),
     modality_table = modality_table,
     geomx_genotype = geomx_genotype,
     genotype_batch = genotype_batch,
@@ -774,6 +803,7 @@ qc_figure_data <- function(microglia_seurat_raw, geomx, proteomics, phospho, sam
   )
   .fig_assert_finite(out$modality_table, c("n_features", "n_samples"), "qc modality_table")
   .fig_assert_finite(out$study_design$sample_counts, "n", "qc study_design sample_counts")
+  .fig_assert_finite(out$study_design$modalities, "n_total", "qc study_design modalities")
   .fig_assert_finite(out$genotype_batch, "Freq", "qc genotype_batch")
   .fig_assert_finite(out$geomx_genotype, "n_aoi", "qc geomx_genotype")
   .fig_assert_finite(out$depth_distribution, c("x_mid", "n"), "qc depth_distribution")

@@ -5,7 +5,6 @@
 #| include: false
 suppressPackageStartupMessages({
   library(ggplot2)
-  library(patchwork)
 })
 options(warn = 2)
 targets::tar_source()
@@ -14,16 +13,6 @@ knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 qc <- qc_figures
 
-fmt_n <- function(x) {
-  vapply(x, function(v) {
-    if (is.infinite(v)) return("Inf")
-    if (abs(v - round(v)) < 1e-9) {
-      return(format(as.integer(round(v)), big.mark = ",", scientific = FALSE, trim = TRUE))
-    }
-    format(round(v, 3), nsmall = 3, big.mark = ",", scientific = FALSE, trim = TRUE)
-  }, FUN.VALUE = character(1))
-}
-fmt_range <- function(lo, hi) paste0(fmt_n(lo), "-", fmt_n(hi))
 wrap_lab <- function(x, width = 18L) {
   vapply(strwrap(x, width = width, simplify = FALSE), paste, collapse = "\n", FUN.VALUE = character(1))
 }
@@ -41,10 +30,11 @@ stopifnot(
   is.list(qc),
   all(c("modality_table", "geomx_genotype", "genotype_batch", "depth_distribution",
         "fraction_distribution", "metric_bounds", "audit_notes", "study_design") %in% names(qc)),
-  all(c("genotype_grid", "sample_counts") %in% names(qc$study_design)),
+  all(c("genotype_grid", "sample_counts", "modalities") %in% names(qc$study_design)),
   nrow(qc$modality_table) == 5L,
   nrow(qc$study_design$genotype_grid) == 4L,
   nrow(qc$study_design$sample_counts) == 12L,
+  nrow(qc$study_design$modalities) == 4L,
   sum(sample_key_row) == 1L,
   !anyNA(metric_names),
   nrow(qc$geomx_genotype) == 4L,
@@ -63,72 +53,97 @@ stopifnot(
 ```{r}
 #| label: fig-qc-study-design
 #| fig-width: 11
-#| fig-height: 5.3
-#| fig-cap: "The 2x2 genotype design has support across single-nucleus, spatial and bulk layers."
-#| fig-alt: "Panel A marks the tau by amyloid genotype grid as labelled tiles; panel B shows the sixteen genotype-batch single-nucleus replicate units; panel C shows per-genotype sample support across modalities."
+#| fig-height: 4.6
+#| fig-cap: "One 2x2 tau-by-amyloid genotype design, read by four modalities at their own resolution and sample count, converging on the amyloid-by-tau interaction contrast."
+#| fig-alt: "A left-to-right schematic. Left: the 2x2 genotype grid -- tau background (MAPTKI, P301S) across the amyloid axis (NLGF minus, NLGF plus) -- as four coloured tiles. Middle: four modality nodes, single-nucleus RNA at 26,104 nuclei, GeoMx spatial at 91 AOIs, and bulk proteome and bulk phospho at 16 samples each, with proteome and phospho bracketed as the same sixteen 24-month samples. Right: converging arrows meet the interaction-contrast target, glossed as whether amyloid reshapes microglia differently under mutant tau."
+
+# Graphical-abstract schematic, three stations left to right: the shared 2x2 genotype design ->
+# four modality readouts at their own resolution/n -> the difference-in-differences interaction
+# target. Data-backed -- every count/range comes from qc$study_design$modalities (derived in
+# qc_figure_data), never a literal here. Hand-placed coords on theme_void; the genotype palette
+# stays reserved for the genotype tiles (modality bullets are neutral) so colour never aliases
+# meaning across stations.
 design_grid <- qc$study_design$genotype_grid
 design_grid$genotype <- factor(as.character(design_grid$genotype), levels = genotype_levels)
-batch_grid <- qc$genotype_batch
-batch_grid$genotype <- factor(as.character(batch_grid$genotype), levels = genotype_levels)
-batch_grid$batch <- factor(as.character(batch_grid$batch), levels = sort(unique(batch_grid$batch),
-                                                                          method = "radix"))
-batch_grid$label <- fmt_n(batch_grid$Freq)
-design_counts <- qc$study_design$sample_counts
-design_counts$genotype <- factor(as.character(design_counts$genotype), levels = genotype_levels)
-design_counts$modality <- factor(as.character(design_counts$modality),
-                                 levels = c("snRNAseq nuclei", "GeoMx AOIs", "24M bulk runs"))
-design_counts$label <- fmt_n(design_counts$n)
-count_pad <- stats::aggregate(n ~ modality, data = design_counts, FUN = max)
-names(count_pad)[2L] <- "max_n"
-design_counts <- merge(design_counts, count_pad, by = "modality", all.x = TRUE, sort = FALSE)
-design_counts$label_x <- design_counts$n + pmax(design_counts$max_n * 0.04, 0.8)
+design_grid$tile_lab <- gsub("\n", " ", design_grid$label)
+mods <- qc$study_design$modalities
+mods <- mods[order(mods$order), , drop = FALSE]
 
-p_grid <- ggplot(design_grid, aes(tau_background, amyloid)) +
-  geom_tile(aes(fill = genotype), colour = "#F8F6F1", linewidth = 0.8,
-            width = 0.92, height = 0.92) +
-  geom_text(aes(label = label), size = 3.05, fontface = "bold", lineheight = 0.9,
-            colour = "#F8F6F1") +
+# 2x2 tile centres: tau background -> x, amyloid -> y. Modalities stack down station 2 at x = 5.25.
+tx <- c(MAPTKI = 1.0, P301S = 2.05)
+ay <- c(`NLGF-` = 1.95, `NLGF+` = 3.15)
+design_grid$gx <- tx[as.character(design_grid$tau_background)]
+design_grid$gy <- ay[as.character(design_grid$amyloid)]
+mod_y <- c(3.55, 2.72, 1.89, 1.06)
+mods$my <- mod_y[mods$order]
+mods$mx <- 5.25
+mods$node_text <- sprintf("%s\n%s", mods$modality, mods$count_lab)
+
+ix <- 8.8
+iy <- 2.62
+interaction_text <- "interaction contrast\n(NLGF·P301S − P301S)\n− (NLGF·MAPTKI − MAPTKI)"
+# proteome + phospho are the same 16 24M samples -> bracket the shared_bulk rows as one set.
+shared <- mods[mods$shared_bulk, , drop = FALSE]
+shared_y <- range(shared$my)
+shared_lab <- sprintf("same %s\n24M samples", format(shared$n_total[1L], big.mark = ",", trim = TRUE))
+
+bands <- data.frame(
+  xmin = c(0.15, 4.05, 7.75), xmax = c(3.05, 6.95, 9.9), ymin = 0.55, ymax = 3.95,
+  label = c("GENOTYPE DESIGN", "FOUR MODALITIES", "INTEGRATION TARGET"), stringsAsFactors = FALSE)
+bands$label_x <- (bands$xmin + bands$xmax) / 2
+big_arrow <- data.frame(x = 3.2, xend = 3.95, y = 2.3, yend = 2.3)
+conv <- data.frame(x = 6.05, y = mod_y, xend = ix - 1.02, yend = iy)
+
+ggplot() +
+  geom_rect(data = bands, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "#F7F5EF", colour = NA) +
+  geom_text(data = bands, aes(label_x, 4.18, label = label), inherit.aes = FALSE,
+            fontface = "bold", size = 3.0, colour = "#8A857B") +
+  # station 1: shared 2x2 genotype design
+  geom_tile(data = design_grid, aes(gx, gy, fill = genotype),
+            width = 0.9, height = 1.0, colour = "#F8F6F1", linewidth = 0.8) +
+  geom_text(data = design_grid, aes(gx, gy, label = tile_lab),
+            colour = "#F8F6F1", fontface = "bold", size = 2.45, lineheight = 0.9) +
   scale_fill_genotype(guide = "none") +
-  labs(x = "tau background", y = "amyloid", title = "2x2 genotype design") +
-  coord_fixed(ratio = 1.05) +
-  theme(panel.grid = element_blank(),
-        plot.title = element_text(size = 8.5, face = "bold"),
-        axis.text.x = element_text(face = "bold"),
-        axis.text.y = element_text(face = "bold"))
-
-p_batch <- ggplot(batch_grid, aes(genotype, batch, fill = Freq)) +
-  geom_tile(colour = "#F8F6F1", linewidth = 0.45, width = 0.92, height = 0.88) +
-  geom_text(aes(label = label), size = 2.4, colour = "#262B2F") +
-  scale_fill_rwb(name = "nuclei", midpoint = NULL) +
-  scale_x_discrete(labels = genotype_labels) +
-  labs(x = NULL, y = NULL, title = "16 snRNAseq replicate units") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid = element_blank(),
-        plot.title = element_text(size = 8.5, face = "bold"),
-        legend.position = "bottom",
-        legend.key.width = grid::unit(0.55, "cm"))
-
-# Horizontal lollipops: genotype on y keeps the long labels unrotated and puts each value tag
-# on its own row, so no two tags collide (the vertical form crowded near-equal snRNAseq counts).
-p_counts <- ggplot(design_counts, aes(n, genotype, fill = genotype)) +
-  geom_segment(aes(yend = genotype, x = 0, xend = n, colour = genotype),
-               linewidth = 0.62, alpha = 0.72) +
-  geom_point(shape = 21, size = 3.0, colour = "#262B2F", stroke = 0.28) +
-  geom_text(aes(x = label_x, label = label), size = 2.6, colour = "#333333", hjust = 0) +
-  facet_wrap(~ modality, nrow = 1, scales = "free_x") +
-  scale_fill_genotype(guide = "none") +
-  scale_colour_genotype(guide = "none") +
-  scale_y_discrete(limits = rev(genotype_levels), labels = genotype_labels) +
-  scale_x_continuous(expand = expansion(mult = c(0.02, 0.22))) +
-  labs(x = "count", y = NULL, title = "Per-genotype layer support") +
-  coord_cartesian(clip = "off") +
-  theme(plot.title = element_text(size = 8.5, face = "bold"),
-        strip.text = element_text(size = 6.9, face = "bold"),
-        panel.grid.major.y = element_blank())
-
-(p_grid | p_batch | p_counts) +
-  plot_layout(widths = c(0.82, 1.16, 1.7)) +
-  plot_annotation(tag_levels = "A")
+  annotate("text", x = tx["MAPTKI"], y = 1.28, label = "MAPTKI", size = 2.3, colour = "#53504A") +
+  annotate("text", x = tx["P301S"], y = 1.28, label = "P301S", size = 2.3, colour = "#53504A") +
+  annotate("text", x = 0.5, y = ay["NLGF-"], label = "NLGF −", angle = 90, size = 2.3, colour = "#53504A") +
+  annotate("text", x = 0.5, y = ay["NLGF+"], label = "NLGF +", angle = 90, size = 2.3, colour = "#53504A") +
+  annotate("text", x = 0.26, y = mean(ay), label = "amyloid", angle = 90, size = 2.5,
+           colour = "#333333", fontface = "bold") +
+  annotate("text", x = mean(tx), y = 0.82, label = "tau background", size = 2.5,
+           colour = "#333333", fontface = "bold") +
+  # station 1 -> 2 flow, then 2 -> 3 convergence
+  geom_segment(data = big_arrow, aes(x = x, y = y, xend = xend, yend = yend), inherit.aes = FALSE,
+               linewidth = 1.2, colour = "#6F7782",
+               arrow = grid::arrow(length = grid::unit(0.13, "inches"), type = "closed")) +
+  geom_segment(data = conv, aes(x = x, y = y, xend = xend, yend = yend), inherit.aes = FALSE,
+               linewidth = 0.45, colour = "#B0AA9E",
+               arrow = grid::arrow(length = grid::unit(0.05, "inches"), type = "closed")) +
+  # station 2: four modality readouts (neutral bullet + name/count node + resolution line)
+  geom_point(data = mods, aes(mx - 0.72, my), colour = "#6F7782", size = 3.0) +
+  geom_label(data = mods, aes(mx, my, label = node_text), fill = "#FBFAF7", inherit.aes = FALSE,
+             hjust = 0.5, colour = "#262B2F", linewidth = 0.2, label.r = grid::unit(0.1, "lines"),
+             size = 2.5, lineheight = 0.95) +
+  geom_text(data = mods, aes(mx, my - 0.30, label = support), inherit.aes = FALSE,
+            size = 1.9, colour = "#8A857B", fontface = "italic") +
+  annotate("segment", x = 6.6, xend = 6.75, y = shared_y[1L], yend = shared_y[1L],
+           colour = "#B0AA9E", linewidth = 0.4) +
+  annotate("segment", x = 6.6, xend = 6.75, y = shared_y[2L], yend = shared_y[2L],
+           colour = "#B0AA9E", linewidth = 0.4) +
+  annotate("segment", x = 6.75, xend = 6.75, y = shared_y[1L], yend = shared_y[2L],
+           colour = "#B0AA9E", linewidth = 0.4) +
+  annotate("text", x = 6.82, y = mean(shared_y), label = shared_lab, hjust = 0, size = 1.85,
+           colour = "#8A857B", fontface = "italic", lineheight = 0.9) +
+  # station 3: interaction-contrast target
+  annotate("label", x = ix, y = iy, label = interaction_text, fill = "#EFE0DD", colour = "#262B2F",
+           linewidth = 0.3, label.r = grid::unit(0.12, "lines"), size = 2.7,
+           fontface = "bold", lineheight = 1.0) +
+  annotate("text", x = ix, y = 1.55, label = "does amyloid reshape microglia\ndifferently under mutant tau?",
+           size = 2.15, colour = "#53504A", fontface = "italic", lineheight = 0.95) +
+  coord_cartesian(xlim = c(0.1, 9.95), ylim = c(0.5, 4.35), clip = "off") +
+  theme_void(base_size = 11) +
+  theme(plot.margin = margin(6, 8, 6, 8))
 ```
 
 ## snRNAseq microglia: quality metrics

@@ -444,9 +444,12 @@ qc <- qc_figure_data(
 )
 stopifnot(all(c("study_design", "modality_table", "genotype_batch", "depth_distribution",
                 "fraction_distribution", "metric_bounds") %in% names(qc)),
-          all(c("genotype_grid", "sample_counts") %in% names(qc$study_design)),
+          all(c("genotype_grid", "sample_counts", "modalities") %in% names(qc$study_design)),
           nrow(qc$study_design$genotype_grid) == 4L,
           nrow(qc$study_design$sample_counts) == 12L,
+          nrow(qc$study_design$modalities) == 4L,
+          all(is.finite(qc$study_design$modalities$n_total)),
+          all(nzchar(qc$study_design$modalities$count_lab)),
           nrow(qc$genotype_batch) == 16L,
           all(qc$metric_bounds$within))
 cat("ok - qc_figure_data builds compact QC visual slots\n")
