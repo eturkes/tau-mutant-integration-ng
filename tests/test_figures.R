@@ -167,7 +167,7 @@ bad$whole_de_volcano$bins$x_mid[1] <- Inf
 expect_error(.fig_assert_finite(bad$whole_de_volcano$bins, c("x_mid"), "bad bins"), "finite")
 cat("ok - figure finite guards fail loud on malformed geom inputs\n")
 
-# --- modality_logfc_scatter_data: y=nlgf_in_maptki, x=nlgf_in_p301s, key-aligned, labelled ---
+# --- modality_logfc_scatter_data: y=nlgf_in_maptki, x=nlgf_in_p301s, key-aligned, empirical off-diagonal labels ---
 ens5 <- symbol_map$ensembl[1:5]
 # snRNAseq: nlgf_in_p301s rows deliberately REVERSED -> exercises the match()-by-key alignment.
 pb <- list(top = list(
@@ -198,9 +198,10 @@ group_sets <- list(
 )
 ms <- modality_logfc_scatter_data(pb, symbol_map, gx, pr, ph,
                                   group_gene_sets = group_sets,
-                                  group_top_n = 3L,
+                                  offdiag_tail_quantile = 0.6,
+                                  offdiag_robust_mad_min = 0,
                                   group_min_genes = 1L,
-                                  group_max_groups = 2L)
+                                  group_max_groups = 3L)
 sn  <- ms$panels$snRNAseq$data
 sn_i1 <- match(ens5[1], sn$feature); sn_i5 <- match(ens5[5], sn$feature)
 pr_d <- ms$panels$Proteome$data; ph_d <- ms$panels$Phospho$data
@@ -242,14 +243,15 @@ stopifnot(
   any(gg$gene_symbol == "Lcp1" & gg$score_label == "Lcp1" &
         as.character(gg$modality) == "Phospho"),
   all(!grepl("_[A-Za-z][0-9]", gg$score_label[as.character(gg$modality) == "Phospho"])),
-  !any(gg$gene_symbol == "Gene1" & as.character(gg$modality) == "snRNAseq"), # unlabeled in Fig 6
+  !any(gg$gene_symbol == "Gene1" & as.character(gg$modality) == "snRNAseq"), # below the empirical cutoff
   max(gg$scatter_label_rank[as.character(gg$modality) == "snRNAseq"]) <= 3L,
   all(gs$n_feature <= 3L),
   all.equal(gs$delta, gs$score_p301s - gs$score_maptki, tolerance = 1e-12) == TRUE,
   ms$groups$provenance$group_set_source == "custom functional groups",
-  ms$groups$provenance$figure6_label_n == 3L,
+  ms$groups$provenance$offdiag_tail_quantile == 0.6,
+  ms$groups$provenance$offdiag_robust_mad_min == 0,
   ms$groups$provenance$min_genes == 1L)
-cat("ok - modality_logfc_scatter_data scores Figure 6 labels with phosphosite parent-gene substitutes\n")
+cat("ok - modality_logfc_scatter_data scores empirical off-diagonal labels with phosphosite parent-gene substitutes\n")
 
 # non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
 pb_na <- list(top = list(
@@ -257,9 +259,10 @@ pb_na <- list(top = list(
   nlgf_in_p301s  = data.frame(gene = ens5[1:3], logFC = c(4, 5, 6),  stringsAsFactors = FALSE)))
 ms_na <- modality_logfc_scatter_data(pb_na, symbol_map, gx, pr, ph,
                                      group_gene_sets = group_sets,
-                                     group_top_n = 3L,
+                                     offdiag_tail_quantile = 0.6,
+                                     offdiag_robust_mad_min = 0,
                                      group_min_genes = 1L,
-                                     group_max_groups = 2L)
+                                     group_max_groups = 3L)
 stopifnot(nrow(ms_na$panels$snRNAseq$data) == 2L,
           ms_na$provenance$n_features[["snRNAseq"]] == 2L)
 pb_missing <- list(top = list(nlgf_in_maptki = pb$top$nlgf_in_maptki))

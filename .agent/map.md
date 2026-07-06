@@ -56,11 +56,11 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
       midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
       modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
-      identity + zero crosshairs + OLS trend + top|y-x| repel labels + coord_equal 1:1);
-      functional_group_score_plot WIRED -> Figure 7 role-score dumbbell facets (per modality, broad functional
-      rows from GO-BP keyword-union gene sets; points = aggregate NLGF_MAPTKI/NLGF_P301S amyloid scores over
-      Figure 6-derived genes/proteins, phosphosites substituted by parent gene, segment colour = P301S-MAPTKI,
-      size = scored items; no enrichment/FDR display).
+      identity + zero crosshairs + OLS trend + empirical off-diagonal repel labels + coord_equal 1:1);
+      functional_group_score_plot WIRED -> Figure 7 category-score dumbbell facets (per modality/free-y, primary
+      GO-BP keyword-union role or explicit fallback category per empirical Figure 6 off-diagonal gene/protein;
+      phosphosites substituted by parent gene, segment colour = P301S-MAPTKI, size = scored items; no
+      enrichment/FDR display).
       Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
@@ -145,8 +145,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       inline builders microglia_figure_data / trajectory_figure_data / modality_logfc_scatter_data (qmd-ready slots,
       finite geom guards, pre-binned/top-row reductions; modality_logfc_scatter_data = per-modality
       {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
-      key-aligned, plus `groups$summary` = broad functional-group aggregate scores over the same top 12
-      display labels drawn in Figure 6 per method; phospho scoring uses parent-gene substitutes) + visual_reduction_slot_map
+      key-aligned, plus `groups$summary` = primary functional-category aggregate scores over empirical Figure 6
+      off-diagonal labels per method; phospho scoring uses parent-gene substitutes) + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
@@ -205,10 +205,10 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
-                identity + OLS + top|x-y| labels) + off-diagonal functional-group score facets
-                `fig-modality-functional-scores` (functional_group_score_plot; Figure 6-derived genes/proteins
-                only, phosphosite labels substituted by parent gene before scoring, rows carry broad functional
-                roles + leading score labels; connected points show aggregate NLGF_MAPTKI and NLGF_P301S scores,
+                identity + OLS + empirical off-diagonal labels) + off-diagonal functional-category score facets
+                `fig-modality-functional-scores` (functional_group_score_plot; empirical Figure 6 off-diagonal
+                genes/proteins, phosphosite labels substituted by parent gene before scoring, rows carry primary
+                role/fallback categories + leading score labels; connected points show aggregate NLGF_MAPTKI and NLGF_P301S scores,
                 segment colour = P301S-MAPTKI). The 6th and 7th
                 figures.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)

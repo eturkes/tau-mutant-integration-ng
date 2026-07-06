@@ -886,6 +886,11 @@ user before writing a new plan.
   through the Figure 6 label rule, but group scoring substitutes the best-fit parent gene (`gene` when usable,
   otherwise site_id prefix) and collapses duplicate labelled phosphosites to the highest-|x-y| site per parent.
   Legend/caption now say scored genes/proteins/items rather than raw Figure 6 labels.
+- 2026-07-06 Figure 6/7 empirical off-diagonal categorization DONE (ad hoc user follow-up): replaced fixed top-12
+  Figure 6 labels with empirical per-modality threshold labels (`|x-y| >= max(Q99.8, median + 6*MAD)` after finite
+  filtering, duplicate display labels collapsed). Reworked Figure 7 from shared functional-group rows to
+  modality-specific/free-y primary categories over those empirical outliers: GO-BP keyword-union roles first,
+  explicit fallback categories for unmapped/predicted/olfactory labels, phosphosites scored through parent genes.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

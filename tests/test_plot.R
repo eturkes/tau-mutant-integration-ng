@@ -134,7 +134,9 @@ stopifnot(
   grepl("NLGF_MAPTKI", mp$labels$y, fixed = TRUE),     # y-axis = amyloid effect on the tau-KO background
   grepl("Spearman", mp$labels$subtitle, fixed = TRUE),
   grepl("Pearson",  mp$labels$subtitle, fixed = TRUE),
-  grepl("n = 20",   mp$labels$subtitle, fixed = TRUE)
+  grepl("n = 20",   mp$labels$subtitle, fixed = TRUE),
+  grepl("cutoff |x-y|", mp$labels$subtitle, fixed = TRUE) ||
+    grepl("labels = 0", mp$labels$subtitle, fixed = TRUE)
 )
 # draw-path build promotes any stat/scale warning to an error (would red the warn=2 render); ggrepel
 # draw-time warnings are covered by the gate's full render.
@@ -174,7 +176,7 @@ stopifnot(
   identical(fgp$labels$title, "Functional groups"),
   grepl("P301S - MAPTKI", fgp$labels$subtitle, fixed = TRUE),
   grepl("Figure 6", fgp$labels$subtitle, fixed = TRUE),
-  grepl("derived genes/proteins", fgp$labels$subtitle, fixed = TRUE),
+  grepl("off-diagonal genes/proteins", fgp$labels$subtitle, fixed = TRUE),
   any(vapply(fgp$scales$scales, function(s) "colour" %in% s$aesthetics, logical(1))),
   any(vapply(fgp$scales$scales, function(s) "fill" %in% s$aesthetics, logical(1))),
   inherits(ggplot2::ggplot_build(fgp)$plot, "ggplot")

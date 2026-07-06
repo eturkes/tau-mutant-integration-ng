@@ -15,10 +15,10 @@ NLGF_MAPTKI (amyloid alone), NLGF_P301S (amyloid + tau). Design = tau (MAPTKI vs
 P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 REPORT SCOPE: the built report + pipeline cover snRNAseq microglia (P1) + activation trajectory (P2) + a
-four-method amyloid-response logFC scatter plus an off-diagonal functional-group score panel (2026-07-06 adds)
+four-method amyloid-response logFC scatter plus an off-diagonal functional-category score panel (2026-07-06 adds)
 -- 31 targets, 7 figures, `index.qmd` = YAML + `_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes.
 The modality figures RE-WIRED the GeoMx/proteome/phospho PRIMARY DE lean via `R/modality_de.R` (its own section
-below); Figure 7 scores broad functional groups over the Figure 6 off-diagonal genes/proteins, not enrichment
+below); Figure 7 categorizes empirical Figure 6 off-diagonal genes/proteins, not enrichment
 support and not a resurrected mechanism/cross-modality chapter. The mechanism/cross-modality/qc/story chapters + their targets + R modules
 (`R/mechanism.R`, `R/crossmodality.R`) + tests STAY deleted (roadmap Ledger 2026-07-06); that science lives in
 git history + the Ledger.
@@ -434,14 +434,15 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   report render was 0-warning over the then-current microglia + trajectory surface; current report scope is the
   Project section above.
 
-## Four-method amyloid-response scatter + off-diagonal functional-group scores (2026-07-06, built) -- `R/modality_de.R` + `modality_logfc_scatter_data` (R/figures.R) + `modality_interaction_scatter`/`functional_group_score_plot` (R/plot.R) + `_modality.qmd`
+## Four-method amyloid-response scatter + off-diagonal functional-category scores (2026-07-06, built) -- `R/modality_de.R` + `modality_logfc_scatter_data` (R/figures.R) + `modality_interaction_scatter`/`functional_group_score_plot` (R/plot.R) + `_modality.qmd`
 - FIGURE = 4 scatter panels (one per method), y = logFC `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI
   background), x = logFC `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Signed distance
   from the dashed y=x identity (y - x) is EXACTLY the -interaction contrast per feature (interaction =
   nlgf_in_p301s - nlgf_in_maptki = the tau_nlgf coef), so off-diagonal = tau reshapes the amyloid response.
-  coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), top |y-x| features labelled
-  (deduped to the most-divergent row per label -- bulk assays reuse a site_id/gene across measured rows),
-  subtitle = Spearman/Pearson/n. patchwork::wrap_plots(ncol=2). Not in the vestigial `figure_manifest` (that relic
+  coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), empirical off-diagonal labels =
+  unique display labels with |x-y| >= max(Q99.8, median + 6*MAD of the method's |x-y| distribution), deduped to
+  the most-divergent row per label; subtitle = Spearman/Pearson/n + label cutoff. patchwork::wrap_plots(ncol=2).
+  Not in the vestigial `figure_manifest` (that relic
   lists cut figures; a rendered chunk id needs no manifest row) -> `test_figures.R` still asserts 11.
 - DE = LEAN restore of the pre-teardown P4 PRIMARY producers ONLY (auxiliary GeoMx sensitivity + decon-preflight
   and proteome/phospho run-index arms NOT restored -- they served the torn-down deconvolution / cross-modality
@@ -455,13 +456,14 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (key $feature = row<n>|collapsekey, label $site_id = gene_AAloc, may repeat across rows); pb_de_microglia$top[[c]]$logFC
   (key $gene = ENSEMBL -> map to symbol via symbol_map, NOT a bare grep). modality_logfc_scatter_data aligns the two
   contrasts' topTables by feature key (one fit -> bijective keys) + drops non-finite pairs -> compact
-  {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `groups$summary`: the same top
-  12 display labels per method used in Figure 6 (rank |x-y|, collapse duplicate labels) are assigned to broad
-  functional-role gene sets assembled from mouse GO-BP keyword unions (or custom groups in tests). Phosphosite
-  labels score through their best-fit parent gene; duplicate labelled sites for the same parent keep the highest-|x-y|
-  site as the gene substitute. Figure 7 scores each group by mean `y` (NLGF_MAPTKI amyloid effect), mean `x`
-  (NLGF_P301S amyloid effect), and `delta=x-y`; the plot shows connected MAPTKI/P301S aggregate points, segment
-  colour = P301S-MAPTKI, point size = scored genes/proteins. NO enrichment/FDR result is displayed. The qmd
+  {feature,label,gene_symbols,x,y,interaction=x-y} per modality. It also builds `groups$summary`: the empirical
+  Figure 6 off-diagonal labels are assigned one primary category per scored item. GO-BP keyword-union roles get
+  priority; unmapped labels are retained as fallback categories (predicted/unannotated loci, olfactory receptor/GPCR,
+  other annotated). Phosphosite labels score through their best-fit parent gene; duplicate threshold-passing sites
+  for the same parent keep the highest-|x-y| site as the gene substitute. Figure 7 scores each category by mean `y`
+  (NLGF_MAPTKI amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot uses free-y
+  per-modality dumbbell facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins. NO enrichment/FDR
+  result is displayed. The qmd
   tar_loads ONLY that compact target (cheap-render invariant).
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
@@ -661,9 +663,9 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
-  `fig-modality-functional-scores` (broad functional groups over Figure 6-derived genes/proteins, with
-  phosphosites substituted by parent gene; connected aggregate MAPTKI/P301S amyloid-score points, segment colour =
-  P301S-MAPTKI, point size = scored genes/proteins).
+  `fig-modality-functional-scores` (modality-specific categories over empirical Figure 6 off-diagonal
+  genes/proteins, with phosphosites substituted by parent gene; connected aggregate MAPTKI/P301S amyloid-score
+  points, segment colour = P301S-MAPTKI, point size = scored genes/proteins).
   Every captioned chunk
   = hyphenated `fig-*` id + `fig-cap` + `fig-alt`; palette/fonts per the theme.scss bullet above
   (saturated-but-controlled journal grammar). HTML-QA gotcha (durable): use a PARSER-based HTML check that

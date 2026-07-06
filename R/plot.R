@@ -183,10 +183,12 @@ concordance_plot <- function(df, x_col, y_col, label_col = "gene",
 # line is the null of a tau-INDEPENDENT amyloid response; signed distance from it (y - x) is
 # exactly the -interaction contrast, so features far off the diagonal are where mutant tau
 # reshapes the amyloid response. Faint points, zero crosshairs, an OLS trend (tilt vs the
-# diagonal = systematic interaction), and the top |y - x| features labelled. coord_equal on a
-# symmetric square so the diagonal reads at 45 deg. `df` needs numeric x/y + a label column.
-modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
+# diagonal = systematic interaction), and empirical off-diagonal outliers labelled. coord_equal
+# on a symmetric square so the diagonal reads at 45 deg. `df` needs numeric x/y + a label column.
+modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                                          label_col = "label",
+                                         label_tail_quantile = 0.998,
+                                         label_robust_mad_min = 6,
                                          x_lab = "log2FC  NLGF_P301S vs P301S",
                                          y_lab = "log2FC  NLGF_MAPTKI vs MAPTKI",
                                          point_colour = "#6F7782", label_colour = "#A63A50") {
@@ -198,8 +200,16 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
   lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
   lim   <- if (is.finite(lim) && lim > 0) lim else 1
   # one label per feature: bulk assays reuse a site_id / gene across measured rows, so keep each label's
-  # most-divergent instance (order is |y-x| desc) before taking the top n_label -> no duplicate repel labels.
-  top   <- modality_scatter_label_rows(df, n_label = n_label, label_col = label_col)
+  # most-divergent threshold-passing instance (order is |y-x| desc) -> no duplicate repel labels.
+  top   <- modality_scatter_label_rows(df, n_label = n_label, label_col = label_col,
+                                       tail_quantile = label_tail_quantile,
+                                       robust_mad_min = label_robust_mad_min)
+  label_subtitle <- if (nrow(top)) {
+    sprintf("labels = %s, cutoff |x-y| >= %.2f",
+            format(nrow(top), big.mark = ","), attr(top, "offdiag_cutoff"))
+  } else {
+    "labels = 0"
+  }
   ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
@@ -217,15 +227,15 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = 12L,
     ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
     ggplot2::labs(
       x = x_lab, y = y_lab, title = title,
-      subtitle = sprintf("Spearman rho = %.2f, Pearson r = %.2f, n = %s",
-                         rho_s, rho_p, format(nrow(df), big.mark = ","))
+      subtitle = sprintf("Spearman = %.2f, Pearson = %.2f, n = %s\n%s",
+                         rho_s, rho_p, format(nrow(df), big.mark = ","), label_subtitle)
     ) +
     theme_tau()
 }
 
-# Functional-group aggregate scores for the genes/proteins labelled in the four-method
-# amyloid-response scatter; phosphosite labels are scored through their parent-gene substitute.
-# Rows are broad roles, facets are modalities. Each
+# Functional-category aggregate scores for empirical off-diagonal genes/proteins in the
+# four-method amyloid-response scatter; phosphosite labels are scored through their parent-gene
+# substitute. Rows are modality-specific role categories, facets are modalities. Each
 # segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
 # P301S; segment colour is the requested contrast, P301S minus MAPTKI.
 functional_group_score_plot <- function(group_summary, title = NULL) {
@@ -249,7 +259,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   size_breaks <- if (n_max - n_min <= 8L) {
     as.integer(unique(round(seq(n_min, n_max, length.out = min(3L, n_max - n_min + 1L)))))
   } else {
-    pretty(c(n_min, n_max), n = 4)
+    as.integer(unique(round(c(n_min, pretty(c(n_min, n_max), n = 3), n_max))))
   }
   size_breaks <- size_breaks[size_breaks >= n_min & size_breaks <= n_max]
   if (!length(size_breaks)) size_breaks <- sort(unique(x$n_feature))
@@ -279,8 +289,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                                name = "score") +
     ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
-    ggplot2::scale_y_discrete(drop = FALSE) +
-    ggplot2::facet_wrap(ggplot2::vars(modality), ncol = 2) +
+    ggplot2::scale_y_discrete(drop = TRUE) +
+    ggplot2::facet_wrap(ggplot2::vars(modality), ncol = 2, scales = "free_y") +
     ggplot2::guides(
       colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
                                         barwidth = grid::unit(4.5, "lines")),
@@ -291,7 +301,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ) +
     ggplot2::labs(
       x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Segments connect means over Figure 6-derived genes/proteins; colour is P301S - MAPTKI"
+      subtitle = "Rows categorize empirical Figure 6 off-diagonal genes/proteins; colour is P301S - MAPTKI"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(

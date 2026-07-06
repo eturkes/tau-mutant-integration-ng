@@ -999,7 +999,7 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
 }
 
 # Per-modality amyloid-response logFC pairs for fig-modality-amyloid-effect (one scatter per
-# method), plus compact functional-group scores for the Figure 6 labelled features. y = logFC of
+# method), plus compact functional-category scores for empirical off-diagonal features. y = logFC of
 # `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI background), x = logFC of
 # `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Both per-contrast
 # topTables come from ONE fit per modality (identical feature rows), aligned by the modality's
@@ -1007,17 +1007,22 @@ trajectory_figure_data <- function(trajectory_report, composition_results, alpha
 # -> the qmd reads this small target, never a heavy DE object. Feature keys / display labels
 # differ by assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, proteome =
 # protein group (gene_first label, all group symbols for group scoring), phospho =
-# phosphosite row (site_id label, parent gene for group scoring).
+# phosphosite row (site_id label, parent gene for category scoring).
 modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m,
                                          y_contrast = "nlgf_in_maptki",
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
-                                         group_top_n = 12L,
+                                         offdiag_tail_quantile = 0.998,
+                                         offdiag_robust_mad_min = 6,
                                          group_min_genes = 1L,
                                          group_max_groups = 10L) {
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
-            is.list(proteome_de_24m), is.list(phospho_de_24m))
+            is.list(proteome_de_24m), is.list(phospho_de_24m),
+            is.numeric(offdiag_tail_quantile), length(offdiag_tail_quantile) == 1L,
+            offdiag_tail_quantile > 0, offdiag_tail_quantile < 1,
+            is.numeric(offdiag_robust_mad_min), length(offdiag_robust_mad_min) == 1L,
+            offdiag_robust_mad_min >= 0)
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -1108,7 +1113,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   groups <- modality_offdiag_group_score_data(
     list(panels = panels, order = order),
     group_sets = group_gene_sets,
-    label_n = group_top_n,
+    tail_quantile = offdiag_tail_quantile,
+    robust_mad_min = offdiag_robust_mad_min,
     min_genes = group_min_genes,
     max_groups = group_max_groups
   )
@@ -1129,7 +1135,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       Phospho = "phosphosite row (site_id label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + off-diagonal functional-group aggregate scores; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores; no heavy DE object"
     )
   )
 }
@@ -1236,6 +1242,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
         y = d$y[i],
         interaction = d$interaction[i],
         abs_interaction = d$abs_interaction[i],
+        offdiag_distance = if ("offdiag_distance" %in% names(d)) d$offdiag_distance[i] else d$abs_interaction[i],
         stringsAsFactors = FALSE
       )
     })
@@ -1246,21 +1253,48 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   }))
 }
 
-# Functional-group score summary for the genes/proteins labelled in fig-modality-amyloid-effect.
-# Default groupings are broad role unions assembled from mouse GO-BP term names via deterministic
-# keyword rules; the returned scores are aggregate amyloid-response effects, not enrichment
-# p-values. Each modality uses the exact Figure 6 label rule (top `label_n` display labels by
-# |x-y|, after duplicate-label collapse), then scores every group by mean logFC under MAPTKI,
-# mean logFC under P301S, and their delta.
+# Functional-category score summary for empirical off-diagonal features in
+# fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions, but every
+# threshold-passing item is retained: unmapped symbols fall into explicit fallback categories.
+.fig_fallback_role <- function(gene_symbol, label) {
+  token <- .fig_gene_tokens(c(gene_symbol, label))
+  if (!length(token)) token <- as.character(label)
+  if (any(grepl("^Olfr[0-9]", token, perl = TRUE))) return("Olfactory receptor / GPCR")
+  if (any(grepl("^(Gm[0-9]+|LOC[0-9]+)$", token, perl = TRUE) |
+          grepl("Rik$", token, perl = TRUE))) {
+    return("Predicted / unannotated loci")
+  }
+  "Other annotated / no role-set hit"
+}
+
+.fig_primary_role <- function(gene_symbol, label, group_sets, group_labels, fallback_priority) {
+  g <- .fig_gene_tokens(gene_symbol)
+  hit <- which(vapply(group_sets, function(set) any(g %in% set), logical(1), USE.NAMES = FALSE))
+  if (length(hit)) {
+    i <- hit[[1]]
+    return(data.frame(group = names(group_sets)[i], group_label = group_labels[i],
+                      group_priority = i, stringsAsFactors = FALSE))
+  }
+  fallback_order <- c("Predicted / unannotated loci", "Olfactory receptor / GPCR",
+                      "Other annotated / no role-set hit")
+  lab <- .fig_fallback_role(gene_symbol, label)
+  data.frame(group = lab, group_label = lab,
+             group_priority = fallback_priority + match(lab, fallback_order),
+             stringsAsFactors = FALSE)
+}
+
 modality_offdiag_group_score_data <- function(modality_scatter_figures,
                                               group_sets = NULL,
-                                              label_n = 12L,
+                                              tail_quantile = 0.998,
+                                              robust_mad_min = 6,
                                               min_genes = 1L,
                                               max_groups = 10L) {
   stopifnot(is.list(modality_scatter_figures), is.list(modality_scatter_figures$panels),
             is.character(modality_scatter_figures$order),
             length(modality_scatter_figures$order) >= 1L,
-            is.numeric(label_n), length(label_n) == 1L, label_n >= 1L,
+            is.numeric(tail_quantile), length(tail_quantile) == 1L,
+            tail_quantile > 0, tail_quantile < 1,
+            is.numeric(robust_mad_min), length(robust_mad_min) == 1L, robust_mad_min >= 0,
             is.numeric(min_genes), length(min_genes) == 1L, min_genes >= 1L,
             is.numeric(max_groups), length(max_groups) == 1L, max_groups >= 1L)
   order <- modality_scatter_figures$order
@@ -1275,114 +1309,119 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   group_sets <- lapply(group_sets, .fig_gene_tokens)
   group_sets <- group_sets[vapply(group_sets, length, integer(1)) > 0L]
   stopifnot(length(group_sets) >= 1L)
-  set_genes_all <- unique(unlist(group_sets, use.names = FALSE))
+  group_labels <- .fig_pathway_label(names(group_sets))
+  fallback_priority <- length(group_sets)
 
   selected <- .fig_bind(lapply(order, function(m) {
     d <- modality_scatter_figures$panels[[m]]$data
-    d <- modality_scatter_label_rows(d, n_label = label_n, label_col = "label")
+    d <- modality_scatter_label_rows(d, label_col = "label",
+                                     tail_quantile = tail_quantile,
+                                     robust_mad_min = robust_mad_min)
     d <- .fig_offdiag_gene_rows(list(.panel = list(data = d)), ".panel")
     if (nrow(d)) d$modality <- factor(m, levels = order)
-    d <- d[d$gene_symbol %in% set_genes_all, , drop = FALSE]
     if (!nrow(d)) return(d)
     d <- d[order(d$scatter_label_rank, d$gene_symbol, d$feature, method = "radix"), , drop = FALSE]
     if (identical(m, "Phospho")) {
       d$score_feature <- paste0("phospho_gene:", d$gene_symbol)
       d$score_label <- d$gene_symbol
-      d <- d[!duplicated(d$score_feature), , drop = FALSE]
     }
-    d$figure6_labelled <- TRUE
+    role <- .fig_bind(lapply(seq_len(nrow(d)), function(i) {
+      .fig_primary_role(d$gene_symbol[i], d$score_label[i], group_sets, group_labels,
+                        fallback_priority)
+    }))
+    d <- data.frame(d, role, stringsAsFactors = FALSE)
+    d <- d[order(d$group_priority, d$scatter_label_rank, d$gene_symbol, d$feature,
+                 method = "radix"), , drop = FALSE]
+    d <- d[!duplicated(d$score_feature), , drop = FALSE]
+    d$figure6_offdiag <- TRUE
     d
   }))
-  .fig_assert_nonempty(selected, "Figure 6 labelled genes")
+  .fig_assert_nonempty(selected, "empirical off-diagonal genes/proteins")
 
   rows <- .fig_bind(lapply(order, function(m) {
     sel <- selected[as.character(selected$modality) == m, , drop = FALSE]
     if (!nrow(sel)) return(data.frame())
-    .fig_bind(lapply(names(group_sets), function(grp) {
-      gene_hits <- sel[sel$gene_symbol %in% group_sets[[grp]], , drop = FALSE]
-      if (!nrow(gene_hits)) return(data.frame())
-      gene_hits <- gene_hits[order(gene_hits$scatter_label_rank, gene_hits$gene_symbol,
-                                   gene_hits$feature, method = "radix"), , drop = FALSE]
-      feature_hits <- gene_hits[!duplicated(gene_hits$score_feature), , drop = FALSE]
-      k_gene <- length(unique(gene_hits$gene_symbol))
+    group_order <- unique(sel$group[order(sel$group_priority, sel$group, method = "radix")])
+    .fig_bind(lapply(group_order, function(grp) {
+      feature_hits <- sel[sel$group == grp, , drop = FALSE]
+      feature_hits <- feature_hits[order(feature_hits$scatter_label_rank,
+                                         feature_hits$score_label,
+                                         feature_hits$feature, method = "radix"), , drop = FALSE]
       k_feature <- length(unique(feature_hits$score_feature))
       if (k_feature < min_genes) return(data.frame())
-      top_genes <- paste(utils::head(unique(gene_hits$gene_symbol), 6L), collapse = ", ")
-      top_features <- paste(utils::head(unique(feature_hits$score_label), 6L), collapse = ", ")
+      k_gene <- length(unique(feature_hits$gene_symbol))
       score_maptki <- mean(feature_hits$y)
       score_p301s <- mean(feature_hits$x)
       delta <- score_p301s - score_maptki
       data.frame(
         modality = m,
         group = grp,
-        group_label = .fig_pathway_label(grp),
+        group_label = feature_hits$group_label[[1]],
+        group_priority = feature_hits$group_priority[[1]],
         n_gene = k_gene,
         n_feature = k_feature,
         n_selected = length(unique(sel$score_feature)),
         n_labeled_feature = length(unique(sel$score_feature)),
+        n_p301s_higher = sum(feature_hits$interaction > 0),
+        n_maptki_higher = sum(feature_hits$interaction < 0),
         score_maptki = score_maptki,
         score_p301s = score_p301s,
         delta = delta,
         abs_delta = abs(delta),
         mean_abs_feature_delta = mean(feature_hits$abs_interaction),
         direction = if (delta >= 0) "P301S higher" else "MAPTKI higher",
-        top_genes = top_genes,
-        top_features = top_features,
+        top_genes = paste(utils::head(unique(feature_hits$gene_symbol), 6L), collapse = ", "),
+        top_features = paste(utils::head(unique(feature_hits$score_label), 4L), collapse = ", "),
         stringsAsFactors = FALSE
       )
     }))
   }))
-  .fig_assert_nonempty(rows, "off-diagonal functional-group score summary")
+  .fig_assert_nonempty(rows, "off-diagonal functional-category score summary")
   rows <- rows[is.finite(rows$score_maptki) & is.finite(rows$score_p301s) &
                  is.finite(rows$delta), , drop = FALSE]
-  .fig_assert_nonempty(rows, "finite off-diagonal functional-group score summary")
+  .fig_assert_nonempty(rows, "finite off-diagonal functional-category score summary")
   rows$rank_score <- rows$abs_delta * log1p(rows$n_feature)
-  rank <- stats::aggregate(rank_score ~ group + group_label, data = rows, FUN = max)
-  rank <- rank[order(-rank$rank_score, rank$group_label, method = "radix"), , drop = FALSE]
-  keep_groups <- utils::head(rank$group, max_groups)
-  rows <- rows[rows$group %in% keep_groups, , drop = FALSE]
+  rows <- .fig_bind(lapply(order, function(m) {
+    z <- rows[as.character(rows$modality) == m, , drop = FALSE]
+    z <- z[order(-z$rank_score, z$group_priority, z$group_label, method = "radix"), , drop = FALSE]
+    utils::head(z, as.integer(max_groups))
+  }))
   rownames(rows) <- NULL
 
-  hit_detail <- merge(
-    selected[, c("modality", "feature", "score_feature", "score_label", "gene_symbol", "label",
-                 "interaction", "abs_interaction", "scatter_label_rank")],
-    .fig_bind(lapply(keep_groups, function(grp) {
-      data.frame(group = grp, gene_symbol = group_sets[[grp]], stringsAsFactors = FALSE)
-    })),
-    by = "gene_symbol", sort = FALSE
-  )
-  group_gene_labels <- vapply(keep_groups, function(grp) {
-    h <- hit_detail[hit_detail$group == grp, , drop = FALSE]
-    h <- h[order(h$scatter_label_rank, h$score_label, method = "radix"), , drop = FALSE]
-    paste(utils::head(unique(h$score_label), 5L), collapse = ", ")
-  }, character(1), USE.NAMES = TRUE)
-  rows$group_label_plot <- paste0(rows$group_label, "\n", group_gene_labels[rows$group])
-  group_levels <- rev(unique(rows$group_label_plot[
-    order(match(rows$group, keep_groups), rows$group_label_plot, method = "radix")
-  ]))
-  rows$group_label_plot <- factor(rows$group_label_plot, levels = group_levels)
-  rows$group_label <- factor(rows$group_label, levels = rev(.fig_pathway_label(keep_groups)))
+  rows$group_label_plot <- paste0(rows$group_label, "\n", rows$top_features)
+  rows <- rows[order(match(as.character(rows$modality), order), -rows$rank_score,
+                     rows$group_priority, rows$group_label, method = "radix"), , drop = FALSE]
+  rows$group_label_plot <- factor(rows$group_label_plot, levels = rev(unique(rows$group_label_plot)))
+  rows$group_label <- factor(rows$group_label, levels = rev(unique(rows$group_label)))
   rows$direction <- factor(rows$direction, levels = c("MAPTKI higher", "P301S higher"))
   rows$modality <- factor(rows$modality, levels = order)
-  .fig_assert_finite(rows, c("n_gene", "n_feature", "n_selected", "n_labeled_feature", "score_maptki",
+  .fig_assert_finite(rows, c("n_gene", "n_feature", "n_selected", "n_labeled_feature",
+                            "n_p301s_higher", "n_maptki_higher", "score_maptki",
                             "score_p301s", "delta", "abs_delta", "mean_abs_feature_delta",
                             "rank_score"),
-                     "off-diagonal functional-group score summary")
-  .fig_assert_finite(selected, c("x", "y", "interaction", "abs_interaction", "scatter_label_rank"),
-                     "Figure 6 labelled genes")
+                     "off-diagonal functional-category score summary")
+  .fig_assert_finite(selected, c("x", "y", "interaction", "abs_interaction",
+                                "offdiag_distance", "scatter_label_rank"),
+                     "empirical off-diagonal genes/proteins")
   list(
-    summary = rows[order(as.integer(rows$group_label_plot), as.integer(rows$modality),
+    summary = rows[order(as.integer(rows$modality), -rows$rank_score, rows$group_priority,
                          method = "radix"), , drop = FALSE],
     selected_genes = selected,
+    selected_outliers = selected,
     provenance = list(
       group_set_source = group_set_source,
-      figure6_label_n = as.integer(label_n),
+      offdiag_tail_quantile = tail_quantile,
+      offdiag_robust_mad_min = robust_mad_min,
       min_genes = as.integer(min_genes),
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
-      selection = "same display-label rule as fig-modality-amyloid-effect: top |y-x| rows after duplicate-label collapse",
-      phosphosite_scoring = "phosphosite labels score through the best-fit parent gene; duplicate labelled sites keep the highest-|x-y| site",
+      selection = "same empirical off-diagonal rule as fig-modality-amyloid-effect: |x-y| >= max(empirical tail quantile, median(|x-y|) + robust_mad_min * MAD(|x-y|)); duplicate display labels collapsed after thresholding",
+      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
+      phosphosite_scoring = "phosphosite labels score through the best-fit parent gene; duplicate threshold-passing sites keep the highest-|x-y| site",
       n_labeled_features = stats::setNames(
+        vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
+               integer(1)), order),
+      n_offdiag_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
                integer(1)), order)
     )
