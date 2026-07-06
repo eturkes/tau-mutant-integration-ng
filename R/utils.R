@@ -4,8 +4,26 @@
 # NULL-coalescing infix (rlang-style; kept local to avoid the dep). Used by R/plot.R.
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-# Shared Figure 6 off-diagonal utilities. Production Figure 6/7 passes one pooled absolute
-# |x-y| cutoff learned across modalities; the panel-local tail is a fallback for tests/ad hoc plots.
+# Shared Figure 6 off-diagonal utilities. Production Figure 6/7 uses within-panel absolute
+# |x-y| cutoffs so each method contributes outliers by its own empirical spread.
+modality_scatter_panel_cutoffs <- function(panels, order = names(panels), tail_quantile = 0.99) {
+  stopifnot(is.list(panels), is.character(order), length(order) >= 1L,
+            all(order %in% names(panels)),
+            is.numeric(tail_quantile), length(tail_quantile) == 1L,
+            tail_quantile > 0, tail_quantile < 1)
+  stats::setNames(vapply(order, function(m) {
+    d <- panels[[m]]
+    if (is.list(d) && is.data.frame(d$data)) d <- d$data
+    stopifnot(is.data.frame(d), all(c("x", "y") %in% names(d)))
+    keep <- is.finite(d$x) & is.finite(d$y)
+    dist <- abs(d$y[keep] - d$x[keep])
+    dist <- dist[is.finite(dist) & dist > 0]
+    if (length(dist) < 2L || length(unique(dist)) < 2L) return(NA_real_)
+    as.numeric(stats::quantile(dist, probs = tail_quantile, names = FALSE, type = 8))
+  }, numeric(1)), order)
+}
+
+# Retained for sensitivity comparisons where one common scale is desired.
 modality_scatter_pooled_cutoff <- function(panels, order = names(panels), tail_quantile = 0.99) {
   stopifnot(is.list(panels), is.character(order), length(order) >= 1L,
             all(order %in% names(panels)),
@@ -45,13 +63,16 @@ modality_scatter_label_rows <- function(df, n_label = NULL, label_col = "label",
     return(x)
   }
   x$offdiag_distance <- abs(x$y - x$x)
+  tail_dist <- x$offdiag_distance[is.finite(x$offdiag_distance) & x$offdiag_distance > 0]
   quantile_cutoff <- NA_real_
   if (is.null(cutoff)) {
-    quantile_cutoff <- as.numeric(stats::quantile(x$offdiag_distance, probs = tail_quantile,
-                                                  names = FALSE, type = 8))
+    if (length(tail_dist) >= 2L && length(unique(tail_dist)) >= 2L) {
+      quantile_cutoff <- as.numeric(stats::quantile(tail_dist, probs = tail_quantile,
+                                                    names = FALSE, type = 8))
+    }
     cutoff <- quantile_cutoff
   }
-  if (!is.finite(cutoff) || length(unique(x$offdiag_distance)) < 2L) {
+  if (!is.finite(cutoff) || length(unique(tail_dist)) < 2L) {
     out <- x[0, , drop = FALSE]
     attr(out, "offdiag_cutoff") <- cutoff
     attr(out, "offdiag_quantile_cutoff") <- quantile_cutoff

@@ -211,9 +211,25 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                                        tail_quantile = label_tail_quantile,
                                        cutoff = label_cutoff,
                                        cutoff_source = label_cutoff_source)
+  label_n <- nrow(top)
+  if (label_n >= 80L) lim <- lim * 1.08
+  label_size <- if (label_n >= 150L) {
+    1.55
+  } else if (label_n >= 80L) {
+    1.85
+  } else if (label_n >= 40L) {
+    2.15
+  } else {
+    2.6
+  }
+  label_box_padding <- if (label_n >= 80L) 0.08 else 0.25
+  label_point_padding <- if (label_n >= 80L) 0.03 else 0.10
   cutoff <- attr(top, "offdiag_cutoff")
-  cutoff_name <- if (grepl("^pooled", attr(top, "offdiag_cutoff_source") %||% "")) {
+  cutoff_source <- attr(top, "offdiag_cutoff_source") %||% ""
+  cutoff_name <- if (grepl("^pooled", cutoff_source)) {
     "pooled cutoff"
+  } else if (grepl("^within-method", cutoff_source) || grepl("^panel", cutoff_source)) {
+    "within-method cutoff"
   } else {
     "cutoff"
   }
@@ -230,11 +246,17 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
     # formula spelt out -> silence geom_smooth()'s default-formula message (keeps render logs clean)
     ggplot2::geom_smooth(method = "lm", formula = y ~ x, se = FALSE,
                          colour = "#2F7EA8", linewidth = 0.6) +
-    ggplot2::geom_point(data = top, ggplot2::aes(x, y), size = 1.1, colour = label_colour) +
+    ggplot2::geom_point(data = top, ggplot2::aes(x, y),
+                        size = if (label_n >= 80L) 0.85 else 1.1,
+                        colour = label_colour) +
     # max.overlaps = Inf + fixed seed -> deterministic layout, no "unlabeled points" warning (warn=2)
     ggrepel::geom_text_repel(data = top, ggplot2::aes(x, y, label = .data[[label_col]]),
-                             size = 2.6, colour = "#20242A", max.overlaps = Inf,
-                             seed = 42L, min.segment.length = 0, segment.colour = "grey65") +
+                             size = label_size, colour = "#20242A", max.overlaps = Inf,
+                             box.padding = label_box_padding,
+                             point.padding = label_point_padding,
+                             seed = 42L, min.segment.length = 0,
+                             max.iter = 20000L, max.time = 3,
+                             segment.colour = "grey65") +
     ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
     ggplot2::labs(
       x = x_lab, y = y_lab, title = title,
@@ -312,7 +334,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ) +
     ggplot2::labs(
       x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Rows categorize standardized Figure 6 off-diagonal genes/proteins; colour is P301S - MAPTKI"
+      subtitle = "Rows categorize within-method Q99 Figure 6 off-diagonal genes/proteins; colour is P301S - MAPTKI"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(

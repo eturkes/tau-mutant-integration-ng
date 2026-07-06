@@ -18,7 +18,7 @@ REPORT SCOPE: the built report + pipeline cover snRNAseq microglia (P1) + activa
 four-method amyloid-response logFC scatter plus an off-diagonal functional-category score panel (2026-07-06 adds)
 -- 31 targets, 7 figures, `index.qmd` = YAML + `_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes.
 The modality figures RE-WIRED the GeoMx/proteome/phospho PRIMARY DE lean via `R/modality_de.R` (its own section
-below); Figure 7 categorizes standardized pooled-cutoff Figure 6 off-diagonal genes/proteins, not enrichment
+below); Figure 7 categorizes within-method Q99 Figure 6 off-diagonal genes/proteins, not enrichment
 support and not a resurrected mechanism/cross-modality chapter. The mechanism/cross-modality/qc/story chapters + their targets + R modules
 (`R/mechanism.R`, `R/crossmodality.R`) + tests STAY deleted (roadmap Ledger 2026-07-06); that science lives in
 git history + the Ledger.
@@ -440,8 +440,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   from the dashed y=x identity (y - x) is EXACTLY the -interaction contrast per feature (interaction =
   nlgf_in_p301s - nlgf_in_maptki = the tau_nlgf coef), so off-diagonal = tau reshapes the amyloid response.
   coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), empirical off-diagonal labels =
-  unique display labels with |x-y| >= the pooled Q99 of |x-y| across all four methods, deduped to the most-
-  divergent row per label; subtitle = Spearman/Pearson/n + pooled label cutoff. patchwork::wrap_plots(ncol=2).
+  unique display labels with |x-y| >= that method's Q99 of |x-y|, deduped to the most-divergent row per label;
+  high-label panels shrink label text/points; subtitle = Spearman/Pearson/n + within-method cutoff.
+  patchwork::wrap_plots(ncol=2).
   Not in the vestigial `figure_manifest` (that relic
   lists cut figures; a rendered chunk id needs no manifest row) -> `test_figures.R` still asserts 11.
 - DE = LEAN restore of the pre-teardown P4 PRIMARY producers ONLY (auxiliary GeoMx sensitivity + decon-preflight
@@ -468,9 +469,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho parent-protein means r~0.30). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 3092 parent
-  proteins from 17707 finite phosphosite rows. Pooled-Q99 cutoff = |x-y| >= 2.009746; Figure 6 labels =
-  snRNAseq 65 / GeoMx 0 / Proteome 247 / Phospho 97; Figure 7 category rows = snRNAseq 7 / GeoMx 0 / Proteome 9 /
-  Phospho 9. Consistent with P1 (amyloid->DAM strong, interaction sub-threshold) + P2 (interaction = composition
+  proteins from 17707 finite phosphosite rows. Within-method Q99 cutoffs = snRNAseq 1.688 / GeoMx 0.774 /
+  Proteome 3.899 / Phospho 2.776; Figure 6 labels = snRNAseq 145 / GeoMx 199 / Proteome 34 / Phospho 31;
+  Figure 7 category rows = snRNAseq 10 / GeoMx 10 / Proteome 8 / Phospho 7. Consistent with P1
+  (amyloid->DAM strong, interaction sub-threshold) + P2 (interaction = composition
   not progression): tau MODULATES weakly.
 - GATE green: test_modality_de.R (restored pure helpers), test_plot.R (+modality_interaction_scatter 7-layer/coord_equal
   + functional_group_score_plot warning-free build), test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/
@@ -666,7 +668,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
-  `fig-modality-functional-scores` (modality-specific categories over standardized pooled-cutoff Figure 6 off-diagonal
+  `fig-modality-functional-scores` (modality-specific categories over within-method Q99 Figure 6 off-diagonal
   genes/proteins, with phosphoproteomics scored from parent-protein mean points; connected aggregate MAPTKI/P301S amyloid-score
   points, segment colour = P301S-MAPTKI, point size = scored genes/proteins).
   Every captioned chunk

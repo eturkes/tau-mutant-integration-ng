@@ -182,7 +182,7 @@ pr <- list(top = list(
                               logFC = c(1, 2, 3), stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
                               gene_symbols = c("Apoe;Trem2", "Trem2", ""),
-                              logFC = c(4, 5, 6), stringsAsFactors = FALSE)))
+                              logFC = c(4, 8, 6), stringsAsFactors = FALSE)))
 ph <- list(top = list(
   nlgf_in_maptki = data.frame(feature = paste0("row", 1:5, "|k"),
                               site_id = c("Mapt_S404", NA, "", "Sfr1_T102", "Lcp1_S5"),
@@ -234,11 +234,8 @@ cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and 
 
 gs <- ms$groups$summary
 gg <- ms$groups$selected_genes
-pooled_dist <- unlist(lapply(ms$order, function(m) {
-  abs(ms$panels[[m]]$data$y - ms$panels[[m]]$data$x)
-}), use.names = FALSE)
-pooled_cutoff <- as.numeric(stats::quantile(pooled_dist[pooled_dist > 0], 0.6,
-                                            names = FALSE, type = 8))
+panel_cutoffs <- modality_scatter_panel_cutoffs(ms$panels, ms$order, tail_quantile = 0.6)
+cutoff_by_row <- unname(panel_cutoffs[as.character(gg$modality)])
 stopifnot(
   is.data.frame(gs), nrow(gs) > 0L,
   all(c("modality", "group", "group_label_plot", "n_gene", "score_maptki",
@@ -250,19 +247,21 @@ stopifnot(
   any(gg$gene_symbol == "Lcp1" & gg$score_label == "Lcp1" &
         as.character(gg$modality) == "Phospho"),
   all(!grepl("_[A-Za-z][0-9]", gg$score_label[as.character(gg$modality) == "Phospho"])),
-  !any(as.character(gg$modality) == "GeoMx"),                  # below the pooled cutoff
-  all(gg$offdiag_distance >= ms$groups$provenance$offdiag_cutoff),
+  any(as.character(gg$modality) == "GeoMx"),                   # within-method cutoff, not suppressed by bulk spread
+  all(gg$offdiag_distance >= cutoff_by_row),
   all(gs$n_feature <= 3L),
   all.equal(gs$delta, gs$score_p301s - gs$score_maptki, tolerance = 1e-12) == TRUE,
   ms$groups$provenance$group_set_source == "custom functional groups",
   ms$groups$provenance$offdiag_tail_quantile == 0.6,
-  all.equal(ms$groups$provenance$offdiag_cutoff, pooled_cutoff, tolerance = 1e-12) == TRUE,
-  grepl("pooled", ms$groups$provenance$offdiag_cutoff_source, fixed = TRUE),
+  all.equal(ms$provenance$offdiag_cutoff, panel_cutoffs, tolerance = 1e-12) == TRUE,
+  grepl("within-method", ms$provenance$offdiag_cutoff_source, fixed = TRUE),
+  all.equal(ms$groups$provenance$offdiag_cutoff, panel_cutoffs, tolerance = 1e-12) == TRUE,
+  grepl("within-method", ms$groups$provenance$offdiag_cutoff_source, fixed = TRUE),
   all(vapply(ms$order, function(m) {
-    identical(attr(ms$panels[[m]]$data, "offdiag_cutoff"), ms$groups$provenance$offdiag_cutoff)
+    identical(attr(ms$panels[[m]]$data, "offdiag_cutoff"), unname(panel_cutoffs[[m]]))
   }, logical(1))),
   ms$groups$provenance$min_genes == 1L)
-cat("ok - modality_logfc_scatter_data scores empirical off-diagonal labels after phospho parent-protein collapse\n")
+cat("ok - modality_logfc_scatter_data scores within-method off-diagonal labels after phospho parent-protein collapse\n")
 
 # non-finite logFC rows are dropped (finite filter); a missing amyloid contrast fails loud
 pb_na <- list(top = list(

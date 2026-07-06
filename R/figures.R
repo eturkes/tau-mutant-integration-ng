@@ -1150,13 +1150,12 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                                phospho_gene, "phospho")))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
-  offdiag_cutoff <- modality_scatter_pooled_cutoff(panels, order,
+  offdiag_cutoff <- modality_scatter_panel_cutoffs(panels, order,
                                                    tail_quantile = offdiag_tail_quantile)
-  offdiag_cutoff_source <- sprintf("pooled |x-y| q%.3f across Figure 6 modalities",
-                                   offdiag_tail_quantile)
+  offdiag_cutoff_source <- sprintf("within-method |x-y| q%.3f", offdiag_tail_quantile)
   for (m in order) {
     d <- panels[[m]]$data
-    attr(d, "offdiag_cutoff") <- offdiag_cutoff
+    attr(d, "offdiag_cutoff") <- unname(offdiag_cutoff[[m]])
     attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
     attr(d, "offdiag_tail_quantile") <- offdiag_tail_quantile
     panels[[m]]$data <- d
@@ -1165,8 +1164,6 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     list(panels = panels, order = order),
     group_sets = group_gene_sets,
     tail_quantile = offdiag_tail_quantile,
-    offdiag_cutoff = offdiag_cutoff,
-    cutoff_source = offdiag_cutoff_source,
     min_genes = group_min_genes,
     max_groups = group_max_groups
   )
@@ -1466,6 +1463,27 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   .fig_assert_finite(selected, c("x", "y", "interaction", "abs_interaction",
                                 "offdiag_distance", "scatter_label_rank"),
                      "empirical off-diagonal genes/proteins")
+  panel_attr_cutoffs <- stats::setNames(vapply(order, function(m) {
+    x <- attr(modality_scatter_figures$panels[[m]]$data, "offdiag_cutoff", exact = TRUE)
+    if (is.null(x)) NA_real_ else as.numeric(x[[1]])
+  }, numeric(1)), order)
+  if (is.null(offdiag_cutoff)) {
+    panel_missing <- !is.finite(panel_attr_cutoffs)
+    if (any(panel_missing)) {
+      panel_attr_cutoffs[panel_missing] <-
+        modality_scatter_panel_cutoffs(modality_scatter_figures$panels, order,
+                                       tail_quantile = tail_quantile)[panel_missing]
+    }
+    provenance_cutoff <- panel_attr_cutoffs
+  } else {
+    provenance_cutoff <- stats::setNames(rep(as.numeric(offdiag_cutoff), length(order)), order)
+  }
+  panel_sources <- unique(vapply(order, function(m) {
+    attr(modality_scatter_figures$panels[[m]]$data, "offdiag_cutoff_source", exact = TRUE) %||%
+      "panel_tail_quantile"
+  }, character(1), USE.NAMES = FALSE))
+  provenance_cutoff_source <- cutoff_source %||%
+    if (length(panel_sources) == 1L) panel_sources else paste(panel_sources, collapse = "; ")
   list(
     summary = rows[order(as.integer(rows$modality), -rows$rank_score, rows$group_priority,
                          method = "radix"), , drop = FALSE],
@@ -1474,12 +1492,12 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
     provenance = list(
       group_set_source = group_set_source,
       offdiag_tail_quantile = tail_quantile,
-      offdiag_cutoff = offdiag_cutoff,
-      offdiag_cutoff_source = cutoff_source %||% "panel_tail_quantile",
+      offdiag_cutoff = provenance_cutoff,
+      offdiag_cutoff_source = provenance_cutoff_source,
       min_genes = as.integer(min_genes),
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
-      selection = "same standardized off-diagonal rule as fig-modality-amyloid-effect: one pooled empirical |x-y| cutoff across all Figure 6 modalities; duplicate display labels collapsed after thresholding",
+      selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each Figure 6 method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
       category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein means of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(

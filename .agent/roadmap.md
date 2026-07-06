@@ -910,6 +910,11 @@ user before writing a new plan.
 - 2026-07-06 Figure 7 endpoint colour separation DONE (ad hoc user correction): kept global tau-background
   palette unchanged, but Figure 7 aggregate-score endpoint fills now use a dedicated high-separation blue/burnt-orange
   pair instead of the similar blue/green pair; stacked bottom guides to prevent the size legend from clipping.
+- 2026-07-06 Figure 6/7 within-method Q99 DONE (ad hoc user correction; supersedes pooled-Q99 label selection):
+  empirical off-diagonal labels and Figure 7 scored categories now use each method's own Q99 `|x-y|` cutoff, while
+  preserving phospho parent-protein collapse. Live compact target: cutoffs snRNAseq 1.688 / GeoMx 0.774 /
+  Proteome 3.899 / Phospho 2.776; Figure 6 labels snRNAseq 145 / GeoMx 199 / Proteome 34 / Phospho 31; Figure 7
+  rows snRNAseq 10 / GeoMx 10 / Proteome 8 / Phospho 7. High-label scatter panels use smaller labels/points.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
