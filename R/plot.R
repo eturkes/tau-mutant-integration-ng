@@ -187,7 +187,7 @@ concordance_plot <- function(df, x_col, y_col, label_col = "gene",
 # on a symmetric square so the diagonal reads at 45 deg. `df` needs numeric x/y + a label column.
 modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                                          label_col = "label",
-                                         label_tail_quantile = 0.998,
+                                         label_tail_quantile = 0.99,
                                          x_lab = "log2FC  NLGF_P301S vs P301S",
                                          y_lab = "log2FC  NLGF_MAPTKI vs MAPTKI",
                                          point_colour = "#6F7782", label_colour = "#A63A50") {

@@ -6,7 +6,7 @@
 
 # Shared Figure 6 off-diagonal utilities. Production Figure 6/7 passes one pooled absolute
 # |x-y| cutoff learned across modalities; the panel-local tail is a fallback for tests/ad hoc plots.
-modality_scatter_pooled_cutoff <- function(panels, order = names(panels), tail_quantile = 0.998) {
+modality_scatter_pooled_cutoff <- function(panels, order = names(panels), tail_quantile = 0.99) {
   stopifnot(is.list(panels), is.character(order), length(order) >= 1L,
             all(order %in% names(panels)),
             is.numeric(tail_quantile), length(tail_quantile) == 1L,
@@ -24,7 +24,7 @@ modality_scatter_pooled_cutoff <- function(panels, order = names(panels), tail_q
 }
 
 modality_scatter_label_rows <- function(df, n_label = NULL, label_col = "label",
-                                        tail_quantile = 0.998,
+                                        tail_quantile = 0.99,
                                         cutoff = NULL,
                                         cutoff_source = NULL) {
   stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)),

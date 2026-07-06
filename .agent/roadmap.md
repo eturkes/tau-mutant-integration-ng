@@ -897,11 +897,16 @@ user before writing a new plan.
   empirical threshold with one pooled Q99.8 cutoff over finite `|x-y|` distances from all four Figure 6 methods
   (`|x-y| >= 4.480587` live). Live labels now reflect shared absolute distance: snRNAseq 0, GeoMx 0, Proteome 18,
   Phospho 87; Figure 7 scores Proteome 18 + Phospho 59 parent-gene/protein items after phosphosite collapse.
-- 2026-07-06 Figure 6 phosphoproteomics readability DONE (ad hoc user correction): phospho DE remains site-level,
+- 2026-07-06 Figure 6 phosphoproteomics readability DONE (ad hoc user correction; threshold/counts superseded by
+  Q99 label relaxation below): phospho DE remains site-level,
   but `modality_logfc_scatter_data` collapses finite phosphosite logFC pairs to best-fit parent-protein means before
-  pooled cutoff, labels, and Figure 7 scoring. Live compact target: phospho 17707 finite sites -> 3092 parent
+  pooled cutoff, labels, and Figure 7 scoring. Compact target at the time: phospho 17707 finite sites -> 3092 parent
   proteins; pooled Q99.8 `|x-y| >= 3.307601`; Figure 6 labels snRNAseq 5 / GeoMx 0 / Proteome 57 / Phospho 20;
   Figure 7 rows snRNAseq 4 / GeoMx 0 / Proteome 8 / Phospho 5.
+- 2026-07-06 Figure 6 Q99 label relaxation DONE (ad hoc user correction): standardized pooled cutoff relaxed from
+  Q99.8 to Q99 to capture more transcriptomic off-diagonal points while retaining the parent-protein phospho collapse.
+  Live compact target: pooled Q99 `|x-y| >= 2.009746`; Figure 6 labels snRNAseq 65 / GeoMx 0 / Proteome 247 /
+  Phospho 97; Figure 7 rows snRNAseq 7 / GeoMx 0 / Proteome 9 / Phospho 9.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

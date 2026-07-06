@@ -440,7 +440,7 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   from the dashed y=x identity (y - x) is EXACTLY the -interaction contrast per feature (interaction =
   nlgf_in_p301s - nlgf_in_maptki = the tau_nlgf coef), so off-diagonal = tau reshapes the amyloid response.
   coord_equal 1:1 (45-deg diagonal), zero crosshairs, OLS trend (tilt vs diagonal), empirical off-diagonal labels =
-  unique display labels with |x-y| >= the pooled Q99.8 of |x-y| across all four methods, deduped to the most-
+  unique display labels with |x-y| >= the pooled Q99 of |x-y| across all four methods, deduped to the most-
   divergent row per label; subtitle = Spearman/Pearson/n + pooled label cutoff. patchwork::wrap_plots(ncol=2).
   Not in the vestigial `figure_manifest` (that relic
   lists cut figures; a rendered chunk id needs no manifest row) -> `test_figures.R` still asserts 11.
@@ -467,9 +467,9 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho parent-protein means r~0.30). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 3092 parent
-  proteins from 17707 finite phosphosite rows. Pooled-Q99.8 cutoff = |x-y| >= 3.307601; Figure 6 labels =
-  snRNAseq 5 / GeoMx 0 / Proteome 57 / Phospho 20; Figure 7 category rows = snRNAseq 4 / GeoMx 0 / Proteome 8 /
-  Phospho 5. Consistent with P1 (amyloid->DAM strong, interaction sub-threshold) + P2 (interaction = composition
+  proteins from 17707 finite phosphosite rows. Pooled-Q99 cutoff = |x-y| >= 2.009746; Figure 6 labels =
+  snRNAseq 65 / GeoMx 0 / Proteome 247 / Phospho 97; Figure 7 category rows = snRNAseq 7 / GeoMx 0 / Proteome 9 /
+  Phospho 9. Consistent with P1 (amyloid->DAM strong, interaction sub-threshold) + P2 (interaction = composition
   not progression): tau MODULATES weakly.
 - GATE green: test_modality_de.R (restored pure helpers), test_plot.R (+modality_interaction_scatter 7-layer/coord_equal
   + functional_group_score_plot warning-free build), test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/
