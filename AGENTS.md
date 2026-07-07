@@ -12,9 +12,8 @@
   `**/*.woff2`. Prefer target metadata, compact report targets, or runtime indirection for
   large/heavy artefact inspection.
 - Environment: Debian container; repo path in-container starts `/run/host/...` while host paths
-  differ. `uv` venv scripts bake absolute paths → if a project dir moves or host/container paths
-  mix, rebuild the local env (`rm -rf .venv && uv sync`; use `.venv-host` only when deliberately
-  maintaining a separate host env).
+  differ. Current live stack = rv-managed R + project-local Quarto + targets; no committed
+  Python/uv surface unless a future report-producing step reintroduces it.
 - Browser/visual QA: `chromiumfish` is installed. Use `$(chromiumfish path)` with
   `--headless=new --no-sandbox --disable-gpu`; full-page capture = `--print-to-pdf`
   `--no-pdf-header-footer` → `pdftoppm` → inspect PNGs. `url#fragment` screenshots are unreliable;
@@ -35,7 +34,8 @@
 - Lean on performance enhancers: examples, narrow well-defined tasks, positive encouragement, broader context + intent. Find more (web search, your knowledge).
 - Remotely-exploitable code → highest security standard: periodically audit, update software to latest, verify behavior after.
 - Adversarial review (code or session) → scrutinize correctness + logic, soundness of claims, guarantee-vs-claim gaps; weigh honesty + overreach above style. Report every issue, incl. uncertain/low-severity — a finding later filtered out beats silently dropping a real bug.
-- Add tests where they give a useful feedback loop. Counter the LLM over-testing bias → prefer sophisticated approaches: fuzzing, property-based testing, formal verification.
+- Add tests only when they directly speed or protect the final report path. Current posture favours
+  lean report iteration over broad robustness infrastructure.
 - Draw on established dev methods (TDD red-green-refactor) + emerging ones (multi-agent councils/teams).
 - Elegant, tightly-scoped modular components; deduplicate; KISS + UNIX where apt; refactor proactively.
 - Counter your tendencies to gold-plate, hand-wave, and fake success criteria → work thoroughly + honestly; splitting work across sessions > doing it lazily.

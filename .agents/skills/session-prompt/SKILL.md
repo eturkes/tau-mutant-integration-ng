@@ -8,4 +8,4 @@ Read `.codex/prompts/session.md` completely, then follow it.
 Invocation contract:
 - Text after `$session-prompt` = the prompt's `Task`.
 - No trailing text = empty `Task`; run the roadmap-implied mode.
-- Preserve the prompt's load order and commit rules.
+- Preserve the prompt's load order, check posture, and commit rules.

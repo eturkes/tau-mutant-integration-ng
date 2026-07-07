@@ -18,7 +18,6 @@ repositories = [
 dependencies = [
     # reproducibility spine (targets DAG + Quarto reports + qs2 serialization)
     "targets",
-    "tarchetypes",
     "quarto",
     "qs2",
     # snRNAseq: reprocess = SCT-v2 (glmGamPoi backend) + Harmony batch integration (P1-S1)
@@ -28,19 +27,9 @@ dependencies = [
     { name = "glmGamPoi", repository = "BioCsoft" },
     # substate scoring: UCell rank-based signature enrichment (robust to dropout/depth; P1-S2)
     { name = "UCell",      repository = "BioCsoft" },
-    # composition (P1-S3): propeller (speckle) = reproducible PRIMARY (logit/asin, limma eBayes).
-    # sccomp = OPTIONAL Bayesian cross-check; the R pkg locks here, but its CmdStan backend is
-    # off-lock (cmdstanr off-snapshot + an unlockable compiled tree) -> scripts/install-cmdstan.sh
-    # provisions it project-locally; the composition target degrades to propeller-only when absent.
-    # instantiate (CmdStan glue, a sccomp Depends) auto-pulls from CRAN/P3M.
-    { name = "speckle",    repository = "BioCsoft" },
-    { name = "sccomp",     repository = "BioCsoft" },
     # differential expression (Bioconductor)
     { name = "limma",        repository = "BioCsoft" },
     { name = "edgeR",        repository = "BioCsoft" },
-    { name = "BiocParallel", repository = "BioCsoft" },
-    # stageR: stage-wise family screen (omnibus F) -> per-contrast confirm across the 5 contrasts (P1-S4)
-    { name = "stageR",       repository = "BioCsoft" },
     # trajectory (P2-S1): slingshot principal-curve pseudotime on the harmony embedding
     # (BioCsoft; pulls Bioc SingleCellExperiment / TrajectoryUtils + CRAN princurve [Rcpp]).
     { name = "slingshot",    repository = "BioCsoft" },
@@ -48,15 +37,8 @@ dependencies = [
     # a compiled C++ template, NOT Stan -> fully ON-lock; P3M ships the trixie BINARY co-built
     # against the snapshot's Matrix/TMB, so it loads ABI-clean (no local source build, no mismatch warning).
     "glmmTMB",
-    # mechanism (P3): RNA TF/pathway and phosphosite kinase activity with reproducible prior fingerprints.
-    { name = "decoupleR", repository = "BioCsoft" },
-    { name = "OmnipathR", repository = "BioCsoft" },
-    { name = "fgsea",     repository = "BioCsoft" },
+    # modality functional categories: mouse MSigDB GO-BP role unions for figure 10.
     "msigdbr",
-    "digest",
-    # spatial decon follow-up: GeoMx-native deconvolution API; S1 builds the compact
-    # reference profile, S2 runs SpatialDecon only if gates pass.
-    { name = "SpatialDecon", repository = "BioCsoft" },
     # plotting
     "ggplot2",
     "ggrepel",

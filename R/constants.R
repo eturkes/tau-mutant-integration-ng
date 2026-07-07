@@ -1,5 +1,5 @@
 # Project constants: factor levels, contrast definitions, canonical marker
-# lists, RBC-contamination markers, and raw-data paths. Sourced first by tar_source();
+# lists, contamination markers, and raw-data paths. Sourced first by tar_source();
 # downstream R/ files + targets read these symbols. Values carried byte-exact from v1
 # (genotype labels and marker sets are load-bearing -- do not let them drift).
 
@@ -54,17 +54,6 @@ contam_signatures <- list(
   Oligo  = c("Mbp", "Plp1", "Mog", "Mobp", "Mag"),
   Neuron = c("Snap25", "Stmn2", "Rbfox3", "Syt1", "Meg3"),
   Astro  = c("Aqp4", "Gfap", "Slc1a2", "Slc1a3", "Aldoc")
-)
-
-# Red-blood-cell / haemoglobin markers (mouse). Microglia lack adult haemoglobin, so
-# these appearing among hub/module genes signal erythroid contamination (P3+ hdWGCNA).
-rbc_marker_symbols <- c(
-  "Hba-a1", "Hba-a2", "Hbb-b1", "Hbb-b2", "Hbb-bs", "Hbb-bt", "Hbb-y",
-  "Hbb-bh1", "Hbb-bh2", "Hbq1a", "Hbq1b",
-  "Alas2",
-  "Slc4a1", "Epb41", "Epb42", "Ank1",
-  "Klf1", "Gata1", "Bcl11a",
-  "Bpgm"
 )
 
 # Raw-data paths (resolve through the storage/data symlink -> external read-only copy).

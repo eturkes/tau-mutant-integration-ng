@@ -5,8 +5,8 @@
 #                             mapped to the 5 contrasts by hand.
 #   - make_contrast_matrix(): cell-means form (~ 0 + genotype[+ batch]); contrasts expressed
 #                             as differences of per-genotype means via limma::makeContrasts.
-# They span the same column space -> identical estimable contrast values for ANY response
-# (asserted in tests/test_design.R). Names: tau_alone, nlgf_in_maptki, nlgf_in_p301s,
+# They span the same column space -> identical estimable contrast values for ANY response.
+# Names: tau_alone, nlgf_in_maptki, nlgf_in_p301s,
 # tau_in_nlgf, interaction.
 
 # Cell-means contrast matrix. `design` must carry one column per genotype level

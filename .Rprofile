@@ -12,13 +12,3 @@ local({
     if (interactive()) warning(msg, call. = FALSE) else stop(msg, call. = FALSE)
   }
 })
-
-# Redirect OmnipathR's API logs out of the repo root. Its logger defaults to writing
-# `./omnipathr-log/` at the working dir; setting the logdir option before the package
-# loads (it reads this at load) keeps probe/download logs in the gitignored cache tree
-# instead of littering the working tree. Re-add if `rv` regenerates .Rprofile.
-local({
-  d <- file.path(getwd(), "storage", "cache", "omnipathr-log")
-  dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  options(omnipathr.logdir = d)
-})

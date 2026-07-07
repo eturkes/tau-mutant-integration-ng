@@ -32,8 +32,9 @@ REPORT SCOPE (current 2026-07-07): the rendered report = TEN figures: microglia 
 three modality-native non-snRNAseq figures + two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
 snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures. The
-mechanism/cross-modality/qc/story chapters, targets, R modules, and tests remain deleted (Ledger 2026-07-06).
-31 targets remain. P3/P4/P5 + the figure-expansion
+mechanism/cross-modality/qc/story chapters, targets, R modules, tests, Python/uv surface, composition/sccomp
+target, per-substate pseudobulk, stageR layer, and prose-inventory utility remain deleted or retired from the
+live DAG (Ledger 2026-07-07). 29 targets remain. P3/P4/P5 + the figure-expansion
 passes below stay as historical DONE records (this roadmap holds the trajectory); their report chapters no
 longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -45,14 +46,15 @@ Next `$session-prompt` mode = PLAN. Confirm the next roadmap direction with the
 user before writing a new plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
-- P0 Foundations [DONE 2026-06-29]: project-local env (rv for R + uv .venv for Python), shared
-  helpers (io / design+contrasts / plot theme), data load + QC sanity, 2x2
-  factorial + 5 contrasts, concrete quality gate.
-- P1 snRNAseq microglia core [DONE 2026-06-30]: reprocess (SCT) + substates (homeostatic / DAM /
-  IFN / proliferative, UCell), composition (propeller primary + sccomp cross-check), pseudobulk DE across
-  contrasts -> the robust amyloid->DAM activation programme (3-way confirmed: composition + DE + UCell score).
-  Interaction = no large-effect DE, under-powered NOT absent (reported w/ MDE/CI + 123 stageR-confirmed, real |logFC| but sub-threshold per-contrast FDR) ->
-  synergy handed to P2 and resolved as DAM-cell composition rather than progression/acceleration. Digest -> history.md.
+- P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
+  project-local Quarto, shared helpers (io / design+contrasts / plot theme), data load + QC sanity,
+  2x2 factorial + 5 contrasts, report-render quality gate. Historical Python/uv/test-loop gate was removed
+  during the lean iteration cut.
+- P1 snRNAseq microglia core [DONE 2026-06-30; live DAG leaned 2026-07-07]: reprocess (SCT) +
+  substates (homeostatic / DAM / IFN / proliferative, UCell), whole-microglia pseudobulk DE, and direct
+  replicate-unit composition bars in the compact report bundle. Historical composition/sccomp/stageR/per-substate
+  DE machinery is retired from the live path. Synergy is carried into P2 as DAM-cell composition rather than
+  progression/acceleration. Digest -> history.md.
 - P2 Interaction trajectory [DONE 2026-07-02 -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`]:
   activation pseudotime (homeostatic->DAM); amyloid advances the activation axis, but the tau x amyloid
   interaction decomposes to more DAM cells, not supported progression beyond composition.
@@ -935,6 +937,13 @@ user before writing a new plan.
   top score-gene driver logFCs for the two amyloid-background contrasts. `geomx_de$spatial$aoi` now carries
   `segment` + `aoi_area`; plot/tests require `$spatial$genes`. Targeted tests green; report render green; Chromium
   PDF page 5 clean.
+- 2026-07-07 Lean iteration infrastructure cut DONE (user task): optimized for faster report iteration over
+  robustness. Removed committed tests, Python/uv config, prose inventory, CmdStan/sccomp composition arm,
+  stageR layer, per-substate pseudobulk, and dead figure/plot/constants helpers that did not feed the current
+  10-figure report. `microglia_report_data()` now emits replicate-unit composition directly; `microglia_figures`
+  and `trajectory_figures` carry only rendered slots; `_targets.R` is the 29-target report DAG. `scripts/check.sh`
+  is now a lean report gate: optional `rv sync`, forced `report` rebuild, target metadata scan, render-log scan.
+  `AGENTS.md`, session prompt/skill, memory, and map now state the lean posture.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

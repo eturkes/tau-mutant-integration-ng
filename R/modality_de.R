@@ -5,7 +5,7 @@
 # the 5 canonical contrasts. The amyloid-response logFC scatter (R/figures.R ->
 # modality_logfc_scatter_data) reads `nlgf_in_maptki` (y) vs `nlgf_in_p301s` (x) from these.
 # The torn-down auxiliary arms (GeoMx unblocked / bio-unit-collapsed sensitivities +
-# SpatialDecon decon-preflight; proteome / phospho additive run-index sensitivity) are
+# deconvolution preflight; proteome / phospho additive run-index sensitivity) are
 # INTENTIONALLY not restored -- they served the deconvolution / bulk-run-order caveats, not the
 # per-feature effect sizes this figure needs. Shared machinery reused from HEAD: fit_limma_log /
 # median_normalise / prevalence_filter (R/de_pb.R), factorial_design / make_contrast_matrix

@@ -26,7 +26,8 @@ PLAN:
 EXECUTE:
 - Orient from prior commit + ledger; restate step/acceptance in one line.
 - Verify heavy/gated preconditions with real tooling before trusting outputs.
-- Implement narrowly; update tests/docs/memory/map as warranted.
+- Implement narrowly; update docs/memory/map as warranted. Add tests only when they directly
+  accelerate or protect the report path.
 - Run `scripts/check.sh` unless the task is explicitly docs-only and a lighter check is justified.
 - Commit `<scope> (<topic>): ...`.
 

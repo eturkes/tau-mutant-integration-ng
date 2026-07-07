@@ -755,8 +755,8 @@ run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
 # On-lock: TMB = a C++ template, NOT Stan. All non-base calls namespace-qualified.
 # ============================================================================================
 
-# Evaluate `expr`, capturing + MUFFLING both warnings AND messages (the sccomp lesson, R/composition.R:
-# glmmTMB/TMB optimisers can report convergence health via message() carrying a literal "Warning:" too,
+# Evaluate `expr`, capturing + MUFFLING both warnings AND messages (prior sampler/optimizer
+# warning lesson): glmmTMB/TMB optimisers can report convergence health via message() carrying a literal "Warning:" too,
 # NOT only warning() -> a fresh build would RED the gate's warn=2 / tar_meta / anchored ^Warning: log
 # scan). Returns list(value, warnings, messages); value = NULL when `expr` errors (a fit/extraction
 # failure -> the caller degrades). The structured health flags below are the authoritative record.

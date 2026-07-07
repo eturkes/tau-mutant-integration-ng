@@ -442,17 +442,10 @@ substate_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
   out
 }
 
-# Extract ONLY what _microglia.qmd plots/tabulates from the ~612MB annotated Seurat, so the
-# force-rendered report (hence EVERY scripts/check.sh run) reads a ~0.5MB target instead of
-# deserialising the full object -- this preserves the documented cheap-render gate property
-# (the QC chapter already loads the 340MB raw subset; we must not add the heavy annotated one
-# on top). Returns a per-cell plotting frame (UMAP coords + genotype + primary substate + the
-# activation z-scores) plus the small prune / substate-provenance summaries the section reports
-# (both already compact -- passed through verbatim) and the substate marker panel (the genes that
-# DEFINE each substate). Pure: no RNG, no I/O. UMAP rows are asserted cell-aligned to meta.data,
-# z-scores asserted finite (annotate_microglia coerces non-finite -> 0 upstream) so the report
-# never hits a ggplot missing-value warning (warn=2 -> render error). symbol_map maps the marker
-# symbols -> the assay's ensembl rownames for substate_marker_panel.
+# Extract ONLY what _microglia.qmd plots from the ~612MB annotated Seurat, so a
+# report render reads one compact target instead of the full object. The bundle
+# carries the per-cell UMAP/score frame, the unit-composition bars, and the
+# substate marker panel. Pure: no RNG, no I/O.
 microglia_report_data <- function(seurat_obj, symbol_map,
                                   substate_col = "microglia_substate",
                                   z_cols = c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z"),
@@ -465,6 +458,8 @@ microglia_report_data <- function(seurat_obj, symbol_map,
     "umap" %in% SeuratObject::Reductions(seurat_obj),
     substate_col %in% colnames(seurat_obj@meta.data),
     "genotype" %in% colnames(seurat_obj@meta.data),
+    "genotype_batch" %in% colnames(seurat_obj@meta.data),
+    "batch" %in% colnames(seurat_obj@meta.data),
     all(z_cols %in% colnames(seurat_obj@meta.data)),
     !is.null(seurat_obj@misc$microglia_prune),
     !is.null(seurat_obj@misc$substate_provenance)
@@ -473,16 +468,47 @@ microglia_report_data <- function(seurat_obj, symbol_map,
   emb <- SeuratObject::Embeddings(seurat_obj, "umap")
   stopifnot(identical(rownames(emb), rownames(md)), ncol(emb) >= 2L)   # umap cell-aligned to meta
   sub <- md[[substate_col]]
+  observed_substates <- unique(as.character(sub))
+  sub_levels <- intersect(c(microglia_substate_levels, "ambiguous", "unassigned"), observed_substates)
+  if (!length(sub_levels)) sub_levels <- sort(observed_substates, method = "radix")
   cell_frame <- data.frame(
     umap_1   = as.numeric(emb[, 1]),                      # as.numeric strips cell names -> no row.names inference
     umap_2   = as.numeric(emb[, 2]),
     genotype = factor(as.character(md$genotype), levels = genotype_levels),
-    substate = factor(as.character(sub),
-                      levels = if (is.factor(sub)) levels(sub) else sort(unique(as.character(sub)))),
+    substate = factor(as.character(sub), levels = sub_levels),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   cell_frame[z_cols] <- md[, z_cols, drop = FALSE]         # append the activation z-scores by name (cell-aligned)
   rownames(cell_frame) <- NULL
+  unit_levels <- sort(unique(as.character(md$genotype_batch)), method = "radix")
+  unit_tab <- as.data.frame(
+    table(
+      genotype_batch = factor(as.character(md$genotype_batch), levels = unit_levels),
+      substate = factor(as.character(sub), levels = sub_levels)
+    ),
+    stringsAsFactors = FALSE
+  )
+  names(unit_tab)[3L] <- "n_cells"
+  unit_tab$n_cells <- as.numeric(unit_tab$n_cells)
+  unit_meta <- unique(data.frame(
+    genotype_batch = as.character(md$genotype_batch),
+    genotype = factor(as.character(md$genotype), levels = genotype_levels),
+    batch = as.character(md$batch),
+    stringsAsFactors = FALSE
+  ))
+  stopifnot(nrow(unit_meta) == length(unit_levels), !anyNA(unit_meta$genotype),
+            !anyDuplicated(unit_meta$genotype_batch))
+  unit_comp <- merge(unit_tab, unit_meta, by = "genotype_batch", all.x = TRUE, sort = FALSE)
+  totals <- stats::aggregate(n_cells ~ genotype_batch, data = unit_comp, FUN = sum)
+  names(totals)[2L] <- "unit_total"
+  unit_comp <- merge(unit_comp, totals, by = "genotype_batch", all.x = TRUE, sort = FALSE)
+  unit_comp$proportion <- ifelse(unit_comp$unit_total > 0,
+                                 unit_comp$n_cells / unit_comp$unit_total, NA_real_)
+  unit_comp$genotype <- factor(as.character(unit_comp$genotype), levels = genotype_levels)
+  unit_comp <- unit_comp[order(match(unit_comp$genotype, genotype_levels),
+                               unit_comp$genotype_batch, unit_comp$substate,
+                               method = "radix"), , drop = FALSE]
+  rownames(unit_comp) <- NULL
   prov  <- seurat_obj@misc$substate_provenance
   prune <- seurat_obj@misc$microglia_prune
   # cell_frame is the single source of truth -> assert the passed-through summaries AGREE with it
@@ -492,6 +518,9 @@ microglia_report_data <- function(seurat_obj, symbol_map,
     !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),   # every cell placed (annotate guarantees it)
     all(is.finite(cell_frame$umap_1)), all(is.finite(cell_frame$umap_2)),   # finite coords -> no ggplot drop
     all(vapply(z_cols, function(z) all(is.finite(cell_frame[[z]])), logical(1))),
+    all(is.finite(unit_comp$n_cells)), all(is.finite(unit_comp$unit_total)),
+    all(is.finite(unit_comp$proportion)), !anyNA(unit_comp$genotype),
+    !anyNA(unit_comp$batch),
     identical(as.integer(colSums(prov$substate_table)), as.integer(sub_counts)),  # provenance == per-cell counts
     isTRUE(prune$n_retained == ncol(seurat_obj))               # retained count == frame rows
   )
@@ -502,5 +531,5 @@ microglia_report_data <- function(seurat_obj, symbol_map,
     seurat_obj, symbol_map, marker_sets = marker_sets, substates = marker_substates,
     substate_col = substate_col, assay = "SCT", layer = marker_layer)
   list(cell_frame = cell_frame, n_cells = ncol(seurat_obj), prune = prune, provenance = prov,
-       substate_markers = substate_markers)
+       substate_markers = substate_markers, unit_composition = unit_comp)
 }

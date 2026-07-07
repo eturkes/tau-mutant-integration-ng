@@ -3,8 +3,8 @@
 # (its sysreqs DB does not map the distro), so this is the captured install log. Two kinds:
 #   - runtime libs the P3M trixie BINARY packages link against, found via:
 #       find rv/library -name '*.so' -print0 | xargs -0 -I{} ldd {} | grep "not found"
-#   - build toolchain for the Bioconductor packages compiled from source (P3M serves Bioc
-#     as source on Debian): limma (Fortran + C), edgeR (C++), BiocParallel (C).
+#   - build toolchain for Bioconductor packages compiled from source (P3M serves Bioc
+#     as source on Debian; current direct native deps include limma and edgeR).
 # Passwordless sudo in this env. Run BEFORE `rv sync` on a fresh clone. Idempotent.
 set -euo pipefail
 

@@ -14,19 +14,6 @@ local({
   Sys.setenv(QUARTO_PATH = quarto_bin)
 })
 
-# Optional Stan backend for the sccomp composition cross-check (P1-S3). Prepend the off-lock,
-# project-local cmdstanr library + point CMDSTAN at the compiled tree, but ONLY when both exist
-# (provisioned by scripts/install-cmdstan.sh). Absent -> not added -> R/composition.R degrades to
-# propeller-only (the reproducible primary), so a fresh clone still builds + the gate stays green.
-local({
-  stan_lib <- "tools/rlib-stan"
-  cmdstan  <- Sys.glob(file.path("tools", "cmdstan", "cmdstan-*"))
-  if (dir.exists(stan_lib) && length(cmdstan) >= 1L) {
-    .libPaths(c(normalizePath(stan_lib), .libPaths()))
-    Sys.setenv(CMDSTAN = normalizePath(cmdstan[1]))
-  }
-})
-
 # memory="transient" + gc: release the ~8G snRNAseq load + its 340MB subset between targets.
 # trust_timestamps: detect raw-input change by mtime/size, not by re-hashing the 8G file.
 tar_option_set(
@@ -70,25 +57,16 @@ list(
   # -> drop clear contaminant clusters -> calibrated argmax substate labels on the clean population.
   tar_target(microglia_annotated,  annotate_microglia(microglia_processed, symbol_map), format = "qs"),
 
-  # S3: substate composition across the 5 canonical contrasts. propeller (logit + asin) = locked
-  # primary; sccomp (Bayesian, random batch) = optional cross-check, run iff the Stan backend above
-  # is present, else recorded as skipped. Small result (count tables + per-contrast stats + concordance).
-  tar_target(composition_results,  test_composition(microglia_annotated), format = "qs"),
-
-  # S4: pseudobulk limma-voom DE across the 5 canonical contrasts. voomWithQualityWeights +
-  # robust eBayes; stageR family-screen (omnibus F -> per-contrast Holm confirm). Whole-microglia
-  # = the headline amyloid->DAM activation programme (+ DAM-direction concordance vs v1);
-  # per-substate = fit-or-skip by a min-cell floor (Homeostatic/DAM fit, IFN/Proliferative thin).
-  tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated, symbol_map), format = "qs"),
-  tar_target(pb_de_substate,  run_pb_de_substate(microglia_annotated),              format = "qs"),
+  # Whole-microglia pseudobulk limma-voom DE across the 5 canonical contrasts. The report
+  # uses these topTables for the snRNAseq panel in the four-method amyloid-response scatter.
+  tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated), format = "qs"),
 
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + substate +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.
   tar_target(microglia_report, microglia_report_data(microglia_annotated, symbol_map), format = "qs"),
   tar_target(microglia_figures,
-             microglia_figure_data(microglia_report, composition_results,
-                                   pb_de_microglia, pb_de_substate, symbol_map),
+             microglia_figure_data(microglia_report),
              format = "qs"),
 
   # --- P2 interaction trajectory ---
@@ -119,7 +97,7 @@ list(
   tar_target(trajectory_report, trajectory_report_data(microglia_trajectory, trajectory_progression,
                                                        trajectory_glmm_sensitivity), format = "qs"),
   tar_target(trajectory_figures,
-             trajectory_figure_data(trajectory_report, composition_results),
+             trajectory_figure_data(trajectory_report),
              format = "qs"),
 
   # --- cross-tau amyloid-response (four-method logFC scatter) ---

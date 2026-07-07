@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pinned rv (A2-ai R package manager) on PATH. Idempotent.
 # rv's .Rprofile/activate.R discovers rv via Sys.which("rv") + shells out to `rv info`,
-# so rv MUST be on PATH (same model as uv). Reproducibility = pinned version + sha256
+# so rv MUST be on PATH. Reproducibility = pinned version + sha256
 # below (the committed source of truth), not the install location. cargo-binstall fails
 # for rv (crates.io `rv` is an unrelated lib) -> use the release asset.
 set -euo pipefail

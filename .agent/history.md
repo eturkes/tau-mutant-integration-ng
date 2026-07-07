@@ -394,3 +394,17 @@ dashboard ids. Chromium PDF content-page QA inspected the trajectory legend, cro
 phospho correction and closing model; no clipped legends or unreadable cross-modality labels remain. Chromium still
 emits one trailing blank PDF page. Final `scripts/check.sh` green (sync, tests warn=2, forced 89-chunk report render,
 tar_meta clean across 53 current targets/branches, render-log clean).
+
+## Lean iteration infrastructure cut -- closed 2026-07-07
+
+Closed the user's request to optimize for faster report iteration over broad infrastructure robustness.
+
+- LIVE PATH: kept only code/config that directly feeds the current 10-figure final analysis report.
+- REMOVED: committed tests, Python/uv config, prose inventory, composition/sccomp/CmdStan target, stageR layer,
+  per-substate pseudobulk, and dead helper surface no longer reached by the rendered chapters.
+- REPORT DATA: `microglia_report_data()` now emits replicate-unit composition directly; figure-data targets carry
+  only rendered slots.
+- GATE: `scripts/check.sh` is now a lean report gate: optional `rv sync`, forced `report` rebuild, target metadata
+  scan, render-log scan.
+
+Verification target for the closing commit: `rv sync`, target manifest/source checks, and the lean report gate.
