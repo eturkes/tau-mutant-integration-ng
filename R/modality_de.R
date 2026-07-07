@@ -16,7 +16,7 @@
 
 geomx_required_meta_cols <- function() {
   c("genotype", "slide_rep", "bio_rep", "roi", "SampleID",
-    "ROI Coordinate X", "ROI Coordinate Y",
+    "segment", "area", "ROI Coordinate X", "ROI Coordinate Y",
     "q_norm_qFactors", "NegGeoMean_Mm_R_NGS_WTA_v1.0", "nuclei")
 }
 
@@ -70,7 +70,9 @@ geomx_meta <- function(geomx) {
     slide = factor(as.character(md$slide_rep)),
     bio_rep = as.character(md$bio_rep),
     roi = as.character(md$roi),
+    segment = as.character(md$segment),
     SampleID = as.character(md$SampleID),
+    area = as.numeric(md$area),
     x = as.numeric(md[["ROI Coordinate X"]]),
     y = as.numeric(md[["ROI Coordinate Y"]]),
     q3_factor = as.numeric(md$q_norm_qFactors),
@@ -81,7 +83,8 @@ geomx_meta <- function(geomx) {
   )
   out$bio_unit <- paste(out$genotype, out$bio_rep, sep = ":")
   stopifnot(!anyNA(out$genotype), !anyNA(out$slide), !anyNA(out$bio_unit),
-            !anyNA(out$roi), !anyNA(out$SampleID),
+            !anyNA(out$roi), !anyNA(out$segment), !anyNA(out$SampleID),
+            all(is.finite(out$area)), all(out$area > 0),
             all(is.finite(out$x)), all(is.finite(out$y)),
             all(is.finite(out$q3_factor)), all(is.finite(out$neg_background)),
             all(is.finite(out$nuclei)))
@@ -91,6 +94,8 @@ geomx_meta <- function(geomx) {
     n_aoi = nrow(out),
     n_bio_units = nlevels(out$bio_unit),
     n_slides = nlevels(out$slide),
+    segments = sort(unique(out$segment)),
+    area_range = range(out$area),
     nuclei_sentinel_count = sum(out$nuclei < 0)
   )
   out
@@ -143,6 +148,13 @@ geomx_spatial_descriptor <- function(counts, meta, top,
             identical(colnames(counts), rownames(meta)),
             all(c(y_contrast, x_contrast) %in% names(top)),
             is.numeric(top_n), length(top_n) == 1L, top_n >= 1L)
+  need_meta <- c("slide", "roi", "segment", "SampleID", "genotype", "area", "x", "y",
+                 "q3_factor", "neg_background", "nuclei")
+  missing_meta <- setdiff(need_meta, names(meta))
+  if (length(missing_meta)) {
+    stop("GeoMx spatial descriptor metadata missing columns: ",
+         paste(missing_meta, collapse = ", "), call. = FALSE)
+  }
   ty <- top[[y_contrast]]
   tx <- top[[x_contrast]]
   need <- c("symbol", "logFC", "adj.P.Val")
@@ -192,8 +204,10 @@ geomx_spatial_descriptor <- function(counts, meta, top,
     aoi = rownames(meta),
     slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
     roi = as.character(meta$roi),
+    segment = as.character(meta$segment),
     sample_id = as.character(meta$SampleID),
     genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    aoi_area = as.numeric(meta$area),
     x_coord = as.numeric(meta$x),
     y_coord = as.numeric(meta$y),
     q3_factor = as.numeric(meta$q3_factor),
@@ -207,6 +221,7 @@ geomx_spatial_descriptor <- function(counts, meta, top,
                                "NLGF+", "NLGF-"),
                         levels = c("NLGF-", "NLGF+"))
   stopifnot(!anyNA(aoi$genotype), all(is.finite(aoi$x_coord)), all(is.finite(aoi$y_coord)),
+            !anyNA(aoi$segment), all(is.finite(aoi$aoi_area)), all(aoi$aoi_area > 0),
             all(is.finite(aoi$signed_response_score)), all(is.finite(aoi$score_abs)))
 
   selected <- rank[match(genes, rank$symbol), , drop = FALSE]

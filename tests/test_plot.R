@@ -209,14 +209,24 @@ expect_error(modality_volcano_plot(volcano_df[0, , drop = FALSE]), "no finite ro
 
 geo_aoi <- data.frame(
   slide = factor(rep(c("slide1", "slide2"), each = 4)),
+  roi = paste0("roi", 1:8),
   genotype = factor(rep(genotype_levels, times = 2), levels = genotype_levels),
   x_coord = rep(c(0, 1, 0, 1), times = 2),
   y_coord = rep(c(0, 0, 1, 1), times = 2),
+  aoi_area = seq(1000, 8000, length.out = 8),
   signed_response_score = seq(-1.5, 1.5, length.out = 8),
   score_abs = abs(seq(-1.5, 1.5, length.out = 8)),
   stringsAsFactors = FALSE
 )
-gp <- geomx_spatial_modality_plot(list(aoi = geo_aoi), title = "GeoMx")
+geo_genes <- data.frame(
+  symbol = paste0("G", 1:6),
+  y = seq(0.5, 2.0, length.out = 6),
+  x = seq(0.8, 2.3, length.out = 6),
+  mean_effect = seq(0.65, 2.15, length.out = 6),
+  rank_score = seq(20, 70, length.out = 6),
+  stringsAsFactors = FALSE
+)
+gp <- geomx_spatial_modality_plot(list(aoi = geo_aoi, genes = geo_genes), title = "GeoMx")
 stopifnot(inherits(gp, "patchwork"))
 
 pca_df <- data.frame(

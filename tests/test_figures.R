@@ -184,12 +184,21 @@ gx <- list(primary = list(top = list(
   nlgf_in_p301s  = data.frame(symbol = paste0("G", 1:4), logFC = c(-0.1, -0.2, -0.3, -0.4), stringsAsFactors = FALSE))),
   spatial = list(aoi = data.frame(
     slide = factor(rep(c("slide1", "slide2"), each = 4)),
+    roi = paste0("roi", 1:8),
     genotype = factor(rep(genotype_levels, times = 2), levels = genotype_levels),
     x_coord = rep(c(0, 1, 0, 1), times = 2),
     y_coord = rep(c(0, 0, 1, 1), times = 2),
+    aoi_area = seq(1000, 8000, length.out = 8),
     signed_response_score = seq(-1, 1, length.out = 8),
     score_abs = abs(seq(-1, 1, length.out = 8)),
-    stringsAsFactors = FALSE)))
+    stringsAsFactors = FALSE),
+    genes = data.frame(
+      symbol = paste0("G", 1:4),
+      y = c(0.1, 0.2, 0.3, 0.4),
+      x = c(-0.1, -0.2, -0.3, -0.4),
+      mean_effect = c(0, 0, 0, 0),
+      rank_score = c(4, 3, 2, 1),
+      stringsAsFactors = FALSE)))
 pr <- list(top = list(
   nlgf_in_maptki = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
                               gene_symbols = c("Apoe;Trem2", "Trem2", ""),
@@ -257,6 +266,8 @@ stopifnot(
   ms$provenance$phospho_site_features == 5L,
   ms$provenance$phospho_parent_proteins == 4L,
   is.data.frame(ms$descriptive$GeoMx$aoi),
+  is.data.frame(ms$descriptive$GeoMx$genes),
+  all(c("roi", "aoi_area") %in% names(ms$descriptive$GeoMx$aoi)),
   is.data.frame(ms$descriptive$Proteome$pca),
   is.data.frame(ms$descriptive$Proteome$volcano),
   is.data.frame(ms$descriptive$Phospho$volcano),

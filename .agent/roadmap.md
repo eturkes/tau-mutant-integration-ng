@@ -28,11 +28,12 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-06): the rendered report = SEVEN figures: microglia (P1) + trajectory (P2) +
-two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over
-the scatter's off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho
-primary-DE targets solely for the modality figures. The mechanism/cross-modality/qc/story chapters, targets,
-R modules, and tests remain deleted (Ledger 2026-07-06). 31 targets remain. P3/P4/P5 + the figure-expansion
+REPORT SCOPE (current 2026-07-07): the rendered report = TEN figures: microglia (P1) + trajectory (P2) +
+three modality-native non-snRNAseq figures + two modality-context figures (four-method amyloid-response logFC
+scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
+snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures. The
+mechanism/cross-modality/qc/story chapters, targets, R modules, and tests remain deleted (Ledger 2026-07-06).
+31 targets remain. P3/P4/P5 + the figure-expansion
 passes below stay as historical DONE records (this roadmap holds the trajectory); their report chapters no
 longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -923,11 +924,17 @@ user before writing a new plan.
   green; Chromium PDF QA pages 5-6 clean.
 - 2026-07-07 Non-snRNAseq modality-native figures DONE (ad hoc user correction; supersedes the generic landscapes
   above): kept the same 3 chunk ids but replaced their contents with assay-typical descriptive figures. GeoMx now
-  shows slide-faceted AOI coordinate maps + a signed top-GeoMx-amyloid-gene spatial expression score; proteome now
+  shows a slide-faceted spatial AOI score plate; proteome now
   shows 16-run PCA + a protein-level NLGF_P301S-vs-P301S volcano; phospho now shows a phosphosite-level
   NLGF_P301S-vs-P301S volcano + top-site z-score heatmap. `modality_scatter_figures` now carries `$descriptive`;
   `geomx_de` carries compact `$spatial`; `phospho_de_24m` keeps its filtered matrix for the heatmap. Targeted tests
   green; report render green; Chromium PDF QA pages 5-6 clean.
+- 2026-07-07 GeoMx informative plate DONE (ad hoc user correction): refined only
+  `fig-modality-geomx-landscape`. The GeoMx panel is now a spatial + quantitative plate: slide-faceted AOI map
+  (score fill, genotype ring, AOI-area size, high-magnitude ROI labels), AOI-score distribution by genotype, and
+  top score-gene driver logFCs for the two amyloid-background contrasts. `geomx_de$spatial$aoi` now carries
+  `segment` + `aoi_area`; plot/tests require `$spatial$genes`. Targeted tests green; report render green; Chromium
+  PDF page 5 clean.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

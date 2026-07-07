@@ -21,9 +21,9 @@ msf <- modality_scatter_figures
 ```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
-#| fig-height: 5.6
-#| fig-cap: "GeoMx spatial AOI map. Left: AOI coordinate layout by slide and genotype. Right: the same AOIs coloured by a signed expression score from the top GeoMx amyloid-response genes, preserving the spatial coordinate system rather than summarising GeoMx as a generic feature scatter."
-#| fig-alt: "GeoMx figure with slide-faceted AOI coordinate maps: the first panel colours AOIs by genotype, and the second panel colours AOIs by a signed top-gene amyloid-response expression score."
+#| fig-height: 7.2
+#| fig-cap: "GeoMx spatial AOI plate. Top: AOI coordinates faceted by slide, with signed top-amyloid-response gene score as fill, genotype as point ring, AOI area as point size, and the highest-magnitude ROIs labelled per slide. Bottom left: the same signed score summarised by genotype across AOIs. Bottom right: the top score-gene drivers, showing the GeoMx log2 fold change for the amyloid effect on the tau-KO and mutant-tau backgrounds."
+#| fig-alt: "GeoMx figure with a slide-faceted AOI spatial map coloured by signed expression score, a genotype-level score distribution, and a paired top-gene driver plot comparing amyloid effects in MAPTKI and P301S backgrounds."
 geomx_spatial_modality_plot(msf$descriptive$GeoMx, title = msf$panels$GeoMx$title)
 ```
 

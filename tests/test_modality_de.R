@@ -60,7 +60,9 @@ gmeta_sp <- transform(
   gmeta,
   bio_rep = rep(1:4, each = 2),
   roi = paste0("roi", 1:8),
+  segment = "Segment 1",
   SampleID = paste0("s", 1:8),
+  area = seq(1000, 8000, length.out = 8),
   x = rep(c(0, 1), 4),
   y = rep(c(0, 0, 1, 1), 2),
   q3_factor = seq(1, 2, length.out = 8),
@@ -81,7 +83,9 @@ gs <- geomx_spatial_descriptor(gcounts, gmeta_sp, gtop, top_n = 2L)
 stopifnot(
   is.data.frame(gs$aoi), is.data.frame(gs$genes),
   nrow(gs$aoi) == ncol(gcounts), nrow(gs$genes) == 2L,
-  all(c("x_coord", "y_coord", "signed_response_score", "score_abs") %in% names(gs$aoi)),
+  all(c("x_coord", "y_coord", "aoi_area", "segment",
+        "signed_response_score", "score_abs") %in% names(gs$aoi)),
+  all(gs$aoi$aoi_area == gmeta_sp$area),
   all(is.finite(gs$aoi$signed_response_score)),
   identical(as.character(gs$aoi$genotype), as.character(gmeta_sp$genotype)),
   gs$provenance$n_score_genes == 2L)

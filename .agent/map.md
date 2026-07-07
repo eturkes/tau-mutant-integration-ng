@@ -59,8 +59,9 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       modality_interaction_scatter WIRED -> the four-method scatter
       (per-modality amyloid logFC panel: dashed y=x identity + zero crosshairs + OLS trend + within-method Q99
       |x-y| off-diagonal repel labels + coord_equal 1:1); modality-native standalone plot helpers WIRED ->
-      `fig-modality-geomx-landscape` / proteome / phospho: geomx_spatial_modality_plot (AOI coordinate maps +
-      signed top-GeoMx-amyloid-gene expression score), proteome_modality_plot (sample PCA + protein volcano),
+      `fig-modality-geomx-landscape` / proteome / phospho: geomx_spatial_modality_plot (slide-faceted AOI map with
+      signed top-gene score / genotype ring / AOI area, plus genotype score distribution + top score-gene drivers),
+      proteome_modality_plot (sample PCA + protein volcano),
       phospho_modality_plot (phosphosite volcano + top-site heatmap); modality_volcano_plot +
       phospho_site_heatmap_plot are shared helpers;
       functional_group_score_plot WIRED -> category-score dumbbell facets (per modality/free-y, primary
@@ -155,7 +156,7 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
       key-aligned, plus `groups$summary` = primary functional-category aggregate scores over empirical
       amyloid-effect scatter off-diagonal labels per method; phospho scatter collapses finite sites to parent-protein
-      mean points; `descriptive` = GeoMx AOI spatial rows, proteome PCA+volcano rows, phospho volcano+heatmap rows)
+      mean points; `descriptive` = GeoMx AOI spatial rows + score genes, proteome PCA+volcano rows, phospho volcano+heatmap rows)
       + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
@@ -215,8 +216,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
                 three standalone target-derived modality-native figures for GeoMx / 24M proteome / 24M phosphoproteome:
                 `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`,
-                `fig-modality-phospho-landscape` (GeoMx AOI coordinate/spatial-score maps; proteome PCA +
-                protein volcano; phospho phosphosite volcano + top-site heatmap; no body prose) +
+                `fig-modality-phospho-landscape` (GeoMx AOI spatial score + distribution + gene drivers; proteome
+                PCA + protein volcano; phospho phosphosite volcano + top-site heatmap; no body prose) +
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
                 identity + OLS + within-method Q99 |x-y| off-diagonal labels; phospho = parent-protein mean points)

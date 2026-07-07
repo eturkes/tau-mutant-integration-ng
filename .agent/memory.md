@@ -470,11 +470,12 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   enrichment/FDR result is displayed. The qmd tar_loads ONLY that compact target (cheap-render invariant).
 - _modality.qmd now includes 3 target-derived standalone figures for the non-snRNAseq assays before the four-method
   scatter: `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`, `fig-modality-phospho-landscape`.
-  They are modality-native, not reused amyloid-effect landscapes: GeoMx = slide-faceted AOI coordinate maps +
-  signed top-GeoMx-amyloid-gene spatial expression score; proteome = 16-sample PCA over median-normalised
+  They are modality-native, not reused amyloid-effect landscapes: GeoMx = slide-faceted AOI coordinate map
+  (fill signed top-gene score, ring genotype, size AOI area) + genotype score distribution + top score-gene driver
+  plot; proteome = 16-sample PCA over median-normalised
   protein-group intensities + protein-level NLGF_P301S-vs-P301S volcano; phospho = phosphosite-level
   NLGF_P301S-vs-P301S volcano + top-site z-score heatmap across the 16 24M runs. `modality_logfc_scatter_data`
-  carries these compact slots at `$descriptive`; `geomx_de$spatial` supplies AOI rows, proteome/phospho
+  carries these compact slots at `$descriptive`; `geomx_de$spatial` supplies AOI rows + selected score genes, proteome/phospho
   descriptors consume the filtered matrices in their DE targets (phospho target now keeps `matrix`). Keep the
   modality figures visual and assay-reflective; never hardcode drift-prone assay margins.
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
@@ -680,7 +681,7 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
   trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality-native figures (3):
   `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`, `fig-modality-phospho-landscape` (each =
-  GeoMx AOI coordinate/spatial-score maps, proteome PCA+protein volcano, or phosphosite volcano+top-site heatmap);
+  GeoMx AOI map+score distribution+score-gene drivers, proteome PCA+protein volcano, or phosphosite volcano+top-site heatmap);
   modality integrated scatter (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
   `fig-modality-functional-scores` (modality-specific categories over within-method Q99 amyloid-effect scatter off-diagonal

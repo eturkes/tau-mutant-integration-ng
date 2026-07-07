@@ -347,9 +347,9 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
 }
 
 # Modality-native descriptive plates -------------------------------------------------------
-# GeoMx gets AOI coordinate maps; bulk proteome gets sample PCA + protein volcano; phospho gets
-# phosphosite volcano + top-site abundance heatmap. These are intentionally separate from the
-# integrated amyloid-effect scatter below.
+# GeoMx gets a spatial AOI score plate; bulk proteome gets sample PCA + protein volcano; phospho
+# gets phosphosite volcano + top-site abundance heatmap. These are intentionally separate from
+# the integrated amyloid-effect scatter below.
 modality_volcano_plot <- function(volcano, title = NULL,
                                   x_lab = "log2FC  NLGF_P301S vs P301S",
                                   alpha = 0.10) {
@@ -389,50 +389,118 @@ modality_volcano_plot <- function(volcano, title = NULL,
 }
 
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
-  stopifnot(is.list(spatial), is.data.frame(spatial$aoi))
+  stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi
-  need <- c("slide", "genotype", "x_coord", "y_coord", "signed_response_score", "score_abs")
+  need <- c("slide", "roi", "genotype", "x_coord", "y_coord", "aoi_area",
+            "signed_response_score", "score_abs")
   miss <- setdiff(need, names(aoi))
   if (length(miss)) stop("GeoMx spatial data missing columns: ", paste(miss, collapse = ", "),
                          call. = FALSE)
   aoi <- aoi[is.finite(aoi$x_coord) & is.finite(aoi$y_coord) &
+               is.finite(aoi$aoi_area) & aoi$aoi_area > 0 &
                is.finite(aoi$signed_response_score) & is.finite(aoi$score_abs), ,
              drop = FALSE]
   if (!nrow(aoi)) stop("GeoMx spatial data has no finite AOIs", call. = FALSE)
   score_lim <- max(abs(aoi$signed_response_score), na.rm = TRUE)
   score_lim <- if (is.finite(score_lim) && score_lim > 0) score_lim else 1
-  aoi$score_abs_plot <- pmin(aoi$score_abs, score_lim)
+  area_lab <- if (max(aoi$aoi_area, na.rm = TRUE) >= 1000) {
+    function(z) paste0(format(round(z / 1000, 1), trim = TRUE), "k")
+  } else {
+    function(z) format(round(z, 1), trim = TRUE)
+  }
+  label_aoi <- aoi[0, , drop = FALSE]
+  for (sl in levels(droplevels(aoi$slide))) {
+    d <- aoi[aoi$slide == sl, , drop = FALSE]
+    keep <- utils::head(order(-d$score_abs, d$roi, method = "radix"), 2L)
+    label_aoi <- rbind(label_aoi, d[keep, , drop = FALSE])
+  }
 
-  layout <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
-    ggplot2::geom_point(ggplot2::aes(fill = genotype), shape = 21, size = 2.1,
-                        colour = "#20242A", stroke = 0.25, alpha = 0.95) +
-    scale_fill_genotype(name = "genotype") +
-    ggplot2::facet_wrap(ggplot2::vars(slide), ncol = 2) +
-    ggplot2::coord_equal() +
-    ggplot2::scale_y_reverse() +
-    ggplot2::labs(x = "ROI coordinate X", y = "ROI coordinate Y",
-                  title = title, subtitle = "AOI layout by slide") +
-    theme_tau(base_size = 9) +
-    ggplot2::theme(legend.position = "bottom")
-
-  score <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
+  spatial_map <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
     ggplot2::geom_point(
-      ggplot2::aes(fill = signed_response_score, size = score_abs_plot),
-      shape = 21, colour = "#20242A", stroke = 0.22, alpha = 0.95) +
+      ggplot2::aes(fill = signed_response_score, colour = genotype, size = aoi_area),
+      shape = 21, stroke = 0.42, alpha = 0.95) +
+    ggrepel::geom_text_repel(
+      data = label_aoi,
+      ggplot2::aes(label = roi),
+      size = 2.25, colour = "#20242A", max.overlaps = Inf, seed = 42L,
+      min.segment.length = 0, segment.colour = "grey65", box.padding = 0.12,
+      point.padding = 0.08, max.iter = 20000L, max.time = 3) +
     scale_fill_rwb(midpoint = 0, limits = c(-score_lim, score_lim), oob = scales::squish,
                    name = "signed score") +
-    ggplot2::scale_size_continuous(range = c(1.4, 4.2), limits = c(0, score_lim),
-                                   name = "|score|") +
-    ggplot2::facet_wrap(ggplot2::vars(slide), ncol = 2) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_size_continuous(range = c(1.4, 5.0), labels = area_lab,
+                                   name = "AOI area") +
+    ggplot2::facet_wrap(ggplot2::vars(slide), ncol = 4) +
     ggplot2::coord_equal() +
     ggplot2::scale_y_reverse() +
     ggplot2::labs(x = "ROI coordinate X", y = "ROI coordinate Y",
-                  title = "Spatial expression score",
-                  subtitle = "Top GeoMx amyloid-response genes; signed z-score per AOI") +
+                  title = title,
+                  subtitle = "AOI coordinates by slide; fill = score, ring = genotype, size = AOI area") +
     theme_tau(base_size = 9) +
-    ggplot2::theme(legend.position = "bottom")
+    ggplot2::guides(
+      fill = ggplot2::guide_colourbar(order = 1),
+      colour = ggplot2::guide_legend(order = 2, override.aes = list(fill = "white", size = 3)),
+      size = ggplot2::guide_legend(order = 3)
+    ) +
+    ggplot2::theme(legend.position = "bottom", legend.box = "horizontal")
 
-  patchwork::wrap_plots(list(layout, score), ncol = 2, widths = c(0.92, 1.08))
+  score_dist <- ggplot2::ggplot(aoi, ggplot2::aes(genotype, signed_response_score)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_violin(ggplot2::aes(fill = genotype), width = 0.82, alpha = 0.26,
+                         colour = NA, trim = FALSE) +
+    ggplot2::geom_boxplot(ggplot2::aes(colour = genotype), width = 0.18,
+                          fill = "white", outlier.shape = NA, linewidth = 0.35) +
+    ggplot2::geom_point(ggplot2::aes(colour = genotype),
+                        position = ggplot2::position_jitter(width = 0.10, height = 0, seed = 42L),
+                        size = 1.15, alpha = 0.68) +
+    scale_fill_genotype(guide = "none") +
+    scale_colour_genotype(guide = "none") +
+    ggplot2::labs(x = NULL, y = "signed score",
+                  title = "AOI score by genotype",
+                  subtitle = sprintf("n = %s AOIs; descriptive, not an independent-replicate test",
+                                     format(nrow(aoi), big.mark = ","))) +
+    theme_tau(base_size = 9) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 35, hjust = 1))
+
+  genes <- spatial$genes
+  need_gene <- c("symbol", "y", "x", "mean_effect", "rank_score")
+  miss_gene <- setdiff(need_gene, names(genes))
+  if (length(miss_gene)) {
+    stop("GeoMx score-gene data missing columns: ", paste(miss_gene, collapse = ", "),
+         call. = FALSE)
+  }
+  genes <- genes[is.finite(genes$y) & is.finite(genes$x) &
+                   is.finite(genes$mean_effect) & is.finite(genes$rank_score), ,
+                 drop = FALSE]
+  if (!nrow(genes)) stop("GeoMx score-gene data has no finite rows", call. = FALSE)
+  genes <- utils::head(genes[order(-genes$rank_score, -abs(genes$mean_effect),
+                                  genes$symbol, method = "radix"), , drop = FALSE], 12L)
+  genes$symbol_plot <- factor(genes$symbol, levels = rev(genes$symbol))
+  gene_long <- rbind(
+    data.frame(symbol_plot = genes$symbol_plot, background = "MAPTKI",
+               effect = genes$y, stringsAsFactors = FALSE),
+    data.frame(symbol_plot = genes$symbol_plot, background = "P301S",
+               effect = genes$x, stringsAsFactors = FALSE)
+  )
+  gene_long$background <- factor(gene_long$background, levels = c("MAPTKI", "P301S"))
+  driver_plot <- ggplot2::ggplot(genes, ggplot2::aes(y = symbol_plot)) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_segment(ggplot2::aes(x = y, xend = x, yend = symbol_plot),
+                          linewidth = 0.55, colour = "#8A8174", alpha = 0.8) +
+    ggplot2::geom_point(data = gene_long, ggplot2::aes(x = effect, colour = background),
+                        size = 1.9, alpha = 0.95) +
+    scale_colour_tau_background(name = "amyloid effect in") +
+    ggplot2::labs(x = "GeoMx log2FC", y = NULL,
+                  title = "Score-gene drivers",
+                  subtitle = "Top genes ranked by amyloid-effect size and FDR") +
+    theme_tau(base_size = 9) +
+    ggplot2::theme(legend.position = "bottom",
+                   axis.text.y = ggplot2::element_text(size = 7.4))
+
+  bottom <- patchwork::wrap_plots(list(score_dist, driver_plot), ncol = 2,
+                                  widths = c(0.9, 1.1))
+  patchwork::wrap_plots(list(spatial_map, bottom), ncol = 1,
+                        heights = c(1.12, 0.88))
 }
 
 proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
