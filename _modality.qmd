@@ -16,33 +16,33 @@ theme_set(theme_tau())
 msf <- modality_scatter_figures
 ```
 
-## Non-snRNAseq modality landscapes
+## Non-snRNAseq modality-native figures
 
 ```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
-#| fig-height: 5.2
-#| fig-cap: "GeoMx spatial modality landscape. Left: per-gene amyloid-response log2 fold change in the mutant-tau background against the tau-KO background. Right: top functional categories among the within-method 99th-percentile off-diagonal genes, scored as aggregate NLGF_MAPTKI and NLGF_P301S amyloid responses."
-#| fig-alt: "GeoMx modality figure with an amyloid-response scatter plot and a paired functional-category score panel for off-diagonal genes."
-modality_landscape_plot(msf, "GeoMx", title = msf$panels$GeoMx$title)
+#| fig-height: 5.6
+#| fig-cap: "GeoMx spatial AOI map. Left: AOI coordinate layout by slide and genotype. Right: the same AOIs coloured by a signed expression score from the top GeoMx amyloid-response genes, preserving the spatial coordinate system rather than summarising GeoMx as a generic feature scatter."
+#| fig-alt: "GeoMx figure with slide-faceted AOI coordinate maps: the first panel colours AOIs by genotype, and the second panel colours AOIs by a signed top-gene amyloid-response expression score."
+geomx_spatial_modality_plot(msf$descriptive$GeoMx, title = msf$panels$GeoMx$title)
 ```
 
 ```{r}
 #| label: fig-modality-proteome-landscape
 #| fig-width: 10.5
-#| fig-height: 5.2
-#| fig-cap: "Bulk proteome modality landscape. Left: per-protein-group amyloid-response log2 fold change in the mutant-tau background against the tau-KO background. Right: top functional categories among the within-method 99th-percentile off-diagonal protein groups, scored as aggregate NLGF_MAPTKI and NLGF_P301S amyloid responses."
-#| fig-alt: "Bulk proteome modality figure with an amyloid-response scatter plot and a paired functional-category score panel for off-diagonal protein groups."
-modality_landscape_plot(msf, "Proteome", title = msf$panels$Proteome$title)
+#| fig-height: 5.4
+#| fig-cap: "Bulk proteome descriptive figure. Left: PCA of the 16 median-normalised 24M protein-group intensity profiles, with points labelled by run index. Right: a protein-level volcano plot for the amyloid effect on the mutant-tau background (NLGF_P301S vs P301S), using log2 fold change against -log10 FDR and labelling the top-ranked proteins."
+#| fig-alt: "Bulk proteome figure with a genotype-coloured sample PCA and a protein differential-abundance volcano plot for NLGF_P301S versus P301S."
+proteome_modality_plot(msf$descriptive$Proteome, title = msf$panels$Proteome$title)
 ```
 
 ```{r}
 #| label: fig-modality-phospho-landscape
 #| fig-width: 10.5
-#| fig-height: 5.2
-#| fig-cap: "Bulk phosphoproteome modality landscape. Left: parent-protein means of finite phosphosite amyloid-response log2 fold changes in the mutant-tau background against the tau-KO background. Right: top functional categories among the within-method 99th-percentile off-diagonal parent proteins, scored as aggregate NLGF_MAPTKI and NLGF_P301S amyloid responses."
-#| fig-alt: "Bulk phosphoproteome modality figure with a parent-protein amyloid-response scatter plot and a paired functional-category score panel for off-diagonal parent proteins."
-modality_landscape_plot(msf, "Phospho", title = msf$panels$Phospho$title)
+#| fig-height: 5.8
+#| fig-cap: "Bulk phosphoproteome descriptive figure. Left: phosphosite-level volcano plot for the amyloid effect on the mutant-tau background (NLGF_P301S vs P301S). Right: a z-scored abundance heatmap for top-ranked phosphosites across the 16 24M runs, grouped by genotype."
+#| fig-alt: "Bulk phosphoproteome figure with a phosphosite differential-abundance volcano plot and a genotype-grouped heatmap of top phosphosite abundances across runs."
+phospho_modality_plot(msf$descriptive$Phospho, title = "Bulk phosphoproteome (24M)")
 ```
 
 ## Per-method amyloid effect: tau-KO versus mutant-tau background

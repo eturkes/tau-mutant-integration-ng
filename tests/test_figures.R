@@ -170,28 +170,54 @@ cat("ok - figure finite guards fail loud on malformed geom inputs\n")
 # --- modality_logfc_scatter_data: y=nlgf_in_maptki, x=nlgf_in_p301s, key-aligned, empirical off-diagonal labels ---
 ens5 <- symbol_map$ensembl[1:5]
 # snRNAseq: nlgf_in_p301s rows deliberately REVERSED -> exercises the match()-by-key alignment.
+bulk_meta <- data.frame(
+  genotype = factor(rep(genotype_levels, each = 2), levels = genotype_levels),
+  run_index = 1:8,
+  row.names = paste0("s", 1:8),
+  stringsAsFactors = FALSE
+)
 pb <- list(top = list(
   nlgf_in_maptki = data.frame(gene = ens5,       logFC = c(1, 2, 3, 4, 5),      stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(gene = rev(ens5),  logFC = c(50, 40, 30, 20, 10), stringsAsFactors = FALSE)))
 gx <- list(primary = list(top = list(
   nlgf_in_maptki = data.frame(symbol = paste0("G", 1:4), logFC = c(0.1, 0.2, 0.3, 0.4),     stringsAsFactors = FALSE),
-  nlgf_in_p301s  = data.frame(symbol = paste0("G", 1:4), logFC = c(-0.1, -0.2, -0.3, -0.4), stringsAsFactors = FALSE))))
+  nlgf_in_p301s  = data.frame(symbol = paste0("G", 1:4), logFC = c(-0.1, -0.2, -0.3, -0.4), stringsAsFactors = FALSE))),
+  spatial = list(aoi = data.frame(
+    slide = factor(rep(c("slide1", "slide2"), each = 4)),
+    genotype = factor(rep(genotype_levels, times = 2), levels = genotype_levels),
+    x_coord = rep(c(0, 1, 0, 1), times = 2),
+    y_coord = rep(c(0, 0, 1, 1), times = 2),
+    signed_response_score = seq(-1, 1, length.out = 8),
+    score_abs = abs(seq(-1, 1, length.out = 8)),
+    stringsAsFactors = FALSE)))
 pr <- list(top = list(
   nlgf_in_maptki = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
                               gene_symbols = c("Apoe;Trem2", "Trem2", ""),
-                              logFC = c(1, 2, 3), stringsAsFactors = FALSE),
+                              logFC = c(1, 2, 3), P.Value = c(0.01, 0.02, 0.20),
+                              adj.P.Val = c(0.03, 0.05, 0.30), stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(feature = paste0("PG", 1:3), gene_first = c("Apoe", "Trem2", ""),
                               gene_symbols = c("Apoe;Trem2", "Trem2", ""),
-                              logFC = c(4, 8, 6), stringsAsFactors = FALSE)))
+                              logFC = c(4, 8, 6), P.Value = c(0.001, 0.02, 0.50),
+                              adj.P.Val = c(0.004, 0.05, 0.60), stringsAsFactors = FALSE)),
+  matrix = matrix(seq(1, 24), nrow = 3, dimnames = list(paste0("PG", 1:3), rownames(bulk_meta))),
+  meta = bulk_meta)
 ph <- list(top = list(
   nlgf_in_maptki = data.frame(feature = paste0("row", 1:5, "|k"),
                               site_id = c("Mapt_S404", NA, "", "Sfr1_T102", "Lcp1_S5"),
                               gene = c("Mapt", "Apoe", "hMapt", NA, "Lcp1_S5"),
-                              logFC = c(0.5, -0.5, 1.0, -3.0, -4.0), stringsAsFactors = FALSE),
+                              logFC = c(0.5, -0.5, 1.0, -3.0, -4.0),
+                              P.Value = c(0.01, 0.02, 0.03, 0.004, 0.002),
+                              adj.P.Val = c(0.03, 0.04, 0.05, 0.01, 0.008),
+                              stringsAsFactors = FALSE),
   nlgf_in_p301s  = data.frame(feature = paste0("row", 1:5, "|k"),
                               site_id = c("Mapt_S404", NA, "", "Sfr1_T102", "Lcp1_S5"),
                               gene = c("Mapt", "Apoe", "hMapt", NA, "Lcp1_S5"),
-                              logFC = c(1.5, -1.5, 2.0, 4.0, 5.0), stringsAsFactors = FALSE)))
+                              logFC = c(1.5, -1.5, 2.0, 4.0, 5.0),
+                              P.Value = c(0.01, 0.04, 0.03, 0.002, 0.001),
+                              adj.P.Val = c(0.03, 0.08, 0.06, 0.006, 0.004),
+                              stringsAsFactors = FALSE)),
+  matrix = matrix(seq(1, 40), nrow = 5, dimnames = list(paste0("row", 1:5, "|k"), rownames(bulk_meta))),
+  meta = bulk_meta)
 group_sets <- list(
   `Immune activation` = c("Gene1", "Gene5", "Apoe", "Trem2", "Lcp1", "Sfr1"),
   `Neuronal axis` = c("Mapt", "Gene2")
@@ -229,7 +255,14 @@ stopifnot(
   ms$provenance$n_features[["snRNAseq"]] == 5L,
   ms$provenance$n_features[["Phospho"]] == 4L,
   ms$provenance$phospho_site_features == 5L,
-  ms$provenance$phospho_parent_proteins == 4L)
+  ms$provenance$phospho_parent_proteins == 4L,
+  is.data.frame(ms$descriptive$GeoMx$aoi),
+  is.data.frame(ms$descriptive$Proteome$pca),
+  is.data.frame(ms$descriptive$Proteome$volcano),
+  is.data.frame(ms$descriptive$Phospho$volcano),
+  is.data.frame(ms$descriptive$Phospho$heatmap),
+  nrow(ms$descriptive$Proteome$pca) == nrow(bulk_meta),
+  nrow(ms$descriptive$Phospho$heatmap) > 0L)
 cat("ok - modality_logfc_scatter_data maps y/x to the two amyloid contrasts and labels each modality\n")
 
 gs <- ms$groups$summary

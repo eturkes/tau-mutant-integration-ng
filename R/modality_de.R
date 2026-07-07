@@ -135,6 +135,95 @@ geomx_slide_design <- function(meta, include_slide = TRUE) {
   out
 }
 
+geomx_spatial_descriptor <- function(counts, meta, top,
+                                     y_contrast = "nlgf_in_maptki",
+                                     x_contrast = "nlgf_in_p301s",
+                                     top_n = 24L) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.list(top),
+            identical(colnames(counts), rownames(meta)),
+            all(c(y_contrast, x_contrast) %in% names(top)),
+            is.numeric(top_n), length(top_n) == 1L, top_n >= 1L)
+  ty <- top[[y_contrast]]
+  tx <- top[[x_contrast]]
+  need <- c("symbol", "logFC", "adj.P.Val")
+  missing_y <- setdiff(need, names(ty))
+  missing_x <- setdiff(need, names(tx))
+  if (length(missing_y) || length(missing_x)) {
+    stop("GeoMx top tables missing columns for spatial descriptor", call. = FALSE)
+  }
+  sy <- as.character(ty$symbol)
+  sx <- as.character(tx$symbol)
+  stopifnot(anyDuplicated(sy) == 0L, anyDuplicated(sx) == 0L,
+            length(sy) == length(sx), setequal(sy, sx))
+  idx <- match(sy, sx)
+  rank <- data.frame(
+    symbol = sy,
+    y = as.numeric(ty$logFC),
+    x = as.numeric(tx$logFC)[idx],
+    fdr_y = as.numeric(ty$adj.P.Val),
+    fdr_x = as.numeric(tx$adj.P.Val)[idx],
+    stringsAsFactors = FALSE
+  )
+  rank <- rank[rank$symbol %in% rownames(counts) &
+                 is.finite(rank$y) & is.finite(rank$x), , drop = FALSE]
+  if (!nrow(rank)) stop("no GeoMx spatial descriptor genes overlap counts", call. = FALSE)
+  min_fdr <- pmin(rank$fdr_y, rank$fdr_x)
+  min_fdr[!is.finite(min_fdr)] <- 1
+  rank$mean_effect <- rowMeans(rank[, c("y", "x"), drop = FALSE])
+  rank$rank_score <- pmax(abs(rank$y), abs(rank$x)) * -log10(pmax(min_fdr, 1e-300))
+  rank <- rank[order(-rank$rank_score, -abs(rank$mean_effect), rank$symbol,
+                     method = "radix"), , drop = FALSE]
+  rank <- rank[!duplicated(rank$symbol), , drop = FALSE]
+  genes <- utils::head(rank$symbol, as.integer(top_n))
+
+  dge <- edgeR::normLibSizes(edgeR::DGEList(counts = counts))
+  logcpm <- edgeR::cpm(dge, log = TRUE, prior.count = 1)
+  mat <- logcpm[genes, , drop = FALSE]
+  row_mean <- rowMeans(mat)
+  row_sd <- apply(mat, 1L, stats::sd)
+  row_sd[!is.finite(row_sd) | row_sd <= 0] <- 1
+  z <- sweep(sweep(mat, 1L, row_mean, "-"), 1L, row_sd, "/")
+  gene_direction <- sign(rank$mean_effect[match(rownames(z), rank$symbol)])
+  gene_direction[!is.finite(gene_direction) | gene_direction == 0] <- 1
+  signed_z <- z * gene_direction
+  score <- colMeans(signed_z)
+
+  aoi <- data.frame(
+    aoi = rownames(meta),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    sample_id = as.character(meta$SampleID),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    x_coord = as.numeric(meta$x),
+    y_coord = as.numeric(meta$y),
+    q3_factor = as.numeric(meta$q3_factor),
+    neg_background = as.numeric(meta$neg_background),
+    nuclei = as.numeric(meta$nuclei),
+    signed_response_score = as.numeric(score[rownames(meta)]),
+    stringsAsFactors = FALSE
+  )
+  aoi$score_abs <- abs(aoi$signed_response_score)
+  aoi$amyloid <- factor(ifelse(startsWith(as.character(aoi$genotype), "NLGF"),
+                               "NLGF+", "NLGF-"),
+                        levels = c("NLGF-", "NLGF+"))
+  stopifnot(!anyNA(aoi$genotype), all(is.finite(aoi$x_coord)), all(is.finite(aoi$y_coord)),
+            all(is.finite(aoi$signed_response_score)), all(is.finite(aoi$score_abs)))
+
+  selected <- rank[match(genes, rank$symbol), , drop = FALSE]
+  rownames(selected) <- NULL
+  list(
+    aoi = aoi,
+    genes = selected,
+    provenance = list(
+      y_contrast = y_contrast,
+      x_contrast = x_contrast,
+      score = "mean signed AOI z-score across top GeoMx amyloid-response genes; sign follows the mean of the two amyloid contrasts",
+      n_score_genes = nrow(selected),
+      top_genes = paste(selected$symbol, collapse = ", ")
+    )
+  )
+}
+
 # voom + TMM + limma, optionally blocking repeated AOIs by bio_unit via duplicateCorrelation
 # (the primary GeoMx model). Fails loud if the design has no residual df or the consensus
 # correlation is non-finite.
@@ -190,6 +279,7 @@ run_geomx_de <- function(geomx, min_count = 5) {
     n_aoi = ncol(counts),
     n_bio_units = length(unique(as.character(meta$bio_unit))),
     primary = c(list(status = "fit", model = "voom_tmm_slide_duplicateCorrelation"), primary),
+    spatial = geomx_spatial_descriptor(counts, meta, primary$top),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),
@@ -531,6 +621,7 @@ run_phospho_de_24m <- function(phospho_tbl, sample_key,
   list(
     n_samples = ncol(prep$matrix),
     n_features = nrow(prep$matrix),
+    matrix = prep$matrix,
     meta = prep$meta,
     features = prep$features,
     top = top,

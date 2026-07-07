@@ -55,6 +55,38 @@ gmeta1 <- gmeta; gmeta1$slide <- factor(rep("A", 8))
 expect_error(geomx_slide_design(gmeta1, include_slide = TRUE), "slide")   # <2 slide levels fail loud
 cat("ok - geomx_slide_design builds a full-rank cell-means design with the 5 canonical contrasts\n")
 
+# --- geomx_spatial_descriptor: AOI coordinate score from top amyloid-response genes ----------
+gmeta_sp <- transform(
+  gmeta,
+  bio_rep = rep(1:4, each = 2),
+  roi = paste0("roi", 1:8),
+  SampleID = paste0("s", 1:8),
+  x = rep(c(0, 1), 4),
+  y = rep(c(0, 0, 1, 1), 2),
+  q3_factor = seq(1, 2, length.out = 8),
+  neg_background = seq(0.1, 0.8, length.out = 8),
+  nuclei = seq(100, 800, length.out = 8)
+)
+gcounts <- matrix(seq(10, 41), nrow = 4,
+                  dimnames = list(paste0("G", 1:4), rownames(gmeta_sp)))
+gtop <- list(
+  nlgf_in_maptki = data.frame(symbol = paste0("G", 1:4), logFC = c(1, -2, 0.5, 0.1),
+                              adj.P.Val = c(0.01, 0.02, 0.50, 0.80),
+                              stringsAsFactors = FALSE),
+  nlgf_in_p301s = data.frame(symbol = paste0("G", 1:4), logFC = c(2, -1, 0.4, 0.2),
+                             adj.P.Val = c(0.01, 0.04, 0.40, 0.70),
+                             stringsAsFactors = FALSE)
+)
+gs <- geomx_spatial_descriptor(gcounts, gmeta_sp, gtop, top_n = 2L)
+stopifnot(
+  is.data.frame(gs$aoi), is.data.frame(gs$genes),
+  nrow(gs$aoi) == ncol(gcounts), nrow(gs$genes) == 2L,
+  all(c("x_coord", "y_coord", "signed_response_score", "score_abs") %in% names(gs$aoi)),
+  all(is.finite(gs$aoi$signed_response_score)),
+  identical(as.character(gs$aoi$genotype), as.character(gmeta_sp$genotype)),
+  gs$provenance$n_score_genes == 2L)
+cat("ok - geomx_spatial_descriptor builds finite AOI coordinate scores\n")
+
 # --- match_24m_bulk_columns: 16/16 matched, balanced 4/genotype, imbalance fails loud ---------
 key <- data.frame(
   file_name = paste0("run", 1:16),

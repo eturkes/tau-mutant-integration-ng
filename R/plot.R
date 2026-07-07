@@ -346,118 +346,162 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     )
 }
 
-# Single-modality landscape plate ---------------------------------------------------------
-# One figure per non-snRNAseq modality: left = the same per-feature amyloid-response
-# interaction scatter used in the four-method panel, with a tighter default label cap for
-# standalone readability; right = that modality's functional categories over the empirical
-# off-diagonal tail. This keeps the modality-specific readout visual, target-derived, and
-# free of duplicated prose.
-modality_group_score_plot <- function(group_summary, modality, title = NULL, top_n = 6L) {
-  stopifnot(is.data.frame(group_summary), is.character(modality), length(modality) == 1L,
-            is.numeric(top_n), length(top_n) == 1L, top_n >= 1L)
-  need <- c("modality", "group_label_plot", "n_feature", "score_maptki", "score_p301s",
-            "delta")
-  miss <- setdiff(need, names(group_summary))
-  if (length(miss)) {
-    stop("group_summary missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
-  }
-  x <- group_summary[as.character(group_summary$modality) == modality &
-                       group_summary$n_feature > 0L &
-                       is.finite(group_summary$score_maptki) &
-                       is.finite(group_summary$score_p301s) &
-                       is.finite(group_summary$delta), , drop = FALSE]
-  if (!nrow(x)) stop("group_summary has no finite rows for modality: ", modality, call. = FALSE)
-  rank_score <- if ("rank_score" %in% names(x)) x$rank_score else abs(x$delta) * log1p(x$n_feature)
-  group_priority <- if ("group_priority" %in% names(x)) x$group_priority else seq_len(nrow(x))
-  group_label <- if ("group_label" %in% names(x)) as.character(x$group_label) else as.character(x$group_label_plot)
-  x <- x[order(-rank_score, group_priority, group_label, method = "radix"), , drop = FALSE]
-  x <- utils::head(x, as.integer(top_n))
-  x$group_label_plot <- factor(as.character(x$group_label_plot),
-                               levels = rev(as.character(x$group_label_plot)))
-
-  lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
+# Modality-native descriptive plates -------------------------------------------------------
+# GeoMx gets AOI coordinate maps; bulk proteome gets sample PCA + protein volcano; phospho gets
+# phosphosite volcano + top-site abundance heatmap. These are intentionally separate from the
+# integrated amyloid-effect scatter below.
+modality_volcano_plot <- function(volcano, title = NULL,
+                                  x_lab = "log2FC  NLGF_P301S vs P301S",
+                                  alpha = 0.10) {
+  stopifnot(is.data.frame(volcano),
+            all(c("effect", "neg_log10_fdr", "direction", "label", "label_show") %in%
+                  names(volcano)),
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
+  x <- volcano[is.finite(volcano$effect) & is.finite(volcano$neg_log10_fdr), ,
+               drop = FALSE]
+  if (!nrow(x)) stop("volcano has no finite rows", call. = FALSE)
+  labels <- x[x$label_show %in% TRUE, , drop = FALSE]
+  lim <- max(abs(x$effect), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
-  delta_lim <- max(abs(x$delta), na.rm = TRUE)
-  delta_lim <- if (is.finite(delta_lim) && delta_lim > 0) delta_lim else 1
-  n_min <- min(x$n_feature)
-  n_max <- max(x$n_feature)
-  size_breaks <- as.integer(unique(round(seq(n_min, n_max, length.out = min(3L, n_max - n_min + 1L)))))
-  size_breaks <- size_breaks[size_breaks >= n_min & size_breaks <= n_max]
-  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_feature))
-  point_df <- rbind(
-    data.frame(x[, c("group_label_plot", "n_feature", "delta"), drop = FALSE],
-               background = "MAPTKI", score = x$score_maptki, stringsAsFactors = FALSE),
-    data.frame(x[, c("group_label_plot", "n_feature", "delta"), drop = FALSE],
-               background = "P301S", score = x$score_p301s, stringsAsFactors = FALSE)
-  )
-  point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
+  y_cut <- -log10(alpha)
+  direction_colours <- c(down = "#2F78A0", `not significant` = "#AFA89C", up = "#A63A50")
 
-  ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
+  ggplot2::ggplot(x, ggplot2::aes(effect, neg_log10_fdr)) +
+    ggplot2::geom_hline(yintercept = y_cut, colour = "#BFB8AA", linewidth = 0.3,
+                        linetype = "dotted") +
     ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
-    ggplot2::geom_segment(
-      ggplot2::aes(x = score_maptki, xend = score_p301s, yend = group_label_plot,
-                   colour = delta),
-      linewidth = 0.75, lineend = "round") +
-    ggplot2::geom_point(
-      data = point_df,
-      ggplot2::aes(x = score, fill = background, size = n_feature),
-      shape = 21, colour = "#2B2A27", stroke = 0.25) +
-    scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
-                     name = "P301S - MAPTKI") +
-    ggplot2::scale_fill_manual(values = figure7_score_fill_colours,
-                               breaks = names(figure7_score_fill_colours),
-                               labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
-                               name = "score") +
-    ggplot2::scale_size_area(max_size = 5.2, breaks = size_breaks, name = "scored items") +
+    ggplot2::geom_point(ggplot2::aes(colour = direction), alpha = 0.45, size = 0.75) +
+    ggrepel::geom_text_repel(
+      data = labels,
+      ggplot2::aes(label = label),
+      size = 2.35, colour = "#20242A", max.overlaps = Inf, seed = 42L,
+      min.segment.length = 0, segment.colour = "grey65", box.padding = 0.16,
+      point.padding = 0.06, max.iter = 20000L, max.time = 3) +
+    ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE, name = NULL) +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::labs(
-      x = "Aggregate amyloid log2FC", y = NULL, title = title %||% "Off-diagonal categories",
-      subtitle = paste0(modality, " Q99 scatter outliers; colour is P301S - MAPTKI")
+      x = x_lab, y = "-log10 FDR", title = title,
+      subtitle = sprintf("FDR threshold = %.2f; labelled points are top-ranked by FDR and effect",
+                         alpha)
     ) +
+    theme_tau(base_size = 9.5) +
+    ggplot2::theme(legend.position = "bottom")
+}
+
+geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
+  stopifnot(is.list(spatial), is.data.frame(spatial$aoi))
+  aoi <- spatial$aoi
+  need <- c("slide", "genotype", "x_coord", "y_coord", "signed_response_score", "score_abs")
+  miss <- setdiff(need, names(aoi))
+  if (length(miss)) stop("GeoMx spatial data missing columns: ", paste(miss, collapse = ", "),
+                         call. = FALSE)
+  aoi <- aoi[is.finite(aoi$x_coord) & is.finite(aoi$y_coord) &
+               is.finite(aoi$signed_response_score) & is.finite(aoi$score_abs), ,
+             drop = FALSE]
+  if (!nrow(aoi)) stop("GeoMx spatial data has no finite AOIs", call. = FALSE)
+  score_lim <- max(abs(aoi$signed_response_score), na.rm = TRUE)
+  score_lim <- if (is.finite(score_lim) && score_lim > 0) score_lim else 1
+  aoi$score_abs_plot <- pmin(aoi$score_abs, score_lim)
+
+  layout <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
+    ggplot2::geom_point(ggplot2::aes(fill = genotype), shape = 21, size = 2.1,
+                        colour = "#20242A", stroke = 0.25, alpha = 0.95) +
+    scale_fill_genotype(name = "genotype") +
+    ggplot2::facet_wrap(ggplot2::vars(slide), ncol = 2) +
+    ggplot2::coord_equal() +
+    ggplot2::scale_y_reverse() +
+    ggplot2::labs(x = "ROI coordinate X", y = "ROI coordinate Y",
+                  title = title, subtitle = "AOI layout by slide") +
     theme_tau(base_size = 9) +
+    ggplot2::theme(legend.position = "bottom")
+
+  score <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
+    ggplot2::geom_point(
+      ggplot2::aes(fill = signed_response_score, size = score_abs_plot),
+      shape = 21, colour = "#20242A", stroke = 0.22, alpha = 0.95) +
+    scale_fill_rwb(midpoint = 0, limits = c(-score_lim, score_lim), oob = scales::squish,
+                   name = "signed score") +
+    ggplot2::scale_size_continuous(range = c(1.4, 4.2), limits = c(0, score_lim),
+                                   name = "|score|") +
+    ggplot2::facet_wrap(ggplot2::vars(slide), ncol = 2) +
+    ggplot2::coord_equal() +
+    ggplot2::scale_y_reverse() +
+    ggplot2::labs(x = "ROI coordinate X", y = "ROI coordinate Y",
+                  title = "Spatial expression score",
+                  subtitle = "Top GeoMx amyloid-response genes; signed z-score per AOI") +
+    theme_tau(base_size = 9) +
+    ggplot2::theme(legend.position = "bottom")
+
+  patchwork::wrap_plots(list(layout, score), ncol = 2, widths = c(0.92, 1.08))
+}
+
+proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
+  stopifnot(is.list(proteome), is.data.frame(proteome$pca), is.data.frame(proteome$volcano))
+  pca <- proteome$pca
+  need <- c("pc1", "pc2", "pc1_var", "pc2_var", "genotype", "run_index")
+  miss <- setdiff(need, names(pca))
+  if (length(miss)) stop("proteome PCA data missing columns: ", paste(miss, collapse = ", "),
+                         call. = FALSE)
+  pca_plot <- ggplot2::ggplot(pca, ggplot2::aes(pc1, pc2, colour = genotype)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
+    ggplot2::geom_point(size = 2.4, alpha = 0.95) +
+    ggrepel::geom_text_repel(ggplot2::aes(label = run_index), size = 2.3,
+                             max.overlaps = Inf, seed = 42L, min.segment.length = 0,
+                             segment.colour = "grey65", box.padding = 0.12,
+                             point.padding = 0.08, max.iter = 20000L, max.time = 3) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::labs(
+      x = sprintf("PC1 (%.1f%%)", 100 * unique(pca$pc1_var)[[1]]),
+      y = sprintf("PC2 (%.1f%%)", 100 * unique(pca$pc2_var)[[1]]),
+      title = title, subtitle = "Sample PCA of protein-group intensities") +
+    theme_tau(base_size = 9.5) +
+    ggplot2::theme(legend.position = "bottom")
+
+  volcano <- modality_volcano_plot(
+    proteome$volcano,
+    title = "Protein differential abundance",
+    alpha = proteome$provenance$alpha %||% 0.10
+  )
+  patchwork::wrap_plots(list(pca_plot, volcano), ncol = 2, widths = c(0.9, 1.1))
+}
+
+phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundance") {
+  stopifnot(is.data.frame(heatmap),
+            all(c("sample_label", "site_label_plot", "genotype", "z") %in% names(heatmap)))
+  x <- heatmap[is.finite(heatmap$z), , drop = FALSE]
+  if (!nrow(x)) stop("phosphosite heatmap has no finite rows", call. = FALSE)
+  lim <- max(abs(x$z), na.rm = TRUE)
+  lim <- if (is.finite(lim) && lim > 0) lim else 1
+
+  ggplot2::ggplot(x, ggplot2::aes(sample_label, site_label_plot, fill = z)) +
+    ggplot2::geom_tile(colour = "#F8F5ED", linewidth = 0.18) +
+    ggplot2::facet_grid(. ~ genotype, scales = "free_x", space = "free_x") +
+    scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
+                   name = "row z") +
+    ggplot2::scale_x_discrete(drop = TRUE) +
+    ggplot2::labs(x = "24M run index", y = NULL, title = title,
+                  subtitle = "Rows are top-ranked sites in the mutant-tau amyloid contrast") +
+    theme_tau(base_size = 8.5) +
     ggplot2::theme(
-      axis.text.y = ggplot2::element_text(size = 7.2, lineheight = 0.9),
-      panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
-      legend.position = "bottom",
-      legend.box = "vertical",
-      legend.spacing.y = grid::unit(0.08, "lines")
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6.5),
+      axis.text.y = ggplot2::element_text(size = 6.7, lineheight = 0.9),
+      panel.spacing.x = grid::unit(0.16, "lines"),
+      legend.position = "bottom"
     )
 }
 
-modality_landscape_plot <- function(modality_scatter_figures, modality, title = NULL,
-                                    top_groups = 6L, scatter_n_label = 30L) {
-  stopifnot(is.list(modality_scatter_figures), is.list(modality_scatter_figures$panels),
-            is.list(modality_scatter_figures$groups),
-            is.data.frame(modality_scatter_figures$groups$summary),
-            is.character(modality), length(modality) == 1L)
-  if (!modality %in% names(modality_scatter_figures$panels)) {
-    stop("unknown modality panel: ", modality, call. = FALSE)
-  }
-  panel <- modality_scatter_figures$panels[[modality]]
-  stopifnot(is.list(panel), is.data.frame(panel$data))
-  scatter <- modality_interaction_scatter(
-    panel$data,
-    title = title %||% panel$title %||% modality,
-    n_label = scatter_n_label
-  ) +
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(size = 10.5),
-      plot.subtitle = ggplot2::element_text(size = 8.2),
-      axis.title = ggplot2::element_text(size = 8.5)
-    )
-  groups <- modality_group_score_plot(
-    modality_scatter_figures$groups$summary,
-    modality = modality,
-    title = "Functional categories",
-    top_n = top_groups
-  ) +
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(size = 10.5),
-      plot.subtitle = ggplot2::element_text(size = 8.2),
-      axis.title = ggplot2::element_text(size = 8.5)
-    )
-  patchwork::wrap_plots(list(scatter, groups), ncol = 2, widths = c(1.05, 0.95),
-                        guides = "collect")
+phospho_modality_plot <- function(phospho, title = "Bulk phosphoproteome") {
+  stopifnot(is.list(phospho), is.data.frame(phospho$volcano), is.data.frame(phospho$heatmap))
+  volcano <- modality_volcano_plot(
+    phospho$volcano,
+    title = "Phosphosite differential abundance",
+    x_lab = "site log2FC  NLGF_P301S vs P301S",
+    alpha = phospho$provenance$alpha %||% 0.10
+  )
+  heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = "Top phosphosite heatmap")
+  patchwork::wrap_plots(list(volcano, heatmap), ncol = 2, widths = c(0.95, 1.05)) +
+    patchwork::plot_annotation(title = title)
 }
 
 # Cross-modality support matrix ------------------------------------------------------------

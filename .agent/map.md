@@ -1,7 +1,7 @@
 # Map - codebase wiring (grows with the build)
 
-TEN-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + per-non-snRNAseq
-modality landscape figures + a four-method amyloid-response logFC scatter + off-diagonal
+TEN-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + three modality-native
+non-snRNAseq figures + a four-method amyloid-response logFC scatter + off-diagonal
 functional-group score panel (2026-07-07 surface; 2026-07-06 re-wired the GeoMx / proteome /
 phospho PRIMARY DE via the lean `R/modality_de.R`). Shows STRUCTURE
 (what calls what, what lives where);
@@ -56,11 +56,13 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate / tau-background / binary /
       direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
       midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
-      modality_interaction_scatter WIRED -> the four-method scatter + per-modality landscape left panels
+      modality_interaction_scatter WIRED -> the four-method scatter
       (per-modality amyloid logFC panel: dashed y=x identity + zero crosshairs + OLS trend + within-method Q99
-      |x-y| off-diagonal repel labels + coord_equal 1:1); modality_group_score_plot + modality_landscape_plot
-      WIRED -> the GeoMx/proteome/phospho standalone landscape figures (scatter + same-modality category scores;
-      standalone scatter labels capped at 30 for readability, integrated scatter keeps the full threshold label set);
+      |x-y| off-diagonal repel labels + coord_equal 1:1); modality-native standalone plot helpers WIRED ->
+      `fig-modality-geomx-landscape` / proteome / phospho: geomx_spatial_modality_plot (AOI coordinate maps +
+      signed top-GeoMx-amyloid-gene expression score), proteome_modality_plot (sample PCA + protein volcano),
+      phospho_modality_plot (phosphosite volcano + top-site heatmap); modality_volcano_plot +
+      phospho_site_heatmap_plot are shared helpers;
       functional_group_score_plot WIRED -> category-score dumbbell facets (per modality/free-y, primary
       GO-BP keyword-union role or explicit fallback category per within-method Q99 amyloid-effect scatter
       off-diagonal gene/protein; phosphoproteomics uses displayed parent-protein mean points, segment colour =
@@ -153,7 +155,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
       key-aligned, plus `groups$summary` = primary functional-category aggregate scores over empirical
       amyloid-effect scatter off-diagonal labels per method; phospho scatter collapses finite sites to parent-protein
-      mean points) + visual_reduction_slot_map
+      mean points; `descriptive` = GeoMx AOI spatial rows, proteome PCA+volcano rows, phospho volcano+heatmap rows)
+      + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
@@ -188,8 +191,8 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
   - four-method amyloid-response scatter (format="qs"; consumes the 3 modalities + P1 pb_de_microglia/symbol_map):
        geomx_de        <- run_geomx_de(geomx)                          # GeoMx primary voom DE x 5 contrasts ($primary$top; 19959 genes kept)
        proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)  # 24M proteome limma-trend x 5 contrasts ($top; 3379 groups)
-       phospho_de_24m  <- run_phospho_de_24m(phospho, sample_key)      # 24M phosphosite limma-trend x 5 contrasts ($top; 17707 rows)
-       modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)  # 4 compact per-modality logFC-pair frames (y=nlgf_in_maptki, x=nlgf_in_p301s) + off-diagonal functional-group scores; compact
+       phospho_de_24m  <- run_phospho_de_24m(phospho, sample_key)      # 24M phosphosite limma-trend x 5 contrasts ($top; 17707 rows) + filtered matrix for site heatmap
+       modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)  # 4 compact per-modality logFC-pair frames (y=nlgf_in_maptki, x=nlgf_in_p301s) + off-diagonal functional-group scores + modality-native descriptive slots; compact
   - report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd")  # file target; explicit qmd invalidation
     report_extra_files <- c("theme.scss", "assets/code-tools-fix.html", assets/fonts/*.woff2)  # file target; explicit theme/font/after-body invalidation
     `report` <- render_report(report_sources, report_extra_files, microglia_report, microglia_figures, trajectory_figures, modality_scatter_figures)  # ONE offline HTML; quarto_render quiet=FALSE -> Quarto/Pandoc warnings reach the gate log; post-render repairs embedded-lightbox hrefs to data URIs
@@ -210,10 +213,10 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                 facet_grid(substate~genotype)). The 5th figure. @sec cross-refs resolve across the full doc.)
                                                           --{{< include >}}--> `_modality.qmd`
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
-                three standalone target-derived landscape figures for GeoMx / 24M proteome / 24M phosphoproteome:
+                three standalone target-derived modality-native figures for GeoMx / 24M proteome / 24M phosphoproteome:
                 `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`,
-                `fig-modality-phospho-landscape` (each = modality_interaction_scatter + same-modality
-                modality_group_score_plot; standalone scatter labels capped at 30; no body prose) +
+                `fig-modality-phospho-landscape` (GeoMx AOI coordinate/spatial-score maps; proteome PCA +
+                protein volcano; phospho phosphosite volcano + top-site heatmap; no body prose) +
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
                 identity + OLS + within-method Q99 |x-y| off-diagonal labels; phospho = parent-protein mean points)

@@ -186,25 +186,73 @@ stopifnot(
 expect_error(functional_group_score_plot(group_summary[0, , drop = FALSE]), "no finite aggregate")
 cat("ok - functional_group_score_plot builds a warning-free aggregate-score dumbbell plot\n")
 
-# --- modality landscape helpers: standalone per-modality figure = scatter + category panel ---
-mgp <- modality_group_score_plot(group_summary, "GeoMx", title = "GeoMx categories")
+# --- modality-native descriptive helpers: GeoMx spatial, proteome PCA/volcano, phospho heatmap ---
+volcano_df <- data.frame(
+  feature = paste0("f", 1:12),
+  label = paste0("L", 1:12),
+  effect = seq(-2.4, 2.4, length.out = 12),
+  neg_log10_fdr = seq(0.2, 4.5, length.out = 12),
+  direction = factor(rep(c("down", "not significant", "up"), each = 4),
+                     levels = c("down", "not significant", "up")),
+  label_show = rep(c(TRUE, FALSE), 6),
+  stringsAsFactors = FALSE
+)
+vp <- modality_volcano_plot(volcano_df, title = "Volcano")
 stopifnot(
-  inherits(mgp, "ggplot"), inherits(mgp, "gg"),
-  length(mgp$layers) == 3L,
-  identical(mgp$labels$title, "GeoMx categories"),
-  grepl("GeoMx Q99", mgp$labels$subtitle, fixed = TRUE),
-  inherits(ggplot2::ggplot_build(mgp)$plot, "ggplot")
+  inherits(vp, "ggplot"), inherits(vp, "gg"),
+  length(vp$layers) == 4L,
+  identical(vp$labels$title, "Volcano"),
+  grepl("-log10 FDR", vp$labels$y, fixed = TRUE),
+  inherits(ggplot2::ggplot_build(vp)$plot, "ggplot")
 )
-msf_fake <- list(
-  panels = list(GeoMx = list(title = "GeoMx spatial", data = mdf)),
-  order = "GeoMx",
-  groups = list(summary = group_summary)
+expect_error(modality_volcano_plot(volcano_df[0, , drop = FALSE]), "no finite rows")
+
+geo_aoi <- data.frame(
+  slide = factor(rep(c("slide1", "slide2"), each = 4)),
+  genotype = factor(rep(genotype_levels, times = 2), levels = genotype_levels),
+  x_coord = rep(c(0, 1, 0, 1), times = 2),
+  y_coord = rep(c(0, 0, 1, 1), times = 2),
+  signed_response_score = seq(-1.5, 1.5, length.out = 8),
+  score_abs = abs(seq(-1.5, 1.5, length.out = 8)),
+  stringsAsFactors = FALSE
 )
-mlp <- modality_landscape_plot(msf_fake, "GeoMx", top_groups = 1L)
-stopifnot(inherits(mlp, "patchwork"))
-expect_error(modality_group_score_plot(group_summary, "missing"), "no finite rows")
-expect_error(modality_landscape_plot(msf_fake, "missing"), "unknown modality")
-cat("ok - modality_landscape_plot builds a standalone per-modality figure\n")
+gp <- geomx_spatial_modality_plot(list(aoi = geo_aoi), title = "GeoMx")
+stopifnot(inherits(gp, "patchwork"))
+
+pca_df <- data.frame(
+  sample_id = paste0("s", 1:8),
+  genotype = factor(rep(genotype_levels, each = 2), levels = genotype_levels),
+  run_index = 1:8,
+  pc1 = seq(-2, 2, length.out = 8),
+  pc2 = rep(c(-1, 1), 4),
+  pc1_var = 0.42,
+  pc2_var = 0.21,
+  stringsAsFactors = FALSE
+)
+pp <- proteome_modality_plot(list(pca = pca_df, volcano = volcano_df,
+                                  provenance = list(alpha = 0.10)),
+                             title = "Proteome")
+stopifnot(inherits(pp, "patchwork"))
+
+hm_df <- expand.grid(
+  sample_label = factor(as.character(1:8), levels = as.character(1:8)),
+  site_label_plot = factor(c("Mapt_S404", "Lcp1_S5"),
+                           levels = rev(c("Mapt_S404", "Lcp1_S5"))),
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
+)
+hm_df$genotype <- factor(rep(rep(genotype_levels, each = 2), times = 2),
+                         levels = genotype_levels)
+hm_df$z <- seq(-2, 2, length.out = nrow(hm_df))
+hp <- phospho_site_heatmap_plot(hm_df)
+php <- phospho_modality_plot(list(volcano = volcano_df, heatmap = hm_df,
+                                  provenance = list(alpha = 0.10)),
+                             title = "Phospho")
+stopifnot(
+  inherits(hp, "ggplot"), inherits(ggplot2::ggplot_build(hp)$plot, "ggplot"),
+  inherits(php, "patchwork")
+)
+cat("ok - modality-native descriptive plots build warning-free structures\n")
 
 # --- plate_support_matrix: cross-modality bubble matrix; builds warning-free with & without a
 #     not-observed layer. ggplot_build forces scale training so a shape scale left dangling when
