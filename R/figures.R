@@ -1312,7 +1312,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 # fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions, but every
 # threshold-passing item is retained: unmapped symbols fall into explicit fallback categories.
 # The phosphoproteomics panel is already parent-protein-collapsed upstream, so category scores use
-# the same averaged protein points that Figure 6 displays.
+# the same averaged protein points displayed in the amyloid-effect scatter.
 .fig_fallback_role <- function(gene_symbol, label) {
   token <- .fig_gene_tokens(c(gene_symbol, label))
   if (!length(token)) token <- as.character(label)
@@ -1393,7 +1393,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
     d <- d[order(d$group_priority, d$scatter_label_rank, d$gene_symbol, d$feature,
                  method = "radix"), , drop = FALSE]
     d <- d[!duplicated(d$score_feature), , drop = FALSE]
-    d$figure6_offdiag <- TRUE
+    d$scatter_offdiag <- TRUE
     d
   }))
   .fig_assert_nonempty(selected, "empirical off-diagonal genes/proteins")
@@ -1497,7 +1497,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       min_genes = as.integer(min_genes),
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
-      selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each Figure 6 method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
+      selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
       category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein means of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(

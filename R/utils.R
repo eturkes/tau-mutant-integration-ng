@@ -4,8 +4,9 @@
 # NULL-coalescing infix (rlang-style; kept local to avoid the dep). Used by R/plot.R.
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-# Shared Figure 6 off-diagonal utilities. Production Figure 6/7 uses within-panel absolute
-# |x-y| cutoffs so each method contributes outliers by its own empirical spread.
+# Shared amyloid-effect-scatter off-diagonal utilities. Production modality plots use
+# within-panel absolute |x-y| cutoffs so each method contributes outliers by its own
+# empirical spread.
 modality_scatter_panel_cutoffs <- function(panels, order = names(panels), tail_quantile = 0.99) {
   stopifnot(is.list(panels), is.character(order), length(order) >= 1L,
             all(order %in% names(panels)),

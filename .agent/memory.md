@@ -14,11 +14,13 @@ tau backgrounds. Genotypes (2x2): MAPTKI (tau-KO baseline), P301S (mutant tau),
 NLGF_MAPTKI (amyloid alone), NLGF_P301S (amyloid + tau). Design = tau (MAPTKI vs
 P301S) x amyloid (-/+ NLGF) + batch. Divergence = interaction
 (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
-REPORT SCOPE: the built report + pipeline cover snRNAseq microglia (P1) + activation trajectory (P2) + a
-four-method amyloid-response logFC scatter plus an off-diagonal functional-category score panel (2026-07-06 adds)
--- 31 targets, 7 figures, `index.qmd` = YAML + `_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes.
+REPORT SCOPE: the built report + pipeline cover snRNAseq microglia (P1) + activation trajectory (P2) + three
+standalone non-snRNAseq modality landscapes + a four-method amyloid-response logFC scatter plus an off-diagonal
+functional-category score panel (2026-07-07 surface) -- 31 targets, 10 figures, `index.qmd` = YAML +
+`_microglia.qmd` + `_trajectory.qmd` + `_modality.qmd` includes.
 The modality figures RE-WIRED the GeoMx/proteome/phospho PRIMARY DE lean via `R/modality_de.R` (its own section
-below); Figure 7 categorizes within-method Q99 Figure 6 off-diagonal genes/proteins, not enrichment
+below); the functional-score figure categorizes within-method Q99 amyloid-effect scatter off-diagonal
+genes/proteins, not enrichment
 support and not a resurrected mechanism/cross-modality chapter. The mechanism/cross-modality/qc/story chapters + their targets + R modules
 (`R/mechanism.R`, `R/crossmodality.R`) + tests STAY deleted (roadmap Ledger 2026-07-06); that science lives in
 git history + the Ledger.
@@ -458,28 +460,30 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   (key $gene = ENSEMBL -> map to symbol via symbol_map, NOT a bare grep). modality_logfc_scatter_data aligns the two
   contrasts' topTables by feature key (one fit -> bijective keys), drops non-finite pairs, then collapses phospho
   site rows to best-fit parent-protein means -> compact {feature,label,gene_symbols,x,y,interaction=x-y} per modality.
-  It also builds `groups$summary`: the empirical Figure 6 off-diagonal labels are assigned one primary category per
-  scored item. GO-BP keyword-union roles get priority; unmapped labels are retained as fallback categories
+  It also builds `groups$summary`: the empirical amyloid-effect scatter off-diagonal labels are assigned one primary
+  category per scored item. GO-BP keyword-union roles get priority; unmapped labels are retained as fallback categories
   (predicted/unannotated loci, olfactory receptor/GPCR, other annotated). Phosphoproteomics category scores use the
-  same parent-protein mean points displayed in Figure 6. Figure 7 scores each category by mean `y` (NLGF_MAPTKI
-  amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot uses free-y per-modality dumbbell
+  same parent-protein mean points displayed in the scatter. The functional-score figure scores each category by mean
+  `y` (NLGF_MAPTKI amyloid effect), mean `x` (NLGF_P301S amyloid effect), and `delta=x-y`; the plot uses free-y per-modality dumbbell
   facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins, bottom guides stacked to avoid clipping,
   and a dedicated high-separation score-endpoint fill pair (MAPTKI blue / P301S burnt orange; not the global tau-background blue/green). NO
   enrichment/FDR result is displayed. The qmd tar_loads ONLY that compact target (cheap-render invariant).
-- _modality.qmd now includes short target-derived descriptive text for the 3 non-snRNAseq assays before the figures:
-  GeoMx / 24M proteome / 24M phosphoproteome stats are computed from `modality_scatter_figures` at render time
-  (feature counts, correlations, OLS slope, Q99 off-diagonal labels/cutoffs, top functional categories). Keep
-  modality prose inline-computed; never hardcode drift-prone assay margins.
+- _modality.qmd now includes 3 target-derived standalone figures for the non-snRNAseq assays before the four-method
+  scatter: `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`, `fig-modality-phospho-landscape`.
+  Each figure combines `modality_interaction_scatter` (feature counts, correlations, Q99 off-diagonal labels/cutoffs
+  computed in the subtitle; standalone scatter labels capped at 30 for readability) with
+  `modality_group_score_plot` (same-modality top functional categories). Keep the modality landscape visual, not
+  prose; never hardcode drift-prone assay margins.
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho parent-protein means r~0.30). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 3092 parent
   proteins from 17707 finite phosphosite rows. Within-method Q99 cutoffs = snRNAseq 1.688 / GeoMx 0.774 /
-  Proteome 3.899 / Phospho 2.776; Figure 6 labels = snRNAseq 145 / GeoMx 199 / Proteome 34 / Phospho 31;
-  Figure 7 category rows = snRNAseq 10 / GeoMx 10 / Proteome 8 / Phospho 7. Consistent with P1
+  Proteome 3.899 / Phospho 2.776; scatter labels = snRNAseq 145 / GeoMx 199 / Proteome 34 / Phospho 31;
+  functional category rows = snRNAseq 10 / GeoMx 10 / Proteome 8 / Phospho 7. Consistent with P1
   (amyloid->DAM strong, interaction sub-threshold) + P2 (interaction = composition
   not progression): tau MODULATES weakly.
 - GATE green: test_modality_de.R (restored pure helpers), test_plot.R (+modality_interaction_scatter 7-layer/coord_equal
-  + functional_group_score_plot warning-free build), test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/
+  + functional_group_score_plot / modality_landscape_plot warning-free builds), test_figures.R (+modality_logfc_scatter_data axis-mapping/key-align/
   gene-symbol/group-score/fail-loud), + live tar_make build of the DE/group-score target.
 
 ## Code-fold display (built 2026-07-04) -- `index.qmd` YAML
@@ -666,13 +670,15 @@ grep. CHEAP (~12s: reads cached ~0.3GB targets, does NOT re-run the heavy load_s
   is generated/heavy -> clear via runtime indirection (R `unlink(".quarto", recursive=TRUE)` in the render
   script), not a large-tree read. Inspect the output HTML the same way: build the path inside a python/R
   script ("report") + `.count` substrings (a `#hex` regex proved flaky).
-- Report figures (CURRENT surface, 2026-07-06 modality scatter + functional-score add): the rendered report = SEVEN captioned
+- Report figures (CURRENT surface, 2026-07-07 modality landscape replacement): the rendered report = TEN captioned
   figures -- microglia (4): `fig-microglia-substate-markers` (per-gene-z dot plot of Homeostatic/DAM/IFN
   marker sets), `fig-microglia-umap` (substate + DAM-score UMAP panels), `fig-microglia-umap-substate`
   (genotype-faceted substate UMAP), `fig-microglia-unit-composition` (replicate-unit stacked substate bars);
-  trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality (1):
+  trajectory (1): `fig-trajectory-pt-density` (genotype x substate pseudotime density); modality landscapes (3):
+  `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`, `fig-modality-phospho-landscape` (each =
+  same-modality amyloid-effect scatter + functional-category score panel); modality integrated scatter (1):
   `fig-modality-amyloid-effect` (four-method NLGF-response logFC scatter); functional score (1):
-  `fig-modality-functional-scores` (modality-specific categories over within-method Q99 Figure 6 off-diagonal
+  `fig-modality-functional-scores` (modality-specific categories over within-method Q99 amyloid-effect scatter off-diagonal
   genes/proteins, with phosphoproteomics scored from parent-protein mean points; connected aggregate MAPTKI/P301S amyloid-score
   points, segment colour = P301S-MAPTKI, point size = scored genes/proteins).
   Every captioned chunk

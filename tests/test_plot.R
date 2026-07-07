@@ -176,8 +176,8 @@ stopifnot(
   length(fgp$layers) == 3L,
   identical(fgp$labels$title, "Functional groups"),
   grepl("P301S - MAPTKI", fgp$labels$subtitle, fixed = TRUE),
-  grepl("Figure 6", fgp$labels$subtitle, fixed = TRUE),
-  grepl("off-diagonal genes/proteins", fgp$labels$subtitle, fixed = TRUE),
+  grepl("amyloid-effect scatter", fgp$labels$subtitle, fixed = TRUE),
+  grepl("Q99", fgp$labels$subtitle, fixed = TRUE),
   any(vapply(fgp$scales$scales, function(s) "colour" %in% s$aesthetics, logical(1))),
   any(vapply(fgp$scales$scales, function(s) "fill" %in% s$aesthetics, logical(1))),
   identical(fgp_fill$palette(2), figure7_score_fill_colours),
@@ -185,6 +185,26 @@ stopifnot(
 )
 expect_error(functional_group_score_plot(group_summary[0, , drop = FALSE]), "no finite aggregate")
 cat("ok - functional_group_score_plot builds a warning-free aggregate-score dumbbell plot\n")
+
+# --- modality landscape helpers: standalone per-modality figure = scatter + category panel ---
+mgp <- modality_group_score_plot(group_summary, "GeoMx", title = "GeoMx categories")
+stopifnot(
+  inherits(mgp, "ggplot"), inherits(mgp, "gg"),
+  length(mgp$layers) == 3L,
+  identical(mgp$labels$title, "GeoMx categories"),
+  grepl("GeoMx Q99", mgp$labels$subtitle, fixed = TRUE),
+  inherits(ggplot2::ggplot_build(mgp)$plot, "ggplot")
+)
+msf_fake <- list(
+  panels = list(GeoMx = list(title = "GeoMx spatial", data = mdf)),
+  order = "GeoMx",
+  groups = list(summary = group_summary)
+)
+mlp <- modality_landscape_plot(msf_fake, "GeoMx", top_groups = 1L)
+stopifnot(inherits(mlp, "patchwork"))
+expect_error(modality_group_score_plot(group_summary, "missing"), "no finite rows")
+expect_error(modality_landscape_plot(msf_fake, "missing"), "unknown modality")
+cat("ok - modality_landscape_plot builds a standalone per-modality figure\n")
 
 # --- plate_support_matrix: cross-modality bubble matrix; builds warning-free with & without a
 #     not-observed layer. ggplot_build forces scale training so a shape scale left dangling when

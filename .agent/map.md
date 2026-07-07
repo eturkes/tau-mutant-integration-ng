@@ -1,8 +1,9 @@
 # Map - codebase wiring (grows with the build)
 
-SEVEN-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + a four-method
-amyloid-response logFC scatter + off-diagonal functional-group score panel (2026-07-06 adds:
-re-wire the GeoMx / proteome / phospho PRIMARY DE via the lean `R/modality_de.R`). Shows STRUCTURE
+TEN-figure report: snRNAseq microglia (P1) + activation trajectory (P2) + per-non-snRNAseq
+modality landscape figures + a four-method amyloid-response logFC scatter + off-diagonal
+functional-group score panel (2026-07-07 surface; 2026-07-06 re-wired the GeoMx / proteome /
+phospho PRIMARY DE via the lean `R/modality_de.R`). Shows STRUCTURE
 (what calls what, what lives where);
 `memory.md` holds the WHY (facts/gotchas/decisions), `roadmap.md` the trajectory. The
 mechanism / cross-modality / qc / story chapters + their targets + `R/mechanism.R` +
@@ -55,12 +56,16 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       alias; limits/breaks=genotype_levels, drop=FALSE) + manual microglia-substate / tau-background / binary /
       direction scales + richer continuous scales (`scale_fill_rwb`, `scale_colour_rwb`; signed panels pass
       midpoint=0; count panels use a neutral sequential gradient). concordance_plot retained UNWIRED (P4-only);
-      modality_interaction_scatter WIRED -> the four-method scatter (per-modality amyloid logFC panel: dashed y=x
-      identity + zero crosshairs + OLS trend + within-method Q99 |x-y| off-diagonal repel labels + coord_equal 1:1);
-      functional_group_score_plot WIRED -> Figure 7 category-score dumbbell facets (per modality/free-y, primary
-      GO-BP keyword-union role or explicit fallback category per within-method Q99 Figure 6 off-diagonal gene/protein;
-      phosphoproteomics uses Figure 6 parent-protein mean points, segment colour = P301S-MAPTKI, fill = dedicated
-      high-separation MAPTKI/P301S endpoint pair, bottom guides stacked, size = scored items; no enrichment/FDR display).
+      modality_interaction_scatter WIRED -> the four-method scatter + per-modality landscape left panels
+      (per-modality amyloid logFC panel: dashed y=x identity + zero crosshairs + OLS trend + within-method Q99
+      |x-y| off-diagonal repel labels + coord_equal 1:1); modality_group_score_plot + modality_landscape_plot
+      WIRED -> the GeoMx/proteome/phospho standalone landscape figures (scatter + same-modality category scores;
+      standalone scatter labels capped at 30 for readability, integrated scatter keeps the full threshold label set);
+      functional_group_score_plot WIRED -> category-score dumbbell facets (per modality/free-y, primary
+      GO-BP keyword-union role or explicit fallback category per within-method Q99 amyloid-effect scatter
+      off-diagonal gene/protein; phosphoproteomics uses displayed parent-protein mean points, segment colour =
+      P301S-MAPTKI, fill = dedicated high-separation MAPTKI/P301S endpoint pair, bottom guides stacked, size =
+      scored items; no enrichment/FDR display).
       Report visual identity = theme.scss.
    + (P1-S1) microglia.R: reprocess_microglia (SCT-v2/glmGamPoi -> Harmony[batch] -> Louvain multi-res ->
       UMAP; seeds+threads -> @misc$reprocess_provenance; strips stale reduction-coord/cluster meta shadows) +
@@ -140,13 +145,15 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
       (16/16 balanced 4/genotype, shared by both bulk arms) + reuses fit_limma_log / median_normalise /
       prevalence_filter (de_pb.R) + factorial_design(add_batch=FALSE) + io.R loaders.
    + figures.R (LIVE surface after teardown): figure_manifest (11 hyphenated fig-* ids: microglia 7 + trajectory 4;
-      report renders 7 figures -- 5 manifest + fig-modality-amyloid-effect + fig-modality-functional-scores, NOT
+      report renders 10 figures -- 5 manifest + fig-modality-geomx-landscape + fig-modality-proteome-landscape +
+      fig-modality-phospho-landscape + fig-modality-amyloid-effect + fig-modality-functional-scores, NOT
       in the vestigial manifest) + compact
       inline builders microglia_figure_data / trajectory_figure_data / modality_logfc_scatter_data (qmd-ready slots,
       finite geom guards, pre-binned/top-row reductions; modality_logfc_scatter_data = per-modality
       {feature, label, gene_symbols, y=nlgf_in_maptki, x=nlgf_in_p301s, interaction=x-y} logFC-pair frames,
-      key-aligned, plus `groups$summary` = primary functional-category aggregate scores over empirical Figure 6
-      off-diagonal labels per method; phospho scatter collapses finite sites to parent-protein mean points) + visual_reduction_slot_map
+      key-aligned, plus `groups$summary` = primary functional-category aggregate scores over empirical
+      amyloid-effect scatter off-diagonal labels per method; phospho scatter collapses finite sites to parent-protein
+      mean points) + visual_reduction_slot_map
       + visual_slot_coverage (gate-wired vestigial prose-slot check, memory.md relic note) + generic `.fig_*` geom
       helpers. Dead story/mechanism/crossmodality/qc builders remain in-file (roadmap Ledger) -- UNWIRED, not mapped.
    + report.R: render_report (-> report target) calls quarto::quarto_render(quiet=FALSE), then
@@ -196,28 +203,28 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                 tar_load microglia_report + microglia_figures [compact] -> "Substate landscape" (substate-marker
                 per-gene-z dot plot `fig-microglia-substate-markers`, substate + DAM-score UMAPs `fig-microglia-umap`,
                 genotype-faceted substate UMAP `fig-microglia-umap-substate`) + "Amyloid expands the DAM compartment"
-                (replicate-unit stacked substate bars `fig-microglia-unit-composition`). 4 of the 7 figures.)
+                (replicate-unit stacked substate bars `fig-microglia-unit-composition`). 4 of the 10 figures.)
                                                           --{{< include >}}--> `_trajectory.qmd`
                (trajectory chapter {#sec-trajectory}: setup `options(warn=2)`; tar_load trajectory_figures ->
                 genotype x substate pseudotime density `fig-trajectory-pt-density` (geom_area,
                 facet_grid(substate~genotype)). The 5th figure. @sec cross-refs resolve across the full doc.)
                                                           --{{< include >}}--> `_modality.qmd`
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
-                target-derived descriptive landscape text for GeoMx / 24M proteome / 24M phosphoproteome
-                (feature counts, correlations, OLS slope, off-diagonal cutoff, top functional categories; no
-                hardcoded drift-prone numbers) +
+                three standalone target-derived landscape figures for GeoMx / 24M proteome / 24M phosphoproteome:
+                `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`,
+                `fig-modality-phospho-landscape` (each = modality_interaction_scatter + same-modality
+                modality_group_score_plot; standalone scatter labels capped at 30; no body prose) +
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
                 identity + OLS + within-method Q99 |x-y| off-diagonal labels; phospho = parent-protein mean points)
                 + off-diagonal functional-category score facets
-                `fig-modality-functional-scores` (functional_group_score_plot; within-method Q99 Figure 6 off-diagonal
+                `fig-modality-functional-scores` (functional_group_score_plot; within-method Q99 amyloid-effect scatter off-diagonal
                 genes/proteins, phosphoproteomics uses displayed parent-protein mean points, rows carry primary
                 role/fallback categories + leading score labels; connected points show aggregate NLGF_MAPTKI and NLGF_P301S scores,
-                segment colour = P301S-MAPTKI). The 6th and 7th
-                figures.)
+                segment colour = P301S-MAPTKI). The 6th-10th figures.)
        `theme.scss` = deep-blue/teal/slate chrome + IBM Plex (9 woff2 in assets/fonts/, base64-inlined offline)
        + figure-output overflow override (prevents print/PDF scrollbar chrome over figures).
-       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (7 total).
+       Figure labels: every captioned figure chunk uses a hyphenated `fig-*` id + `fig-cap` + `fig-alt` (10 total).
 
 ### Report prose inventory (vestigial after teardown)
 `scripts/prose_inventory.py` (stdlib Python; non-DAG utility) + `.agent/prose_replacement_manifest.tsv`:

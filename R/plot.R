@@ -267,8 +267,8 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
 }
 
 # Functional-category aggregate scores for empirical off-diagonal genes/proteins in the
-# four-method amyloid-response scatter; phosphoproteomics uses the parent-protein means displayed
-# in Figure 6. Rows are modality-specific role categories, facets are modalities. Each
+# four-method amyloid-response scatter; phosphoproteomics uses the displayed parent-protein
+# means. Rows are modality-specific role categories, facets are modalities. Each
 # segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
 # P301S; segment colour is the requested contrast, P301S minus MAPTKI.
 functional_group_score_plot <- function(group_summary, title = NULL) {
@@ -334,7 +334,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ) +
     ggplot2::labs(
       x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Rows categorize within-method Q99 Figure 6 off-diagonal genes/proteins; colour is P301S - MAPTKI"
+      subtitle = "Rows categorize within-method Q99 amyloid-effect scatter outliers; colour is P301S - MAPTKI"
     ) +
     theme_tau(base_size = 10) +
     ggplot2::theme(
@@ -344,6 +344,120 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       legend.box = "vertical",
       legend.spacing.y = grid::unit(0.1, "lines")
     )
+}
+
+# Single-modality landscape plate ---------------------------------------------------------
+# One figure per non-snRNAseq modality: left = the same per-feature amyloid-response
+# interaction scatter used in the four-method panel, with a tighter default label cap for
+# standalone readability; right = that modality's functional categories over the empirical
+# off-diagonal tail. This keeps the modality-specific readout visual, target-derived, and
+# free of duplicated prose.
+modality_group_score_plot <- function(group_summary, modality, title = NULL, top_n = 6L) {
+  stopifnot(is.data.frame(group_summary), is.character(modality), length(modality) == 1L,
+            is.numeric(top_n), length(top_n) == 1L, top_n >= 1L)
+  need <- c("modality", "group_label_plot", "n_feature", "score_maptki", "score_p301s",
+            "delta")
+  miss <- setdiff(need, names(group_summary))
+  if (length(miss)) {
+    stop("group_summary missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+  x <- group_summary[as.character(group_summary$modality) == modality &
+                       group_summary$n_feature > 0L &
+                       is.finite(group_summary$score_maptki) &
+                       is.finite(group_summary$score_p301s) &
+                       is.finite(group_summary$delta), , drop = FALSE]
+  if (!nrow(x)) stop("group_summary has no finite rows for modality: ", modality, call. = FALSE)
+  rank_score <- if ("rank_score" %in% names(x)) x$rank_score else abs(x$delta) * log1p(x$n_feature)
+  group_priority <- if ("group_priority" %in% names(x)) x$group_priority else seq_len(nrow(x))
+  group_label <- if ("group_label" %in% names(x)) as.character(x$group_label) else as.character(x$group_label_plot)
+  x <- x[order(-rank_score, group_priority, group_label, method = "radix"), , drop = FALSE]
+  x <- utils::head(x, as.integer(top_n))
+  x$group_label_plot <- factor(as.character(x$group_label_plot),
+                               levels = rev(as.character(x$group_label_plot)))
+
+  lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
+  lim <- if (is.finite(lim) && lim > 0) lim else 1
+  delta_lim <- max(abs(x$delta), na.rm = TRUE)
+  delta_lim <- if (is.finite(delta_lim) && delta_lim > 0) delta_lim else 1
+  n_min <- min(x$n_feature)
+  n_max <- max(x$n_feature)
+  size_breaks <- as.integer(unique(round(seq(n_min, n_max, length.out = min(3L, n_max - n_min + 1L)))))
+  size_breaks <- size_breaks[size_breaks >= n_min & size_breaks <= n_max]
+  if (!length(size_breaks)) size_breaks <- sort(unique(x$n_feature))
+  point_df <- rbind(
+    data.frame(x[, c("group_label_plot", "n_feature", "delta"), drop = FALSE],
+               background = "MAPTKI", score = x$score_maptki, stringsAsFactors = FALSE),
+    data.frame(x[, c("group_label_plot", "n_feature", "delta"), drop = FALSE],
+               background = "P301S", score = x$score_p301s, stringsAsFactors = FALSE)
+  )
+  point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
+
+  ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_segment(
+      ggplot2::aes(x = score_maptki, xend = score_p301s, yend = group_label_plot,
+                   colour = delta),
+      linewidth = 0.75, lineend = "round") +
+    ggplot2::geom_point(
+      data = point_df,
+      ggplot2::aes(x = score, fill = background, size = n_feature),
+      shape = 21, colour = "#2B2A27", stroke = 0.25) +
+    scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
+                     name = "P301S - MAPTKI") +
+    ggplot2::scale_fill_manual(values = figure7_score_fill_colours,
+                               breaks = names(figure7_score_fill_colours),
+                               labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
+                               name = "score") +
+    ggplot2::scale_size_area(max_size = 5.2, breaks = size_breaks, name = "scored items") +
+    ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
+    ggplot2::labs(
+      x = "Aggregate amyloid log2FC", y = NULL, title = title %||% "Off-diagonal categories",
+      subtitle = paste0(modality, " Q99 scatter outliers; colour is P301S - MAPTKI")
+    ) +
+    theme_tau(base_size = 9) +
+    ggplot2::theme(
+      axis.text.y = ggplot2::element_text(size = 7.2, lineheight = 0.9),
+      panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.spacing.y = grid::unit(0.08, "lines")
+    )
+}
+
+modality_landscape_plot <- function(modality_scatter_figures, modality, title = NULL,
+                                    top_groups = 6L, scatter_n_label = 30L) {
+  stopifnot(is.list(modality_scatter_figures), is.list(modality_scatter_figures$panels),
+            is.list(modality_scatter_figures$groups),
+            is.data.frame(modality_scatter_figures$groups$summary),
+            is.character(modality), length(modality) == 1L)
+  if (!modality %in% names(modality_scatter_figures$panels)) {
+    stop("unknown modality panel: ", modality, call. = FALSE)
+  }
+  panel <- modality_scatter_figures$panels[[modality]]
+  stopifnot(is.list(panel), is.data.frame(panel$data))
+  scatter <- modality_interaction_scatter(
+    panel$data,
+    title = title %||% panel$title %||% modality,
+    n_label = scatter_n_label
+  ) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 10.5),
+      plot.subtitle = ggplot2::element_text(size = 8.2),
+      axis.title = ggplot2::element_text(size = 8.5)
+    )
+  groups <- modality_group_score_plot(
+    modality_scatter_figures$groups$summary,
+    modality = modality,
+    title = "Functional categories",
+    top_n = top_groups
+  ) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 10.5),
+      plot.subtitle = ggplot2::element_text(size = 8.2),
+      axis.title = ggplot2::element_text(size = 8.5)
+    )
+  patchwork::wrap_plots(list(scatter, groups), ncol = 2, widths = c(1.05, 0.95),
+                        guides = "collect")
 }
 
 # Cross-modality support matrix ------------------------------------------------------------

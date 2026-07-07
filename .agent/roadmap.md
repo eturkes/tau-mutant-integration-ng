@@ -915,6 +915,12 @@ user before writing a new plan.
   preserving phospho parent-protein collapse. Live compact target: cutoffs snRNAseq 1.688 / GeoMx 0.774 /
   Proteome 3.899 / Phospho 2.776; Figure 6 labels snRNAseq 145 / GeoMx 199 / Proteome 34 / Phospho 31; Figure 7
   rows snRNAseq 10 / GeoMx 10 / Proteome 8 / Phospho 7. High-label scatter panels use smaller labels/points.
+- 2026-07-07 Non-snRNAseq modality landscapes DONE (ad hoc user correction): replaced the 3 descriptive
+  GeoMx/proteome/phosphoproteome prose paragraphs with 3 standalone target-derived figures:
+  `fig-modality-geomx-landscape`, `fig-modality-proteome-landscape`, `fig-modality-phospho-landscape`. Each combines
+  the modality amyloid-effect scatter (standalone label cap 30 for readability) with same-modality Q99 off-diagonal
+  functional-category scores. Rendered report now has 10 unique captioned figure containers; full `scripts/check.sh`
+  green; Chromium PDF QA pages 5-6 clean.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
