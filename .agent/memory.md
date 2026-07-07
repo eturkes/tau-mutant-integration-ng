@@ -466,6 +466,10 @@ mm10 (SCENIC), SEA-AD h5ads (human validation) - both are v1 bloat, out of scope
   facets, segment colour = P301S-MAPTKI, point size = scored genes/proteins, bottom guides stacked to avoid clipping,
   and a dedicated high-separation score-endpoint fill pair (MAPTKI blue / P301S burnt orange; not the global tau-background blue/green). NO
   enrichment/FDR result is displayed. The qmd tar_loads ONLY that compact target (cheap-render invariant).
+- _modality.qmd now includes short target-derived descriptive text for the 3 non-snRNAseq assays before the figures:
+  GeoMx / 24M proteome / 24M phosphoproteome stats are computed from `modality_scatter_figures` at render time
+  (feature counts, correlations, OLS slope, Q99 off-diagonal labels/cutoffs, top functional categories). Keep
+  modality prose inline-computed; never hardcode drift-prone assay margins.
 - LIVE READ (R4.6, DRIFT-PRONE): the amyloid response is largely SHARED across tau backgrounds in the transcriptomic
   modalities (GeoMx Pearson r~0.75 slope~0.92; snRNAseq r~0.65 slope~0.54) and NOISIER in bulk (proteome r~0.11;
   phospho parent-protein means r~0.30). n = snRNAseq 14512 / GeoMx 19959 / proteome 3379 / phospho 3092 parent

@@ -203,6 +203,9 @@ load order, data -> module -> output flow, cache producer -> consumer pairs.
                 facet_grid(substate~genotype)). The 5th figure. @sec cross-refs resolve across the full doc.)
                                                           --{{< include >}}--> `_modality.qmd`
                (modality chapter {#sec-modality}: setup `options(warn=2)`; tar_load modality_scatter_figures ->
+                target-derived descriptive landscape text for GeoMx / 24M proteome / 24M phosphoproteome
+                (feature counts, correlations, OLS slope, off-diagonal cutoff, top functional categories; no
+                hardcoded drift-prone numbers) +
                 four-panel amyloid-response scatter `fig-modality-amyloid-effect` (modality_interaction_scatter x4
                 via patchwork::wrap_plots; per method y=logFC nlgf_in_maptki, x=logFC nlgf_in_p301s, dashed y=x
                 identity + OLS + within-method Q99 |x-y| off-diagonal labels; phospho = parent-protein mean points)

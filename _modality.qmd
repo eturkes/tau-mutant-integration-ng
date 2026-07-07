@@ -14,7 +14,42 @@ knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
 msf <- modality_scatter_figures
+
+fmt_n <- function(x) format(as.integer(round(x)), big.mark = ",", trim = TRUE)
+fmt_num <- function(x, digits = 2) formatC(as.numeric(x), format = "f", digits = digits)
+fmt_signed <- function(x, digits = 2) {
+  x <- as.numeric(x)
+  paste0(ifelse(is.finite(x) & x > 0, "+", ""), fmt_num(x, digits))
+}
+panel_stats <- do.call(rbind, lapply(msf$order, function(m) {
+  d <- msf$panels[[m]]$data
+  top <- modality_scatter_label_rows(d)
+  data.frame(
+    modality = m,
+    n = nrow(d),
+    pearson = suppressWarnings(stats::cor(d$x, d$y, method = "pearson")),
+    spearman = suppressWarnings(stats::cor(d$x, d$y, method = "spearman")),
+    slope = unname(stats::coef(stats::lm(y ~ x, data = d))[["x"]]),
+    cutoff = attr(d, "offdiag_cutoff", exact = TRUE),
+    n_label = nrow(top),
+    stringsAsFactors = FALSE
+  )
+}))
+mod_stats <- function(m) panel_stats[panel_stats$modality == m, , drop = FALSE]
+mod_group <- function(m, rank = 1L) {
+  x <- msf$groups$summary[as.character(msf$groups$summary$modality) == m, , drop = FALSE]
+  x <- x[order(-x$rank_score, x$group_priority, x$group_label, method = "radix"), , drop = FALSE]
+  x[rank, , drop = FALSE]
+}
 ```
+
+## Non-snRNAseq modality landscape
+
+GeoMx is the transcriptomic comparator closest to the microglia pseudobulk view. Across `r fmt_n(mod_stats("GeoMx")$n)` spatial genes, the amyloid effects on the MAPTKI and P301S backgrounds are strongly aligned (Pearson `r fmt_num(mod_stats("GeoMx")$pearson)`, Spearman `r fmt_num(mod_stats("GeoMx")$spearman)`, OLS slope `r fmt_num(mod_stats("GeoMx")$slope)`). The off-diagonal tail is modest relative to the full feature set (`r fmt_n(mod_stats("GeoMx")$n_label)` labelled genes at |x-y| >= `r fmt_num(mod_stats("GeoMx")$cutoff)`), led by `r as.character(mod_group("GeoMx", 1)$group_label)` (`r as.character(mod_group("GeoMx", 1)$top_features)`) with a MAPTKI-higher aggregate delta of `r fmt_signed(mod_group("GeoMx", 1)$delta)`. That reads as a broad shared tissue-RNA amyloid response with a smaller tau-dependent edge.
+
+The 24M bulk proteome is less coupled between tau backgrounds. It contributes `r fmt_n(mod_stats("Proteome")$n)` protein groups but has weak background-to-background concordance (Pearson `r fmt_num(mod_stats("Proteome")$pearson)`, Spearman `r fmt_num(mod_stats("Proteome")$spearman)`, OLS slope `r fmt_num(mod_stats("Proteome")$slope)`) and a much wider off-diagonal threshold (`r fmt_num(mod_stats("Proteome")$cutoff)`). Only `r fmt_n(mod_stats("Proteome")$n_label)` labels enter the tail. The top-ranked group is `r as.character(mod_group("Proteome", 1)$group_label)` (`r as.character(mod_group("Proteome", 1)$top_features)`), with a P301S-higher aggregate delta of `r fmt_signed(mod_group("Proteome", 1)$delta)`; `r as.character(mod_group("Proteome", 2)$group_label)` is the next strongest category. This layer is therefore a sparse protein-level divergence readout, not a direct microglial composition measurement.
+
+Phosphoproteomics is plotted at the parent-protein level: `r fmt_n(msf$provenance$phospho_site_features)` finite phosphosite rows collapse to `r fmt_n(msf$provenance$phospho_parent_proteins)` parent-protein means. The parent-level amyloid effects are modestly concordant (Pearson `r fmt_num(mod_stats("Phospho")$pearson)`, Spearman `r fmt_num(mod_stats("Phospho")$spearman)`, OLS slope `r fmt_num(mod_stats("Phospho")$slope)`) with `r fmt_n(mod_stats("Phospho")$n_label)` labelled off-diagonal proteins at |x-y| >= `r fmt_num(mod_stats("Phospho")$cutoff)`. The leading category is `r as.character(mod_group("Phospho", 1)$group_label)` (`r as.character(mod_group("Phospho", 1)$top_features)`), P301S-higher by `r fmt_signed(mod_group("Phospho", 1)$delta)`, while `r as.character(mod_group("Phospho", 2)$group_label)` moves MAPTKI-higher. This is a signalling-state layer over parent-protein summaries; the figure deliberately avoids site-specific kinase claims.
 
 ## Per-method amyloid effect: tau-KO versus mutant-tau background
 
