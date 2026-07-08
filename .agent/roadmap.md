@@ -28,8 +28,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = TWELVE figures: microglia (P1) + trajectory (P2) +
-two GeoMx exploratory figures (QC atlas; normalization/RLE) + three modality-native non-snRNAseq figures +
+REPORT SCOPE (current 2026-07-08): the rendered report = THIRTEEN figures: microglia (P1) + trajectory (P2) +
+three GeoMx exploratory figures (QC atlas; normalization/RLE; ordination) + three modality-native non-snRNAseq figures +
 two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
@@ -55,8 +55,10 @@ Open steps (one figure/session):
   q3 vs negative-background, voom trend. Outcome: compact `geomx_de$normalization` + report
   plot; 91 AOIs, 19,959/19,963 genes kept by `filterByExpr(min.count=5)`, Q3/background
   Spearman rho = 0.994; no AOIs excluded and DE claims unchanged.
-- S3 [TODO] `fig-geomx-ordination`: deterministic PCA/MDS with genotype/slide/segment
-  aesthetics, variance explained, top loadings.
+- S3 [DONE 2026-07-08] `fig-geomx-ordination`: deterministic PCA/MDS with genotype/slide/segment
+  aesthetics, variance explained, top loadings. Outcome: compact `geomx_de$ordination` +
+  report plot; 91 AOIs, 19,959/19,963 genes kept, 2,000 variable genes used; PC1 = 19.36%
+  and PC2 = 6.94%; no AOIs excluded and DE claims unchanged.
 - S4 [TODO] `fig-geomx-gene-detection`: gene detectability / marker measurability /
   low-coverage filter figure.
 - S5 [TODO] `fig-geomx-sample-heatmap`: AOI correlation or top-variable-gene heatmap with
@@ -70,7 +72,7 @@ Open steps (one figure/session):
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S3.
+Next `$session-prompt` = EXECUTE S4.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1000,6 +1002,15 @@ Next `$session-prompt` = EXECUTE S3.
   `filterByExpr(min.count=5)`, Q3/background Spearman rho = 0.994. No AOI exclusion or claim
   change. Hardened `report_sources` so R helper edits invalidate `report`. Focused target/render
   build green; Chromium PDF page-6 QA clean; next = EXECUTE S3.
+- 2026-07-08 GeoMx exploratory figures S3 DONE -> `fig-geomx-ordination`. Added
+  `geomx_ordination_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$ordination`, and rendered
+  `geomx_ordination_plot()` in `_modality.qmd`. The figure shows slide-faceted PCA and
+  classical MDS over TMM-logCPM top-variable filter-passing genes, a PCA scree curve, and
+  PC1/PC2 signed loading genes. Live data: 91 AOIs, 19,959/19,963 genes kept by
+  `filterByExpr(min.count=5)`, 2,000 variable genes used; PC1 = 19.36%, PC2 = 6.94%.
+  No AOI exclusion or claim change. Focused target build green and warn=2 plot smoke-render
+  clean; next = EXECUTE S4.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

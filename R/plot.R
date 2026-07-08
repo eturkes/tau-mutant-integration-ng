@@ -601,6 +601,166 @@ geomx_normalization_rle_plot <- function(normalization,
   ) + patchwork::plot_annotation(title = title, subtitle = subtitle)
 }
 
+geomx_ordination_plot <- function(ordination, title = "GeoMx ordination") {
+  stopifnot(is.list(ordination), is.data.frame(ordination$sample),
+            is.data.frame(ordination$scree), is.data.frame(ordination$loadings))
+  sample <- ordination$sample
+  need_sample <- c("slide", "segment", "genotype", "pc1", "pc2", "pc1_var", "pc2_var",
+                   "mds1", "mds2", "mds1_var", "mds2_var")
+  miss_sample <- setdiff(need_sample, names(sample))
+  if (length(miss_sample)) {
+    stop("GeoMx ordination sample data missing columns: ",
+         paste(miss_sample, collapse = ", "), call. = FALSE)
+  }
+  sample <- sample[is.finite(sample$pc1) & is.finite(sample$pc2) &
+                     is.finite(sample$mds1) & is.finite(sample$mds2), , drop = FALSE]
+  if (!nrow(sample)) stop("GeoMx ordination sample data has no finite AOIs", call. = FALSE)
+  sample$genotype <- factor(as.character(sample$genotype), levels = genotype_levels)
+  sample$slide <- factor(sample$slide)
+  sample$segment <- factor(sample$segment)
+  stopifnot(!anyNA(sample$genotype), !anyNA(sample$slide), !anyNA(sample$segment))
+
+  segment_levels <- levels(droplevels(sample$segment))
+  shape_values <- stats::setNames(
+    rep(c(16, 17, 15, 18, 3, 4, 7, 8, 0, 1, 2, 5, 6), length.out = length(segment_levels)),
+    segment_levels
+  )
+  axis_label <- function(axis, value) {
+    if (is.finite(value)) sprintf("%s (%.1f%%)", axis, 100 * value) else axis
+  }
+  pc1_var <- unique(sample$pc1_var[is.finite(sample$pc1_var)])
+  pc2_var <- unique(sample$pc2_var[is.finite(sample$pc2_var)])
+  mds1_var <- unique(sample$mds1_var[is.finite(sample$mds1_var)])
+  mds2_var <- unique(sample$mds2_var[is.finite(sample$mds2_var)])
+  pc1_var <- if (length(pc1_var)) pc1_var[[1L]] else NA_real_
+  pc2_var <- if (length(pc2_var)) pc2_var[[1L]] else NA_real_
+  mds1_var <- if (length(mds1_var)) mds1_var[[1L]] else NA_real_
+  mds2_var <- if (length(mds2_var)) mds2_var[[1L]] else NA_real_
+
+  ord_theme <- theme_tau(base_size = 8.4) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      panel.spacing.x = grid::unit(0.5, "lines"),
+      axis.text = ggplot2::element_text(size = 6.8)
+    )
+  scatter_guides <- ggplot2::guides(
+    colour = ggplot2::guide_legend(order = 1, override.aes = list(size = 2.6)),
+    shape = if (length(segment_levels) > 1L) {
+      ggplot2::guide_legend(order = 2, override.aes = list(size = 2.6))
+    } else {
+      "none"
+    }
+  )
+
+  pca_plot <- ggplot2::ggplot(sample, ggplot2::aes(pc1, pc2)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
+    ggplot2::geom_point(ggplot2::aes(colour = genotype, shape = segment),
+                        size = 1.35, alpha = 0.88) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_shape_manual(values = shape_values, name = "segment", drop = FALSE) +
+    ggplot2::facet_wrap(ggplot2::vars(slide), nrow = 1) +
+    ggplot2::labs(
+      x = axis_label("PC1", pc1_var),
+      y = axis_label("PC2", pc2_var),
+      title = "PCA of AOI expression",
+      subtitle = "TMM logCPM, top variable filter-passing genes; facet = slide"
+    ) +
+    ord_theme + scatter_guides
+
+  mds_plot <- ggplot2::ggplot(sample, ggplot2::aes(mds1, mds2)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
+    ggplot2::geom_point(ggplot2::aes(colour = genotype, shape = segment),
+                        size = 1.35, alpha = 0.88) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_shape_manual(values = shape_values, name = "segment", drop = FALSE) +
+    ggplot2::facet_wrap(ggplot2::vars(slide), nrow = 1) +
+    ggplot2::labs(
+      x = axis_label("MDS1", mds1_var),
+      y = axis_label("MDS2", mds2_var),
+      title = "Classical MDS of AOI distances",
+      subtitle = "Euclidean distances on the same scaled expression matrix"
+    ) +
+    ord_theme + scatter_guides
+
+  scree <- ordination$scree
+  need_scree <- c("pc", "pc_num", "variance_percent")
+  miss_scree <- setdiff(need_scree, names(scree))
+  if (length(miss_scree)) {
+    stop("GeoMx ordination scree data missing columns: ",
+         paste(miss_scree, collapse = ", "), call. = FALSE)
+  }
+  scree <- scree[is.finite(scree$pc_num) & is.finite(scree$variance_percent), ,
+                 drop = FALSE]
+  if (nrow(scree) < 2L) stop("GeoMx ordination scree data has too few PCs",
+                             call. = FALSE)
+  scree$pc <- factor(as.character(scree$pc), levels = as.character(scree$pc))
+  scree_plot <- ggplot2::ggplot(scree, ggplot2::aes(pc_num, variance_percent)) +
+    ggplot2::geom_line(colour = "#3F5F7F", linewidth = 0.55) +
+    ggplot2::geom_point(colour = "#3F5F7F", fill = "#F8F5ED", shape = 21,
+                        size = 2.0, stroke = 0.45) +
+    ggplot2::scale_x_continuous(breaks = scree$pc_num, labels = scree$pc) +
+    ggplot2::labs(
+      x = "component", y = "variance explained (%)",
+      title = "PCA variance"
+    ) +
+    theme_tau(base_size = 8.8)
+
+  loadings <- ordination$loadings
+  need_loading <- c("symbol", "pc", "pc_num", "loading", "abs_loading", "direction")
+  miss_loading <- setdiff(need_loading, names(loadings))
+  if (length(miss_loading)) {
+    stop("GeoMx ordination loading data missing columns: ",
+         paste(miss_loading, collapse = ", "), call. = FALSE)
+  }
+  loadings <- loadings[is.finite(loadings$loading) & is.finite(loadings$abs_loading), ,
+                       drop = FALSE]
+  if (!nrow(loadings)) stop("GeoMx ordination loading data has no finite rows",
+                            call. = FALSE)
+  loadings <- loadings[order(loadings$pc_num, loadings$loading,
+                             loadings$symbol, method = "radix"), , drop = FALSE]
+  loadings$symbol_pc <- paste(loadings$symbol, loadings$pc, sep = " | ")
+  loadings$symbol_plot <- factor(loadings$symbol_pc, levels = rev(loadings$symbol_pc))
+  loadings$direction <- factor(as.character(loadings$direction),
+                               levels = c("negative", "positive"))
+  loading_plot <- ggplot2::ggplot(loadings, ggplot2::aes(loading, symbol_plot)) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_segment(ggplot2::aes(x = 0, xend = loading, yend = symbol_plot,
+                                       colour = direction),
+                          linewidth = 0.46, alpha = 0.78) +
+    ggplot2::geom_point(ggplot2::aes(colour = direction), size = 1.55, alpha = 0.95) +
+    ggplot2::scale_colour_manual(values = c(negative = "#2F78A0",
+                                            positive = "#A63A50"),
+                                 drop = FALSE, name = "loading sign") +
+    ggplot2::scale_y_discrete(labels = function(x) sub(" \\| PC[0-9]+$", "", x)) +
+    ggplot2::facet_wrap(ggplot2::vars(pc), scales = "free_y", nrow = 1) +
+    ggplot2::labs(
+      x = "signed loading", y = NULL,
+      title = "Top loading genes"
+    ) +
+    theme_tau(base_size = 8.3) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.y = ggplot2::element_text(size = 6.6, lineheight = 0.9),
+      panel.spacing.x = grid::unit(0.65, "lines")
+    )
+
+  subtitle <- sprintf(
+    "%s variable genes from %s filter-passing genes across %s AOIs; ordination is descriptive and excludes no AOIs",
+    format(ordination$provenance$n_variable_features %||% nrow(loadings), big.mark = ","),
+    format(ordination$provenance$n_kept_features %||% NA_integer_, big.mark = ","),
+    format(ordination$provenance$n_aoi %||% nrow(sample), big.mark = ",")
+  )
+  top <- patchwork::wrap_plots(list(pca_plot, mds_plot), ncol = 1, guides = "collect") &
+    ggplot2::theme(legend.position = "bottom")
+  bottom <- patchwork::wrap_plots(list(scree_plot, loading_plot), ncol = 2,
+                                  widths = c(0.62, 1.38))
+  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = c(1.42, 1)) +
+    patchwork::plot_annotation(title = title, subtitle = subtitle)
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

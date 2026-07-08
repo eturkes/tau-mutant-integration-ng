@@ -37,6 +37,15 @@ geomx_normalization_rle_plot(msf$descriptive$GeoMx$normalization)
 ```
 
 ```{r}
+#| label: fig-geomx-ordination
+#| fig-width: 10.5
+#| fig-height: 9.6
+#| fig-cap: "GeoMx ordination figure. Top: PCA and classical MDS of AOIs using TMM-normalized logCPM from the top variable filter-passing genes, with genotype colour and slide facets; point shape encodes segment when multiple segment levels are present. Bottom left: PCA variance explained for the leading components. Bottom right: top signed loading genes for PC1 and PC2. The figure is descriptive, deterministic, and excludes no AOIs."
+#| fig-alt: "GeoMx ordination diagnostic with slide-faceted PCA and MDS AOI scatter plots coloured by genotype, a PCA scree curve, and signed PC1 and PC2 top loading genes."
+geomx_ordination_plot(msf$descriptive$GeoMx$ordination)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2

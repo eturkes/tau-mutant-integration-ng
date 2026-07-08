@@ -535,6 +535,157 @@ geomx_normalization_descriptor <- function(counts, meta, design, voom_trend,
   )
 }
 
+geomx_ordination_descriptor <- function(counts, meta, design, min_count = 5,
+                                        n_variable_features = 2000L,
+                                        n_pc = 6L,
+                                        n_loadings = 12L) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
+            is.numeric(n_variable_features), length(n_variable_features) == 1L,
+            n_variable_features >= 2L,
+            is.numeric(n_pc), length(n_pc) == 1L, n_pc >= 2L,
+            is.numeric(n_loadings), length(n_loadings) == 1L, n_loadings >= 1L,
+            anyDuplicated(rownames(counts)) == 0L)
+  need <- c("slide", "roi", "segment", "genotype", "SampleID", "bio_unit")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx ordination descriptor metadata missing columns: ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for ordination descriptor",
+                       call. = FALSE)
+  dge <- edgeR::normLibSizes(dge0[keep, , keep.lib.sizes = FALSE], method = "TMM")
+  logcpm <- edgeR::cpm(dge, normalized.lib.sizes = TRUE, log = TRUE, prior.count = 1)
+  stopifnot(identical(colnames(logcpm), rownames(meta)), all(is.finite(logcpm)))
+
+  feature_sd <- apply(logcpm, 1L, stats::sd)
+  feature_var <- feature_sd^2
+  var_rank <- data.frame(
+    symbol = rownames(logcpm),
+    variance = as.numeric(feature_var),
+    stringsAsFactors = FALSE
+  )
+  var_rank <- var_rank[is.finite(var_rank$variance) & var_rank$variance > 0, ,
+                       drop = FALSE]
+  if (nrow(var_rank) < 2L) {
+    stop("GeoMx ordination has too few variable filter-passing genes", call. = FALSE)
+  }
+  var_rank <- var_rank[order(-var_rank$variance, var_rank$symbol, method = "radix"), ,
+                       drop = FALSE]
+  variable_genes <- utils::head(var_rank$symbol, as.integer(n_variable_features))
+
+  mat <- logcpm[variable_genes, , drop = FALSE]
+  row_mean <- rowMeans(mat)
+  row_sd <- apply(mat, 1L, stats::sd)
+  row_sd[!is.finite(row_sd) | row_sd <= 0] <- 1
+  z <- sweep(sweep(mat, 1L, row_mean, "-"), 1L, row_sd, "/")
+  z[!is.finite(z)] <- 0
+
+  pc <- stats::prcomp(t(z), center = FALSE, scale. = FALSE)
+  if (ncol(pc$x) < 2L) stop("GeoMx PCA returned fewer than two components", call. = FALSE)
+  for (j in seq_len(ncol(pc$rotation))) {
+    k <- which.max(abs(pc$rotation[, j]))
+    if (is.finite(pc$rotation[k, j]) && pc$rotation[k, j] < 0) {
+      pc$rotation[, j] <- -pc$rotation[, j]
+      pc$x[, j] <- -pc$x[, j]
+    }
+  }
+  variance_fraction <- pc$sdev^2 / sum(pc$sdev^2)
+  pc_keep <- seq_len(min(as.integer(n_pc), length(variance_fraction)))
+  scree <- data.frame(
+    pc = paste0("PC", pc_keep),
+    pc_num = pc_keep,
+    variance_fraction = as.numeric(variance_fraction[pc_keep]),
+    variance_percent = 100 * as.numeric(variance_fraction[pc_keep]),
+    stringsAsFactors = FALSE
+  )
+
+  loading_keep <- seq_len(min(2L, ncol(pc$rotation)))
+  loadings <- do.call(rbind, lapply(loading_keep, function(j) {
+    ld <- data.frame(
+      symbol = rownames(pc$rotation),
+      pc = paste0("PC", j),
+      pc_num = j,
+      loading = as.numeric(pc$rotation[, j]),
+      variance_fraction = as.numeric(variance_fraction[j]),
+      stringsAsFactors = FALSE
+    )
+    ld$abs_loading <- abs(ld$loading)
+    ld <- ld[is.finite(ld$loading), , drop = FALSE]
+    ld <- ld[order(-ld$abs_loading, ld$symbol, method = "radix"), , drop = FALSE]
+    ld <- utils::head(ld, as.integer(n_loadings))
+    ld$loading_rank <- seq_len(nrow(ld))
+    ld
+  }))
+  rownames(loadings) <- NULL
+  loadings$direction <- factor(ifelse(loadings$loading >= 0, "positive", "negative"),
+                               levels = c("negative", "positive"))
+
+  mds <- stats::cmdscale(stats::dist(t(z)), k = 2L, eig = TRUE)
+  mds_points <- as.matrix(mds$points)
+  if (ncol(mds_points) < 2L) stop("GeoMx MDS returned fewer than two dimensions",
+                                  call. = FALSE)
+  for (j in seq_len(2L)) {
+    k <- which.max(abs(mds_points[, j]))
+    if (is.finite(mds_points[k, j]) && mds_points[k, j] < 0) {
+      mds_points[, j] <- -mds_points[, j]
+    }
+  }
+  positive_eig <- mds$eig[is.finite(mds$eig) & mds$eig > 0]
+  mds_fraction <- rep(NA_real_, 2L)
+  if (length(positive_eig) >= 2L && sum(positive_eig) > 0) {
+    mds_fraction <- positive_eig[seq_len(2L)] / sum(positive_eig)
+  }
+
+  sample <- data.frame(
+    aoi = rownames(meta),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment), levels = sort(unique(as.character(meta$segment)))),
+    sample_id = as.character(meta$SampleID),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    bio_unit = factor(as.character(meta$bio_unit)),
+    pc1 = as.numeric(pc$x[rownames(meta), 1L]),
+    pc2 = as.numeric(pc$x[rownames(meta), 2L]),
+    pc1_var = as.numeric(variance_fraction[1L]),
+    pc2_var = as.numeric(variance_fraction[2L]),
+    mds1 = as.numeric(mds_points[rownames(meta), 1L]),
+    mds2 = as.numeric(mds_points[rownames(meta), 2L]),
+    mds1_var = as.numeric(mds_fraction[1L]),
+    mds2_var = as.numeric(mds_fraction[2L]),
+    stringsAsFactors = FALSE
+  )
+  rownames(sample) <- NULL
+  stopifnot(!anyNA(sample$slide), !anyNA(sample$segment), !anyNA(sample$genotype),
+            all(is.finite(sample$pc1)), all(is.finite(sample$pc2)),
+            all(is.finite(sample$pc1_var)), all(is.finite(sample$pc2_var)),
+            all(is.finite(sample$mds1)), all(is.finite(sample$mds2)),
+            all(is.finite(scree$variance_fraction)), all(is.finite(loadings$loading)))
+
+  list(
+    sample = sample,
+    scree = scree,
+    loadings = loadings,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      n_variable_features = length(variable_genes),
+      min_count = min_count,
+      transform = "TMM-normalized logCPM, row-centered and row-scaled over top variable filterByExpr-kept genes",
+      pca = "stats::prcomp on AOIs x selected genes; PC signs oriented so the largest absolute loading is positive",
+      mds = "classical MDS on Euclidean AOI distances over the same scaled expression matrix",
+      loading_rule = sprintf("top %s absolute loadings for PC1 and PC2", as.integer(n_loadings))
+    )
+  )
+}
+
 # voom + TMM + limma, optionally blocking repeated AOIs by bio_unit via duplicateCorrelation
 # (the primary GeoMx model). Fails loud if the design has no residual df or the consensus
 # correlation is non-finite.
@@ -595,6 +746,8 @@ run_geomx_de <- function(geomx, min_count = 5) {
     qc = geomx_qc_descriptor(counts, meta),
     normalization = geomx_normalization_descriptor(counts, meta, fd$design, primary$voom_trend,
                                                    min_count = min_count),
+    ordination = geomx_ordination_descriptor(counts, meta, fd$design,
+                                             min_count = min_count),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

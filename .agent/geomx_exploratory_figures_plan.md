@@ -36,8 +36,9 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has three GeoMx figures after S2: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has four GeoMx figures after S3: `fig-geomx-qc-atlas` = AOI QC atlas;
   `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
+  `fig-geomx-ordination` = slide-faceted PCA/MDS + scree + PC1/PC2 loadings;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
@@ -46,7 +47,8 @@ Local seam:
 - `geomx_de$qc` carries compact S1 QC data: long AOI metrics, per-slide/segment flag counts,
   thresholds, and provenance. `geomx_de$normalization` carries compact S2 raw/TMM
   distribution quantiles, TMM RLE quantiles, Q3/background AOI data, and saved voom trend.
-  Report chunks read both through `modality_scatter_figures`.
+  `geomx_de$ordination` carries compact S3 PCA/MDS/scree/loading data. Report chunks read
+  all three through `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -89,13 +91,17 @@ S2 [DONE 2026-07-08] - `fig-geomx-normalization-rle`
   primary fit; Q3 factor vs negative-control background Spearman rho = 0.994. No AOI
   exclusion, DE change, or report-claim change.
 
-S3 - `fig-geomx-ordination`
+S3 [DONE 2026-07-08] - `fig-geomx-ordination`
 - Purpose: sample similarity / biology-vs-slide ordination figure.
 - Panels: PCA or MDS AOI scatter colored by genotype and shaped/faceted by slide/segment,
   variance explained, top loading genes for PC1/PC2.
 - Source basis: Bruker Dimension Reduction; standR `drawPCA`, `plotMDS`,
   `plotPCAbiplot`.
 - Acceptance: precomputes deterministic PCA/MDS inside target data; report draw is pure.
+- Status: landed as compact `geomx_de$ordination` + visible `_modality.qmd` figure. Live
+  data = 91 AOIs, 19,959/19,963 genes kept by `filterByExpr(min.count=5)`, 2,000
+  top-variable genes used for TMM-logCPM PCA/MDS; PC1 = 19.36%, PC2 = 6.94% variance
+  explained. No AOI exclusion, DE change, or report-claim change.
 
 S4 - `fig-geomx-gene-detection`
 - Purpose: gene-level QC/detectability figure.
