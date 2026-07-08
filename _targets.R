@@ -115,7 +115,8 @@ list(
   # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
   # Functional-category scores over off-diagonal genes/proteins from the
   # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein aggregates; visible
-  # summary keeps categorized role/fallback buckets and drops the other-annotated no-role bucket).
+  # summary keeps categorized role/fallback buckets and drops predicted/unannotated +
+  # other-annotated no-role buckets).
   # Carries the retained compact GeoMx sample heatmap
   # through `descriptive$GeoMx`.
   # Reads only the compact DE topTables (no heavy object).
