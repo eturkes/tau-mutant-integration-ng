@@ -408,6 +408,219 @@ geomx_contrast_diagnostic_descriptor <- function(top, alpha = 0.10,
   )
 }
 
+geomx_roi_replicate_descriptor <- function(counts, meta, design, duplicate_correlation,
+                                           spatial_aoi, min_count = 5,
+                                           n_variable_features = 2000L) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            is.list(duplicate_correlation), is.data.frame(spatial_aoi),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
+            is.numeric(n_variable_features), length(n_variable_features) == 1L,
+            n_variable_features >= 2L,
+            anyDuplicated(rownames(counts)) == 0L)
+  need <- c("slide", "roi", "segment", "genotype", "SampleID", "bio_unit", "bio_rep")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx ROI-replicate metadata missing columns: ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+  need_spatial <- c("aoi", "signed_response_score")
+  missing_spatial <- setdiff(need_spatial, names(spatial_aoi))
+  if (length(missing_spatial)) {
+    stop("GeoMx ROI-replicate spatial AOI data missing columns: ",
+         paste(missing_spatial, collapse = ", "), call. = FALSE)
+  }
+  stopifnot(!is.null(duplicate_correlation$used),
+            !is.null(duplicate_correlation$consensus_correlation))
+
+  meta_frame <- data.frame(
+    aoi = rownames(meta),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    bio_rep = as.character(meta$bio_rep),
+    bio_unit = factor(as.character(meta$bio_unit)),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment),
+                     levels = sort(unique(as.character(meta$segment)))),
+    sample_id = as.character(meta$SampleID),
+    stringsAsFactors = FALSE
+  )
+  meta_frame$signed_response_score <- as.numeric(
+    spatial_aoi$signed_response_score[match(meta_frame$aoi, spatial_aoi$aoi)]
+  )
+  stopifnot(!anyNA(meta_frame$genotype), !anyNA(meta_frame$bio_rep),
+            !anyNA(meta_frame$bio_unit), !anyNA(meta_frame$slide),
+            !anyNA(meta_frame$segment),
+            all(is.finite(meta_frame$signed_response_score)))
+
+  bio_reps <- sort(unique(meta_frame$bio_rep))
+  support_grid <- expand.grid(
+    genotype = genotype_levels,
+    bio_rep = bio_reps,
+    stringsAsFactors = FALSE
+  )
+  support_obs <- stats::aggregate(
+    list(n_aoi = meta_frame$aoi, n_roi = meta_frame$roi,
+         n_segments = meta_frame$segment),
+    by = list(genotype = as.character(meta_frame$genotype),
+              bio_rep = meta_frame$bio_rep),
+    FUN = function(x) length(unique(x))
+  )
+  slide_by_unit <- stats::aggregate(
+    list(slide = as.character(meta_frame$slide)),
+    by = list(genotype = as.character(meta_frame$genotype),
+              bio_rep = meta_frame$bio_rep),
+    FUN = function(x) paste(sort(unique(x)), collapse = "+")
+  )
+  support_obs <- merge(support_obs, slide_by_unit,
+                       by = c("genotype", "bio_rep"), all.x = TRUE,
+                       sort = FALSE)
+  support <- merge(support_grid, support_obs, by = c("genotype", "bio_rep"),
+                   all.x = TRUE, sort = FALSE)
+  support$n_aoi[is.na(support$n_aoi)] <- 0L
+  support$n_roi[is.na(support$n_roi)] <- 0L
+  support$n_segments[is.na(support$n_segments)] <- 0L
+  support$slide[is.na(support$slide)] <- "absent"
+  support$present <- support$n_aoi > 0
+  support$label <- ifelse(support$present, as.character(support$n_aoi), "0")
+  support$genotype <- factor(support$genotype, levels = genotype_levels)
+  support$bio_rep <- factor(support$bio_rep, levels = bio_reps)
+  rownames(support) <- NULL
+
+  block <- do.call(rbind, lapply(split(meta_frame, meta_frame$bio_unit), function(x) {
+    data.frame(
+      bio_unit = as.character(x$bio_unit[[1L]]),
+      genotype = x$genotype[[1L]],
+      bio_rep = x$bio_rep[[1L]],
+      slide = x$slide[[1L]],
+      n_aoi = nrow(x),
+      n_roi = length(unique(x$roi)),
+      n_segments = length(unique(x$segment)),
+      score_mean = mean(x$signed_response_score),
+      score_sd = if (nrow(x) > 1L) stats::sd(x$signed_response_score) else 0,
+      score_min = min(x$signed_response_score),
+      score_max = max(x$signed_response_score),
+      stringsAsFactors = FALSE
+    )
+  }))
+  block$genotype <- factor(as.character(block$genotype), levels = genotype_levels)
+  block$slide <- factor(as.character(block$slide), levels = levels(meta_frame$slide))
+  block <- block[order(block$genotype, as.integer(block$bio_rep), block$bio_unit,
+                       method = "radix"), , drop = FALSE]
+  block$block_rank <- seq_len(nrow(block))
+  block$bio_unit_plot <- factor(block$bio_unit, levels = rev(block$bio_unit))
+  rownames(block) <- NULL
+  stopifnot(!anyNA(block$genotype), !anyNA(block$slide),
+            all(is.finite(block$n_aoi)), all(block$n_aoi >= 1L),
+            all(is.finite(block$n_roi)), all(is.finite(block$n_segments)),
+            all(is.finite(block$score_mean)), all(is.finite(block$score_sd)))
+
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for ROI replicate audit",
+                       call. = FALSE)
+  dge <- edgeR::normLibSizes(dge0[keep, , keep.lib.sizes = FALSE], method = "TMM")
+  logcpm <- edgeR::cpm(dge, normalized.lib.sizes = TRUE, log = TRUE, prior.count = 1)
+  stopifnot(identical(colnames(logcpm), rownames(meta)), all(is.finite(logcpm)))
+  feature_var <- apply(logcpm, 1L, stats::var)
+  var_rank <- data.frame(symbol = rownames(logcpm),
+                         variance = as.numeric(feature_var),
+                         stringsAsFactors = FALSE)
+  var_rank <- var_rank[is.finite(var_rank$variance) & var_rank$variance > 0, ,
+                       drop = FALSE]
+  if (nrow(var_rank) < 2L) {
+    stop("GeoMx ROI replicate audit has too few variable filter-passing genes",
+         call. = FALSE)
+  }
+  var_rank <- var_rank[order(-var_rank$variance, var_rank$symbol, method = "radix"), ,
+                       drop = FALSE]
+  variable_genes <- utils::head(var_rank$symbol, as.integer(n_variable_features))
+  mat <- logcpm[variable_genes, , drop = FALSE]
+  sample_cor <- stats::cor(mat, method = "pearson")
+  stopifnot(all(is.finite(sample_cor)))
+  pairs <- utils::combn(colnames(sample_cor), 2L)
+  sample_lookup <- meta_frame
+  rownames(sample_lookup) <- sample_lookup$aoi
+  pair_correlation <- data.frame(
+    aoi_1 = pairs[1L, ],
+    aoi_2 = pairs[2L, ],
+    correlation = as.numeric(sample_cor[cbind(pairs[1L, ], pairs[2L, ])]),
+    stringsAsFactors = FALSE
+  )
+  pair_correlation$bio_unit_1 <- as.character(sample_lookup[pair_correlation$aoi_1, "bio_unit"])
+  pair_correlation$bio_unit_2 <- as.character(sample_lookup[pair_correlation$aoi_2, "bio_unit"])
+  pair_correlation$genotype_1 <- as.character(sample_lookup[pair_correlation$aoi_1, "genotype"])
+  pair_correlation$genotype_2 <- as.character(sample_lookup[pair_correlation$aoi_2, "genotype"])
+  pair_correlation$pair_type <- ifelse(
+    pair_correlation$bio_unit_1 == pair_correlation$bio_unit_2,
+    "same bio-unit",
+    ifelse(pair_correlation$genotype_1 == pair_correlation$genotype_2,
+           "same genotype, different bio-unit", "different genotype")
+  )
+  pair_levels <- c("same bio-unit", "same genotype, different bio-unit",
+                   "different genotype")
+  pair_correlation$pair_type <- factor(pair_correlation$pair_type, levels = pair_levels)
+  pair_correlation <- pair_correlation[is.finite(pair_correlation$correlation), ,
+                                       drop = FALSE]
+  if (!nrow(pair_correlation)) {
+    stop("GeoMx ROI replicate audit has no finite AOI-pair correlations",
+         call. = FALSE)
+  }
+
+  pair_summary <- do.call(rbind, lapply(split(pair_correlation, pair_correlation$pair_type,
+                                              drop = TRUE), function(x) {
+    data.frame(
+      pair_type = x$pair_type[[1L]],
+      n_pairs = nrow(x),
+      median_correlation = stats::median(x$correlation),
+      q25_correlation = as.numeric(stats::quantile(x$correlation, 0.25, names = FALSE)),
+      q75_correlation = as.numeric(stats::quantile(x$correlation, 0.75, names = FALSE)),
+      mean_correlation = mean(x$correlation),
+      stringsAsFactors = FALSE
+    )
+  }))
+  pair_summary$pair_type <- factor(as.character(pair_summary$pair_type),
+                                   levels = pair_levels)
+  rownames(pair_summary) <- NULL
+  stopifnot(!anyNA(pair_summary$pair_type),
+            all(is.finite(pair_summary$n_pairs)),
+            all(is.finite(pair_summary$median_correlation)),
+            all(is.finite(pair_summary$q25_correlation)),
+            all(is.finite(pair_summary$q75_correlation)))
+
+  list(
+    support = support,
+    block = block,
+    pair_correlation = pair_correlation,
+    pair_summary = pair_summary,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_bio_units = nlevels(meta_frame$bio_unit),
+      n_expected_bio_units = length(genotype_levels) * length(bio_reps),
+      n_present_bio_units = sum(support$present),
+      n_missing_bio_units = sum(!support$present),
+      n_slides = nlevels(meta_frame$slide),
+      segments = levels(meta_frame$segment),
+      n_segment_levels = nlevels(meta_frame$segment),
+      all_segments_single_level = nlevels(meta_frame$segment) == 1L,
+      n_repeated_blocks = sum(block$n_aoi > 1L),
+      block_size_range = range(block$n_aoi),
+      min_count = min_count,
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      n_variable_features = length(variable_genes),
+      duplicate_correlation_used = isTRUE(duplicate_correlation$used),
+      duplicate_correlation = unname(as.numeric(duplicate_correlation$consensus_correlation)),
+      design_rank = qr(design)$rank,
+      residual_df = nrow(design) - qr(design)$rank,
+      model = "primary GeoMx DE uses slide fixed effect and bio-unit duplicateCorrelation; this audit changes no AOI exclusions or model terms",
+      correlation_basis = "Pearson AOI-pair correlations over TMM-logCPM top-variable filterByExpr-kept genes"
+    )
+  )
+}
+
 geomx_qc_descriptor <- function(counts, meta, lower_q = 0.05, upper_q = 0.95) {
   stopifnot(is.matrix(counts), is.data.frame(meta),
             identical(colnames(counts), rownames(meta)),
@@ -1403,11 +1616,12 @@ run_geomx_de <- function(geomx, min_count = 5) {
   fd <- geomx_slide_design(meta, include_slide = TRUE)
   primary <- .fit_geomx_voom(counts, fd$design, fd$contrasts, block = meta$bio_unit,
                              min_count = min_count)
+  spatial <- geomx_spatial_descriptor(counts, meta, primary$top)
   list(
     n_aoi = ncol(counts),
     n_bio_units = length(unique(as.character(meta$bio_unit))),
     primary = c(list(status = "fit", model = "voom_tmm_slide_duplicateCorrelation"), primary),
-    spatial = geomx_spatial_descriptor(counts, meta, primary$top),
+    spatial = spatial,
     qc = geomx_qc_descriptor(counts, meta),
     normalization = geomx_normalization_descriptor(counts, meta, fd$design, primary$voom_trend,
                                                    min_count = min_count),
@@ -1420,6 +1634,10 @@ run_geomx_de <- function(geomx, min_count = 5) {
     spatial_programs = geomx_spatial_program_descriptor(counts, meta, fd$design,
                                                         min_count = min_count),
     contrast_diagnostics = geomx_contrast_diagnostic_descriptor(primary$top),
+    roi_replicates = geomx_roi_replicate_descriptor(
+      counts, meta, fd$design, primary$duplicate_correlation, spatial$aoi,
+      min_count = min_count
+    ),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

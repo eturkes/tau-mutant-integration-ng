@@ -1414,6 +1414,222 @@ geomx_contrast_diagnostic_plot <- function(contrast_diagnostics,
     patchwork::plot_annotation(title = title, subtitle = subtitle)
 }
 
+geomx_roi_replicate_plot <- function(roi_replicates,
+                                     title = "GeoMx ROI and block audit") {
+  stopifnot(is.list(roi_replicates),
+            is.data.frame(roi_replicates$support),
+            is.data.frame(roi_replicates$block),
+            is.data.frame(roi_replicates$pair_correlation),
+            is.data.frame(roi_replicates$pair_summary))
+
+  support <- roi_replicates$support
+  need_support <- c("genotype", "bio_rep", "n_aoi", "slide", "present", "label")
+  miss_support <- setdiff(need_support, names(support))
+  if (length(miss_support)) {
+    stop("GeoMx ROI-replicate support data missing columns: ",
+         paste(miss_support, collapse = ", "), call. = FALSE)
+  }
+  support <- support[is.finite(support$n_aoi), , drop = FALSE]
+  if (!nrow(support)) stop("GeoMx ROI-replicate support data has no finite rows",
+                           call. = FALSE)
+  support$genotype <- factor(as.character(support$genotype), levels = genotype_levels)
+  support$bio_rep <- factor(as.character(support$bio_rep),
+                            levels = sort(unique(as.character(support$bio_rep))))
+  support$present <- support$present %in% TRUE
+  stopifnot(!anyNA(support$genotype), !anyNA(support$bio_rep))
+  support_present <- support[support$present & support$n_aoi > 0, , drop = FALSE]
+  support_missing <- support[!support$present | support$n_aoi <= 0, , drop = FALSE]
+  if (!nrow(support_present)) {
+    stop("GeoMx ROI-replicate support data has no present bio-units", call. = FALSE)
+  }
+  slide_levels <- sort(unique(as.character(support$slide)))
+  slide_palette <- stats::setNames(rep(tau_discrete_colours, length.out = length(slide_levels)),
+                                   slide_levels)
+  if ("absent" %in% slide_levels) slide_palette[["absent"]] <- "#D8D2C8"
+  max_aoi <- max(support$n_aoi, na.rm = TRUE)
+  max_aoi <- if (is.finite(max_aoi) && max_aoi > 0) max_aoi else 1
+
+  support_plot <- ggplot2::ggplot(support, ggplot2::aes(bio_rep, genotype)) +
+    ggplot2::geom_point(
+      data = support_present,
+      ggplot2::aes(size = n_aoi, fill = slide),
+      shape = 21, colour = "#20242A", stroke = 0.34, alpha = 0.94) +
+    ggplot2::geom_text(
+      data = support_present,
+      ggplot2::aes(label = label),
+      size = 2.45, colour = "#20242A", fontface = "bold") +
+    ggplot2::geom_text(
+      data = support_missing,
+      ggplot2::aes(label = label),
+      size = 2.35, colour = "#8B857B", fontface = "bold") +
+    ggplot2::scale_fill_manual(values = slide_palette, name = "slide", drop = FALSE) +
+    ggplot2::scale_size_area(max_size = 9, limits = c(0, max_aoi),
+                             name = "AOIs") +
+    ggplot2::labs(
+      x = "bio-replicate", y = NULL,
+      title = "Bio-unit support",
+      subtitle = "Point area and label = AOIs; grey 0 marks an absent genotype-by-replicate unit"
+    ) +
+    theme_tau(base_size = 8.4) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      panel.grid.minor = ggplot2::element_blank()
+    )
+
+  block <- roi_replicates$block
+  need_block <- c("bio_unit_plot", "bio_unit", "genotype", "slide", "n_aoi",
+                  "score_min", "score_max", "score_mean")
+  miss_block <- setdiff(need_block, names(block))
+  if (length(miss_block)) {
+    stop("GeoMx ROI-replicate block data missing columns: ",
+         paste(miss_block, collapse = ", "), call. = FALSE)
+  }
+  block <- block[is.finite(block$n_aoi) & is.finite(block$score_min) &
+                   is.finite(block$score_max) & is.finite(block$score_mean), ,
+                 drop = FALSE]
+  if (!nrow(block)) stop("GeoMx ROI-replicate block data has no finite rows",
+                         call. = FALSE)
+  block$genotype <- factor(as.character(block$genotype), levels = genotype_levels)
+  block$slide <- factor(block$slide)
+  block$bio_unit_plot <- factor(block$bio_unit_plot,
+                                levels = levels(block$bio_unit_plot))
+  stopifnot(!anyNA(block$genotype), !anyNA(block$slide), !anyNA(block$bio_unit_plot))
+  slide_block_levels <- levels(droplevels(block$slide))
+  shape_values <- stats::setNames(
+    rep(c(21, 22, 24, 25, 23, 21, 22, 24), length.out = length(slide_block_levels)),
+    slide_block_levels
+  )
+
+  block_plot <- ggplot2::ggplot(block, ggplot2::aes(n_aoi, bio_unit_plot)) +
+    ggplot2::geom_segment(
+      ggplot2::aes(x = 0, xend = n_aoi, yend = bio_unit_plot, colour = genotype),
+      linewidth = 0.55, alpha = 0.78) +
+    ggplot2::geom_point(
+      ggplot2::aes(fill = genotype, shape = slide),
+      colour = "#20242A", stroke = 0.24, size = 2.15, alpha = 0.95) +
+    ggplot2::geom_text(ggplot2::aes(label = n_aoi),
+                       nudge_x = 0.34, size = 2.15, colour = "#20242A") +
+    scale_colour_genotype(guide = "none") +
+    scale_fill_genotype(guide = "none") +
+    ggplot2::scale_shape_manual(values = shape_values, guide = "none", drop = FALSE) +
+    ggplot2::scale_x_continuous(limits = c(0, max(block$n_aoi) + 1),
+                                breaks = seq(0, max(block$n_aoi) + 1, by = 2),
+                                expand = ggplot2::expansion(mult = c(0.02, 0.03))) +
+    ggplot2::labs(
+      x = "AOIs in duplicateCorrelation block", y = NULL,
+      title = "AOIs per bio-unit block",
+      subtitle = "Every present bio-unit is a block; all AOIs are retained"
+    ) +
+    theme_tau(base_size = 8.2) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.y = ggplot2::element_text(size = 6.3, lineheight = 0.88),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+
+  pairs <- roi_replicates$pair_correlation
+  summary <- roi_replicates$pair_summary
+  need_pairs <- c("pair_type", "correlation")
+  miss_pairs <- setdiff(need_pairs, names(pairs))
+  if (length(miss_pairs)) {
+    stop("GeoMx ROI-replicate pair-correlation data missing columns: ",
+         paste(miss_pairs, collapse = ", "), call. = FALSE)
+  }
+  pairs <- pairs[is.finite(pairs$correlation), , drop = FALSE]
+  if (!nrow(pairs)) stop("GeoMx ROI-replicate pair-correlation data has no finite rows",
+                         call. = FALSE)
+  pair_levels <- levels(pairs$pair_type)
+  if (is.null(pair_levels)) pair_levels <- unique(as.character(pairs$pair_type))
+  pairs$pair_type <- factor(as.character(pairs$pair_type), levels = pair_levels)
+  need_summary <- c("pair_type", "n_pairs", "median_correlation",
+                    "q25_correlation", "q75_correlation")
+  miss_summary <- setdiff(need_summary, names(summary))
+  if (length(miss_summary)) {
+    stop("GeoMx ROI-replicate pair-summary data missing columns: ",
+         paste(miss_summary, collapse = ", "), call. = FALSE)
+  }
+  summary <- summary[is.finite(summary$n_pairs) &
+                       is.finite(summary$median_correlation) &
+                       is.finite(summary$q25_correlation) &
+                       is.finite(summary$q75_correlation), , drop = FALSE]
+  summary$pair_type <- factor(as.character(summary$pair_type), levels = pair_levels)
+  stopifnot(!anyNA(pairs$pair_type), !anyNA(summary$pair_type))
+  pair_palette <- stats::setNames(c("#3F5F7F", "#C8841C", "#7C838A")[seq_along(pair_levels)],
+                                  pair_levels)
+  summary$label <- paste0("n=", scales::comma(summary$n_pairs))
+  summary$label_y <- pmin(1, summary$q75_correlation + 0.045)
+
+  cor_plot <- ggplot2::ggplot(pairs, ggplot2::aes(pair_type, correlation)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#BFB8AA", linewidth = 0.25) +
+    ggplot2::geom_violin(ggplot2::aes(fill = pair_type),
+                         width = 0.82, alpha = 0.34, colour = "#5D5851",
+                         linewidth = 0.24, trim = TRUE) +
+    ggplot2::geom_boxplot(width = 0.14, outlier.shape = NA, colour = "#20242A",
+                          fill = "#F8F5ED", linewidth = 0.26) +
+    ggplot2::geom_pointrange(
+      data = summary,
+      ggplot2::aes(x = pair_type, y = median_correlation, ymin = q25_correlation,
+                   ymax = q75_correlation),
+      inherit.aes = FALSE, linewidth = 0.34, size = 0.95, colour = "#20242A") +
+    ggplot2::geom_text(
+      data = summary,
+      ggplot2::aes(x = pair_type, y = label_y, label = label),
+      inherit.aes = FALSE, size = 2.45, colour = "#20242A") +
+    ggplot2::scale_fill_manual(values = pair_palette, guide = "none") +
+    ggplot2::coord_cartesian(ylim = c(-1, 1), clip = "off") +
+    ggplot2::labs(
+      x = NULL, y = "AOI-pair expression correlation",
+      title = "DuplicateCorrelation block audit",
+      subtitle = roi_replicates$provenance$correlation_basis %||%
+        "Pearson correlations over top-variable TMM-logCPM genes"
+    ) +
+    theme_tau(base_size = 8.6) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(size = 7.0, lineheight = 0.88),
+      legend.position = "none",
+      panel.grid.minor = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(4, 10, 6, 6)
+    )
+
+  prov <- roi_replicates$provenance
+  dc <- prov$duplicate_correlation %||% NA_real_
+  dc_label <- if (is.finite(dc)) sprintf("%.3f", dc) else "NA"
+  segment_label <- paste(prov$segments %||% character(), collapse = ", ")
+  if (!nzchar(segment_label)) segment_label <- "not recorded"
+  block_range <- prov$block_size_range
+  block_min <- if (!is.null(block_range) && length(block_range) >= 1L) {
+    block_range[[1L]]
+  } else {
+    min(block$n_aoi)
+  }
+  block_max <- if (!is.null(block_range) && length(block_range) >= 2L) {
+    block_range[[2L]]
+  } else {
+    max(block$n_aoi)
+  }
+  subtitle <- sprintf(
+    "%s/%s expected bio-units; %s AOIs in %s duplicateCorrelation blocks (%s-%s AOIs); consensus = %s; segments = %s.",
+    prov$n_present_bio_units %||% nrow(block),
+    prov$n_expected_bio_units %||% NA_integer_,
+    prov$n_aoi %||% nrow(support_present),
+    prov$n_bio_units %||% nrow(block),
+    block_min,
+    block_max,
+    dc_label,
+    segment_label
+  )
+  if (isTRUE(prov$all_segments_single_level)) {
+    subtitle <- paste(subtitle, "Paired segment differences are unavailable because all AOIs use one segment level.")
+  }
+  subtitle <- paste(strwrap(subtitle, width = 128), collapse = "\n")
+
+  top <- patchwork::wrap_plots(list(support_plot, block_plot),
+                               ncol = 2, widths = c(0.95, 1.05))
+  patchwork::wrap_plots(list(top, cor_plot), ncol = 1, heights = c(1.05, 1.0)) +
+    patchwork::plot_annotation(title = title, subtitle = subtitle)
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

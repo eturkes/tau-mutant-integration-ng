@@ -36,7 +36,7 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has eight GeoMx figures after S7: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has nine GeoMx figures after S8: `fig-geomx-qc-atlas` = AOI QC atlas;
   `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
   `fig-geomx-ordination` = slide-faceted PCA/MDS + scree + PC1/PC2 loadings;
   `fig-geomx-gene-detection` = WTA gene detectability, existing filterByExpr decision,
@@ -46,6 +46,8 @@ Local seam:
   `fig-geomx-spatial-program-overlays` = coordinate-only biology program maps;
   `fig-geomx-contrast-diagnostics` = volcano/MA/support diagnostics over the five
   canonical GeoMx contrasts;
+  `fig-geomx-roi-segment-replicates` = bio-unit support, AOI/block counts, and
+  duplicateCorrelation block audit;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
@@ -58,8 +60,10 @@ Local seam:
   `geomx_de$gene_detection` carries compact S4 gene-detection/marker-measurability data.
   `geomx_de$sample_heatmap` carries compact S5 clustered top-variable-gene heatmap data.
   `geomx_de$spatial_programs` carries compact S6 coordinate-only biology program data.
-  `geomx_de$contrast_diagnostics` carries compact S7 volcano/MA/support data. Report
-  chunks read these descriptors through `modality_scatter_figures`.
+  `geomx_de$contrast_diagnostics` carries compact S7 volcano/MA/support data.
+  `geomx_de$roi_replicates` carries compact S8 bio-unit support, block-size, and
+  AOI-pair-correlation data. Report chunks read these descriptors through
+  `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -167,12 +171,20 @@ S7 [DONE 2026-07-08] - `fig-geomx-contrast-diagnostics`
   existing primary GeoMx top tables; no new inference model, AOI exclusion,
   DE change, or report-claim change.
 
-S8 - `fig-geomx-roi-segment-replicates`
+S8 [DONE 2026-07-08] - `fig-geomx-roi-segment-replicates`
 - Purpose: ROI/segment/repeated-observation structure figure.
 - Panels: paired ROI/segment score differences when repeated segments exist; otherwise
   bio-unit/slide support map, AOI-per-unit counts, and duplicateCorrelation block audit.
 - Source basis: GeoMx segment/ROI model; Bruker line/summary visualizations.
 - Acceptance: clarifies pseudo-replication risk and why bio-unit blocking is load-bearing.
+- Status: landed as compact `geomx_de$roi_replicates` + visible `_modality.qmd` figure.
+  Live data = 91 AOIs, 15/16 expected bio-units present, one segment level (`Segment 1`),
+  duplicateCorrelation blocks 2-7 AOIs, consensus correlation = 0.0085, and AOI-pair
+  expression-correlation counts = 248 same-bio-unit / 763 same-genotype different-unit /
+  3,084 different-genotype pairs over 2,000 top-variable filter-passing genes. No paired
+  segment-difference panel is drawn because all AOIs use one segment level. No AOI
+  exclusion, DE change, or report-claim change. Full lean gate green; rendered HTML has
+  18 figure containers / 18 captions / 18 nonblank image alts.
 
 S9 - `fig-geomx-decon-feasibility`
 - Purpose: deconvolution/status exploratory figure without overstating abundance.

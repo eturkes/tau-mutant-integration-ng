@@ -506,6 +506,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   geomx_descriptive$sample_heatmap <- geomx_de$sample_heatmap
   geomx_descriptive$spatial_programs <- geomx_de$spatial_programs
   geomx_descriptive$contrast_diagnostics <- geomx_de$contrast_diagnostics
+  geomx_descriptive$roi_replicates <- geomx_de$roi_replicates
   descriptive <- list(
     GeoMx = geomx_descriptive,
     Proteome = proteome_modality_descriptor(proteome_de_24m),
@@ -525,6 +526,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
             is.data.frame(descriptive$GeoMx$spatial_programs$aoi),
             is.list(descriptive$GeoMx$contrast_diagnostics),
             is.data.frame(descriptive$GeoMx$contrast_diagnostics$volcano),
+            is.list(descriptive$GeoMx$roi_replicates),
+            is.data.frame(descriptive$GeoMx$roi_replicates$support),
             is.list(descriptive$Proteome), is.data.frame(descriptive$Proteome$pca),
             is.list(descriptive$Phospho), is.data.frame(descriptive$Phospho$heatmap))
 
@@ -551,7 +554,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data including GeoMx QC, normalization/RLE, ordination, gene-detection, sample-heatmap, spatial-program, and contrast-diagnostic descriptors; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data including GeoMx QC, normalization/RLE, ordination, gene-detection, sample-heatmap, spatial-program, contrast-diagnostic, and ROI-replicate descriptors; no heavy DE object"
     )
   )
 }

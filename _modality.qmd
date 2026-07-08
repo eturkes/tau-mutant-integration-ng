@@ -82,6 +82,15 @@ geomx_contrast_diagnostic_plot(msf$descriptive$GeoMx$contrast_diagnostics)
 ```
 
 ```{r}
+#| label: fig-geomx-roi-segment-replicates
+#| fig-width: 10.5
+#| fig-height: 8.8
+#| fig-cap: "GeoMx ROI and bio-unit replicate audit. Top left: genotype-by-bio-replicate support, where point area and labels show AOI counts and grey zero marks the absent unit. Top right: AOIs per bio-unit duplicateCorrelation block, with slide shape and genotype colour. Bottom: pairwise AOI expression correlations over top-variable TMM-logCPM genes, split into same bio-unit, same genotype but different bio-unit, and different-genotype pairs. The live data have one segment level, so no paired segment-difference panel is drawn; the figure changes no AOI exclusions or model terms."
+#| fig-alt: "GeoMx replicate-structure audit with a bio-unit support map, AOI counts per duplicateCorrelation block, and pairwise expression-correlation distributions comparing same-bio-unit, same-genotype different-bio-unit, and different-genotype AOI pairs."
+geomx_roi_replicate_plot(msf$descriptive$GeoMx$roi_replicates)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2

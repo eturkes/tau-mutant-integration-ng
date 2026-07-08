@@ -28,8 +28,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = SEVENTEEN figures: microglia (P1) + trajectory (P2) +
-seven GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays; contrast diagnostics) + three modality-native non-snRNAseq figures +
+REPORT SCOPE (current 2026-07-08): the rendered report = EIGHTEEN figures: microglia (P1) + trajectory (P2) +
+eight GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays; contrast diagnostics; ROI/segment replicate audit) + three modality-native non-snRNAseq figures +
 two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
@@ -83,12 +83,17 @@ Open steps (one figure/session):
   nlgf_in_p301s 1,386 up/541 down, tau_in_nlgf 126 up/270 down,
   interaction 45 up/117 down; no new inference model, AOI exclusion, or
   report-claim change.
-- S8 [TODO] `fig-geomx-roi-segment-replicates`: repeated-observation / ROI-segment /
-  duplicateCorrelation block audit figure.
+- S8 [DONE 2026-07-08] `fig-geomx-roi-segment-replicates`: repeated-observation /
+  ROI-segment / duplicateCorrelation block audit figure. Outcome: compact
+  `geomx_de$roi_replicates` + report plot; 91 AOIs, 15/16 expected bio-units
+  present, all AOIs have one segment level, duplicateCorrelation blocks contain
+  2-7 AOIs, consensus correlation = 0.0085, and pairwise AOI correlations over
+  2,000 top-variable genes cover 248 same-bio-unit / 763 same-genotype-different-unit /
+  3,084 different-genotype pairs; no AOI exclusion, DE change, or report-claim change.
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S8.
+Next `$session-prompt` = EXECUTE S9.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1073,6 +1078,22 @@ Next `$session-prompt` = EXECUTE S8.
   or report-claim change. Focused target build green; full `scripts/check.sh`
   green; rendered HTML has 17 figures / 17 captions; Chromium PDF page-11 QA
   clean. Next = EXECUTE S8.
+- 2026-07-08 GeoMx exploratory figures S8 DONE -> `fig-geomx-roi-segment-replicates`.
+  Added `geomx_roi_replicate_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$roi_replicates`, and rendered
+  `geomx_roi_replicate_plot()` in `_modality.qmd`. The figure shows genotype-by-
+  bio-replicate AOI support, AOI counts per duplicateCorrelation block, and
+  AOI-pair expression-correlation distributions by same-bio-unit / same-genotype
+  different-unit / different-genotype relationship. Live data: 91 AOIs, 15/16
+  expected bio-units present (MAPTKI:1 absent), one segment level (`Segment 1`),
+  all 15 present bio-units are repeated-observation blocks, block sizes 2-7 AOIs,
+  duplicateCorrelation consensus = 0.0085, 19,959/19,963 genes filter-passing,
+  2,000 top-variable genes used for AOI-pair correlations, pair counts = 248 /
+  763 / 3,084. No paired segment-difference panel is drawn because all AOIs use
+  one segment level. No AOI exclusion, DE change, or report-claim change. Focused
+  target build and report render green; full `CHECK_SKIP_SYNC=1 scripts/check.sh`
+  green; rendered HTML has 18 figure containers / 18 captions / 18 nonblank image
+  alts. Next = EXECUTE S9.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
