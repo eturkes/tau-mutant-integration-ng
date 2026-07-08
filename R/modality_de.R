@@ -5,9 +5,10 @@
 # the 5 canonical contrasts. The amyloid-response logFC scatter (R/figures.R ->
 # modality_logfc_scatter_data) reads `nlgf_in_maptki` (y) vs `nlgf_in_p301s` (x) from these.
 # The torn-down auxiliary arms (GeoMx unblocked / bio-unit-collapsed sensitivities +
-# deconvolution preflight; proteome / phospho additive run-index sensitivity) are
-# INTENTIONALLY not restored -- they served the deconvolution / bulk-run-order caveats, not the
-# per-feature effect sizes this figure needs. Shared machinery reused from HEAD: fit_limma_log /
+# SpatialDecon abundance fitting; proteome / phospho additive run-index sensitivity) are
+# INTENTIONALLY not restored -- they served deconvolution / bulk-run-order caveats, not the
+# per-feature effect sizes this figure needs. A compact GeoMx decon-feasibility descriptor below
+# is descriptive only and never emits abundance betas or claims. Shared machinery reused from HEAD: fit_limma_log /
 # median_normalise / prevalence_filter (R/de_pb.R), factorial_design / make_contrast_matrix
 # (R/design.R), match_intensity_columns / load_geomx / read_spectronaut_tsv / proteomics_sample_meta
 # (R/io.R). All calls namespace-qualified so the file sources cleanly into any session.
@@ -617,6 +618,246 @@ geomx_roi_replicate_descriptor <- function(counts, meta, design, duplicate_corre
       residual_df = nrow(design) - qr(design)$rank,
       model = "primary GeoMx DE uses slide fixed effect and bio-unit duplicateCorrelation; this audit changes no AOI exclusions or model terms",
       correlation_basis = "Pearson AOI-pair correlations over TMM-logCPM top-variable filterByExpr-kept genes"
+    )
+  )
+}
+
+geomx_decon_feasibility_descriptor <- function(counts, meta, design, spatial_aoi,
+                                               min_count = 5,
+                                               marker_sets = list(
+                                                 Microglia = microglia_identity_markers,
+                                                 Homeostatic = canonical_microglia_markers$Homeostatic,
+                                                 DAM = canonical_microglia_markers$DAM,
+                                                 IFN = canonical_microglia_markers$IFN,
+                                                 MHC_APC = canonical_microglia_markers$MHC_APC,
+                                                 Astrocyte = contam_signatures$Astro,
+                                                 Oligodendrocyte = contam_signatures$Oligo,
+                                                 Neuron = contam_signatures$Neuron
+                                               )) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            is.data.frame(spatial_aoi),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
+            is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
+            !any(names(marker_sets) == ""),
+            anyDuplicated(rownames(counts)) == 0L)
+  need <- c("slide", "roi", "segment", "SampleID", "genotype", "area", "x", "y",
+            "q3_factor", "neg_background", "nuclei")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx decon-feasibility metadata missing columns: ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+  need_spatial <- c("aoi", "signed_response_score")
+  missing_spatial <- setdiff(need_spatial, names(spatial_aoi))
+  if (length(missing_spatial)) {
+    stop("GeoMx decon-feasibility spatial data missing columns: ",
+         paste(missing_spatial, collapse = ", "), call. = FALSE)
+  }
+
+  marker_sets <- lapply(marker_sets, function(x) unique(trimws(as.character(x))))
+  marker_sets <- lapply(marker_sets, function(x) x[!is.na(x) & x != ""])
+  if (any(vapply(marker_sets, length, integer(1)) == 0L)) {
+    stop("GeoMx decon-feasibility marker set is empty", call. = FALSE)
+  }
+
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for decon feasibility",
+                       call. = FALSE)
+  names(keep) <- rownames(counts)
+  dge <- edgeR::normLibSizes(dge0, method = "TMM")
+  logcpm <- edgeR::cpm(dge, normalized.lib.sizes = TRUE, log = TRUE,
+                       prior.count = 1)
+  stopifnot(identical(rownames(logcpm), rownames(counts)),
+            identical(colnames(logcpm), colnames(counts)),
+            all(is.finite(logcpm)))
+
+  genes <- data.frame(
+    symbol = rownames(counts),
+    mean_count = as.numeric(rowMeans(counts)),
+    mean_logcpm = as.numeric(rowMeans(logcpm)),
+    detect_fraction_min_count = as.numeric(rowMeans(counts >= min_count)),
+    filter_pass = as.logical(keep),
+    stringsAsFactors = FALSE
+  )
+  stopifnot(all(is.finite(genes$mean_count)), all(genes$mean_count >= 0),
+            all(is.finite(genes$mean_logcpm)),
+            all(is.finite(genes$detect_fraction_min_count)))
+
+  component_levels <- names(marker_sets)
+  coverage <- do.call(rbind, lapply(component_levels, function(component) {
+    sig <- marker_sets[[component]]
+    present <- intersect(sig, rownames(counts))
+    passing <- present[keep[present]]
+    metrics <- genes[match(present, genes$symbol), , drop = FALSE]
+    data.frame(
+      component = component,
+      n_signature = length(sig),
+      n_present = length(present),
+      n_filter_passing = length(passing),
+      coverage_fraction = length(present) / length(sig),
+      filter_fraction = length(passing) / length(sig),
+      median_detect_fraction = if (nrow(metrics)) {
+        stats::median(metrics$detect_fraction_min_count)
+      } else 0,
+      median_mean_logcpm = if (nrow(metrics)) stats::median(metrics$mean_logcpm) else 0,
+      stringsAsFactors = FALSE
+    )
+  }))
+  coverage$status <- ifelse(coverage$n_filter_passing >= 2L, "covered",
+                            ifelse(coverage$n_filter_passing == 1L, "thin", "absent"))
+  coverage$component <- factor(coverage$component, levels = component_levels)
+  coverage$status <- factor(coverage$status, levels = c("absent", "thin", "covered"))
+  rownames(coverage) <- NULL
+  stopifnot(all(is.finite(coverage$n_signature)), all(coverage$n_signature >= 1L),
+            all(is.finite(coverage$n_present)), all(is.finite(coverage$n_filter_passing)),
+            all(is.finite(coverage$coverage_fraction)),
+            all(is.finite(coverage$filter_fraction)),
+            all(is.finite(coverage$median_detect_fraction)),
+            all(is.finite(coverage$median_mean_logcpm)),
+            !anyNA(coverage$status))
+
+  score_components <- as.character(coverage$component[coverage$n_filter_passing >= 2L])
+  if (!length(score_components)) {
+    stop("GeoMx decon-feasibility marker sets have no covered components", call. = FALSE)
+  }
+  logcpm_keep <- logcpm[keep, , drop = FALSE]
+  row_mean <- rowMeans(logcpm_keep)
+  row_sd <- apply(logcpm_keep, 1L, stats::sd)
+  row_sd[!is.finite(row_sd) | row_sd <= 0] <- 1
+  z <- sweep(sweep(logcpm_keep, 1L, row_mean, "-"), 1L, row_sd, "/")
+  z[!is.finite(z)] <- 0
+
+  score_list <- lapply(score_components, function(component) {
+    present <- intersect(marker_sets[[component]], rownames(z))
+    colMeans(z[present, , drop = FALSE])
+  })
+  names(score_list) <- score_components
+  score_matrix <- do.call(cbind, score_list)
+  rownames(score_matrix) <- colnames(counts)
+  colnames(score_matrix) <- score_components
+  stopifnot(all(is.finite(score_matrix)), identical(rownames(score_matrix), colnames(counts)))
+
+  resid_ss <- stats::setNames(rep(0, ncol(counts)), colnames(counts))
+  resid_n <- stats::setNames(rep(0L, ncol(counts)), colnames(counts))
+  for (component in score_components) {
+    present <- intersect(marker_sets[[component]], rownames(z))
+    res <- sweep(z[present, , drop = FALSE], 2L, score_matrix[, component], "-")
+    resid_ss <- resid_ss + colSums(res^2)
+    resid_n <- resid_n + nrow(res)
+  }
+  marker_residual_rmse <- sqrt(resid_ss / pmax(resid_n, 1L))
+  stopifnot(all(is.finite(marker_residual_rmse)))
+
+  library_size <- Matrix::colSums(counts)
+  q3_scaled_background <- as.numeric(meta$neg_background) / as.numeric(meta$q3_factor)
+  qn <- function(x, q) as.numeric(stats::quantile(as.numeric(x), q, names = FALSE, type = 7))
+  thresholds <- c(
+    library_size_low = qn(library_size, 0.05),
+    area_low = qn(meta$area, 0.05),
+    q3_factor_high = qn(meta$q3_factor, 0.95),
+    q3_scaled_background_high = qn(q3_scaled_background, 0.95)
+  )
+  aoi <- data.frame(
+    aoi = rownames(meta),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment),
+                     levels = sort(unique(as.character(meta$segment)))),
+    sample_id = as.character(meta$SampleID),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    aoi_area = as.numeric(meta$area),
+    x_coord = as.numeric(meta$x),
+    y_coord = as.numeric(meta$y),
+    library_size = as.numeric(library_size[rownames(meta)]),
+    q3_factor = as.numeric(meta$q3_factor),
+    neg_background = as.numeric(meta$neg_background),
+    q3_scaled_background = q3_scaled_background,
+    nuclei = as.numeric(meta$nuclei),
+    signed_response_score = as.numeric(spatial_aoi$signed_response_score[
+      match(rownames(meta), spatial_aoi$aoi)
+    ]),
+    marker_residual_rmse = as.numeric(marker_residual_rmse[rownames(meta)]),
+    max_abs_marker_score = as.numeric(apply(abs(score_matrix[rownames(meta), , drop = FALSE]),
+                                            1L, max)),
+    stringsAsFactors = FALSE
+  )
+  aoi$nuclei_usable <- aoi$nuclei >= 0
+  aoi$low_library <- aoi$library_size <= thresholds[["library_size_low"]] &
+    aoi$library_size < max(aoi$library_size)
+  aoi$small_area <- aoi$aoi_area <= thresholds[["area_low"]] &
+    aoi$aoi_area < max(aoi$aoi_area)
+  aoi$high_q3 <- aoi$q3_factor >= thresholds[["q3_factor_high"]] &
+    aoi$q3_factor > min(aoi$q3_factor)
+  aoi$high_q3_scaled_background <- aoi$q3_scaled_background >=
+    thresholds[["q3_scaled_background_high"]] &
+    aoi$q3_scaled_background > min(aoi$q3_scaled_background)
+  aoi$input_status <- ifelse(
+    !aoi$nuclei_usable, "absolute-count blocked",
+    ifelse(aoi$high_q3 | aoi$high_q3_scaled_background, "background/Q3 tail",
+           ifelse(aoi$low_library | aoi$small_area, "low-input tail",
+                  "no local blocker"))
+  )
+  status_levels <- c("no local blocker", "low-input tail", "background/Q3 tail",
+                     "absolute-count blocked")
+  aoi$input_status <- factor(aoi$input_status, levels = status_levels)
+  rownames(aoi) <- NULL
+  stopifnot(!anyNA(aoi$slide), !anyNA(aoi$segment), !anyNA(aoi$genotype),
+            all(is.finite(aoi$aoi_area)), all(aoi$aoi_area > 0),
+            all(is.finite(aoi$x_coord)), all(is.finite(aoi$y_coord)),
+            all(is.finite(aoi$library_size)), all(aoi$library_size >= 0),
+            all(is.finite(aoi$q3_factor)), all(aoi$q3_factor > 0),
+            all(is.finite(aoi$neg_background)), all(is.finite(aoi$q3_scaled_background)),
+            all(is.finite(aoi$nuclei)), all(is.finite(aoi$signed_response_score)),
+            all(is.finite(aoi$marker_residual_rmse)),
+            all(is.finite(aoi$max_abs_marker_score)), !anyNA(aoi$input_status))
+
+  count_grid <- expand.grid(
+    genotype = genotype_levels,
+    input_status = status_levels,
+    stringsAsFactors = FALSE
+  )
+  count_obs <- stats::aggregate(
+    list(n_aoi = aoi$aoi),
+    by = list(genotype = as.character(aoi$genotype),
+              input_status = as.character(aoi$input_status)),
+    FUN = length
+  )
+  status_counts <- merge(count_grid, count_obs, by = c("genotype", "input_status"),
+                         all.x = TRUE, sort = FALSE)
+  status_counts$n_aoi[is.na(status_counts$n_aoi)] <- 0L
+  status_counts$genotype <- factor(status_counts$genotype, levels = genotype_levels)
+  status_counts$input_status <- factor(status_counts$input_status, levels = status_levels)
+  status_counts$n_aoi <- as.integer(status_counts$n_aoi)
+  rownames(status_counts) <- NULL
+  stopifnot(!anyNA(status_counts$genotype), !anyNA(status_counts$input_status),
+            all(is.finite(status_counts$n_aoi)), all(status_counts$n_aoi >= 0))
+
+  list(
+    coverage = coverage,
+    aoi = aoi,
+    status_counts = status_counts,
+    thresholds = thresholds,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      min_count = min_count,
+      n_components = length(component_levels),
+      n_score_components = length(score_components),
+      score_components = score_components,
+      n_nuclei_sentinel = sum(!aoi$nuclei_usable),
+      n_background_q3_tail = sum(aoi$input_status == "background/Q3 tail"),
+      n_low_input_tail = sum(aoi$input_status == "low-input tail"),
+      spatialdecon_dependency_declared = FALSE,
+      spatialdecon_live_targets = FALSE,
+      live_status = "blocked diagnostic: current lean DAG has no SpatialDecon dependency, reference-profile, beta, or abundance-DE target; this descriptor reports preconditions and marker-coherence residuals only",
+      coverage_basis = "candidate decon marker-set overlap with GeoMx WTA genes and the existing filterByExpr-kept feature set",
+      residual_basis = "per-AOI RMSE after each covered marker gene z-score is reconstructed by its component mean score; proxy fit QC only, not a SpatialDecon residual",
+      input_status_rule = "absolute-count blocked = nuclei sentinel; background/Q3 tail = top 5% Q3 factor or Q3-scaled negative background; low-input tail = bottom 5% library size or AOI area"
     )
   )
 }
@@ -1637,6 +1878,9 @@ run_geomx_de <- function(geomx, min_count = 5) {
     roi_replicates = geomx_roi_replicate_descriptor(
       counts, meta, fd$design, primary$duplicate_correlation, spatial$aoi,
       min_count = min_count
+    ),
+    decon_feasibility = geomx_decon_feasibility_descriptor(
+      counts, meta, fd$design, spatial$aoi, min_count = min_count
     ),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),

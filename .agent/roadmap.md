@@ -28,8 +28,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = EIGHTEEN figures: microglia (P1) + trajectory (P2) +
-eight GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays; contrast diagnostics; ROI/segment replicate audit) + three modality-native non-snRNAseq figures +
+REPORT SCOPE (current 2026-07-08): the rendered report = NINETEEN figures: microglia (P1) + trajectory (P2) +
+nine GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays; contrast diagnostics; ROI/segment replicate audit; decon feasibility) + three modality-native non-snRNAseq figures +
 two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
@@ -90,10 +90,17 @@ Open steps (one figure/session):
   2-7 AOIs, consensus correlation = 0.0085, and pairwise AOI correlations over
   2,000 top-variable genes cover 248 same-bio-unit / 763 same-genotype-different-unit /
   3,084 different-genotype pairs; no AOI exclusion, DE change, or report-claim change.
-- S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
-  with abundance display only if re-earned in-session.
+- S9 [DONE 2026-07-08] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
+  with abundance display only if re-earned in-session. Outcome: compact
+  `geomx_de$decon_feasibility` + report plot; 91 AOIs, 19,959/19,963 genes kept,
+  8/8 candidate marker components covered with >=2 filter-passing marker genes,
+  no live `SpatialDecon` dependency or reference-profile/beta/abundance-DE target,
+  and AOI input-status bins = 37 no
+  local blocker / 3 low-input tail / 9 background-Q3 tail / 42 absolute-count
+  blocked by nuclei sentinel. Figure is a blocked diagnostic; no abundance
+  claim, AOI exclusion, DE change, or report-claim change.
 
-Next `$session-prompt` = EXECUTE S9.
+Next `$session-prompt` = CLOSE-OUT GeoMx exploratory figures.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1094,6 +1101,21 @@ Next `$session-prompt` = EXECUTE S9.
   target build and report render green; full `CHECK_SKIP_SYNC=1 scripts/check.sh`
   green; rendered HTML has 18 figure containers / 18 captions / 18 nonblank image
   alts. Next = EXECUTE S9.
+- 2026-07-08 GeoMx exploratory figures S9 DONE -> `fig-geomx-decon-feasibility`.
+  Added `geomx_decon_feasibility_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$decon_feasibility`, and rendered
+  `geomx_decon_feasibility_plot()` in `_modality.qmd`. The figure shows candidate
+  marker-set coverage, AOI precondition/blocker coordinates, genotype-level
+  blocker counts, and marker-coherence proxy residuals. Live data: 91 AOIs,
+  19,959/19,963 genes filter-passing, 8/8 marker components covered with >=2
+  filter-passing marker genes, no live `SpatialDecon` dependency or
+  reference-profile/beta/abundance-DE target, and AOI input-status bins = 37 no
+  local blocker / 3 low-input tail / 9 background-Q3 tail / 42 absolute-count
+  blocked by nuclei sentinel. The figure is a blocked diagnostic, not a
+  deconvolved cell-abundance claim. Focused target build green; isolated plot
+  render green under `warn=2`; full `CHECK_SKIP_SYNC=1 scripts/check.sh` green;
+  rendered HTML has 19 captions / 19 nonblank image alts; Chromium PDF page-13
+  QA clean. Next = CLOSE-OUT active plan.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

@@ -91,6 +91,15 @@ geomx_roi_replicate_plot(msf$descriptive$GeoMx$roi_replicates)
 ```
 
 ```{r}
+#| label: fig-geomx-decon-feasibility
+#| fig-width: 10.5
+#| fig-height: 9.2
+#| fig-cap: "GeoMx deconvolution feasibility diagnostic. Top left: candidate marker-set coverage for broad and microglial components, with open points showing WTA presence and filled points showing genes retained by the existing GeoMx filter. Top right: AOI coordinate map of decon preconditions, including nuclei sentinels and background/Q3 or low-input tails. Bottom left: AOI counts by genotype and precondition class. Bottom right: marker-coherence residuals over covered marker sets. This is a blocked diagnostic: the live report DAG has no SpatialDecon dependency, reference-profile, beta, or abundance-DE target, so the figure makes no cell-abundance claim."
+#| fig-alt: "GeoMx deconvolution feasibility figure showing marker-set coverage, an AOI coordinate map of nuclei and input-status blockers, genotype-level AOI counts by blocker class, and proxy marker-coherence residuals; the caption states that deconvolution abundance remains blocked."
+geomx_decon_feasibility_plot(msf$descriptive$GeoMx$decon_feasibility)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2

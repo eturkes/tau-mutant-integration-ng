@@ -1630,6 +1630,222 @@ geomx_roi_replicate_plot <- function(roi_replicates,
     patchwork::plot_annotation(title = title, subtitle = subtitle)
 }
 
+geomx_decon_feasibility_plot <- function(decon_feasibility,
+                                         title = "GeoMx decon feasibility") {
+  stopifnot(is.list(decon_feasibility),
+            is.data.frame(decon_feasibility$coverage),
+            is.data.frame(decon_feasibility$aoi),
+            is.data.frame(decon_feasibility$status_counts))
+
+  coverage <- decon_feasibility$coverage
+  need_coverage <- c("component", "n_signature", "n_present", "n_filter_passing",
+                     "coverage_fraction", "filter_fraction", "median_detect_fraction",
+                     "status")
+  miss_coverage <- setdiff(need_coverage, names(coverage))
+  if (length(miss_coverage)) {
+    stop("GeoMx decon-feasibility coverage data missing columns: ",
+         paste(miss_coverage, collapse = ", "), call. = FALSE)
+  }
+  coverage <- coverage[is.finite(coverage$n_signature) &
+                         is.finite(coverage$n_present) &
+                         is.finite(coverage$n_filter_passing) &
+                         is.finite(coverage$coverage_fraction) &
+                         is.finite(coverage$filter_fraction) &
+                         is.finite(coverage$median_detect_fraction), ,
+                       drop = FALSE]
+  if (!nrow(coverage)) stop("GeoMx decon-feasibility coverage data has no finite rows",
+                            call. = FALSE)
+  component_levels <- as.character(coverage$component)
+  coverage$component_plot <- factor(as.character(coverage$component),
+                                    levels = rev(component_levels))
+  coverage$status <- factor(as.character(coverage$status),
+                            levels = c("absent", "thin", "covered"))
+  coverage$label <- paste0(coverage$n_filter_passing, "/", coverage$n_signature)
+  stopifnot(!anyNA(coverage$component_plot), !anyNA(coverage$status))
+  coverage_palette <- c(absent = "#B9B1A4", thin = "#C8841C", covered = "#0B7A75")
+
+  coverage_plot <- ggplot2::ggplot(coverage, ggplot2::aes(y = component_plot)) +
+    ggplot2::geom_segment(
+      ggplot2::aes(x = 0, xend = coverage_fraction, yend = component_plot),
+      colour = "#BFB8AA", linewidth = 0.45, alpha = 0.75) +
+    ggplot2::geom_point(
+      ggplot2::aes(x = coverage_fraction),
+      shape = 21, size = 2.1, fill = "#F8F5ED", colour = "#5E584F", stroke = 0.28) +
+    ggplot2::geom_point(
+      ggplot2::aes(x = filter_fraction, fill = status, size = n_filter_passing),
+      shape = 21, colour = "#20242A", stroke = 0.28, alpha = 0.96) +
+    ggplot2::geom_text(
+      ggplot2::aes(x = pmin(1, pmax(coverage_fraction, filter_fraction) + 0.055),
+                   label = label),
+      size = 2.25, colour = "#20242A", hjust = 0) +
+    ggplot2::scale_fill_manual(values = coverage_palette, drop = FALSE,
+                               name = "coverage") +
+    ggplot2::scale_size_area(max_size = 5.2, name = "kept genes") +
+    ggplot2::scale_x_continuous(
+      limits = c(0, 1.13),
+      breaks = seq(0, 1, by = 0.25),
+      labels = scales::percent_format(accuracy = 1),
+      expand = ggplot2::expansion(mult = c(0.02, 0.01))) +
+    ggplot2::labs(
+      x = "Marker-set fraction", y = NULL,
+      title = "Reference marker coverage",
+      subtitle = "Open point = present in WTA; filled point = filterByExpr-kept"
+    ) +
+    theme_tau(base_size = 8.3) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      axis.text.y = ggplot2::element_text(size = 7.2),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+
+  aoi <- decon_feasibility$aoi
+  need_aoi <- c("slide", "genotype", "x_coord", "y_coord", "library_size",
+                "q3_scaled_background", "input_status", "marker_residual_rmse")
+  miss_aoi <- setdiff(need_aoi, names(aoi))
+  if (length(miss_aoi)) {
+    stop("GeoMx decon-feasibility AOI data missing columns: ",
+         paste(miss_aoi, collapse = ", "), call. = FALSE)
+  }
+  aoi <- aoi[is.finite(aoi$x_coord) & is.finite(aoi$y_coord) &
+               is.finite(aoi$library_size) &
+               is.finite(aoi$q3_scaled_background) &
+               is.finite(aoi$marker_residual_rmse), ,
+             drop = FALSE]
+  if (!nrow(aoi)) stop("GeoMx decon-feasibility AOI data has no finite rows",
+                       call. = FALSE)
+  aoi$slide <- factor(aoi$slide)
+  aoi$genotype <- factor(as.character(aoi$genotype), levels = genotype_levels)
+  status_levels <- c("no local blocker", "low-input tail", "background/Q3 tail",
+                     "absolute-count blocked")
+  aoi$input_status <- factor(as.character(aoi$input_status), levels = status_levels)
+  stopifnot(!anyNA(aoi$slide), !anyNA(aoi$genotype), !anyNA(aoi$input_status))
+  status_palette <- c(
+    `no local blocker` = "#0B7A75",
+    `low-input tail` = "#C8841C",
+    `background/Q3 tail` = "#7D5CB8",
+    `absolute-count blocked` = "#A63A50"
+  )
+  lib_breaks <- pretty(log10(pmax(aoi$library_size, 1)), n = 3)
+  lib_breaks <- lib_breaks[is.finite(lib_breaks)]
+
+  blocker_map <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
+    ggplot2::geom_point(
+      ggplot2::aes(fill = input_status, colour = genotype,
+                   size = log10(pmax(library_size, 1))),
+      shape = 21, stroke = 0.36, alpha = 0.95) +
+    ggplot2::scale_fill_manual(values = status_palette, drop = FALSE,
+                               name = "input status") +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_size_continuous(breaks = lib_breaks, name = "log10 library") +
+    ggplot2::facet_wrap(ggplot2::vars(slide), ncol = 4) +
+    ggplot2::coord_equal() +
+    ggplot2::scale_y_reverse() +
+    ggplot2::labs(
+      x = "ROI coordinate X", y = "ROI coordinate Y",
+      title = "AOI blocker map",
+      subtitle = "Fill marks decon preconditions; ring marks genotype"
+    ) +
+    theme_tau(base_size = 8.0) +
+    ggplot2::guides(
+      fill = ggplot2::guide_legend(order = 1, override.aes = list(size = 3.0)),
+      colour = ggplot2::guide_legend(order = 2, override.aes = list(fill = "white",
+                                                                    size = 2.8)),
+      size = ggplot2::guide_legend(order = 3)
+    ) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      axis.text = ggplot2::element_text(size = 5.7),
+      axis.title = ggplot2::element_text(size = 7.2),
+      strip.text = ggplot2::element_text(size = 7.0),
+      panel.spacing = grid::unit(0.32, "lines")
+    )
+
+  status_counts <- decon_feasibility$status_counts
+  need_counts <- c("genotype", "input_status", "n_aoi")
+  miss_counts <- setdiff(need_counts, names(status_counts))
+  if (length(miss_counts)) {
+    stop("GeoMx decon-feasibility status-count data missing columns: ",
+         paste(miss_counts, collapse = ", "), call. = FALSE)
+  }
+  status_counts <- status_counts[is.finite(status_counts$n_aoi), , drop = FALSE]
+  if (!nrow(status_counts)) stop("GeoMx decon-feasibility status counts are empty",
+                                call. = FALSE)
+  status_counts$genotype <- factor(as.character(status_counts$genotype),
+                                   levels = genotype_levels)
+  status_counts$input_status <- factor(as.character(status_counts$input_status),
+                                       levels = status_levels)
+  stopifnot(!anyNA(status_counts$genotype), !anyNA(status_counts$input_status))
+  status_counts$label <- ifelse(status_counts$n_aoi > 0,
+                                as.character(status_counts$n_aoi), "")
+  count_plot <- ggplot2::ggplot(
+    status_counts,
+    ggplot2::aes(genotype, n_aoi, fill = input_status)
+  ) +
+    ggplot2::geom_col(width = 0.72, colour = "#F8F5ED", linewidth = 0.2) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = label),
+      position = ggplot2::position_stack(vjust = 0.5),
+      size = 2.3, colour = "#20242A") +
+    ggplot2::scale_fill_manual(values = status_palette, drop = FALSE,
+                               name = "input status") +
+    ggplot2::labs(
+      x = NULL, y = "AOIs",
+      title = "Precondition counts",
+      subtitle = "Nuclei sentinels block absolute-count scaling; tails flag input-risk AOIs"
+    ) +
+    theme_tau(base_size = 8.2) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.x = ggplot2::element_text(angle = 35, hjust = 1)
+    )
+
+  residual_plot <- ggplot2::ggplot(
+    aoi,
+    ggplot2::aes(input_status, marker_residual_rmse, colour = genotype)
+  ) +
+    ggplot2::geom_boxplot(
+      data = aoi,
+      mapping = ggplot2::aes(x = input_status, y = marker_residual_rmse,
+                             group = input_status),
+      inherit.aes = FALSE,
+      width = 0.24, outlier.shape = NA, fill = "#F8F5ED",
+      colour = "#20242A", linewidth = 0.26) +
+    ggplot2::geom_point(
+      position = ggplot2::position_jitter(width = 0.13, height = 0, seed = 42L),
+      size = 1.15, alpha = 0.72) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::labs(
+      x = NULL, y = "marker residual RMSE",
+      title = "Proxy fit residual",
+      subtitle = "Marker-coherence RMSE; proxy QC, not a SpatialDecon residual"
+    ) +
+    theme_tau(base_size = 8.2) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.x = ggplot2::element_text(angle = 25, hjust = 1, size = 6.8),
+      plot.margin = ggplot2::margin(4, 8, 4, 4)
+    )
+
+  prov <- decon_feasibility$provenance
+  subtitle <- sprintf(
+    "%s/%s AOIs carry nuclei sentinels; %s/%s candidate components have >=2 filter-passing marker genes. %s",
+    prov$n_nuclei_sentinel %||% sum(!aoi$nuclei_usable),
+    prov$n_aoi %||% nrow(aoi),
+    prov$n_score_components %||% sum(coverage$n_filter_passing >= 2L),
+    prov$n_components %||% nrow(coverage),
+    prov$live_status %||% "blocked diagnostic; no cell-abundance claim"
+  )
+  subtitle <- paste(strwrap(subtitle, width = 126), collapse = "\n")
+  top <- patchwork::wrap_plots(list(coverage_plot, blocker_map),
+                               ncol = 2, widths = c(0.92, 1.08))
+  bottom <- patchwork::wrap_plots(list(count_plot, residual_plot),
+                                  ncol = 2, widths = c(0.86, 1.14))
+  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = c(1.12, 0.88)) +
+    patchwork::plot_annotation(title = title, subtitle = subtitle)
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

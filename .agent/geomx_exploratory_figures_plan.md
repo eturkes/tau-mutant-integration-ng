@@ -36,7 +36,7 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has nine GeoMx figures after S8: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has ten GeoMx figures after S9: `fig-geomx-qc-atlas` = AOI QC atlas;
   `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
   `fig-geomx-ordination` = slide-faceted PCA/MDS + scree + PC1/PC2 loadings;
   `fig-geomx-gene-detection` = WTA gene detectability, existing filterByExpr decision,
@@ -48,6 +48,8 @@ Local seam:
   canonical GeoMx contrasts;
   `fig-geomx-roi-segment-replicates` = bio-unit support, AOI/block counts, and
   duplicateCorrelation block audit;
+  `fig-geomx-decon-feasibility` = marker coverage, AOI precondition/blocker map,
+  genotype blocker counts, and marker-coherence proxy residual;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
@@ -62,11 +64,11 @@ Local seam:
   `geomx_de$spatial_programs` carries compact S6 coordinate-only biology program data.
   `geomx_de$contrast_diagnostics` carries compact S7 volcano/MA/support data.
   `geomx_de$roi_replicates` carries compact S8 bio-unit support, block-size, and
-  AOI-pair-correlation data. Report chunks read these descriptors through
+  AOI-pair-correlation data. `geomx_de$decon_feasibility` carries compact S9 marker
+  coverage and blocked-input diagnostics. Report chunks read these descriptors through
   `modality_scatter_figures`.
-- Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
-  compact decon/status target in its own session or render a truthful blocked/feasibility
-  diagnostic, not an abundance claim.
+- Current lean DAG keeps SpatialDecon beta/abundance targets deleted. The S9 decon figure
+  renders a truthful blocked/feasibility diagnostic, not an abundance claim.
 
 ## Default Plan: One Figure Per Session
 
@@ -186,7 +188,7 @@ S8 [DONE 2026-07-08] - `fig-geomx-roi-segment-replicates`
   exclusion, DE change, or report-claim change. Full lean gate green; rendered HTML has
   18 figure containers / 18 captions / 18 nonblank image alts.
 
-S9 - `fig-geomx-decon-feasibility`
+S9 [DONE 2026-07-08] - `fig-geomx-decon-feasibility`
 - Purpose: deconvolution/status exploratory figure without overstating abundance.
 - Panels: reference-overlap/coverage, blocked-AOI beta-total or nuclei-sentinel map, and
   residual/fit QC; if decon is re-earned in-session, add abundance proportions/florets.
@@ -194,6 +196,15 @@ S9 - `fig-geomx-decon-feasibility`
   `florets`, collapsed abundance heatmap, reverse-decon residual diagnostics.
 - Acceptance: if live decon remains absent or blocked, the figure is a blocked diagnostic
   and says so in caption; no cell-abundance claim.
+- Status: landed as compact `geomx_de$decon_feasibility` + visible `_modality.qmd`
+  figure. Live data = 91 AOIs, 19,959/19,963 genes kept, 8/8 candidate marker
+  components covered with >=2 filter-passing marker genes, no live `SpatialDecon`
+  dependency, and no live reference-profile/beta/abundance-DE target. AOI input-status
+  bins = 37 no local blocker, 3 low-input tail, 9
+  background/Q3 tail, 42 absolute-count blocked by nuclei sentinel. Figure is a blocked
+  diagnostic; no abundance claim, AOI exclusion, DE change, or report-claim change.
+  Full lean gate green; rendered HTML has 19 captions / 19 nonblank image alts;
+  Chromium PDF page QA for the new figure clean.
 
 ## Alternative
 
@@ -204,7 +215,6 @@ plot contracts.
 
 ## Active-State Notes
 
-Default execution order is QC -> normalization -> ordination -> gene detectability ->
-heatmap -> spatial overlays -> DE diagnostics -> replicate structure -> decon/status.
-Later sessions may drop or merge a figure only after an implemented predecessor proves a
-figure redundant or unsupported by available local data; record that decision in roadmap.
+Default execution order completed: QC -> normalization -> ordination -> gene detectability ->
+heatmap -> spatial overlays -> DE diagnostics -> replicate structure -> decon/status. Next
+session mode from roadmap should close out the active plan.

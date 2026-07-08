@@ -104,7 +104,8 @@ list(
   # Primary per-contrast DE for the three non-snRNAseq modalities (R/modality_de.R): GeoMx
   # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation; compact GeoMx
   # descriptors include QC, normalization/RLE, ordination, gene detection, sample heatmap,
-  # coordinate-only spatial program overlays, and contrast diagnostics. 24M bulk proteome and
+  # coordinate-only spatial program overlays, contrast diagnostics, ROI/block audit, and
+  # decon-feasibility/status diagnostics. 24M bulk proteome and
   # phosphosite limma-trend on log2 median-normalised, prevalence-filtered intensities (no batch).
   # Each returns per-contrast topTables with logFC keyed by the 5 canonical contrasts.
   tar_target(geomx_de,        run_geomx_de(geomx),                       format = "qs"),
