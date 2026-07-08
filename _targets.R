@@ -113,8 +113,8 @@ list(
   # Compact per-modality amyloid-response logFC pairs: y = nlgf_in_maptki (amyloid on the tau-KO
   # background), x = nlgf_in_p301s (amyloid on the mutant-tau background). The interaction contrast is
   # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
-  # Functional-category scores over within-method Q99 off-diagonal genes/proteins from the
-  # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein means; unmapped
+  # Functional-category scores over off-diagonal genes/proteins from the
+  # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein aggregates; unmapped
   # symbols kept in fallback categories). Carries the retained compact GeoMx sample heatmap
   # through `descriptive$GeoMx`.
   # Reads only the compact DE topTables (no heavy object).

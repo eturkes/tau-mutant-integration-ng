@@ -26,8 +26,7 @@ ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
   facet_grid(substate ~ genotype, scales = "free_y") +
   scale_fill_substate(guide = "none") +
-  labs(x = "activation pseudotime", y = "nuclei per bin",
-       title = "Pseudotime density by genotype and substate") +
+  labs(x = "activation pseudotime", y = "nuclei per bin") +
   theme(panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = 30, hjust = 1))
 ```

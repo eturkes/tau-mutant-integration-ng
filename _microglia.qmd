@@ -53,7 +53,7 @@ ggplot(sm, aes(gene, substate)) +
                   breaks = c(0.1, 0.25, 0.5, 0.75),
                   labels = function(x) paste0(round(100 * x), "%")) +
   scale_y_discrete(limits = rev) +
-  labs(x = NULL, y = NULL, title = "Genes defining each microglia substate") +
+  labs(x = NULL, y = NULL) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
                                    size = 6.6, face = "italic"),
         panel.grid.major = element_line(linewidth = 0.2),
@@ -66,17 +66,17 @@ ggplot(sm, aes(gene, substate)) +
 #| label: plot-microglia-umap
 #| fig-width: 10
 #| fig-height: 4.5
-#| fig-alt: "Two UMAP panels show primary substate labels and DAM activation score."
+#| fig-alt: "Two UMAP panels show cluster-derived labels and DAM UCell z-scores."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
   scale_colour_substate(breaks = present_sub, name = "substate") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
-  labs(x = "UMAP 1", y = "UMAP 2", title = "Primary substate")
+  labs(x = "UMAP 1", y = "UMAP 2")
 
 p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
   geom_point(size = 0.25, alpha = 0.6) +
   scale_colour_rwb(name = "DAM z", midpoint = 0) +
-  labs(x = "UMAP 1", y = "UMAP 2", title = "DAM activation score")
+  labs(x = "UMAP 1", y = "UMAP 2")
 
 (p_sub | p_dam) +
   plot_annotation(tag_levels = "A")
@@ -92,7 +92,7 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   facet_wrap(~ genotype, ncol = 2) +
   scale_colour_substate(breaks = present_sub, name = "substate") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
-  labs(x = "UMAP 1", y = "UMAP 2", title = "Substates by genotype") +
+  labs(x = "UMAP 1", y = "UMAP 2") +
   theme(panel.grid = element_blank())
 ```
 
@@ -107,8 +107,7 @@ ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   scale_fill_substate(breaks = present_sub, name = "substate") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
                      expand = expansion(mult = c(0, 0.02))) +
-  labs(x = "batch", y = "unit proportion",
-       title = "Substate composition at replicate-unit resolution") +
+  labs(x = "batch", y = "unit proportion") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid.major.x = element_blank())
 ```

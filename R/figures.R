@@ -467,16 +467,16 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       data  = pair(pb_de_microglia$top, "gene",
                    symbol_label, symbol_gene, "snRNAseq")),
     GeoMx = list(
-      title = "GeoMx spatial (WTA)",
+      title = "GeoMx microglia (WTA)",
       data  = pair(geomx_de$primary$top, "symbol",
                    function(tt) as.character(tt$symbol),
                    function(tt) as.character(tt$symbol), "GeoMx")),
     Proteome = list(
-      title = "Bulk proteome (24M)",
+      title = "Bulk proteome",
       data  = pair(proteome_de_24m$top, "feature", gene_first_label,
                    protein_group_genes, "proteome")),
     Phospho = list(
-      title = "Bulk phosphoproteome (24M, protein means)",
+      title = "Bulk phosphoproteome",
       data  = collapse_phospho_by_protein(pair(phospho_de_24m$top, "feature", site_id_label,
                                                phospho_gene, "phospho")))
   )
@@ -841,7 +841,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       n_group_sets = length(group_sets),
       selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
       category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
-      phosphoproteomics_scoring = "phosphoproteomics points are parent-protein means of finite phosphosite logFC pairs; category scores use those displayed protein points",
+      phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
                integer(1)), order),

@@ -179,8 +179,6 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   label_cutoff_source <- attr(df, "offdiag_cutoff_source", exact = TRUE)
   df    <- df[is.finite(df$x) & is.finite(df$y), , drop = FALSE]
   stopifnot(nrow(df) > 0L)
-  rho_s <- suppressWarnings(stats::cor(df$x, df$y, method = "spearman"))
-  rho_p <- suppressWarnings(stats::cor(df$x, df$y, method = "pearson"))
   lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
   lim   <- if (is.finite(lim) && lim > 0) lim else 1
   # one label per feature: bulk assays reuse a site_id / gene across measured rows, so keep each label's
@@ -202,19 +200,6 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   }
   label_box_padding <- if (label_n >= 80L) 0.08 else 0.25
   label_point_padding <- if (label_n >= 80L) 0.03 else 0.10
-  cutoff <- attr(top, "offdiag_cutoff")
-  cutoff_source <- attr(top, "offdiag_cutoff_source") %||% ""
-  cutoff_name <- if (grepl("^pooled", cutoff_source)) {
-    "pooled cutoff"
-  } else if (grepl("^within-method", cutoff_source) || grepl("^panel", cutoff_source)) {
-    "within-method cutoff"
-  } else {
-    "cutoff"
-  }
-  label_subtitle <- if (is.finite(cutoff)) {
-    sprintf("labels = %s, %s |x-y| >= %.2f",
-            format(nrow(top), big.mark = ","), cutoff_name, cutoff)
-  } else "labels = 0"
   ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
@@ -236,11 +221,7 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                              max.iter = 20000L, max.time = 3,
                              segment.colour = "grey65") +
     ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
-    ggplot2::labs(
-      x = x_lab, y = y_lab, title = title,
-      subtitle = sprintf("Spearman = %.2f, Pearson = %.2f, n = %s\n%s",
-                         rho_s, rho_p, format(nrow(df), big.mark = ","), label_subtitle)
-    ) +
+    ggplot2::labs(x = x_lab, y = y_lab, title = title) +
     theme_tau()
 }
 
@@ -310,10 +291,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                                                        colour = "#2B2A27")),
       size = ggplot2::guide_legend(order = 3)
     ) +
-    ggplot2::labs(
-      x = "Aggregate amyloid log2FC", y = NULL, title = title,
-      subtitle = "Rows categorize within-method Q99 amyloid-effect scatter outliers; colour is P301S - MAPTKI"
-    ) +
+    ggplot2::labs(x = "Aggregate amyloid log2FC", y = NULL, title = title) +
     theme_tau(base_size = 10) +
     ggplot2::theme(
       axis.text.y = ggplot2::element_text(size = 8, lineheight = 0.92),
@@ -356,11 +334,7 @@ modality_volcano_plot <- function(volcano, title = NULL,
       point.padding = 0.06, max.iter = 20000L, max.time = 3) +
     ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE, name = NULL) +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
-    ggplot2::labs(
-      x = x_lab, y = "-log10 FDR", title = title,
-      subtitle = sprintf("FDR threshold = %.2f; labelled points are top-ranked by FDR and effect",
-                         alpha)
-    ) +
+    ggplot2::labs(x = x_lab, y = "-log10 FDR", title = title) +
     theme_tau(base_size = 9.5) +
     ggplot2::theme(legend.position = "bottom")
 }
@@ -2098,7 +2072,7 @@ proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
     ggplot2::labs(
       x = sprintf("PC1 (%.1f%%)", 100 * unique(pca$pc1_var)[[1]]),
       y = sprintf("PC2 (%.1f%%)", 100 * unique(pca$pc2_var)[[1]]),
-      title = title, subtitle = "Sample PCA of protein-group intensities") +
+      title = title) +
     theme_tau(base_size = 9.5) +
     ggplot2::theme(legend.position = "bottom")
 
@@ -2124,8 +2098,7 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
     scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
                    name = "row z") +
     ggplot2::scale_x_discrete(drop = TRUE) +
-    ggplot2::labs(x = "24M run index", y = NULL, title = title,
-                  subtitle = "Rows are top-ranked sites in the mutant-tau amyloid contrast") +
+    ggplot2::labs(x = "24M run index", y = NULL, title = title) +
     theme_tau(base_size = 8.5) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6.5),
