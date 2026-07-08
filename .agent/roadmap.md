@@ -28,15 +28,16 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = NINETEEN figures: microglia (P1) + trajectory (P2) +
-nine GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays; contrast diagnostics; ROI/segment replicate audit; decon feasibility) + three modality-native non-snRNAseq figures +
-two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
-off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
-targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
-R modules, tests, Python/uv surface, composition/sccomp target, per-substate pseudobulk, stageR layer,
-and prose-inventory utility remain deleted or retired from the live DAG (Ledger 2026-07-08). 29 targets remain. P3/P4/P5 + the figure-expansion
-passes below stay as historical DONE records (this roadmap holds the trajectory); their report chapters no
-longer exist.
+REPORT SCOPE (current 2026-07-08): the rendered report = TEN figures: microglia (P1) + trajectory (P2) +
+one GeoMx modality-native figure (the former Figure 10 sample heatmap), two retained bulk modality-native
+figures (proteome, phosphoproteome), and two modality-context figures (four-method amyloid-response logFC
+scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
+snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures; GeoMx carries only
+the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
+chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-substate pseudobulk,
+stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
+the live DAG (Ledger 2026-07-08). 29 targets remain. P3/P4/P5 + the figure-expansion passes below stay as
+historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
@@ -1060,6 +1061,13 @@ user before writing the plan.
   render green under `warn=2`; full `CHECK_SKIP_SYNC=1 scripts/check.sh` green;
   rendered HTML has 19 captions / 19 nonblank image alts; Chromium PDF page-13
   QA clean. Next = CLOSE-OUT active plan.
+- 2026-07-08 GeoMx native figure curation DONE (ad hoc user task): retained only former
+  Figure 10 (`fig-geomx-sample-heatmap`) as the GeoMx panel under "Non-snRNAseq
+  modality-native figures"; removed visible GeoMx QC/normalization/ordination/gene-detection/
+  spatial-program/contrast/ROI/decon diagnostics plus `fig-modality-geomx-landscape`. Kept the
+  proteome and phosphoproteome native figures plus the two modality-context figures. `geomx_de`
+  and `modality_scatter_figures` now carry only `sample_heatmap` as the GeoMx descriptive
+  payload; rendered surface expected = 10 figures, target count unchanged at 29.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

@@ -498,39 +498,14 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     min_genes = group_min_genes,
     max_groups = group_max_groups
   )
-  geomx_descriptive <- geomx_de$spatial
-  geomx_descriptive$qc <- geomx_de$qc
-  geomx_descriptive$normalization <- geomx_de$normalization
-  geomx_descriptive$ordination <- geomx_de$ordination
-  geomx_descriptive$gene_detection <- geomx_de$gene_detection
-  geomx_descriptive$sample_heatmap <- geomx_de$sample_heatmap
-  geomx_descriptive$spatial_programs <- geomx_de$spatial_programs
-  geomx_descriptive$contrast_diagnostics <- geomx_de$contrast_diagnostics
-  geomx_descriptive$roi_replicates <- geomx_de$roi_replicates
-  geomx_descriptive$decon_feasibility <- geomx_de$decon_feasibility
   descriptive <- list(
-    GeoMx = geomx_descriptive,
+    GeoMx = list(sample_heatmap = geomx_de$sample_heatmap),
     Proteome = proteome_modality_descriptor(proteome_de_24m),
     Phospho = phospho_modality_descriptor(phospho_de_24m)
   )
-  stopifnot(is.list(descriptive$GeoMx), is.data.frame(descriptive$GeoMx$aoi),
-            is.list(descriptive$GeoMx$qc), is.data.frame(descriptive$GeoMx$qc$metrics),
-            is.list(descriptive$GeoMx$normalization),
-            is.data.frame(descriptive$GeoMx$normalization$rle),
-            is.list(descriptive$GeoMx$ordination),
-            is.data.frame(descriptive$GeoMx$ordination$sample),
-            is.list(descriptive$GeoMx$gene_detection),
-            is.data.frame(descriptive$GeoMx$gene_detection$genes),
+  stopifnot(is.list(descriptive$GeoMx),
             is.list(descriptive$GeoMx$sample_heatmap),
             is.data.frame(descriptive$GeoMx$sample_heatmap$heatmap),
-            is.list(descriptive$GeoMx$spatial_programs),
-            is.data.frame(descriptive$GeoMx$spatial_programs$aoi),
-            is.list(descriptive$GeoMx$contrast_diagnostics),
-            is.data.frame(descriptive$GeoMx$contrast_diagnostics$volcano),
-            is.list(descriptive$GeoMx$roi_replicates),
-            is.data.frame(descriptive$GeoMx$roi_replicates$support),
-            is.list(descriptive$GeoMx$decon_feasibility),
-            is.data.frame(descriptive$GeoMx$decon_feasibility$aoi),
             is.list(descriptive$Proteome), is.data.frame(descriptive$Proteome$pca),
             is.list(descriptive$Phospho), is.data.frame(descriptive$Phospho$heatmap))
 
@@ -557,7 +532,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data including GeoMx QC, normalization/RLE, ordination, gene-detection, sample-heatmap, spatial-program, contrast-diagnostic, ROI-replicate, and decon-feasibility descriptors; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, proteome PCA/volcano, phosphoproteome volcano/heatmap; no heavy DE object"
     )
   )
 }

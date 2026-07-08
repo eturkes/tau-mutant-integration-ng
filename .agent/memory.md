@@ -16,14 +16,13 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-08): 19 figures, 3 qmd chapters, expected 29 targets. Infrastructure
-that does not directly feed the final analysis document is removed: committed tests, Python/uv
-files, composition/sccomp/CmdStan target, per-substate pseudobulk, prose inventory, stageR
-layer, mechanism/crossmodality/qc/story chapters and modules. The GeoMx QC atlas,
-normalization/RLE, ordination, gene-detection, sample-heatmap, spatial-program,
-contrast-diagnostic, ROI-replicate, and decon-feasibility figures are compact figures riding on
-`geomx_de`, not a restored QC chapter. Historical claims remain in git + `roadmap.md`;
-do not treat them as live pipeline contracts.
+Live report scope (2026-07-08): 10 figures, 3 qmd chapters, expected 29 targets.
+Infrastructure that does not directly feed the final analysis document is removed: committed
+tests, Python/uv files, composition/sccomp/CmdStan target, per-substate pseudobulk, prose
+inventory, stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
+non-snRNAseq modality-native set = GeoMx sample heatmap (former Figure 10) + proteome +
+phosphoproteome; the other GeoMx exploratory/native panels are historical only. Historical
+claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
 ## Data
 
@@ -103,48 +102,17 @@ Trajectory:
 
 Modality context:
 - `R/modality_de.R` restores only primary DE needed for report figures:
-  GeoMx voom/TMM with slide fixed effect + duplicateCorrelation; proteome/phospho
-  limma-trend on log2 median-normalized 24M intensities.
-- `geomx_de$qc` is descriptive only: AOI library/detected-gene/nuclei/area/background/Q3
-  flags are visual diagnostics and exclude no AOIs.
-- `geomx_de$normalization` is descriptive only: raw/TMM logCPM quantiles, TMM RLE
-  quantiles, Q3 factor vs negative-control background, and saved voom trend. It excludes no
-  AOIs and does not alter the primary GeoMx model.
-- `geomx_de$ordination` is descriptive only: deterministic TMM-logCPM PCA/classical MDS on
-  top-variable filter-passing genes plus PC1/PC2 top loadings. It excludes no AOIs and does
-  not alter the primary GeoMx model.
-- `geomx_de$gene_detection` is descriptive only: mean TMM logCPM vs raw-count detection
-  fraction, existing `filterByExpr(min.count=5)` status, microglia identity/homeostatic/DAM
-  marker measurability, and highest-detected genes. It excludes no AOIs and adds no new
-  gene filter beyond the primary GeoMx model.
-- `geomx_de$sample_heatmap` is descriptive only: visible Figure 10 is a compact AOI track
+  GeoMx voom/TMM with slide fixed effect + duplicateCorrelation plus the retained sample
+  heatmap descriptor; proteome/phospho limma-trend on log2 median-normalized 24M intensities.
+- `geomx_de$sample_heatmap` is descriptive only: the retained GeoMx modality-native figure is a compact AOI track
   atlas with AOI columns average-linkage clustered by the displayed first five DAM genes from the prior full-row order,
   then dendrogram-rotated by mean displayed DAM z-score
   (`B2m`, `Apoe`, `Ctsd`, `Tyrobp`, `Trem2`),
   with genotype/tau/amyloid context above and top legends for genotype plus shared tau/amyloid no-versus-yes colors.
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
-- `geomx_de$spatial_programs` is descriptive only: coordinate-only AOI maps for
-  Homeostatic/DAM/IFN/MHC_APC signatures plus Apoe/Trem2 single genes, scored as
-  TMM-logCPM row-z summaries over filter-passing genes. Tissue images are absent from
-  the live report path, so the figure must say coordinate-only. It excludes no AOIs and
-  changes no DE model.
-- `geomx_de$contrast_diagnostics` is descriptive only: volcano/MA rows, deterministic top
-  labels, signed support counts, and an interaction top-gene panel from the existing
-  primary GeoMx top tables. It adds no inference model, excludes no AOIs, and changes no
-  DE model.
-- `geomx_de$roi_replicates` is descriptive only: genotype-by-bio-replicate AOI support,
-  AOI counts per bio-unit duplicateCorrelation block, and AOI-pair expression-correlation
-  distributions over 2,000 top-variable filter-passing TMM-logCPM genes. Live GeoMx has
-  one segment level (`Segment 1`), so no paired segment-difference panel is available.
-  It excludes no AOIs and changes no DE model.
-- `geomx_de$decon_feasibility` is descriptive only: candidate marker-set coverage,
-  AOI nuclei/background/Q3/low-input precondition bins, and marker-coherence proxy residuals.
-  Live S9 status = 91 AOIs, 19,959/19,963 genes kept, 8/8 candidate components covered,
-  no live `SpatialDecon` dependency or reference-profile/beta/abundance-DE target, and
-  AOI bins 37 no-local / 3 low-input / 9 background-Q3 /
-  42 absolute-count blocked by nuclei sentinel. It is a blocked diagnostic and makes no
-  abundance claim, excludes no AOIs, and changes no DE model.
+- Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
+  figures are ledger history, not live report/path contracts.
 - Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality
   target families stay deleted.
 

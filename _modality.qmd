@@ -19,93 +19,12 @@ msf <- modality_scatter_figures
 ## Non-snRNAseq modality-native figures
 
 ```{r}
-#| label: fig-geomx-qc-atlas
-#| fig-width: 10.5
-#| fig-height: 7.6
-#| fig-cap: "GeoMx AOI QC atlas. Top: library size, detected genes, nuclei, AOI area, negative background, and Q3 factor by slide, with genotype colour and segment shape; black rings mark the metric-specific QC flags. Bottom: flagged-AOI counts by slide and segment. Flags use empirical tail cutoffs plus the nuclei sentinel and are descriptive only; no AOIs are excluded in this figure."
-#| fig-alt: "GeoMx quality-control figure showing per-AOI library size, detected genes, nuclei, area, negative background, and Q3 factor by slide, genotype, and segment, plus a flagged-AOI count panel for low-depth, low-detection, nuclei-sentinel, small-area, high-background, and high-Q3 states."
-geomx_qc_atlas_plot(msf$descriptive$GeoMx$qc)
-```
-
-```{r}
-#| label: fig-geomx-normalization-rle
-#| fig-width: 10.5
-#| fig-height: 7.8
-#| fig-cap: "GeoMx normalization and RLE figure. Top left: raw logCPM and TMM-normalized logCPM distributions for the filter-passing GeoMx genes, shown as per-AOI quantile summaries by slide. Top right: TMM relative-log-expression summaries by slide, genotype, and segment. Bottom left: Q3 normalization factor against negative-control background. Bottom right: the voom mean-variance trend from the primary slide-adjusted, bio-unit-blocked GeoMx fit. The DE model remains limma-voom with slide fixed effect and duplicateCorrelation; this figure is diagnostic and excludes no AOIs."
-#| fig-alt: "GeoMx normalization diagnostic with raw versus TMM logCPM quantiles by slide, TMM RLE by slide and genotype, Q3 normalization factor versus negative-control background, and the voom mean-variance trend from the primary GeoMx model."
-geomx_normalization_rle_plot(msf$descriptive$GeoMx$normalization)
-```
-
-```{r}
-#| label: fig-geomx-ordination
-#| fig-width: 10.5
-#| fig-height: 9.6
-#| fig-cap: "GeoMx ordination figure. Top: PCA and classical MDS of AOIs using TMM-normalized logCPM from the top variable filter-passing genes, with genotype colour and slide facets; point shape encodes segment when multiple segment levels are present. Bottom left: PCA variance explained for the leading components. Bottom right: top signed loading genes for PC1 and PC2. The figure is descriptive, deterministic, and excludes no AOIs."
-#| fig-alt: "GeoMx ordination diagnostic with slide-faceted PCA and MDS AOI scatter plots coloured by genotype, a PCA scree curve, and signed PC1 and PC2 top loading genes."
-geomx_ordination_plot(msf$descriptive$GeoMx$ordination)
-```
-
-```{r}
-#| label: fig-geomx-gene-detection
-#| fig-width: 10.5
-#| fig-height: 8.4
-#| fig-cap: "GeoMx gene-detection figure. Top left: mean TMM logCPM against the fraction of AOIs with raw count >=5 for every WTA gene, with filterByExpr status and high-detection microglia marker labels. Top right: the low-coverage filter decision across detection-fraction bins. Bottom left: measurable microglia identity, homeostatic, and DAM marker genes. Bottom right: highest-detected filter-passing genes. This diagnostic documents marker measurability and changes no GeoMx exclusions."
-#| fig-alt: "GeoMx gene-detectability diagnostic showing all-gene mean expression versus detection fraction, the filterByExpr low-coverage decision by detection bins, measurable microglia identity, homeostatic, and DAM markers, and the highest-detected filter-passing genes."
-geomx_gene_detection_plot(msf$descriptive$GeoMx$gene_detection)
-```
-
-```{r}
 #| label: fig-geomx-sample-heatmap
 #| fig-width: 8.6
 #| fig-height: 5.4
 #| fig-cap: "GeoMx AOI DAM-gene tracks. AOIs are average-linkage clustered by the displayed five DAM marker-gene z-score tracks, then the dendrogram is rotated by mean displayed DAM z-score to keep low-DAM AOIs contiguous. Gene rows retain the first five rows from the prior full DAM-gene clustered order: B2m, Apoe, Ctsd, Tyrobp, and Trem2. The plot keeps compact genotype, tau-background, and amyloid-status context, with top legends for genotype and shared tau/amyloid no-versus-yes colors. Spatial/QC, bio/slide replicate, tech-replicate, and ROI tracks are omitted; ROI labels exactly encode genotype block plus technical replicate in this dataset. Categorical rows mark shared labels; gene rows are scaled within gene. This exploratory figure changes no GeoMx exclusions."
 #| fig-alt: "GeoMx AOI track atlas with AOI columns clustered by five displayed DAM marker-gene expression tracks and branch-ordered by mean DAM z-score, with genotype plus shared no-versus-yes tau and amyloid tracks above B2m, Apoe, Ctsd, Tyrobp, and Trem2; no spatial, QC, replicate, ROI, or expression heatmap tracks are displayed."
 geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
-```
-
-```{r}
-#| label: fig-geomx-spatial-program-overlays
-#| fig-width: 10.5
-#| fig-height: 9.8
-#| fig-cap: "GeoMx spatial program overlays. AOI coordinate maps show Homeostatic, DAM, IFN, and MHC/APC signature scores plus Apoe and Trem2 single-gene scores, all computed as TMM-logCPM row-z summaries over filter-passing GeoMx genes. The maps are coordinate-only because tissue image files are not in the live report path; rings show genotype, fill shows score, and the bottom panel summarises AOI score medians by genotype. This diagnostic changes no AOI exclusions or DE model."
-#| fig-alt: "GeoMx coordinate-only spatial overlay figure with slide-faceted AOI maps for homeostatic, DAM, IFN, MHC/APC, Apoe, and Trem2 program scores, plus genotype-level median and interquartile summaries for each program."
-geomx_spatial_program_overlay_plot(msf$descriptive$GeoMx$spatial_programs)
-```
-
-```{r}
-#| label: fig-geomx-contrast-diagnostics
-#| fig-width: 10.5
-#| fig-height: 10.8
-#| fig-cap: "GeoMx contrast diagnostics. Top: volcano plots for the five canonical GeoMx contrasts from the primary slide-adjusted, bio-unit-blocked limma-voom fit. Middle: matching MA plots over mean GeoMx expression. Bottom left: signed counts of FDR-supported genes, with negative counts lower in the contrast numerator and positive counts higher. Bottom right: top-ranked tau-by-amyloid interaction genes with confidence intervals. This figure reuses the existing GeoMx top tables and adds no new inference model or AOI exclusion."
-#| fig-alt: "GeoMx differential-expression diagnostic figure with five canonical contrast volcano facets, five matching MA facets, signed FDR-supported gene counts, and a focused tau-by-amyloid interaction gene panel with confidence intervals."
-geomx_contrast_diagnostic_plot(msf$descriptive$GeoMx$contrast_diagnostics)
-```
-
-```{r}
-#| label: fig-geomx-roi-segment-replicates
-#| fig-width: 10.5
-#| fig-height: 8.8
-#| fig-cap: "GeoMx ROI and bio-unit replicate audit. Top left: genotype-by-bio-replicate support, where point area and labels show AOI counts and grey zero marks the absent unit. Top right: AOIs per bio-unit duplicateCorrelation block, with slide shape and genotype colour. Bottom: pairwise AOI expression correlations over top-variable TMM-logCPM genes, split into same bio-unit, same genotype but different bio-unit, and different-genotype pairs. The live data have one segment level, so no paired segment-difference panel is drawn; the figure changes no AOI exclusions or model terms."
-#| fig-alt: "GeoMx replicate-structure audit with a bio-unit support map, AOI counts per duplicateCorrelation block, and pairwise expression-correlation distributions comparing same-bio-unit, same-genotype different-bio-unit, and different-genotype AOI pairs."
-geomx_roi_replicate_plot(msf$descriptive$GeoMx$roi_replicates)
-```
-
-```{r}
-#| label: fig-geomx-decon-feasibility
-#| fig-width: 10.5
-#| fig-height: 9.2
-#| fig-cap: "GeoMx deconvolution feasibility diagnostic. Top left: candidate marker-set coverage for broad and microglial components, with open points showing WTA presence and filled points showing genes retained by the existing GeoMx filter. Top right: AOI coordinate map of decon preconditions, including nuclei sentinels and background/Q3 or low-input tails. Bottom left: AOI counts by genotype and precondition class. Bottom right: marker-coherence residuals over covered marker sets. This is a blocked diagnostic: the live report DAG has no SpatialDecon dependency, reference-profile, beta, or abundance-DE target, so the figure makes no cell-abundance claim."
-#| fig-alt: "GeoMx deconvolution feasibility figure showing marker-set coverage, an AOI coordinate map of nuclei and input-status blockers, genotype-level AOI counts by blocker class, and proxy marker-coherence residuals; the caption states that deconvolution abundance remains blocked."
-geomx_decon_feasibility_plot(msf$descriptive$GeoMx$decon_feasibility)
-```
-
-```{r}
-#| label: fig-modality-geomx-landscape
-#| fig-width: 10.5
-#| fig-height: 7.2
-#| fig-cap: "GeoMx spatial AOI plate. Top: AOI coordinates faceted by slide, with signed top-amyloid-response gene score as fill, genotype as point ring, AOI area as point size, and the highest-magnitude ROIs labelled per slide. Bottom left: the same signed score summarised by genotype across AOIs. Bottom right: the top score-gene drivers, showing the GeoMx log2 fold change for the amyloid effect on the tau-KO and mutant-tau backgrounds."
-#| fig-alt: "GeoMx figure with a slide-faceted AOI spatial map coloured by signed expression score, a genotype-level score distribution, and a paired top-gene driver plot comparing amyloid effects in MAPTKI and P301S backgrounds."
-geomx_spatial_modality_plot(msf$descriptive$GeoMx, title = msf$panels$GeoMx$title)
 ```
 
 ```{r}

@@ -5,13 +5,13 @@
 # the 5 canonical contrasts. The amyloid-response logFC scatter (R/figures.R ->
 # modality_logfc_scatter_data) reads `nlgf_in_maptki` (y) vs `nlgf_in_p301s` (x) from these.
 # The torn-down auxiliary arms (GeoMx unblocked / bio-unit-collapsed sensitivities +
-# SpatialDecon abundance fitting; proteome / phospho additive run-index sensitivity) are
-# INTENTIONALLY not restored -- they served deconvolution / bulk-run-order caveats, not the
-# per-feature effect sizes this figure needs. A compact GeoMx decon-feasibility descriptor below
-# is descriptive only and never emits abundance betas or claims. Shared machinery reused from HEAD: fit_limma_log /
+# SpatialDecon abundance fitting; proteome / phospho additive run-index sensitivity) stay
+# absent. The only GeoMx modality-native descriptor in the live report is the compact
+# DAM-gene AOI sample heatmap. Shared machinery reused from HEAD: fit_limma_log /
 # median_normalise / prevalence_filter (R/de_pb.R), factorial_design / make_contrast_matrix
-# (R/design.R), match_intensity_columns / load_geomx / read_spectronaut_tsv / proteomics_sample_meta
-# (R/io.R). All calls namespace-qualified so the file sources cleanly into any session.
+# (R/design.R), match_intensity_columns / load_geomx / read_spectronaut_tsv /
+# proteomics_sample_meta (R/io.R). All calls namespace-qualified so the file sources cleanly
+# into any session.
 
 # --- GeoMx spatial DE (RNA counts; slide fixed effect + bio-unit duplicateCorrelation) -------
 
@@ -2079,31 +2079,12 @@ run_geomx_de <- function(geomx, min_count = 5) {
   fd <- geomx_slide_design(meta, include_slide = TRUE)
   primary <- .fit_geomx_voom(counts, fd$design, fd$contrasts, block = meta$bio_unit,
                              min_count = min_count)
-  spatial <- geomx_spatial_descriptor(counts, meta, primary$top)
   list(
     n_aoi = ncol(counts),
     n_bio_units = length(unique(as.character(meta$bio_unit))),
     primary = c(list(status = "fit", model = "voom_tmm_slide_duplicateCorrelation"), primary),
-    spatial = spatial,
-    qc = geomx_qc_descriptor(counts, meta),
-    normalization = geomx_normalization_descriptor(counts, meta, fd$design, primary$voom_trend,
-                                                   min_count = min_count),
-    ordination = geomx_ordination_descriptor(counts, meta, fd$design,
-                                             min_count = min_count),
-    gene_detection = geomx_gene_detection_descriptor(counts, meta, fd$design,
-                                                     min_count = min_count),
     sample_heatmap = geomx_sample_heatmap_descriptor(counts, meta, fd$design, primary$top,
                                                      min_count = min_count),
-    spatial_programs = geomx_spatial_program_descriptor(counts, meta, fd$design,
-                                                        min_count = min_count),
-    contrast_diagnostics = geomx_contrast_diagnostic_descriptor(primary$top),
-    roi_replicates = geomx_roi_replicate_descriptor(
-      counts, meta, fd$design, primary$duplicate_correlation, spatial$aoi,
-      min_count = min_count
-    ),
-    decon_feasibility = geomx_decon_feasibility_descriptor(
-      counts, meta, fd$design, spatial$aoi, min_count = min_count
-    ),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

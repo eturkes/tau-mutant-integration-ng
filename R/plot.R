@@ -325,9 +325,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
 }
 
 # Modality-native descriptive plates -------------------------------------------------------
-# GeoMx gets a spatial AOI score plate; bulk proteome gets sample PCA + protein volcano; phospho
-# gets phosphosite volcano + top-site abundance heatmap. These are intentionally separate from
-# the integrated amyloid-effect scatter below.
+# Live report uses the GeoMx DAM-gene AOI heatmap plus bulk proteome PCA/volcano and
+# phosphoproteome volcano/heatmap; these stay separate from the integrated scatter below.
 modality_volcano_plot <- function(volcano, title = NULL,
                                   x_lab = "log2FC  NLGF_P301S vs P301S",
                                   alpha = 0.10) {
