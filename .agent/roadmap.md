@@ -28,9 +28,9 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = ELEVEN figures: microglia (P1) + trajectory (P2) +
-one GeoMx QC atlas + three modality-native non-snRNAseq figures + two modality-context figures
-(four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
+REPORT SCOPE (current 2026-07-08): the rendered report = TWELVE figures: microglia (P1) + trajectory (P2) +
+two GeoMx exploratory figures (QC atlas; normalization/RLE) + three modality-native non-snRNAseq figures +
+two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
 R modules, tests, Python/uv surface, composition/sccomp target, per-substate pseudobulk, stageR layer,
@@ -51,8 +51,10 @@ Open steps (one figure/session):
   slide/genotype/segment. Outcome: compact `geomx_de$qc` + report plot; 53/91 AOIs have >=1
   descriptive QC flag (42 nuclei sentinels, plus library/area/background/q3 tails; constant detected
   genes contribute 0 flags); no AOIs excluded and DE claims unchanged.
-- S2 [TODO] `fig-geomx-normalization-rle`: raw-vs-normalized distributions, RLE, q3 vs
-  negative-background, optional voom trend.
+- S2 [DONE 2026-07-08] `fig-geomx-normalization-rle`: raw-vs-normalized distributions, RLE,
+  q3 vs negative-background, voom trend. Outcome: compact `geomx_de$normalization` + report
+  plot; 91 AOIs, 19,959/19,963 genes kept by `filterByExpr(min.count=5)`, Q3/background
+  Spearman rho = 0.994; no AOIs excluded and DE claims unchanged.
 - S3 [TODO] `fig-geomx-ordination`: deterministic PCA/MDS with genotype/slide/segment
   aesthetics, variance explained, top loadings.
 - S4 [TODO] `fig-geomx-gene-detection`: gene detectability / marker measurability /
@@ -68,7 +70,7 @@ Open steps (one figure/session):
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S2.
+Next `$session-prompt` = EXECUTE S3.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -988,6 +990,16 @@ Next `$session-prompt` = EXECUTE S2.
   detected genes are constant across AOIs and correctly produce 0 low-gene flags; nuclei sentinels =
   42. No exclusion or claim change. Targeted `geomx_de` / `modality_scatter_figures` builds and report
   render green; next = EXECUTE S2.
+- 2026-07-08 GeoMx exploratory figures S2 DONE -> `fig-geomx-normalization-rle`. Added
+  `geomx_normalization_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$normalization`, and rendered
+  `geomx_normalization_rle_plot()` in `_modality.qmd`. The figure shows raw vs TMM logCPM
+  per-AOI quantiles, TMM RLE quantiles by slide/genotype/segment, Q3 factor vs negative-control
+  background, and the saved voom mean-variance trend from the primary slide-adjusted,
+  bio-unit-blocked fit. Live data: 91 AOIs, 19,959/19,963 genes kept by
+  `filterByExpr(min.count=5)`, Q3/background Spearman rho = 0.994. No AOI exclusion or claim
+  change. Hardened `report_sources` so R helper edits invalidate `report`. Focused target/render
+  build green; Chromium PDF page-6 QA clean; next = EXECUTE S3.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

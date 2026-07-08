@@ -387,6 +387,154 @@ geomx_qc_descriptor <- function(counts, meta, lower_q = 0.05, upper_q = 0.95) {
   )
 }
 
+.geomx_sample_quantiles <- function(mat, meta, label,
+                                    probs = c(0.05, 0.25, 0.50, 0.75, 0.95)) {
+  stopifnot(is.matrix(mat), is.data.frame(meta), identical(colnames(mat), rownames(meta)),
+            length(label) == 1L, nzchar(label), is.numeric(probs),
+            all(is.finite(probs)), all(probs > 0), all(probs < 1))
+  qnames <- paste0("q", sprintf("%02d", round(probs * 100)))
+  qq <- t(vapply(seq_len(ncol(mat)), function(j) {
+    x <- as.numeric(mat[, j])
+    stopifnot(all(is.finite(x)))
+    as.numeric(stats::quantile(x, probs = probs, names = FALSE, type = 7))
+  }, numeric(length(probs))))
+  colnames(qq) <- qnames
+  out <- data.frame(
+    aoi = colnames(mat),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment), levels = sort(unique(as.character(meta$segment)))),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    method = label,
+    stringsAsFactors = FALSE
+  )
+  out <- cbind(out, as.data.frame(qq, check.names = FALSE))
+  rownames(out) <- NULL
+  stopifnot(!anyNA(out$slide), !anyNA(out$segment), !anyNA(out$genotype),
+            all(vapply(qnames, function(nm) all(is.finite(out[[nm]])), logical(1))))
+  out
+}
+
+.geomx_voom_trend_descriptor <- function(v, max_points = 1600L) {
+  stopifnot(is.list(v), is.numeric(max_points), length(max_points) == 1L, max_points >= 100L)
+  if (is.null(v$voom.xy) || is.null(v$voom.line)) {
+    stop("GeoMx voom object lacks saved trend data", call. = FALSE)
+  }
+  points <- data.frame(
+    mean_log_count = as.numeric(v$voom.xy$x),
+    sqrt_sd = as.numeric(v$voom.xy$y),
+    stringsAsFactors = FALSE
+  )
+  points <- points[is.finite(points$mean_log_count) & is.finite(points$sqrt_sd), ,
+                   drop = FALSE]
+  if (nrow(points) > max_points) {
+    points <- points[order(points$mean_log_count, points$sqrt_sd, method = "radix"), ,
+                     drop = FALSE]
+    keep <- unique(round(seq(1, nrow(points), length.out = max_points)))
+    points <- points[keep, , drop = FALSE]
+  }
+  line <- data.frame(
+    mean_log_count = as.numeric(v$voom.line$x),
+    sqrt_sd = as.numeric(v$voom.line$y),
+    stringsAsFactors = FALSE
+  )
+  line <- line[is.finite(line$mean_log_count) & is.finite(line$sqrt_sd), , drop = FALSE]
+  line <- line[order(line$mean_log_count, method = "radix"), , drop = FALSE]
+  rownames(points) <- rownames(line) <- NULL
+  if (!nrow(points) || !nrow(line)) stop("GeoMx voom trend has no finite rows", call. = FALSE)
+  list(
+    points = points,
+    line = line,
+    labels = list(
+      x = v$voom.xy$xlab %||% "log2 count size",
+      y = v$voom.xy$ylab %||% "sqrt standard deviation"
+    ),
+    provenance = list(n_points = nrow(points), max_points = max_points)
+  )
+}
+
+geomx_normalization_descriptor <- function(counts, meta, design, voom_trend,
+                                           min_count = 5) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.list(voom_trend),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0)
+  need <- c("slide", "roi", "segment", "genotype", "q3_factor", "neg_background")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx normalization descriptor metadata missing columns: ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for normalization descriptor",
+                       call. = FALSE)
+  dge_raw <- dge0[keep, , keep.lib.sizes = FALSE]
+  raw_logcpm <- edgeR::cpm(dge_raw, normalized.lib.sizes = FALSE, log = TRUE,
+                           prior.count = 1)
+  dge_norm <- edgeR::normLibSizes(dge_raw, method = "TMM")
+  norm_logcpm <- edgeR::cpm(dge_norm, normalized.lib.sizes = TRUE, log = TRUE,
+                            prior.count = 1)
+  stopifnot(identical(colnames(raw_logcpm), rownames(meta)),
+            identical(colnames(norm_logcpm), rownames(meta)))
+
+  distribution <- rbind(
+    .geomx_sample_quantiles(raw_logcpm, meta, "Raw logCPM"),
+    .geomx_sample_quantiles(norm_logcpm, meta, "TMM logCPM")
+  )
+  distribution$method <- factor(distribution$method,
+                                levels = c("Raw logCPM", "TMM logCPM"))
+
+  gene_median <- apply(norm_logcpm, 1L, stats::median)
+  rle_mat <- sweep(norm_logcpm, 1L, gene_median, "-")
+  rle <- .geomx_sample_quantiles(rle_mat, meta, "TMM logCPM RLE",
+                                 probs = c(0.10, 0.25, 0.50, 0.75, 0.90))
+
+  library_size <- Matrix::colSums(counts)
+  norm_factor <- dge_norm$samples$norm.factors[match(rownames(meta), rownames(dge_norm$samples))]
+  background <- data.frame(
+    aoi = rownames(meta),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment), levels = sort(unique(as.character(meta$segment)))),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    q3_factor = as.numeric(meta$q3_factor),
+    neg_background = as.numeric(meta$neg_background),
+    library_size = as.numeric(library_size[rownames(meta)]),
+    tmm_norm_factor = as.numeric(norm_factor),
+    stringsAsFactors = FALSE
+  )
+  stopifnot(!anyNA(background$slide), !anyNA(background$segment),
+            !anyNA(background$genotype), all(is.finite(background$q3_factor)),
+            all(background$q3_factor > 0), all(is.finite(background$neg_background)),
+            all(background$neg_background > 0), all(is.finite(background$library_size)),
+            all(background$library_size >= 0), all(is.finite(background$tmm_norm_factor)),
+            all(background$tmm_norm_factor > 0))
+  q3_bg_rho <- suppressWarnings(stats::cor(log10(background$q3_factor),
+                                           log10(background$neg_background),
+                                           method = "spearman"))
+  if (!is.finite(q3_bg_rho)) q3_bg_rho <- NA_real_
+
+  list(
+    distribution = distribution,
+    rle = rle,
+    background = background,
+    voom = voom_trend,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      min_count = min_count,
+      distribution = "raw logCPM versus TMM-normalized logCPM on the same filterByExpr-kept GeoMx genes",
+      rle = "relative log expression computed from TMM-normalized logCPM after subtracting each gene median across AOIs",
+      q3_neg_background_spearman = q3_bg_rho,
+      model = "primary GeoMx DE still uses limma-voom with slide fixed effect and bio-unit duplicateCorrelation"
+    )
+  )
+}
+
 # voom + TMM + limma, optionally blocking repeated AOIs by bio_unit via duplicateCorrelation
 # (the primary GeoMx model). Fails loud if the design has no residual df or the consensus
 # correlation is non-finite.
@@ -412,12 +560,12 @@ geomx_qc_descriptor <- function(counts, meta, lower_q = 0.05, upper_q = 0.95) {
       stop("GeoMx duplicateCorrelation returned non-finite consensus correlation", call. = FALSE)
     }
     duplicate <- list(used = TRUE, consensus_correlation = unname(corfit$consensus.correlation))
-    v <- limma::voom(dge, design = design, plot = FALSE, block = block,
+    v <- limma::voom(dge, design = design, plot = FALSE, save.plot = TRUE, block = block,
                      correlation = duplicate$consensus_correlation)
     fit0 <- limma::lmFit(v, design = design, block = block,
                          correlation = duplicate$consensus_correlation)
   } else {
-    v <- limma::voom(dge, design = design, plot = FALSE)
+    v <- limma::voom(dge, design = design, plot = FALSE, save.plot = TRUE)
     fit0 <- limma::lmFit(v, design = design)
   }
   fit <- limma::eBayes(limma::contrasts.fit(fit0, contrasts), robust = TRUE)
@@ -427,6 +575,7 @@ geomx_qc_descriptor <- function(counts, meta, lower_q = 0.05, upper_q = 0.95) {
     n_samples = ncol(counts),
     design_cols = colnames(design),
     duplicate_correlation = duplicate,
+    voom_trend = .geomx_voom_trend_descriptor(v),
     top = .geomx_top_tables(fit, contrasts)
   )
 }
@@ -444,6 +593,8 @@ run_geomx_de <- function(geomx, min_count = 5) {
     primary = c(list(status = "fit", model = "voom_tmm_slide_duplicateCorrelation"), primary),
     spatial = geomx_spatial_descriptor(counts, meta, primary$top),
     qc = geomx_qc_descriptor(counts, meta),
+    normalization = geomx_normalization_descriptor(counts, meta, fd$design, primary$voom_trend,
+                                                   min_count = min_count),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

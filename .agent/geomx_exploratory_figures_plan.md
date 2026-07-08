@@ -36,14 +36,17 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has two GeoMx figures after S1: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has three GeoMx figures after S2: `fig-geomx-qc-atlas` = AOI QC atlas;
+  `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
   `slide`, `roi`, `segment`, `sample_id`, `genotype`, `aoi_area`, `x_coord`, `y_coord`,
   `q3_factor`, `neg_background`, `nuclei`, `signed_response_score`.
 - `geomx_de$qc` carries compact S1 QC data: long AOI metrics, per-slide/segment flag counts,
-  thresholds, and provenance. Report chunks read it through `modality_scatter_figures`.
+  thresholds, and provenance. `geomx_de$normalization` carries compact S2 raw/TMM
+  distribution quantiles, TMM RLE quantiles, Q3/background AOI data, and saved voom trend.
+  Report chunks read both through `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -73,13 +76,18 @@ S1 [DONE 2026-07-08] - `fig-geomx-qc-atlas`
   5 high-background, 7 high-Q3, 0 low-gene flags because detected genes are constant. No
   AOI exclusion, DE change, or report-claim change.
 
-S2 - `fig-geomx-normalization-rle`
+S2 [DONE 2026-07-08] - `fig-geomx-normalization-rle`
 - Purpose: normalization/background sanity figure.
 - Panels: raw logCPM distribution vs TMM/logCPM distribution, RLE by slide/genotype, q3
   factor vs negative background, optional voom mean-variance trend if cheap.
 - Source basis: standR `plotRLExpr`; Bruker normalization/negative-control QC.
 - Acceptance: makes slide-driven technical spread visible and states model still uses
   limma-voom with slide fixed effect + duplicateCorrelation.
+- Status: landed as compact `geomx_de$normalization` + visible `_modality.qmd` figure. Live
+  data = 91 AOIs, 19,959/19,963 genes kept by `filterByExpr(min.count=5)`, raw/TMM per-AOI
+  logCPM quantiles, TMM RLE quantiles, Q3/background AOI scatter, saved voom trend from the
+  primary fit; Q3 factor vs negative-control background Spearman rho = 0.994. No AOI
+  exclusion, DE change, or report-claim change.
 
 S3 - `fig-geomx-ordination`
 - Purpose: sample similarity / biology-vs-slide ordination figure.

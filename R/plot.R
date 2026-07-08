@@ -451,6 +451,156 @@ geomx_qc_atlas_plot <- function(qc, title = "GeoMx AOI QC atlas") {
   patchwork::wrap_plots(list(metric_plot, flag_plot), ncol = 1, heights = c(1.75, 1))
 }
 
+geomx_normalization_rle_plot <- function(normalization,
+                                         title = "GeoMx normalization and RLE") {
+  stopifnot(is.list(normalization), is.data.frame(normalization$distribution),
+            is.data.frame(normalization$rle), is.data.frame(normalization$background),
+            is.list(normalization$voom), is.data.frame(normalization$voom$points),
+            is.data.frame(normalization$voom$line))
+  distribution <- normalization$distribution
+  need_dist <- c("slide", "method", "q05", "q25", "q50", "q75", "q95")
+  miss_dist <- setdiff(need_dist, names(distribution))
+  if (length(miss_dist)) {
+    stop("GeoMx normalization distribution missing columns: ",
+         paste(miss_dist, collapse = ", "), call. = FALSE)
+  }
+  distribution <- distribution[stats::complete.cases(distribution[, need_dist]), ,
+                               drop = FALSE]
+  if (!nrow(distribution)) stop("GeoMx normalization distribution has no finite rows",
+                                call. = FALSE)
+  distribution$method <- factor(as.character(distribution$method),
+                                levels = c("Raw logCPM", "TMM logCPM"))
+
+  method_colours <- c(`Raw logCPM` = "#6F7782", `TMM logCPM` = "#0B7A75")
+  dist_pos <- ggplot2::position_dodge(width = 0.55)
+  distribution_plot <- ggplot2::ggplot(
+    distribution, ggplot2::aes(slide, q50, colour = method)
+  ) +
+    ggplot2::geom_linerange(ggplot2::aes(ymin = q05, ymax = q95),
+                            position = dist_pos, alpha = 0.28, linewidth = 0.35) +
+    ggplot2::geom_pointrange(ggplot2::aes(ymin = q25, ymax = q75),
+                             position = dist_pos, alpha = 0.82, linewidth = 0.42,
+                             size = 0.55) +
+    ggplot2::scale_colour_manual(values = method_colours, drop = FALSE,
+                                 name = "scale") +
+    ggplot2::labs(
+      x = "slide", y = "logCPM quantile",
+      title = "Raw versus TMM logCPM",
+      subtitle = "Per-AOI gene-value median with IQR and 5-95% range"
+    ) +
+    theme_tau(base_size = 8.8) +
+    ggplot2::theme(legend.position = "bottom",
+                   axis.text.x = ggplot2::element_text(angle = 35, hjust = 1))
+
+  rle <- normalization$rle
+  need_rle <- c("slide", "segment", "genotype", "q10", "q25", "q50", "q75", "q90")
+  miss_rle <- setdiff(need_rle, names(rle))
+  if (length(miss_rle)) {
+    stop("GeoMx RLE data missing columns: ", paste(miss_rle, collapse = ", "),
+         call. = FALSE)
+  }
+  rle <- rle[stats::complete.cases(rle[, need_rle]), , drop = FALSE]
+  if (!nrow(rle)) stop("GeoMx RLE data has no finite rows", call. = FALSE)
+  rle$genotype <- factor(as.character(rle$genotype), levels = genotype_levels)
+  rle$segment <- factor(rle$segment)
+  segment_levels <- levels(droplevels(rle$segment))
+  shape_values <- stats::setNames(
+    rep(c(16, 17, 15, 18, 3, 4, 7, 8, 0, 1, 2, 5, 6), length.out = length(segment_levels)),
+    segment_levels
+  )
+  rle_pos <- ggplot2::position_jitter(width = 0.13, height = 0, seed = 42L)
+  rle_plot <- ggplot2::ggplot(rle, ggplot2::aes(slide, q50)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_linerange(ggplot2::aes(ymin = q10, ymax = q90, colour = genotype),
+                            position = rle_pos, alpha = 0.32, linewidth = 0.38) +
+    ggplot2::geom_pointrange(
+      ggplot2::aes(ymin = q25, ymax = q75, colour = genotype, shape = segment),
+      position = rle_pos, alpha = 0.88, linewidth = 0.42, size = 0.78
+    ) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_shape_manual(values = shape_values, name = "segment", drop = FALSE) +
+    ggplot2::labs(
+      x = "slide", y = "relative log expression",
+      title = "TMM RLE by AOI",
+      subtitle = "Median with IQR and 10-90% range after subtracting each gene median"
+    ) +
+    theme_tau(base_size = 8.8) +
+    ggplot2::theme(legend.position = "none",
+                   axis.text.x = ggplot2::element_text(angle = 35, hjust = 1))
+
+  background <- normalization$background
+  need_bg <- c("slide", "segment", "genotype", "q3_factor", "neg_background")
+  miss_bg <- setdiff(need_bg, names(background))
+  if (length(miss_bg)) {
+    stop("GeoMx background data missing columns: ", paste(miss_bg, collapse = ", "),
+         call. = FALSE)
+  }
+  background <- background[is.finite(background$q3_factor) &
+                             background$q3_factor > 0 &
+                             is.finite(background$neg_background) &
+                             background$neg_background > 0, , drop = FALSE]
+  if (!nrow(background)) stop("GeoMx background data has no positive finite rows",
+                              call. = FALSE)
+  background$genotype <- factor(as.character(background$genotype), levels = genotype_levels)
+  background$segment <- factor(background$segment)
+  rho <- normalization$provenance$q3_neg_background_spearman %||% NA_real_
+  rho_label <- if (is.finite(rho)) {
+    sprintf("Spearman rho on log10 scale = %.2f", rho)
+  } else {
+    "Spearman rho unavailable"
+  }
+  background_plot <- ggplot2::ggplot(
+    background, ggplot2::aes(q3_factor, neg_background, colour = genotype, shape = segment)
+  ) +
+    ggplot2::geom_point(size = 1.65, alpha = 0.82) +
+    ggplot2::scale_x_log10(labels = scales::label_number()) +
+    ggplot2::scale_y_log10(labels = scales::label_number()) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_shape_manual(values = shape_values, name = "segment", drop = FALSE) +
+    ggplot2::facet_wrap(ggplot2::vars(slide), nrow = 1) +
+    ggplot2::labs(
+      x = "Q3 normalization factor", y = "negative-control background",
+      title = "Q3 factor versus background",
+      subtitle = rho_label
+    ) +
+    theme_tau(base_size = 8.6) +
+    ggplot2::theme(legend.position = "bottom", legend.box = "horizontal")
+
+  voom_points <- normalization$voom$points
+  voom_line <- normalization$voom$line
+  need_voom <- c("mean_log_count", "sqrt_sd")
+  miss_voom <- setdiff(need_voom, names(voom_points))
+  if (length(miss_voom) || !all(need_voom %in% names(voom_line))) {
+    stop("GeoMx voom trend missing columns", call. = FALSE)
+  }
+  voom_points <- voom_points[stats::complete.cases(voom_points[, need_voom]), ,
+                             drop = FALSE]
+  voom_line <- voom_line[stats::complete.cases(voom_line[, need_voom]), , drop = FALSE]
+  if (!nrow(voom_points) || !nrow(voom_line)) {
+    stop("GeoMx voom trend has no finite rows", call. = FALSE)
+  }
+  voom_plot <- ggplot2::ggplot(voom_points, ggplot2::aes(mean_log_count, sqrt_sd)) +
+    ggplot2::geom_point(colour = "#6F7782", alpha = 0.28, size = 0.48) +
+    ggplot2::geom_line(data = voom_line, colour = "#A63A50", linewidth = 0.8) +
+    ggplot2::labs(
+      x = normalization$voom$labels$x %||% "log2 count size",
+      y = normalization$voom$labels$y %||% "sqrt standard deviation",
+      title = "voom mean-variance trend",
+      subtitle = "Trend from the primary slide-adjusted, bio-unit-blocked GeoMx fit"
+    ) +
+    theme_tau(base_size = 8.8)
+
+  subtitle <- sprintf(
+    "%s filter-passing genes across %s AOIs; primary model unchanged: limma-voom + slide fixed effect + bio-unit duplicateCorrelation",
+    format(normalization$provenance$n_kept_features %||% nrow(voom_points), big.mark = ","),
+    format(normalization$provenance$n_aoi %||% nrow(background), big.mark = ",")
+  )
+  patchwork::wrap_plots(
+    list(distribution_plot, rle_plot, background_plot, voom_plot),
+    ncol = 2
+  ) + patchwork::plot_annotation(title = title, subtitle = subtitle)
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

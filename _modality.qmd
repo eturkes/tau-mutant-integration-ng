@@ -28,6 +28,15 @@ geomx_qc_atlas_plot(msf$descriptive$GeoMx$qc)
 ```
 
 ```{r}
+#| label: fig-geomx-normalization-rle
+#| fig-width: 10.5
+#| fig-height: 7.8
+#| fig-cap: "GeoMx normalization and RLE figure. Top left: raw logCPM and TMM-normalized logCPM distributions for the filter-passing GeoMx genes, shown as per-AOI quantile summaries by slide. Top right: TMM relative-log-expression summaries by slide, genotype, and segment. Bottom left: Q3 normalization factor against negative-control background. Bottom right: the voom mean-variance trend from the primary slide-adjusted, bio-unit-blocked GeoMx fit. The DE model remains limma-voom with slide fixed effect and duplicateCorrelation; this figure is diagnostic and excludes no AOIs."
+#| fig-alt: "GeoMx normalization diagnostic with raw versus TMM logCPM quantiles by slide, TMM RLE by slide and genotype, Q3 normalization factor versus negative-control background, and the voom mean-variance trend from the primary GeoMx model."
+geomx_normalization_rle_plot(msf$descriptive$GeoMx$normalization)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2

@@ -128,7 +128,8 @@ list(
   # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
   tar_target(
     report_sources,
-    c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd"),
+    c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd",
+      sort(list.files("R", pattern = "\\.R$", full.names = TRUE))),
     format = "file"
   ),
   tar_target(
