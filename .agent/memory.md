@@ -37,6 +37,11 @@ Raw data facts:
   QC metrics, doublets.
 - `geomx.rds`: GeoMx WTA Seurat, 19963 genes x 91 AOIs; genotype canonical; spatial
   design cols include bio_rep/tech_rep/slide_rep/roi/segment/SampleID.
+- GeoMx source gap: ideal class grid 4 genotypes x 4 bio_rep x 7 tech_rep = 112 AOIs,
+  but `geomx.rds` contains 91. `bio_rep == slide_rep`; MAPTKI bio_rep 1 is wholly
+  absent at source (`MAPT KI 1-1..1-7` missing, with slide-1 `P301SKI 1-1..1-5` also
+  missing). Current loaders/descriptors exclude no AOIs; the gap predates this repo's
+  live GeoMx model/report path.
 - Proteome/phospho TSVs: Spectronaut PTM exports. Current report uses the 24M 16-run
   subset from `proteomics_sample_key.csv`.
 
