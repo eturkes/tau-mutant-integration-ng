@@ -275,6 +275,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   )
   point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
   bg_fill <- figure7_score_fill_colours
+  endpoint_offset <- 0.08
 
   ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
     ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
@@ -283,9 +284,15 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                    colour = delta),
       linewidth = 0.75, lineend = "round") +
     ggplot2::geom_point(
-      data = point_df,
+      data = point_df[point_df$background == "MAPTKI", , drop = FALSE],
       ggplot2::aes(x = score, fill = background, size = n_feature),
-      shape = 21, colour = "#2B2A27", stroke = 0.25) +
+      shape = 21, colour = "#2B2A27", stroke = 0.25,
+      position = ggplot2::position_nudge(y = -endpoint_offset)) +
+    ggplot2::geom_point(
+      data = point_df[point_df$background == "P301S", , drop = FALSE],
+      ggplot2::aes(x = score, fill = background, size = n_feature),
+      shape = 21, colour = "#2B2A27", stroke = 0.25,
+      position = ggplot2::position_nudge(y = endpoint_offset)) +
     scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
                      name = "P301S - MAPTKI\n          log2FC") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
