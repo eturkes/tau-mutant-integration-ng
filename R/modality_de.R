@@ -239,6 +239,154 @@ geomx_spatial_descriptor <- function(counts, meta, top,
   )
 }
 
+geomx_qc_descriptor <- function(counts, meta, lower_q = 0.05, upper_q = 0.95) {
+  stopifnot(is.matrix(counts), is.data.frame(meta),
+            identical(colnames(counts), rownames(meta)),
+            is.numeric(lower_q), length(lower_q) == 1L, lower_q > 0, lower_q < 0.5,
+            is.numeric(upper_q), length(upper_q) == 1L, upper_q > 0.5, upper_q < 1)
+  need <- c("slide", "roi", "segment", "SampleID", "genotype", "area",
+            "q3_factor", "neg_background", "nuclei")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx QC descriptor metadata missing columns: ", paste(missing, collapse = ", "),
+         call. = FALSE)
+  }
+  library_size <- Matrix::colSums(counts)
+  detected_genes <- Matrix::colSums(counts > 0)
+  qn <- function(x, q) {
+    as.numeric(stats::quantile(as.numeric(x), probs = q, names = FALSE, type = 7))
+  }
+  aoi <- data.frame(
+    aoi = rownames(meta),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment), levels = sort(unique(as.character(meta$segment)))),
+    sample_id = as.character(meta$SampleID),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    library_size = as.numeric(library_size[rownames(meta)]),
+    detected_genes = as.numeric(detected_genes[rownames(meta)]),
+    nuclei = as.numeric(meta$nuclei),
+    aoi_area = as.numeric(meta$area),
+    neg_background = as.numeric(meta$neg_background),
+    q3_factor = as.numeric(meta$q3_factor),
+    stringsAsFactors = FALSE
+  )
+  stopifnot(!anyNA(aoi$genotype), !anyNA(aoi$slide), !anyNA(aoi$segment),
+            all(is.finite(aoi$library_size)), all(aoi$library_size >= 0),
+            all(is.finite(aoi$detected_genes)), all(aoi$detected_genes >= 0),
+            all(is.finite(aoi$nuclei)), all(is.finite(aoi$aoi_area)),
+            all(aoi$aoi_area > 0), all(is.finite(aoi$neg_background)),
+            all(is.finite(aoi$q3_factor)))
+
+  thresholds <- c(
+    library_size_low = qn(aoi$library_size, lower_q),
+    detected_genes_low = qn(aoi$detected_genes, lower_q),
+    nuclei_sentinel_lt = 0,
+    aoi_area_low = qn(aoi$aoi_area, lower_q),
+    neg_background_high = qn(aoi$neg_background, upper_q),
+    q3_factor_high = qn(aoi$q3_factor, upper_q)
+  )
+  low_flag <- function(x, threshold) {
+    x <- as.numeric(x)
+    x <= threshold & x < max(x)
+  }
+  high_flag <- function(x, threshold) {
+    x <- as.numeric(x)
+    x >= threshold & x > min(x)
+  }
+  flags <- data.frame(
+    aoi = aoi$aoi,
+    low_library = low_flag(aoi$library_size, thresholds[["library_size_low"]]),
+    low_detected_genes = low_flag(aoi$detected_genes, thresholds[["detected_genes_low"]]),
+    nuclei_sentinel = aoi$nuclei < thresholds[["nuclei_sentinel_lt"]],
+    small_area = low_flag(aoi$aoi_area, thresholds[["aoi_area_low"]]),
+    high_background = high_flag(aoi$neg_background, thresholds[["neg_background_high"]]),
+    high_q3_factor = high_flag(aoi$q3_factor, thresholds[["q3_factor_high"]]),
+    stringsAsFactors = FALSE
+  )
+  flags$flag_any <- rowSums(flags[setdiff(names(flags), "aoi")]) > 0
+  aoi$flag_any <- flags$flag_any[match(aoi$aoi, flags$aoi)]
+
+  metric_map <- data.frame(
+    metric = c("library_size", "detected_genes", "nuclei", "aoi_area",
+               "neg_background", "q3_factor"),
+    metric_label = c("Library size", "Detected genes", "Nuclei", "AOI area",
+                     "Negative background", "Q3 factor"),
+    flag = c("low_library", "low_detected_genes", "nuclei_sentinel", "small_area",
+             "high_background", "high_q3_factor"),
+    stringsAsFactors = FALSE
+  )
+  metrics <- do.call(rbind, lapply(seq_len(nrow(metric_map)), function(i) {
+    m <- metric_map$metric[[i]]
+    f <- metric_map$flag[[i]]
+    data.frame(
+      aoi = aoi$aoi,
+      slide = aoi$slide,
+      roi = aoi$roi,
+      segment = aoi$segment,
+      genotype = aoi$genotype,
+      metric = m,
+      metric_label = metric_map$metric_label[[i]],
+      value = as.numeric(aoi[[m]]),
+      flag_metric = flags[[f]],
+      flag_any = aoi$flag_any,
+      stringsAsFactors = FALSE
+    )
+  }))
+  metrics$metric_label <- factor(metrics$metric_label, levels = metric_map$metric_label)
+  rownames(metrics) <- NULL
+  stopifnot(nrow(metrics) == nrow(aoi) * nrow(metric_map),
+            all(is.finite(metrics$value)), !anyNA(metrics$metric_label))
+
+  flag_labels <- c(
+    low_library = "low library",
+    low_detected_genes = "low genes",
+    nuclei_sentinel = "nuclei sentinel",
+    small_area = "small area",
+    high_background = "high background",
+    high_q3_factor = "high q3"
+  )
+  flag_long <- do.call(rbind, lapply(names(flag_labels), function(f) {
+    data.frame(
+      slide = aoi$slide,
+      segment = aoi$segment,
+      flag = flag_labels[[f]],
+      n = as.integer(flags[[f]]),
+      stringsAsFactors = FALSE
+    )
+  }))
+  count <- stats::aggregate(n ~ slide + segment + flag, data = flag_long, FUN = sum)
+  grid <- expand.grid(
+    slide = levels(aoi$slide),
+    segment = levels(aoi$segment),
+    flag = unname(flag_labels),
+    stringsAsFactors = FALSE
+  )
+  flag_counts <- merge(grid, count, by = c("slide", "segment", "flag"), all.x = TRUE,
+                       sort = FALSE)
+  flag_counts$n[is.na(flag_counts$n)] <- 0L
+  flag_counts$slide <- factor(flag_counts$slide, levels = levels(aoi$slide))
+  flag_counts$segment <- factor(flag_counts$segment, levels = levels(aoi$segment))
+  flag_counts$flag <- factor(flag_counts$flag, levels = rev(unname(flag_labels)))
+  flag_counts$n <- as.integer(flag_counts$n)
+  rownames(flag_counts) <- NULL
+  stopifnot(all(is.finite(flag_counts$n)), all(flag_counts$n >= 0))
+
+  list(
+    aoi = aoi,
+    metrics = metrics,
+    flag_counts = flag_counts,
+    thresholds = thresholds,
+    provenance = list(
+      lower_q = lower_q,
+      upper_q = upper_q,
+      flag_rule = "descriptive QC flags only: varying bottom-tail library/detected/area, varying top-tail background/q3, and nuclei < 0 sentinel; no AOIs excluded",
+      n_aoi = nrow(aoi),
+      n_flagged_any = sum(aoi$flag_any)
+    )
+  )
+}
+
 # voom + TMM + limma, optionally blocking repeated AOIs by bio_unit via duplicateCorrelation
 # (the primary GeoMx model). Fails loud if the design has no residual df or the consensus
 # correlation is non-finite.
@@ -295,6 +443,7 @@ run_geomx_de <- function(geomx, min_count = 5) {
     n_bio_units = length(unique(as.character(meta$bio_unit))),
     primary = c(list(status = "fit", model = "voom_tmm_slide_duplicateCorrelation"), primary),
     spatial = geomx_spatial_descriptor(counts, meta, primary$top),
+    qc = geomx_qc_descriptor(counts, meta),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

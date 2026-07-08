@@ -28,13 +28,13 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-07): the rendered report = TEN figures: microglia (P1) + trajectory (P2) +
-three modality-native non-snRNAseq figures + two modality-context figures (four-method amyloid-response logFC
-scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
-snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures. The
-mechanism/cross-modality/qc/story chapters, targets, R modules, tests, Python/uv surface, composition/sccomp
-target, per-substate pseudobulk, stageR layer, and prose-inventory utility remain deleted or retired from the
-live DAG (Ledger 2026-07-07). 29 targets remain. P3/P4/P5 + the figure-expansion
+REPORT SCOPE (current 2026-07-08): the rendered report = ELEVEN figures: microglia (P1) + trajectory (P2) +
+one GeoMx QC atlas + three modality-native non-snRNAseq figures + two modality-context figures
+(four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
+off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
+targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
+R modules, tests, Python/uv surface, composition/sccomp target, per-substate pseudobulk, stageR layer,
+and prose-inventory utility remain deleted or retired from the live DAG (Ledger 2026-07-08). 29 targets remain. P3/P4/P5 + the figure-expansion
 passes below stay as historical DONE records (this roadmap holds the trajectory); their report chapters no
 longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -47,8 +47,10 @@ add GeoMx exploratory figures one session at a time while preserving the lean re
 claims unless a target-backed diagnostic exposes a real issue.
 
 Open steps (one figure/session):
-- S1 [TODO] `fig-geomx-qc-atlas`: AOI library/detection/nuclei/area/background/q3 QC by
-  slide/genotype/segment.
+- S1 [DONE 2026-07-08] `fig-geomx-qc-atlas`: AOI library/detection/nuclei/area/background/q3 QC by
+  slide/genotype/segment. Outcome: compact `geomx_de$qc` + report plot; 53/91 AOIs have >=1
+  descriptive QC flag (42 nuclei sentinels, plus library/area/background/q3 tails; constant detected
+  genes contribute 0 flags); no AOIs excluded and DE claims unchanged.
 - S2 [TODO] `fig-geomx-normalization-rle`: raw-vs-normalized distributions, RLE, q3 vs
   negative-background, optional voom trend.
 - S3 [TODO] `fig-geomx-ordination`: deterministic PCA/MDS with genotype/slide/segment
@@ -66,7 +68,7 @@ Open steps (one figure/session):
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S1.
+Next `$session-prompt` = EXECUTE S2.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -979,6 +981,13 @@ Next `$session-prompt` = EXECUTE S1.
   heatmaps, spatial overlays, volcano/MA, ROI/segment structure, and decon/status diagnostics.
   Wrote `.agent/geomx_exploratory_figures_plan.md`; roadmap Active plan now implements one figure
   per session (S1-S9). Next = EXECUTE S1.
+- 2026-07-08 GeoMx exploratory figures S1 DONE -> `fig-geomx-qc-atlas`. Added
+  `geomx_qc_descriptor()` into `geomx_de` and `geomx_qc_atlas_plot()` into `_modality.qmd`.
+  The atlas shows library size, detected genes, nuclei, AOI area, negative background, and Q3 factor
+  by slide/genotype/segment plus flag counts. Live QC: 91 AOIs, 53 with >=1 descriptive flag;
+  detected genes are constant across AOIs and correctly produce 0 low-gene flags; nuclei sentinels =
+  42. No exclusion or claim change. Targeted `geomx_de` / `modality_scatter_figures` builds and report
+  render green; next = EXECUTE S2.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

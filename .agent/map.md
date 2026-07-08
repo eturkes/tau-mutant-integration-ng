@@ -1,6 +1,6 @@
 # Map - live codebase wiring
 
-Current surface (2026-07-07): lean report DAG only. No committed test suite, Python/uv
+Current surface (2026-07-08): lean report DAG only. No committed test suite, Python/uv
 surface, composition/sccomp/CmdStan arm, per-substate pseudobulk target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
 science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
@@ -54,10 +54,11 @@ P2 trajectory:
 - `trajectory_figures <- trajectory_figure_data(trajectory_report)`
 
 Modality context:
-- `geomx_de <- run_geomx_de(geomx)`
+- `geomx_de <- run_geomx_de(geomx)` (primary DE + compact spatial descriptor + compact AOI QC atlas data)
 - `proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)`
 - `phospho_de_24m <- run_phospho_de_24m(phospho, sample_key)`
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
+  carries GeoMx QC through `descriptive$GeoMx$qc`.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd")`
@@ -91,8 +92,9 @@ Report:
   glmmTMB sensitivity, compact trajectory report bundle.
 
 `R/modality_de.R`
-- Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. Auxiliary
-  deconvolution/run-index/sensitivity arms stay deleted.
+- Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits
+  compact AOI QC descriptor fields for the exploratory QC atlas. Auxiliary deconvolution/
+  run-index/sensitivity arms stay deleted.
 
 `R/figures.R`
 - Compact figure-data builders for rendered slots only:
@@ -100,7 +102,8 @@ Report:
   `modality_logfc_scatter_data()`.
 
 `R/plot.R`
-- Shared report theme, scales, modality and descriptive plot helpers.
+- Shared report theme, scales, modality and descriptive plot helpers including
+  `geomx_qc_atlas_plot()`.
 
 `R/report.R`
 - Quarto render wrapper plus embedded-lightbox repair for single-file offline HTML.
@@ -111,10 +114,10 @@ Report:
 - `_microglia.qmd`: substate marker dot plot, substate/DAM UMAPs, genotype-faceted
   substate UMAP, replicate-unit substate composition.
 - `_trajectory.qmd`: pseudotime density by genotype/substate.
-- `_modality.qmd`: GeoMx/proteome/phospho descriptive figures, four-method amyloid
-  response scatter, functional-category score panel.
+- `_modality.qmd`: GeoMx QC atlas, GeoMx/proteome/phospho descriptive figures,
+  four-method amyloid response scatter, functional-category score panel.
 
-Rendered output = 10 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
+Rendered output = 11 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
 data builders pre-filter/guard finite values so report warnings are treated as real failures.
 
 ## Tracked vs Ignored

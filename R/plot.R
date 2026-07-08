@@ -361,6 +361,96 @@ modality_volcano_plot <- function(volcano, title = NULL,
     ggplot2::theme(legend.position = "bottom")
 }
 
+geomx_qc_atlas_plot <- function(qc, title = "GeoMx AOI QC atlas") {
+  stopifnot(is.list(qc), is.data.frame(qc$metrics), is.data.frame(qc$flag_counts))
+  metrics <- qc$metrics
+  need <- c("slide", "segment", "genotype", "metric_label", "value", "flag_metric")
+  miss <- setdiff(need, names(metrics))
+  if (length(miss)) stop("GeoMx QC metrics missing columns: ", paste(miss, collapse = ", "),
+                         call. = FALSE)
+  metrics <- metrics[is.finite(metrics$value), , drop = FALSE]
+  if (!nrow(metrics)) stop("GeoMx QC metrics have no finite values", call. = FALSE)
+  metrics$slide <- factor(metrics$slide)
+  metrics$segment <- factor(metrics$segment)
+  metrics$genotype <- factor(as.character(metrics$genotype), levels = genotype_levels)
+  stopifnot(!anyNA(metrics$genotype), !anyNA(metrics$slide), !anyNA(metrics$segment))
+
+  segment_levels <- levels(droplevels(metrics$segment))
+  shape_values <- stats::setNames(
+    rep(c(16, 17, 15, 18, 3, 4, 7, 8, 0, 1, 2, 5, 6), length.out = length(segment_levels)),
+    segment_levels
+  )
+  flagged <- metrics[metrics$flag_metric %in% TRUE, , drop = FALSE]
+
+  metric_plot <- ggplot2::ggplot(metrics, ggplot2::aes(slide, value)) +
+    ggplot2::geom_boxplot(
+      ggplot2::aes(group = slide),
+      width = 0.54, outlier.shape = NA, fill = "#F2F0EA", colour = "#8A8174",
+      linewidth = 0.28) +
+    ggplot2::geom_point(
+      ggplot2::aes(colour = genotype, shape = segment),
+      position = ggplot2::position_jitter(width = 0.14, height = 0, seed = 42L),
+      size = 1.05, alpha = 0.68) +
+    ggplot2::geom_point(
+      data = flagged,
+      position = ggplot2::position_jitter(width = 0.14, height = 0, seed = 42L),
+      shape = 21, fill = NA, colour = "#20242A", stroke = 0.44, size = 1.9) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_shape_manual(values = shape_values, name = "segment", drop = FALSE) +
+    ggplot2::facet_wrap(ggplot2::vars(metric_label), scales = "free_y", ncol = 3) +
+    ggplot2::scale_y_continuous(labels = scales::label_number(big.mark = ",")) +
+    ggplot2::labs(
+      x = "slide", y = NULL, title = title,
+      subtitle = "AOIs by slide; colour = genotype, shape = segment, black ring = metric-specific QC flag"
+    ) +
+    theme_tau(base_size = 8.8) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      axis.text.x = ggplot2::element_text(angle = 35, hjust = 1),
+      panel.spacing = grid::unit(0.65, "lines")
+    )
+
+  flags <- qc$flag_counts
+  need_flag <- c("slide", "segment", "flag", "n")
+  miss_flag <- setdiff(need_flag, names(flags))
+  if (length(miss_flag)) {
+    stop("GeoMx QC flag counts missing columns: ", paste(miss_flag, collapse = ", "),
+         call. = FALSE)
+  }
+  flags <- flags[is.finite(flags$n), , drop = FALSE]
+  if (!nrow(flags)) stop("GeoMx QC flag counts have no finite rows", call. = FALSE)
+  label_flags <- flags[flags$n > 0, , drop = FALSE]
+  max_n <- max(flags$n, na.rm = TRUE)
+  max_n <- if (is.finite(max_n) && max_n > 0) max_n else 1
+
+  flag_plot <- ggplot2::ggplot(flags, ggplot2::aes(slide, flag)) +
+    ggplot2::geom_point(
+      ggplot2::aes(size = n, fill = n),
+      shape = 21, colour = "#554F47", stroke = 0.25, alpha = 0.92) +
+    ggplot2::geom_text(
+      data = label_flags,
+      ggplot2::aes(label = n),
+      size = 2.25, colour = "#20242A", fontface = "bold") +
+    scale_fill_rwb(midpoint = NULL, limits = c(0, max_n), name = "flagged AOIs") +
+    ggplot2::scale_size_area(max_size = 8, limits = c(0, max_n), guide = "none") +
+    ggplot2::facet_wrap(ggplot2::vars(segment), nrow = 1) +
+    ggplot2::labs(
+      x = "slide", y = NULL,
+      title = "QC flag counts",
+      subtitle = qc$provenance$flag_rule %||% "descriptive QC flags only; no AOIs excluded"
+    ) +
+    theme_tau(base_size = 8.6) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.x = ggplot2::element_text(angle = 35, hjust = 1),
+      axis.text.y = ggplot2::element_text(size = 7.4),
+      panel.spacing.x = grid::unit(0.7, "lines")
+    )
+
+  patchwork::wrap_plots(list(metric_plot, flag_plot), ncol = 1, heights = c(1.75, 1))
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

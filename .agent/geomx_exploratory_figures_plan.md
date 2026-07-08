@@ -36,11 +36,14 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has one GeoMx descriptive figure: `fig-modality-geomx-landscape` =
-  slide-faceted AOI signed-score map + genotype score distribution + top score-gene drivers.
+- Live report has two GeoMx figures after S1: `fig-geomx-qc-atlas` = AOI QC atlas;
+  `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
+  distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
   `slide`, `roi`, `segment`, `sample_id`, `genotype`, `aoi_area`, `x_coord`, `y_coord`,
   `q3_factor`, `neg_background`, `nuclei`, `signed_response_score`.
+- `geomx_de$qc` carries compact S1 QC data: long AOI metrics, per-slide/segment flag counts,
+  thresholds, and provenance. Report chunks read it through `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -52,12 +55,12 @@ Acceptance shared by every session:
   include, with one `fig-*` id, caption, and nonblank `fig-alt`.
 - Reads compact GeoMx data targets in report chunks; heavy `geomx` object access stays in
   target builders.
-- Preserves the current 10-figure claims unless the figure reveals a concrete issue; any
+- Preserves current report claims unless the figure reveals a concrete issue; any
   changed claim is target-derived and recorded in roadmap.
 - Runs a focused target/render check; run full `scripts/check.sh` when code touches shared
   helpers, target wiring, or report-wide behavior.
 
-S1 - `fig-geomx-qc-atlas`
+S1 [DONE 2026-07-08] - `fig-geomx-qc-atlas`
 - Purpose: AOI/segment QC first-look figure.
 - Panels: library size / detected genes / nuclei / area / negative background / q3 factor,
   stratified by slide, genotype, segment, and warning-like sentinel states.
@@ -65,6 +68,10 @@ S1 - `fig-geomx-qc-atlas`
 - Local data: counts from `geomx_count_matrix()`, metadata from `geomx_meta()`.
 - Acceptance: flags low-depth / nuclei-sentinel / small-area AOIs without excluding samples
   or changing DE.
+- Status: landed as compact `geomx_de$qc` + visible `_modality.qmd` figure. Live flags =
+  53/91 AOIs with >=1 descriptive flag: 42 nuclei sentinels, 5 low-library, 5 small-area,
+  5 high-background, 7 high-Q3, 0 low-gene flags because detected genes are constant. No
+  AOI exclusion, DE change, or report-claim change.
 
 S2 - `fig-geomx-normalization-rle`
 - Purpose: normalization/background sanity figure.

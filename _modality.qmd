@@ -19,6 +19,15 @@ msf <- modality_scatter_figures
 ## Non-snRNAseq modality-native figures
 
 ```{r}
+#| label: fig-geomx-qc-atlas
+#| fig-width: 10.5
+#| fig-height: 7.6
+#| fig-cap: "GeoMx AOI QC atlas. Top: library size, detected genes, nuclei, AOI area, negative background, and Q3 factor by slide, with genotype colour and segment shape; black rings mark the metric-specific QC flags. Bottom: flagged-AOI counts by slide and segment. Flags use empirical tail cutoffs plus the nuclei sentinel and are descriptive only; no AOIs are excluded in this figure."
+#| fig-alt: "GeoMx quality-control figure showing per-AOI library size, detected genes, nuclei, area, negative background, and Q3 factor by slide, genotype, and segment, plus a flagged-AOI count panel for low-depth, low-detection, nuclei-sentinel, small-area, high-background, and high-Q3 states."
+geomx_qc_atlas_plot(msf$descriptive$GeoMx$qc)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2
