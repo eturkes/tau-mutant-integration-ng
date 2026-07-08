@@ -408,3 +408,30 @@ Closed the user's request to optimize for faster report iteration over broad inf
   scan, render-log scan.
 
 Verification target for the closing commit: `rv sync`, target manifest/source checks, and the lean report gate.
+
+## GeoMx exploratory figures -- closed 2026-07-08 (-> `.agent/completed/geomx_exploratory_figures_plan_2026-07-08.md`)
+
+Closed the user's request to web-search a GeoMx exploratory figure inventory and implement it one figure/session
+inside the lean report path. This was a diagnostic/report-density pass over existing GeoMx data and primary DE, not
+a new inference chapter.
+
+- SOURCE BASIS: plan used Bruker GeoScript/User Manual, standR workflow/manual, and SpatialDecon docs. Selected
+  field-standard exploratory surfaces: QC atlas, normalization/RLE, PCA/MDS, gene detectability, heatmap, spatial
+  score overlays, volcano/MA diagnostics, repeated-observation audit, and decon feasibility/status. Rejected bundled
+  dashboards because one figure/session kept contracts reviewable.
+- DATA CONTRACT: all new figures ride on compact fields inside `geomx_de`, passed through
+  `modality_scatter_figures$descriptive$GeoMx`; report chunks never read the heavy GeoMx object. Shared model remains
+  primary GeoMx limma-voom/TMM with slide fixed effect + bio-unit duplicateCorrelation.
+- CLAIM CONTRACT: every new GeoMx exploratory figure is descriptive. No AOI is excluded, no model term or DE result is
+  changed, and no lean report biology claim is promoted from diagnostics. Coordinate maps explicitly say tissue images
+  are absent. Decon remains a blocked diagnostic: no live SpatialDecon dependency, reference profile, beta, abundance
+  target, or cell-abundance claim.
+- LIVE OUTCOME: rendered report now has 19 figures. GeoMx diagnostics expose 91 AOIs; 19,959/19,963 filter-passing
+  genes for the main GeoMx descriptors; 53/91 descriptive QC-flagged AOIs; Q3/background Spearman rho 0.994; PCA PC1
+  19.36% and PC2 6.94%; full microglia/Homeostatic/DAM marker coverage; one segment level; 15/16 expected bio-units;
+  duplicateCorrelation consensus 0.0085; decon candidate marker components 8/8 covered with >=2 kept markers and AOI
+  input bins 37 no local blocker / 3 low-input tail / 9 background-Q3 tail / 42 nuclei-sentinel blocked.
+
+Verification (honest): S1-S9 each ran focused target/render checks as implemented, with full lean gate green at S8
+and S9. Close-out adversarial review found no accepted shipped code/prose blocker; final close-out gate re-run green
+on 2026-07-08.

@@ -41,66 +41,10 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: GeoMx exploratory figures -> `.agent/geomx_exploratory_figures_plan.md`
-Opened 2026-07-08 by direct user task after web search. Mode = EXECUTE. Goal =
-add GeoMx exploratory figures one session at a time while preserving the lean report
-claims unless a target-backed diagnostic exposes a real issue.
+## Active plan: none
 
-Open steps (one figure/session):
-- S1 [DONE 2026-07-08] `fig-geomx-qc-atlas`: AOI library/detection/nuclei/area/background/q3 QC by
-  slide/genotype/segment. Outcome: compact `geomx_de$qc` + report plot; 53/91 AOIs have >=1
-  descriptive QC flag (42 nuclei sentinels, plus library/area/background/q3 tails; constant detected
-  genes contribute 0 flags); no AOIs excluded and DE claims unchanged.
-- S2 [DONE 2026-07-08] `fig-geomx-normalization-rle`: raw-vs-normalized distributions, RLE,
-  q3 vs negative-background, voom trend. Outcome: compact `geomx_de$normalization` + report
-  plot; 91 AOIs, 19,959/19,963 genes kept by `filterByExpr(min.count=5)`, Q3/background
-  Spearman rho = 0.994; no AOIs excluded and DE claims unchanged.
-- S3 [DONE 2026-07-08] `fig-geomx-ordination`: deterministic PCA/MDS with genotype/slide/segment
-  aesthetics, variance explained, top loadings. Outcome: compact `geomx_de$ordination` +
-  report plot; 91 AOIs, 19,959/19,963 genes kept, 2,000 variable genes used; PC1 = 19.36%
-  and PC2 = 6.94%; no AOIs excluded and DE claims unchanged.
-- S4 [DONE 2026-07-08] `fig-geomx-gene-detection`: gene detectability / marker measurability /
-  low-coverage filter figure. Outcome: compact `geomx_de$gene_detection` + report plot;
-  91 AOIs, 19,959/19,963 genes pass `filterByExpr(min.count=5)`, 4 low-coverage genes
-  dropped by the existing GeoMx filter, and marker genes present/pass = Microglia 8/8,
-  Homeostatic 10/10, DAM 18/18; no AOIs excluded and DE claims unchanged.
-- S5 [DONE 2026-07-08] `fig-geomx-sample-heatmap`: top-variable-gene heatmap with
-  genotype/slide/segment/bio-unit/ROI tracks plus signed-response score. Outcome:
-  compact `geomx_de$sample_heatmap` + report plot; 91 AOIs, 19,959/19,963 genes kept,
-  40 top-variable genes displayed as row-z scores clipped at +/-2.5; no AOIs excluded
-  and DE claims unchanged.
-- S6 [DONE 2026-07-08] `fig-geomx-spatial-program-overlays`: coordinate small multiples
-  for compact biology scores/genes beyond the current signed-response map. Outcome:
-  compact `geomx_de$spatial_programs` + report plot; 91 AOIs x 6 programs (546 rows),
-  19,959/19,963 genes kept, scored features = Homeostatic 10/10, DAM 18/18, IFN 12/12,
-  MHC/APC 7/7, Apoe 1/1, Trem2 1/1; coordinate-only status labelled because tissue
-  images are absent from the live report path; no AOIs excluded and DE claims unchanged.
-- S7 [DONE 2026-07-08] `fig-geomx-contrast-diagnostics`: GeoMx-only volcano/MA
-  diagnostics for the five canonical contrasts. Outcome: compact
-  `geomx_de$contrast_diagnostics` + report plot; 99,795 contrast-feature rows
-  (19,959 genes x 5 contrasts), 20 deterministic labels, support counts at
-  FDR <= 0.10 = tau_alone 4 up/0 down, nlgf_in_maptki 5,258 up/1,559 down,
-  nlgf_in_p301s 1,386 up/541 down, tau_in_nlgf 126 up/270 down,
-  interaction 45 up/117 down; no new inference model, AOI exclusion, or
-  report-claim change.
-- S8 [DONE 2026-07-08] `fig-geomx-roi-segment-replicates`: repeated-observation /
-  ROI-segment / duplicateCorrelation block audit figure. Outcome: compact
-  `geomx_de$roi_replicates` + report plot; 91 AOIs, 15/16 expected bio-units
-  present, all AOIs have one segment level, duplicateCorrelation blocks contain
-  2-7 AOIs, consensus correlation = 0.0085, and pairwise AOI correlations over
-  2,000 top-variable genes cover 248 same-bio-unit / 763 same-genotype-different-unit /
-  3,084 different-genotype pairs; no AOI exclusion, DE change, or report-claim change.
-- S9 [DONE 2026-07-08] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
-  with abundance display only if re-earned in-session. Outcome: compact
-  `geomx_de$decon_feasibility` + report plot; 91 AOIs, 19,959/19,963 genes kept,
-  8/8 candidate marker components covered with >=2 filter-passing marker genes,
-  no live `SpatialDecon` dependency or reference-profile/beta/abundance-DE target,
-  and AOI input-status bins = 37 no
-  local blocker / 3 low-input tail / 9 background-Q3 tail / 42 absolute-count
-  blocked by nuclei sentinel. Figure is a blocked diagnostic; no abundance
-  claim, AOI exclusion, DE change, or report-claim change.
-
-Next `$session-prompt` = CLOSE-OUT GeoMx exploratory figures.
+No active plan. Next `$session-prompt` = PLAN: confirm the next backlog phase with
+user before writing the plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -244,12 +188,12 @@ Next `$session-prompt` = CLOSE-OUT GeoMx exploratory figures.
   NF-kB stem audit -> score heatmap, GeoMx sensitivity bubble/segment hybrid ->
   count heatmaps, and story mechanism stems -> point evidence. Targeted render
   green; Chromium PDF spot checks clean.
-- GeoMx exploratory figures [OPEN 2026-07-08 -> `.agent/geomx_exploratory_figures_plan.md`]:
-  user requested web-searched exploratory GeoMx figure inventory + roadmap sessions. Plan
-  records Bruker GeoScript/User Manual, standR workflow/manual, and SpatialDecon sources.
-  Implementation is deliberately one figure/session: S1 QC atlas, S2 normalization/RLE,
-  S3 ordination, S4 gene detection, S5 sample heatmap, S6 spatial program overlays,
-  S7 contrast diagnostics, S8 ROI/segment replicate audit, S9 decon feasibility/status.
+- GeoMx exploratory figures [DONE 2026-07-08 -> `.agent/completed/geomx_exploratory_figures_plan_2026-07-08.md`]:
+  user requested web-searched exploratory GeoMx figure inventory + roadmap sessions. Added
+  nine compact GeoMx exploratory figures in separate sessions: AOI QC atlas, normalization/RLE,
+  ordination, gene detection, sample heatmap, spatial program overlays, contrast diagnostics,
+  ROI/segment replicate audit, and decon feasibility/status. All figures are descriptive,
+  exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -1011,8 +955,8 @@ Next `$session-prompt` = CLOSE-OUT GeoMx exploratory figures.
   found common GeoMx exploratory figures in Bruker GeoScript/User Manual, standR workflow/manual, and
   SpatialDecon docs: NGS/segment QC, normalization/RLE, PCA/MDS/loadings, gene detection,
   heatmaps, spatial overlays, volcano/MA, ROI/segment structure, and decon/status diagnostics.
-  Wrote `.agent/geomx_exploratory_figures_plan.md`; roadmap Active plan now implements one figure
-  per session (S1-S9). Next = EXECUTE S1.
+  Opened the plan now archived at `.agent/completed/geomx_exploratory_figures_plan_2026-07-08.md`;
+  roadmap Active plan implemented one figure per session (S1-S9). Next = EXECUTE S1.
 - 2026-07-08 GeoMx exploratory figures S1 DONE -> `fig-geomx-qc-atlas`. Added
   `geomx_qc_descriptor()` into `geomx_de` and `geomx_qc_atlas_plot()` into `_modality.qmd`.
   The atlas shows library size, detected genes, nuclei, AOI area, negative background, and Q3 factor

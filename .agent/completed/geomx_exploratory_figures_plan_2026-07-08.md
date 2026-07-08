@@ -216,5 +216,6 @@ plot contracts.
 ## Active-State Notes
 
 Default execution order completed: QC -> normalization -> ordination -> gene detectability ->
-heatmap -> spatial overlays -> DE diagnostics -> replicate structure -> decon/status. Next
-session mode from roadmap should close out the active plan.
+heatmap -> spatial overlays -> DE diagnostics -> replicate structure -> decon/status. Closed
+2026-07-08 after adversarial review, history digest, roadmap reset, final lean gate, and scoped
+close-out commit.
