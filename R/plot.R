@@ -47,6 +47,11 @@ tau_background_colours <- c(
   P301S  = "#0B7A75"
 )
 
+amyloid_status_colours <- c(
+  `NLGF-` = "#6F7782",
+  `NLGF+` = "#C8841C"
+)
+
 figure7_score_fill_colours <- c(
   MAPTKI = "#245A9A",
   P301S  = "#C65A1E"
@@ -963,7 +968,7 @@ geomx_gene_detection_plot <- function(detection, title = "GeoMx gene detectabili
 }
 
 geomx_sample_heatmap_plot <- function(sample_heatmap,
-                                      title = "GeoMx sample heatmap") {
+                                      title = NULL) {
   stopifnot(is.list(sample_heatmap), is.data.frame(sample_heatmap$heatmap),
             is.data.frame(sample_heatmap$sample), is.data.frame(sample_heatmap$features))
   heatmap <- sample_heatmap$heatmap
@@ -977,7 +982,7 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
   heatmap <- heatmap[is.finite(heatmap$sample_rank) & is.finite(heatmap$z), ,
                      drop = FALSE]
   if (!nrow(heatmap)) stop("GeoMx sample heatmap has no finite rows", call. = FALSE)
-  need_sample <- c("sample_rank", "genotype", "slide", "segment", "bio_unit", "roi",
+  need_sample <- c("sample_rank", "genotype", "slide", "bio_unit", "roi",
                    "signed_response_score")
   miss_sample <- setdiff(need_sample, names(sample))
   if (length(miss_sample)) {
@@ -988,123 +993,237 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
                      is.finite(sample$signed_response_score), , drop = FALSE]
   if (!nrow(sample)) stop("GeoMx sample heatmap has no finite samples", call. = FALSE)
   sample <- sample[order(sample$sample_rank, method = "radix"), , drop = FALSE]
+  if (!"tau_background" %in% names(sample)) {
+    sample$tau_background <- ifelse(
+      as.character(sample$genotype) %in% c("P301S", "NLGF_P301S"),
+      "P301S", "MAPTKI"
+    )
+  }
+  if (!"amyloid_status" %in% names(sample)) {
+    sample$amyloid_status <- ifelse(startsWith(as.character(sample$genotype), "NLGF"),
+                                    "NLGF+", "NLGF-")
+  }
+  sample$tau_background <- factor(as.character(sample$tau_background),
+                                  levels = names(tau_background_colours))
+  sample$amyloid_status <- factor(as.character(sample$amyloid_status),
+                                  levels = names(amyloid_status_colours))
+  stopifnot(!anyNA(sample$tau_background), !anyNA(sample$amyloid_status))
   n_sample <- max(sample$sample_rank)
   x_limits <- c(0.5, n_sample + 0.5)
 
-  make_track_palette <- function(values, colours) {
-    levels <- sort(unique(as.character(values)))
-    stats::setNames(rep(colours, length.out = length(levels)), levels)
-  }
   id_palette <- function(values, saturation = 0.48, value = 0.70) {
     levels <- sort(unique(as.character(values)))
     if (!length(levels)) return(character())
     hue <- seq(0, 0.86, length.out = length(levels))
     stats::setNames(grDevices::hsv(hue, saturation, value), levels)
   }
-  track_one <- function(track, values, palette) {
-    value <- as.character(values)
-    data.frame(
-      sample_rank = sample$sample_rank,
-      track = track,
-      value = value,
-      fill = unname(palette[value]),
+  tracks <- sample_heatmap$metadata_tracks
+  if (!is.data.frame(tracks)) {
+    track_one <- function(track_id, track_label, track_group, track_type, values,
+                          numeric_value = rep(NA_real_, length(values))) {
+      data.frame(
+        sample_rank = sample$sample_rank,
+        track_id = track_id,
+        track_label = track_label,
+        track_group = track_group,
+        track_type = track_type,
+        source = "fallback",
+        value = as.character(values),
+        numeric_value = numeric_value,
+        stringsAsFactors = FALSE
+      )
+    }
+    tracks <- rbind(
+      track_one("genotype", "genotype", "design / derived", "categorical", sample$genotype),
+      track_one("tau_background", "tau", "design / derived", "categorical",
+                sample$tau_background),
+      track_one("amyloid_status", "amyloid", "design / derived", "categorical",
+                sample$amyloid_status),
+      track_one("slide", "slide", "design / derived", "categorical", sample$slide),
+      track_one("bio_unit", "bio-unit", "design / derived", "categorical",
+                sample$bio_unit),
+      track_one("roi", "ROI", "ROI / spatial", "categorical", sample$roi),
+      track_one("signed_response_score", "amyloid score", "design / derived", "numeric",
+                sample$signed_response_score, sample$signed_response_score)
+    )
+  }
+  need_tracks <- c("sample_rank", "track_id", "track_label", "track_group",
+                   "track_type", "value", "numeric_value")
+  miss_tracks <- setdiff(need_tracks, names(tracks))
+  if (length(miss_tracks)) {
+    stop("GeoMx metadata tracks missing columns: ",
+         paste(miss_tracks, collapse = ", "), call. = FALSE)
+  }
+  tracks <- tracks[is.finite(tracks$sample_rank), , drop = FALSE]
+  if (!nrow(tracks)) stop("GeoMx metadata track frame has no finite rows", call. = FALSE)
+  tracks$track_id <- as.character(tracks$track_id)
+  tracks$track_label <- as.character(tracks$track_label)
+  tracks$track_group <- factor(as.character(tracks$track_group),
+                               levels = unique(as.character(tracks$track_group)))
+  track_levels <- unique(tracks$track_id)
+  label_map <- stats::setNames(
+    tracks$track_label[match(track_levels, tracks$track_id)],
+    track_levels
+  )
+  tracks$track_id <- factor(tracks$track_id, levels = rev(track_levels))
+
+  sequential <- grDevices::colorRampPalette(c("#F1EEE5", "#8BAFC0", "#1F6F8B"))(101)
+  diverging <- grDevices::colorRampPalette(c("#2F78A0", "#F8F5ED", "#A63A50"))(101)
+  tau_amyloid_colours <- c(no = "#6E6AA8", yes = "#B66A7A")
+  tau_track_colours <- c(MAPTKI = tau_amyloid_colours[["no"]],
+                         P301S = tau_amyloid_colours[["yes"]])
+  amyloid_track_colours <- c(`NLGF-` = tau_amyloid_colours[["no"]],
+                             `NLGF+` = tau_amyloid_colours[["yes"]])
+  z_limit <- as.numeric(sample_heatmap$provenance$z_limit %||% 2.5)
+  if (length(z_limit) != 1L || !is.finite(z_limit) || z_limit <= 0) z_limit <- 2.5
+  colour_numeric <- function(x, diverge = FALSE, limit = NULL) {
+    finite <- is.finite(x)
+    fill <- rep("#D8D2C8", length(x))
+    if (!any(finite)) return(fill)
+    if (isTRUE(diverge)) {
+      lim <- if (is.null(limit)) max(abs(x[finite]), na.rm = TRUE) else as.numeric(limit)
+      if (!is.finite(lim) || lim <= 0) return(fill)
+      scaled <- (pmax(pmin(x, lim), -lim) + lim) / (2 * lim)
+      fill[finite] <- diverging[pmax(1L, pmin(101L, floor(scaled[finite] * 100) + 1L))]
+      return(fill)
+    }
+    lim <- stats::quantile(x[finite], c(0.02, 0.98), names = FALSE, na.rm = TRUE)
+    if (!all(is.finite(lim)) || lim[[1L]] == lim[[2L]]) lim <- range(x[finite])
+    if (!all(is.finite(lim)) || lim[[1L]] == lim[[2L]]) return(fill)
+    scaled <- (pmax(pmin(x, lim[[2L]]), lim[[1L]]) - lim[[1L]]) /
+      (lim[[2L]] - lim[[1L]])
+    fill[finite] <- sequential[pmax(1L, pmin(101L, floor(scaled[finite] * 100) + 1L))]
+    fill
+  }
+  colour_categorical <- function(id, values) {
+    values <- as.character(values)
+    palette <- switch(
+      id,
+      genotype = genotype_colours,
+      tau_background = tau_track_colours,
+      amyloid_status = amyloid_track_colours,
+      id_palette(values, saturation = 0.38, value = 0.72)
+    )
+    fill <- unname(palette[values])
+    fill[is.na(fill)] <- "#D8D2C8"
+    fill
+  }
+  track_id_chr <- as.character(tracks$track_id)
+  tracks$fill <- "#D8D2C8"
+  for (id in unique(track_id_chr)) {
+    idx <- which(track_id_chr == id)
+    type <- unique(as.character(tracks$track_type[idx]))
+    type <- type[[1L]]
+    if (identical(type, "numeric")) {
+      diverge <- identical(id, "signed_response_score") ||
+        startsWith(id, "signature_") || startsWith(id, "gene_")
+      tracks$fill[idx] <- colour_numeric(
+        as.numeric(tracks$numeric_value[idx]),
+        diverge = diverge,
+        limit = if (startsWith(id, "gene_")) z_limit else NULL
+      )
+    } else {
+      tracks$fill[idx] <- colour_categorical(id, tracks$value[idx])
+    }
+  }
+  if (any(is.na(tracks$fill))) stop("GeoMx metadata track palette has missing fills",
+                                    call. = FALSE)
+  tau_amyloid_key <- rep(NA_character_, nrow(tracks))
+  tau_amyloid_key[track_id_chr == "tau_background"] <-
+    ifelse(as.character(tracks$value[track_id_chr == "tau_background"]) == "P301S",
+           "tau_amyloid_yes", "tau_amyloid_no")
+  tau_amyloid_key[track_id_chr == "amyloid_status"] <-
+    ifelse(as.character(tracks$value[track_id_chr == "amyloid_status"]) == "NLGF+",
+           "tau_amyloid_yes", "tau_amyloid_no")
+  tracks$fill_key <- tracks$fill
+  tracks$fill_key[!is.na(tau_amyloid_key)] <- tau_amyloid_key[!is.na(tau_amyloid_key)]
+  non_legend_fills <- unique(tracks$fill[is.na(tau_amyloid_key)])
+  fill_values <- stats::setNames(non_legend_fills, non_legend_fills)
+  fill_values <- c(
+    fill_values,
+    tau_amyloid_no = tau_amyloid_colours[["no"]],
+    tau_amyloid_yes = tau_amyloid_colours[["yes"]]
+  )
+
+  genotype_values <- unique(as.character(tracks$value[track_id_chr == "genotype"]))
+  genotype_levels_present <- genotype_levels[genotype_levels %in% genotype_values]
+  genotype_key <- data.frame()
+  if (length(genotype_levels_present)) {
+    genotype_key <- data.frame(
+      genotype = factor(genotype_levels_present, levels = genotype_levels_present),
+      sample_rank = x_limits[[1L]],
+      track_id = factor(levels(tracks$track_id)[[1L]], levels = levels(tracks$track_id)),
       stringsAsFactors = FALSE
     )
   }
-  slide_palette <- make_track_palette(sample$slide, tau_discrete_colours)
-  segment_palette <- make_track_palette(sample$segment,
-                                        c("#3F5F7F", "#A63A50", "#0B7A75", "#C8841C"))
-  bio_palette <- id_palette(sample$bio_unit, saturation = 0.42, value = 0.66)
-  roi_palette <- id_palette(sample$roi, saturation = 0.34, value = 0.76)
-  tracks <- rbind(
-    track_one("genotype", sample$genotype, genotype_colours),
-    track_one("slide", sample$slide, slide_palette),
-    track_one("segment", sample$segment, segment_palette),
-    track_one("bio-unit", sample$bio_unit, bio_palette),
-    track_one("ROI", sample$roi, roi_palette)
-  )
-  if (any(is.na(tracks$fill))) stop("GeoMx sample heatmap track palette has missing fills",
-                                    call. = FALSE)
-  tracks$track <- factor(tracks$track,
-                         levels = rev(c("genotype", "slide", "segment", "bio-unit", "ROI")))
 
-  track_plot <- ggplot2::ggplot(tracks, ggplot2::aes(sample_rank, track, fill = fill)) +
-    ggplot2::geom_tile(width = 1, height = 0.88, colour = "#F8F5ED", linewidth = 0.08) +
-    ggplot2::scale_fill_identity() +
-    ggplot2::scale_x_continuous(limits = x_limits, expand = c(0, 0), breaks = NULL) +
-    ggplot2::labs(x = NULL, y = NULL, title = "AOI annotation tracks",
-                  subtitle = "Clustered AOI order") +
-    theme_tau(base_size = 8.4) +
-    ggplot2::theme(
-      axis.text.x = ggplot2::element_blank(),
-      axis.ticks.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_text(size = 7.2),
-      panel.grid = ggplot2::element_blank(),
-      plot.margin = ggplot2::margin(4, 6, 1, 6)
-    )
-
-  score_lim <- max(abs(sample$signed_response_score), na.rm = TRUE)
-  score_lim <- if (is.finite(score_lim) && score_lim > 0) score_lim else 1
-  score_plot <- ggplot2::ggplot(
-    sample,
-    ggplot2::aes(sample_rank, signed_response_score, colour = genotype, shape = segment)
-  ) +
-    ggplot2::geom_hline(yintercept = 0, colour = "#8A8174", linewidth = 0.28) +
-    ggplot2::geom_segment(ggplot2::aes(xend = sample_rank, y = 0,
-                                       yend = signed_response_score),
-                          linewidth = 0.22, alpha = 0.66) +
-    ggplot2::geom_point(size = 1.35, alpha = 0.94) +
-    scale_colour_genotype(name = "genotype") +
-    ggplot2::scale_y_continuous(limits = c(-score_lim, score_lim),
-                                expand = ggplot2::expansion(mult = 0.08)) +
-    ggplot2::scale_x_continuous(limits = x_limits, expand = c(0, 0), breaks = NULL) +
-    ggplot2::labs(x = NULL, y = "signed score", title = "Amyloid-response score track",
-                  subtitle = "Mean signed z-score from the GeoMx amyloid-response gene set") +
-    theme_tau(base_size = 8.4) +
-    ggplot2::theme(
-      axis.text.x = ggplot2::element_blank(),
-      axis.ticks.x = ggplot2::element_blank(),
-      legend.position = "bottom",
-      plot.margin = ggplot2::margin(1, 6, 4, 6)
-    )
-
-  z_lim <- sample_heatmap$provenance$z_limit %||% max(abs(heatmap$z), na.rm = TRUE)
-  z_lim <- if (is.finite(z_lim) && z_lim > 0) z_lim else 1
-  heat_plot <- ggplot2::ggplot(
-    heatmap,
-    ggplot2::aes(sample_rank, symbol_plot, fill = z)
-  ) +
-    ggplot2::geom_tile(width = 1, height = 0.96, colour = "#F8F5ED", linewidth = 0.05) +
-    scale_fill_rwb(midpoint = 0, limits = c(-z_lim, z_lim), oob = scales::squish,
-                   name = "row z") +
+  main_plot <- ggplot2::ggplot(tracks, ggplot2::aes(sample_rank, track_id, fill = fill_key)) +
+    ggplot2::geom_tile(width = 1, height = 0.9, colour = "#F8F5ED", linewidth = 0.05) +
+    ggplot2::geom_point(
+      data = genotype_key,
+      mapping = ggplot2::aes(sample_rank, track_id, colour = genotype),
+      inherit.aes = FALSE,
+      shape = 15,
+      size = 0,
+      alpha = 0,
+      show.legend = TRUE
+    ) +
+    ggplot2::scale_fill_manual(
+      values = fill_values,
+      breaks = c("tau_amyloid_no", "tau_amyloid_yes"),
+      labels = c("no", "yes"),
+      name = "tau/amyloid",
+      guide = ggplot2::guide_legend(
+        order = 2,
+        nrow = 1,
+        byrow = TRUE,
+        title.position = "left",
+        label.position = "right"
+      )
+    ) +
+    ggplot2::scale_colour_manual(
+      values = genotype_colours[genotype_levels_present],
+      breaks = genotype_levels_present,
+      name = "genotype",
+      guide = ggplot2::guide_legend(
+        order = 1,
+        nrow = 1,
+        byrow = TRUE,
+        title.position = "left",
+        label.position = "right",
+        override.aes = list(shape = 15, size = 3.6, alpha = 1)
+      )
+    ) +
+    ggplot2::scale_y_discrete(labels = label_map,
+                              expand = ggplot2::expansion(add = 0.05)) +
     ggplot2::scale_x_continuous(limits = x_limits, expand = c(0, 0), breaks = NULL) +
     ggplot2::labs(
-      x = "AOIs clustered by top-variable GeoMx genes",
+      x = NULL,
       y = NULL,
-      title = "Top-variable gene expression",
-      subtitle = sprintf("%s genes, %s AOIs; row z-scores clipped at +/-%.1f",
-                         sample_heatmap$provenance$n_variable_features %||%
-                           length(unique(heatmap$symbol)),
-                         sample_heatmap$provenance$n_aoi %||% nrow(sample),
-                         z_lim)
+      title = title
     ) +
-    theme_tau(base_size = 8.1) +
+    theme_tau(base_size = 10.0) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_blank(),
       axis.ticks.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_text(size = 5.9, lineheight = 0.88),
+      axis.text.y = ggplot2::element_text(size = 8.8, lineheight = 0.9),
       panel.grid = ggplot2::element_blank(),
-      legend.position = "bottom",
-      plot.margin = ggplot2::margin(2, 6, 4, 6)
+      legend.position = if (length(genotype_levels_present)) "top" else "none",
+      legend.justification = "left",
+      legend.box = "horizontal",
+      legend.box.just = "left",
+      legend.direction = "horizontal",
+      legend.title = ggplot2::element_text(face = "bold", size = 9.4,
+                                           colour = "#333333"),
+      legend.text = ggplot2::element_text(size = 8.8, colour = "#333333",
+                                          margin = ggplot2::margin(l = 6, r = 10)),
+      legend.key.size = grid::unit(0.2, "in"),
+      legend.spacing.x = grid::unit(0.2, "in"),
+      legend.margin = ggplot2::margin(0, 0, 0, 0),
+      legend.box.margin = ggplot2::margin(0, 0, -2, 0),
+      plot.margin = ggplot2::margin(1, 8, 6, 6)
     )
-
-  patchwork::wrap_plots(list(track_plot, score_plot, heat_plot),
-                        ncol = 1, heights = c(0.72, 0.95, 4.6)) +
-    patchwork::plot_annotation(
-      title = title,
-      subtitle = sample_heatmap$provenance$clustering %||%
-        "average-linkage clustering on TMM-logCPM row z-scores"
-    )
+  main_plot
 }
 
 geomx_spatial_program_overlay_plot <- function(program_overlay,

@@ -99,6 +99,7 @@ geomx_meta <- function(geomx) {
     area_range = range(out$area),
     nuclei_sentinel_count = sum(out$nuclei < 0)
   )
+  attr(out, "geomx_raw_meta") <- md
   out
 }
 
@@ -1312,6 +1313,7 @@ geomx_ordination_descriptor <- function(counts, meta, design, min_count = 5,
 geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
                                             min_count = 5,
                                             n_variable_features = 40L,
+                                            n_track_features = 5L,
                                             z_limit = 2.5) {
   stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
             is.list(top),
@@ -1321,10 +1323,12 @@ geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
             is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
             is.numeric(n_variable_features), length(n_variable_features) == 1L,
             n_variable_features >= 2L,
+            is.numeric(n_track_features), length(n_track_features) == 1L,
+            n_track_features >= 2L,
             is.numeric(z_limit), length(z_limit) == 1L, is.finite(z_limit),
             z_limit > 0,
             anyDuplicated(rownames(counts)) == 0L)
-  need <- c("slide", "roi", "segment", "genotype", "SampleID", "bio_unit")
+  need <- c("slide", "roi", "genotype", "SampleID", "bio_unit")
   missing <- setdiff(need, names(meta))
   if (length(missing)) {
     stop("GeoMx sample heatmap metadata missing columns: ",
@@ -1354,6 +1358,7 @@ geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
   var_rank <- var_rank[order(-var_rank$variance, var_rank$symbol, method = "radix"), ,
                        drop = FALSE]
   feature_ids <- utils::head(var_rank$symbol, as.integer(n_variable_features))
+  dam_track_genes <- geomx_dam_track_genes(logcpm)
 
   mat <- logcpm[feature_ids, , drop = FALSE]
   row_mean <- rowMeans(mat)
@@ -1362,9 +1367,30 @@ geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
   z <- sweep(sweep(mat, 1L, row_mean, "-"), 1L, row_sd, "/")
   z[!is.finite(z)] <- 0
 
-  sample_hclust <- stats::hclust(stats::dist(t(z)), method = "average")
+  raw_meta <- attr(meta, "geomx_raw_meta")
+  if (!is.data.frame(raw_meta)) raw_meta <- meta
+  if (!identical(rownames(raw_meta), rownames(meta))) {
+    stop("GeoMx raw metadata rows do not align with model metadata", call. = FALSE)
+  }
+  if (length(dam_track_genes) < 2L) {
+    stop("GeoMx DAM-gene track clustering needs >=2 displayed DAM genes", call. = FALSE)
+  }
+  track_mat <- logcpm[dam_track_genes, , drop = FALSE]
+  track_mean <- rowMeans(track_mat)
+  track_sd <- apply(track_mat, 1L, stats::sd)
+  track_sd[!is.finite(track_sd) | track_sd <= 0] <- 1
+  track_z <- sweep(sweep(track_mat, 1L, track_mean, "-"), 1L, track_sd, "/")
+  track_z[!is.finite(track_z)] <- 0
   feature_hclust <- stats::hclust(stats::dist(z), method = "average")
-  sample_order <- colnames(z)[sample_hclust$order]
+  track_gene_hclust <- stats::hclust(stats::dist(track_z), method = "average")
+  dam_track_genes <- utils::head(rev(rownames(track_z)[track_gene_hclust$order]),
+                                 as.integer(n_track_features))
+  track_z <- track_z[dam_track_genes, , drop = FALSE]
+  sample_hclust <- stats::hclust(stats::dist(t(track_z)), method = "average")
+  sample_dend <- stats::reorder(stats::as.dendrogram(sample_hclust),
+                                wts = colMeans(track_z),
+                                agglo.FUN = mean)
+  sample_order <- labels(sample_dend)
   feature_order <- rownames(z)[feature_hclust$order]
   z_plot <- pmax(pmin(z[feature_order, sample_order, drop = FALSE], z_limit), -z_limit)
 
@@ -1382,10 +1408,17 @@ geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
     sample_rank = seq_along(sample_order),
     slide = factor(as.character(sample$slide), levels = sort(unique(as.character(meta$slide)))),
     roi = factor(as.character(sample$roi)),
-    segment = factor(as.character(sample$segment),
-                     levels = sort(unique(as.character(meta$segment)))),
     sample_id = as.character(sample$SampleID),
     genotype = factor(as.character(sample$genotype), levels = genotype_levels),
+    tau_background = factor(
+      ifelse(as.character(sample$genotype) %in% c("P301S", "NLGF_P301S"),
+             "P301S", "MAPTKI"),
+      levels = c("MAPTKI", "P301S")
+    ),
+    amyloid_status = factor(
+      ifelse(startsWith(as.character(sample$genotype), "NLGF"), "NLGF+", "NLGF-"),
+      levels = c("NLGF-", "NLGF+")
+    ),
     bio_unit = factor(as.character(sample$bio_unit)),
     signed_response_score = as.numeric(spatial$aoi$signed_response_score[
       match(sample_order, spatial$aoi$aoi)
@@ -1396,31 +1429,220 @@ geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
   feature_frame$feature_rank <- seq_along(feature_order)
   rownames(feature_frame) <- NULL
 
+  raw_sample <- raw_meta[sample_order, , drop = FALSE]
+  biology_tracks <- geomx_sample_biology_tracks(logcpm, sample_order, sample_frame,
+                                                marker_genes = dam_track_genes,
+                                                track_group = "DAM genes",
+                                                source = "DAM marker TMM logCPM row z-score")
+  metadata_tracks <- geomx_sample_metadata_tracks(raw_sample, sample_frame,
+                                                  biology_tracks = biology_tracks)
+
   stopifnot(all(is.finite(heatmap$z)), all(is.finite(heatmap$sample_rank)),
             all(is.finite(heatmap$feature_rank)), !anyNA(heatmap$symbol_plot),
-            !anyNA(sample_frame$slide), !anyNA(sample_frame$segment),
-            !anyNA(sample_frame$genotype), !anyNA(sample_frame$bio_unit),
+            !anyNA(sample_frame$slide), !anyNA(sample_frame$genotype),
+            !anyNA(sample_frame$tau_background), !anyNA(sample_frame$amyloid_status),
+            !anyNA(sample_frame$bio_unit),
             all(is.finite(sample_frame$signed_response_score)),
-            all(is.finite(feature_frame$variance)))
+            all(is.finite(feature_frame$variance)),
+            all(c("sample_rank", "track_id", "track_label", "track_group",
+                  "track_type", "value") %in% names(metadata_tracks)))
 
   list(
     heatmap = heatmap,
     sample = sample_frame,
     features = feature_frame,
+    metadata_tracks = metadata_tracks,
     provenance = list(
       n_aoi = ncol(counts),
       n_input_features = nrow(counts),
       n_kept_features = sum(keep),
       n_variable_features = length(feature_ids),
+      n_track_features = length(dam_track_genes),
       min_count = min_count,
       z_limit = z_limit,
       transform = "TMM-normalized logCPM, top variable filterByExpr-kept genes, row z-scored and clipped for display",
-      clustering = "average-linkage hierarchical clustering on Euclidean distances over the displayed row-z matrix",
-      sample_tracks = c("genotype", "slide", "segment", "bio_unit", "roi",
-                        "signed_response_score"),
-      display = "descriptive sample/gene heatmap; no AOIs or genes are excluded beyond the existing primary-model filter"
+      clustering = "AOIs average-linkage clustered on the displayed five DAM-gene z-score tracks, then dendrogram-rotated by mean displayed DAM z-score; rows preserve the first five genes from the prior full DAM-gene row cluster",
+      sample_tracks = unique(metadata_tracks$track_id),
+      n_metadata_columns = ncol(raw_sample),
+      n_visible_tracks = length(unique(metadata_tracks$track_id)),
+      display = "focused AOI design and first-five DAM-gene tracks with clustered AOI columns; no AOIs or genes are excluded beyond the existing primary-model filter"
     )
   )
+}
+
+geomx_dam_track_genes <- function(logcpm,
+                                  omit = c("Fth1", "Lyz2")) {
+  stopifnot(is.matrix(logcpm), is.character(omit))
+  genes <- setdiff(canonical_microglia_markers$DAM, omit)
+  genes[genes %in% rownames(logcpm)]
+}
+
+geomx_sample_biology_tracks <- function(logcpm, sample_order, sample_frame,
+                                        marker_genes,
+                                        track_group,
+                                        source,
+                                        z_limit = 2.5) {
+  stopifnot(is.matrix(logcpm), is.character(sample_order),
+            identical(sample_order, sample_frame$aoi),
+            all(sample_order %in% colnames(logcpm)),
+            is.character(marker_genes), length(marker_genes) >= 1L,
+            is.character(track_group), length(track_group) == 1L,
+            !is.na(track_group), track_group != "",
+            is.character(source), length(source) == 1L,
+            !is.na(source), source != "",
+            is.numeric(z_limit), length(z_limit) == 1L, is.finite(z_limit),
+            z_limit > 0)
+
+  z_rows <- function(symbols) {
+    symbols <- unique(trimws(as.character(symbols)))
+    symbols <- symbols[!is.na(symbols) & symbols != ""]
+    symbols <- symbols[symbols %in% rownames(logcpm)]
+    if (!length(symbols)) return(NULL)
+    mat <- logcpm[symbols, sample_order, drop = FALSE]
+    row_mean <- rowMeans(mat)
+    row_sd <- apply(mat, 1L, stats::sd)
+    row_sd[!is.finite(row_sd) | row_sd <= 0] <- 1
+    z <- sweep(sweep(mat, 1L, row_mean, "-"), 1L, row_sd, "/")
+    z[!is.finite(z)] <- 0
+    list(symbols = symbols, z = z)
+  }
+  make_numeric_track <- function(track_id, track_label, track_group, values,
+                                 source, n_features = NA_integer_) {
+    values <- pmax(pmin(as.numeric(values), z_limit), -z_limit)
+    data.frame(
+      sample_rank = sample_frame$sample_rank,
+      track_id = track_id,
+      track_label = track_label,
+      track_group = track_group,
+      track_type = "numeric",
+      source = source,
+      value = format(signif(values, 5), trim = TRUE, scientific = FALSE),
+      numeric_value = values,
+      n_features = as.integer(n_features),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  tracks <- list()
+  for (gene in marker_genes) {
+    zr <- z_rows(gene)
+    if (is.null(zr)) next
+    tracks[[length(tracks) + 1L]] <- make_numeric_track(
+      paste0("gene_", gene),
+      gene,
+      track_group,
+      as.numeric(zr$z[gene, ]),
+      source = source,
+      n_features = 1L
+    )
+  }
+  out <- if (length(tracks)) do.call(rbind, tracks) else data.frame(
+    sample_rank = integer(), track_id = character(), track_label = character(),
+    track_group = character(), track_type = character(), source = character(),
+    value = character(), numeric_value = numeric(), n_features = integer(),
+    stringsAsFactors = FALSE
+  )
+  rownames(out) <- NULL
+  out
+}
+
+geomx_sample_metadata_tracks <- function(raw_sample, sample_frame,
+                                         biology_tracks = NULL) {
+  stopifnot(is.data.frame(raw_sample), is.data.frame(sample_frame),
+            identical(rownames(raw_sample), sample_frame$aoi),
+            all(c("sample_rank", "genotype", "tau_background", "amyloid_status",
+                  "bio_unit", "signed_response_score") %in% names(sample_frame)))
+
+  label_map <- c(
+    "ROI Coordinate X" = "ROI X",
+    "ROI Coordinate Y" = "ROI Y",
+    "NegGeoMean_Mm_R_NGS_WTA_v1.0" = "NegGeoMean",
+    "q_norm_qFactors" = "Q3 factor",
+    "nCount_RNA" = "library size"
+  )
+  categorical_numeric <- c("bio_rep", "tech_rep", "slide_rep")
+  group_for <- function(id) {
+    if (id %in% c("genotype", "tau_background", "amyloid_status")) {
+      "design"
+    } else {
+      "other"
+    }
+  }
+  label_for <- function(id) {
+    if (id %in% names(label_map)) unname(label_map[[id]]) else id
+  }
+  value_string <- function(x) {
+    if (is.numeric(x) || is.integer(x)) {
+      out <- format(signif(as.numeric(x), 5), trim = TRUE, scientific = FALSE)
+    } else {
+      out <- as.character(x)
+    }
+    out[is.na(out)] <- "NA"
+    out[out == ""] <- "<blank>"
+    out
+  }
+  make_track <- function(track_id, values, track_label = label_for(track_id),
+                         track_group = group_for(track_id), source = "metadata",
+                         track_type = NULL) {
+    if (is.null(track_type)) {
+      track_type <- if ((is.numeric(values) || is.integer(values)) &&
+                        !track_id %in% categorical_numeric) {
+        "numeric"
+      } else {
+        "categorical"
+      }
+    }
+    numeric_value <- if (identical(track_type, "numeric")) {
+      suppressWarnings(as.numeric(values))
+    } else {
+      rep(NA_real_, length(values))
+    }
+    data.frame(
+      sample_rank = sample_frame$sample_rank,
+      track_id = track_id,
+      track_label = track_label,
+      track_group = track_group,
+      track_type = track_type,
+      source = source,
+      value = value_string(values),
+      numeric_value = numeric_value,
+      n_features = NA_integer_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  tracks <- list()
+  added_raw <- character()
+  append_track <- function(x) {
+    tracks[[length(tracks) + 1L]] <<- x
+    invisible(NULL)
+  }
+  append_raw <- function(col) {
+    if (col %in% names(raw_sample) && !col %in% added_raw) {
+      append_track(make_track(col, raw_sample[[col]]))
+      added_raw <<- c(added_raw, col)
+    }
+    invisible(NULL)
+  }
+
+  append_raw("genotype")
+  append_track(make_track("tau_background", sample_frame$tau_background,
+                          track_label = "tau", source = "derived",
+                          track_type = "categorical"))
+  append_track(make_track("amyloid_status", sample_frame$amyloid_status,
+                          track_label = "amyloid", source = "derived",
+                          track_type = "categorical"))
+  if (is.data.frame(biology_tracks) && nrow(biology_tracks)) {
+    append_track(biology_tracks)
+  }
+  out <- do.call(rbind, tracks)
+  out$track_group <- factor(out$track_group,
+                            levels = c("design", "DAM genes"))
+  rownames(out) <- NULL
+  stopifnot(!anyNA(out$sample_rank), !anyNA(out$track_id),
+            !anyNA(out$track_label), !anyNA(out$track_group),
+            !anyNA(out$track_type), !anyNA(out$value))
+  out
 }
 
 geomx_spatial_program_descriptor <- function(counts, meta, design,

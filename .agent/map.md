@@ -64,8 +64,8 @@ Modality context:
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries GeoMx QC through `descriptive$GeoMx$qc`, normalization/RLE through
   `descriptive$GeoMx$normalization`, PCA/MDS through `descriptive$GeoMx$ordination`,
-  gene detectability through `descriptive$GeoMx$gene_detection`, and the clustered
-  top-variable-gene heatmap through `descriptive$GeoMx$sample_heatmap`, and coordinate-only
+  gene detectability through `descriptive$GeoMx$gene_detection`, and the first-five-DAM-gene-clustered
+  AOI design/DAM-gene track atlas through `descriptive$GeoMx$sample_heatmap`, and coordinate-only
   biology program overlays through `descriptive$GeoMx$spatial_programs`, and GeoMx
   volcano/MA/support diagnostics through `descriptive$GeoMx$contrast_diagnostics`, and
   ROI/segment/block audit data through `descriptive$GeoMx$roi_replicates`, and blocked
@@ -109,7 +109,7 @@ Report:
   fields for the raw/TMM/RLE/background/voom diagnostic, compact ordination fields for
   PCA/MDS/scree/loading diagnostics, compact gene-detection fields for marker
   measurability and the existing `filterByExpr` decision, and compact sample-heatmap
-  fields for clustered top-variable-gene row-z expression, plus compact coordinate-only
+  fields for first-five-DAM-gene-clustered and mean-DAM-rotated AOI layout plus compact design/DAM-gene tracks, plus compact coordinate-only
   spatial-program fields for Homeostatic/DAM/IFN/MHC_APC signatures and Apoe/Trem2
   single-gene row-z scores, plus compact contrast-diagnostic fields for volcano/MA,
   signed support counts, and top interaction genes, plus compact ROI-replicate fields
@@ -141,7 +141,7 @@ Report:
 - `_trajectory.qmd`: pseudotime density by genotype/substate.
 - `_modality.qmd`: GeoMx QC atlas, GeoMx normalization/RLE diagnostic,
   GeoMx ordination diagnostic, GeoMx gene-detection diagnostic,
-  GeoMx sample heatmap diagnostic,
+  GeoMx AOI metadata-track diagnostic,
   GeoMx spatial program overlays,
   GeoMx contrast diagnostics,
   GeoMx ROI/segment replicate audit,

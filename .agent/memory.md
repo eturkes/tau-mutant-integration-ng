@@ -117,10 +117,13 @@ Modality context:
   fraction, existing `filterByExpr(min.count=5)` status, microglia identity/homeostatic/DAM
   marker measurability, and highest-detected genes. It excludes no AOIs and adds no new
   gene filter beyond the primary GeoMx model.
-- `geomx_de$sample_heatmap` is descriptive only: top-variable filter-passing TMM-logCPM
-  genes, row-z heatmap clipped for display, deterministic average-linkage AOI/gene
-  clustering, genotype/slide/segment/bio-unit/ROI tracks, and the existing signed GeoMx
-  amyloid-response score. It excludes no AOIs and changes no DE model.
+- `geomx_de$sample_heatmap` is descriptive only: visible Figure 10 is a compact AOI track
+  atlas with AOI columns average-linkage clustered by the displayed first five DAM genes from the prior full-row order,
+  then dendrogram-rotated by mean displayed DAM z-score
+  (`B2m`, `Apoe`, `Ctsd`, `Tyrobp`, `Trem2`),
+  with genotype/tau/amyloid context above and top legends for genotype plus shared tau/amyloid no-versus-yes colors.
+  Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
+  genotype block + tech_rep. It excludes no AOIs and changes no DE model.
 - `geomx_de$spatial_programs` is descriptive only: coordinate-only AOI maps for
   Homeostatic/DAM/IFN/MHC_APC signatures plus Apoe/Trem2 single genes, scored as
   TMM-logCPM row-z summaries over filter-passing genes. Tissue images are absent from

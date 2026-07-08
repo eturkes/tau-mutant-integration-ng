@@ -56,10 +56,10 @@ geomx_gene_detection_plot(msf$descriptive$GeoMx$gene_detection)
 
 ```{r}
 #| label: fig-geomx-sample-heatmap
-#| fig-width: 10.5
-#| fig-height: 10.2
-#| fig-cap: "GeoMx sample heatmap. Top: clustered AOI annotation tracks for genotype, slide, segment, bio-unit, and ROI, followed by the signed GeoMx amyloid-response score used in the spatial plate. Bottom: row-z-scored expression for a capped set of top-variable filter-passing GeoMx genes, with AOIs and genes ordered by deterministic average-linkage clustering. This exploratory figure shows sample/gene structure only and changes no GeoMx exclusions."
-#| fig-alt: "GeoMx exploratory sample heatmap with AOI annotation tracks for genotype, slide, segment, bio-unit, and ROI, a signed amyloid-response score strip, and a clustered z-score heatmap of top-variable filter-passing GeoMx genes."
+#| fig-width: 8.6
+#| fig-height: 5.4
+#| fig-cap: "GeoMx AOI DAM-gene tracks. AOIs are average-linkage clustered by the displayed five DAM marker-gene z-score tracks, then the dendrogram is rotated by mean displayed DAM z-score to keep low-DAM AOIs contiguous. Gene rows retain the first five rows from the prior full DAM-gene clustered order: B2m, Apoe, Ctsd, Tyrobp, and Trem2. The plot keeps compact genotype, tau-background, and amyloid-status context, with top legends for genotype and shared tau/amyloid no-versus-yes colors. Spatial/QC, bio/slide replicate, tech-replicate, and ROI tracks are omitted; ROI labels exactly encode genotype block plus technical replicate in this dataset. Categorical rows mark shared labels; gene rows are scaled within gene. This exploratory figure changes no GeoMx exclusions."
+#| fig-alt: "GeoMx AOI track atlas with AOI columns clustered by five displayed DAM marker-gene expression tracks and branch-ordered by mean DAM z-score, with genotype plus shared no-versus-yes tau and amyloid tracks above B2m, Apoe, Ctsd, Tyrobp, and Trem2; no spatial, QC, replicate, ROI, or expression heatmap tracks are displayed."
 geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 ```
 
