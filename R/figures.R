@@ -467,11 +467,11 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 
   panels <- list(
     snRNAseq = list(
-      title = "snRNAseq microglia (pseudobulk)",
+      title = "snRNAseq microglia",
       data  = pair(pb_de_microglia$top, "gene",
                    symbol_label, symbol_gene, "snRNAseq")),
     GeoMx = list(
-      title = "GeoMx microglia (WTA)",
+      title = "GeoMx WTA",
       data  = pair(geomx_de$primary$top, "symbol",
                    function(tt) as.character(tt$symbol),
                    function(tt) as.character(tt$symbol), "GeoMx")),
@@ -480,7 +480,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       data  = pair(proteome_de_24m$top, "feature", gene_first_label,
                    protein_group_genes, "proteome")),
     Phospho = list(
-      title = "Bulk phosphoproteome",
+      title = "Bulk phospho",
       data  = collapse_phospho_by_protein(pair(phospho_de_24m$top, "feature", site_id_label,
                                                phospho_gene, "phospho")))
   )

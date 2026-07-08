@@ -38,12 +38,19 @@ mf_unit <- mf$unit_composition
 mf_unit$substate <- factor(as.character(mf_unit$substate), levels = present_sub)
 mf_unit$genotype <- factor(as.character(mf_unit$genotype), levels = genotype_levels)
 mf_unit$batch <- factor(mf_unit$batch, levels = sort(unique(mf_unit$batch), method = "radix"))
+
+compact_genotype_labels <- c(
+  MAPTKI = "MAPTKI",
+  P301S = "P301S",
+  NLGF_MAPTKI = "NLGF\nMAPTKI",
+  NLGF_P301S = "NLGF\nP301S"
+)
 ```
 
 ```{r}
 #| label: plot-microglia-substate-markers
-#| fig-width: 11
-#| fig-height: 4.3
+#| fig-width: 14.2
+#| fig-height: 8.4
 #| fig-alt: "Dot-plot grid with the three substates as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching substate along the diagonal."
 ggplot(sm, aes(gene, substate)) +
   geom_point(aes(colour = expr_z, size = pct_expr)) +
@@ -55,17 +62,18 @@ ggplot(sm, aes(gene, substate)) +
   scale_y_discrete(limits = rev) +
   labs(x = NULL, y = NULL) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
-                                   size = 6.6, face = "italic"),
+                                   size = tau_report_dense_axis_size,
+                                   face = "italic"),
         panel.grid.major = element_line(linewidth = 0.2),
         panel.spacing.x = grid::unit(3.5, "pt"),
         legend.position = "right",
-        legend.key.height = grid::unit(9, "pt"))
+        legend.key.height = grid::unit(13, "pt"))
 ```
 
 ```{r}
 #| label: plot-microglia-umap
-#| fig-width: 10
-#| fig-height: 4.5
+#| fig-width: 12.4
+#| fig-height: 7.2
 #| fig-alt: "Two UMAP panels show cluster-derived labels and DAM UCell z-scores."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
@@ -84,8 +92,8 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 
 ```{r}
 #| label: plot-microglia-umap-substate
-#| fig-width: 9.2
-#| fig-height: 6.4
+#| fig-width: 11.7
+#| fig-height: 9.7
 #| fig-alt: "Genotype-faceted UMAPs show amyloid samples occupying more DAM-labelled cells."
 ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.18, alpha = 0.55) +
@@ -98,12 +106,12 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 
 ```{r}
 #| label: plot-microglia-unit-composition
-#| fig-width: 9.5
-#| fig-height: 4.6
+#| fig-width: 11.8
+#| fig-height: 7.6
 #| fig-alt: "Replicate-unit stacked bars show DAM expansion across batches and genotypes."
 ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   geom_col(width = 0.72, colour = "#F8F6F1", linewidth = 0.18) +
-  facet_grid(. ~ genotype) +
+  facet_grid(. ~ genotype, labeller = labeller(genotype = compact_genotype_labels)) +
   scale_fill_substate(breaks = present_sub, name = "substate") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
                      expand = expansion(mult = c(0, 0.02))) +

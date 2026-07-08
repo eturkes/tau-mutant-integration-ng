@@ -19,8 +19,8 @@ tr_pt$substate <- factor(as.character(tr_pt$substate),
 
 ```{r}
 #| label: plot-trajectory-pt-density
-#| fig-width: 9.6
-#| fig-height: 5.6
+#| fig-width: 12.2
+#| fig-height: 9.2
 #| fig-alt: "Faceted area plots show high pseudotime concentrated in DAM states."
 ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +

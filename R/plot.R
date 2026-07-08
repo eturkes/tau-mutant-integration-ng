@@ -57,6 +57,12 @@ figure7_score_fill_colours <- c(
   P301S  = "#C65A1E"
 )
 
+tau_report_base_size <- 22
+tau_report_axis_size <- 18.8
+tau_report_dense_axis_size <- 16.8
+tau_report_label_size <- 5.3
+tau_report_dense_label_size <- 4.6
+
 set_tau_plot_defaults <- function() {
   options(
     ggplot2.discrete.colour = tau_discrete_scale_types,
@@ -69,7 +75,7 @@ set_tau_plot_defaults <- function() {
 # family (e.g. "IBM Plex Sans") not registered with the graphics device warns at draw time and
 # is non-portable across machines -> the Plex identity is carried by the HTML chrome (theme.scss)
 # while the figures stay warning-free. Pass base_family explicitly once a phase registers the font.
-theme_tau <- function(base_size = 11, base_family = "") {
+theme_tau <- function(base_size = tau_report_base_size, base_family = "") {
   set_tau_plot_defaults()
   ggplot2::theme_minimal(base_size = base_size, base_family = base_family) +
     ggplot2::theme(
@@ -82,7 +88,8 @@ theme_tau <- function(base_size = 11, base_family = "") {
       strip.text       = ggplot2::element_text(face = "bold", colour = "#262B2F"),
       axis.title       = ggplot2::element_text(colour = "#333333"),
       axis.text        = ggplot2::element_text(colour = "#333333"),
-      legend.title     = ggplot2::element_text(colour = "#333333")
+      legend.title     = ggplot2::element_text(colour = "#333333"),
+      legend.text      = ggplot2::element_text(colour = "#333333")
     )
 }
 
@@ -196,13 +203,13 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   label_n <- nrow(top)
   if (label_n >= 80L) lim <- lim * 1.08
   label_size <- if (label_n >= 150L) {
-    1.55
+    tau_report_dense_label_size
   } else if (label_n >= 80L) {
-    1.85
+    tau_report_dense_label_size
   } else if (label_n >= 40L) {
-    2.15
+    4.8
   } else {
-    2.6
+    tau_report_label_size
   }
   label_box_padding <- if (label_n >= 80L) 0.08 else 0.25
   label_point_padding <- if (label_n >= 80L) 0.03 else 0.10
@@ -254,10 +261,19 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                        is.finite(group_summary$score_p301s) &
                        is.finite(group_summary$delta), , drop = FALSE]
   if (!nrow(x)) stop("group_summary has no finite aggregate scores", call. = FALSE)
+  modality_levels <- levels(droplevels(x$modality))
+  if (is.null(modality_levels)) modality_levels <- unique(as.character(x$modality))
+  modality_plot_levels <- modality_levels
+  modality_plot_levels[modality_plot_levels == "snRNAseq"] <- "snRNA"
+  x$modality_plot <- factor(
+    modality_plot_levels[match(as.character(x$modality), modality_levels)],
+    levels = modality_plot_levels
+  )
   lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
   delta_lim <- max(abs(x$delta), na.rm = TRUE)
   delta_lim <- if (is.finite(delta_lim) && delta_lim > 0) delta_lim else 1
+  delta_breaks <- c(-delta_lim, 0, delta_lim)
   n_min <- min(x$n_feature)
   n_max <- max(x$n_feature)
   size_breaks <- if (n_max - n_min <= 8L) {
@@ -268,9 +284,9 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   size_breaks <- size_breaks[size_breaks >= n_min & size_breaks <= n_max]
   if (!length(size_breaks)) size_breaks <- sort(unique(x$n_feature))
   point_df <- rbind(
-    data.frame(x[, c("modality", "group_label_plot", "n_feature", "delta"), drop = FALSE],
+    data.frame(x[, c("modality_plot", "group_label_plot", "n_feature", "delta"), drop = FALSE],
                background = "MAPTKI", score = x$score_maptki, stringsAsFactors = FALSE),
-    data.frame(x[, c("modality", "group_label_plot", "n_feature", "delta"), drop = FALSE],
+    data.frame(x[, c("modality_plot", "group_label_plot", "n_feature", "delta"), drop = FALSE],
                background = "P301S", score = x$score_p301s, stringsAsFactors = FALSE)
   )
   point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
@@ -286,27 +302,28 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       data = point_df,
       ggplot2::aes(x = score, fill = background, size = n_feature),
       shape = 21, colour = "#2B2A27", stroke = 0.25) +
-    scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
-                     name = "P301S - MAPTKI\n          log2FC") +
+    scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), breaks = delta_breaks,
+                     labels = function(x) format(round(x, 1), trim = TRUE),
+                     oob = scales::squish, name = "P301S - MAPTKI\n          log2FC") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "score") +
     ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
-    ggplot2::facet_wrap(ggplot2::vars(modality), ncol = 2, scales = "free_y") +
+    ggplot2::facet_wrap(ggplot2::vars(modality_plot), ncol = 2, scales = "free_y") +
     ggplot2::guides(
       colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
-                                        barwidth = grid::unit(4.5, "lines")),
+                                        barwidth = grid::unit(8.5, "lines")),
       fill = ggplot2::guide_legend(order = 2,
                                    override.aes = list(size = 3.5, shape = 21,
                                                        colour = "#2B2A27")),
       size = ggplot2::guide_legend(order = 3)
     ) +
     ggplot2::labs(x = NULL, y = NULL, title = title) +
-    theme_tau(base_size = 10) +
+    theme_tau() +
     ggplot2::theme(
-      axis.text.y = ggplot2::element_text(size = 8, lineheight = 0.92),
+      axis.text.y = ggplot2::element_text(size = tau_report_axis_size, lineheight = 0.92),
       panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
       legend.position = "bottom",
       legend.box = "vertical",
@@ -341,13 +358,13 @@ modality_volcano_plot <- function(volcano, title = NULL,
     ggrepel::geom_text_repel(
       data = labels,
       ggplot2::aes(label = label),
-      size = 2.35, colour = "#20242A", max.overlaps = Inf, seed = 42L,
+      size = tau_report_label_size, colour = "#20242A", max.overlaps = Inf, seed = 42L,
       min.segment.length = 0, segment.colour = "grey65", box.padding = 0.16,
       point.padding = 0.06, max.iter = 20000L, max.time = 3) +
     ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE, name = NULL) +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::labs(x = x_lab, y = "-log10 FDR", title = title) +
-    theme_tau(base_size = 9.5) +
+    theme_tau() +
     ggplot2::theme(legend.position = "bottom")
 }
 
@@ -1187,23 +1204,24 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
       y = NULL,
       title = title
     ) +
-    theme_tau(base_size = 10.0) +
+    theme_tau() +
     ggplot2::theme(
       axis.text.x = ggplot2::element_blank(),
       axis.ticks.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_text(size = 8.8, lineheight = 0.9),
+      axis.text.y = ggplot2::element_text(size = tau_report_axis_size, lineheight = 0.9),
       panel.grid = ggplot2::element_blank(),
       legend.position = if (length(genotype_levels_present)) "top" else "none",
       legend.justification = "left",
-      legend.box = "horizontal",
+      legend.box = "vertical",
       legend.box.just = "left",
       legend.direction = "horizontal",
-      legend.title = ggplot2::element_text(face = "bold", size = 9.4,
+      legend.title = ggplot2::element_text(face = "bold", size = tau_report_axis_size,
                                            colour = "#333333"),
-      legend.text = ggplot2::element_text(size = 8.8, colour = "#333333",
+      legend.text = ggplot2::element_text(size = tau_report_axis_size, colour = "#333333",
                                           margin = ggplot2::margin(l = 6, r = 10)),
-      legend.key.size = grid::unit(0.2, "in"),
+      legend.key.size = grid::unit(0.24, "in"),
       legend.spacing.x = grid::unit(0.2, "in"),
+      legend.spacing.y = grid::unit(0.02, "in"),
       legend.margin = ggplot2::margin(0, 0, 0, 0),
       legend.box.margin = ggplot2::margin(0, 0, -2, 0),
       plot.margin = ggplot2::margin(1, 8, 6, 6)
@@ -2076,17 +2094,19 @@ proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
     ggplot2::geom_hline(yintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
     ggplot2::geom_point(size = 2.4, alpha = 0.95) +
-    ggrepel::geom_text_repel(ggplot2::aes(label = run_index), size = 2.3,
+    ggrepel::geom_text_repel(ggplot2::aes(label = run_index), size = tau_report_label_size,
                              max.overlaps = Inf, seed = 42L, min.segment.length = 0,
                              segment.colour = "grey65", box.padding = 0.12,
                              point.padding = 0.08, max.iter = 20000L, max.time = 3) +
     scale_colour_genotype(name = "genotype") +
+    ggplot2::guides(colour = ggplot2::guide_legend(nrow = 2, byrow = TRUE)) +
     ggplot2::labs(
       x = sprintf("PC1 (%.1f%%)", 100 * unique(pca$pc1_var)[[1]]),
       y = sprintf("PC2 (%.1f%%)", 100 * unique(pca$pc2_var)[[1]]),
       title = title) +
-    theme_tau(base_size = 9.5) +
-    ggplot2::theme(legend.position = "bottom")
+    theme_tau() +
+    ggplot2::theme(legend.position = "bottom",
+                   legend.box = "vertical")
 
   volcano <- modality_volcano_plot(
     proteome$volcano,
@@ -2103,18 +2123,28 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
   if (!nrow(x)) stop("phosphosite heatmap has no finite rows", call. = FALSE)
   lim <- max(abs(x$z), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
+  genotype_strip_labels <- c(
+    MAPTKI = "MAPTKI",
+    P301S = "P301S",
+    NLGF_MAPTKI = "NLGF\nMAPTKI",
+    NLGF_P301S = "NLGF\nP301S"
+  )
 
   ggplot2::ggplot(x, ggplot2::aes(sample_label, site_label_plot, fill = z)) +
     ggplot2::geom_tile(colour = "#F8F5ED", linewidth = 0.18) +
-    ggplot2::facet_grid(. ~ genotype, scales = "free_x", space = "free_x") +
+    ggplot2::facet_grid(. ~ genotype, scales = "free_x", space = "free_x",
+                         labeller = ggplot2::labeller(genotype = genotype_strip_labels)) +
     scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
                    name = "row z") +
     ggplot2::scale_x_discrete(drop = TRUE) +
     ggplot2::labs(x = "24M run index", y = NULL, title = title) +
-    theme_tau(base_size = 8.5) +
+    theme_tau() +
     ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6.5),
-      axis.text.y = ggplot2::element_text(size = 6.7, lineheight = 0.9),
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1,
+                                          size = tau_report_dense_axis_size),
+      axis.text.y = ggplot2::element_text(size = tau_report_dense_axis_size,
+                                          lineheight = 0.9),
+      strip.text.x = ggplot2::element_text(lineheight = 0.9),
       panel.spacing.x = grid::unit(0.16, "lines"),
       legend.position = "bottom"
     )
@@ -2124,11 +2154,11 @@ phospho_modality_plot <- function(phospho, title = "Bulk phosphoproteome") {
   stopifnot(is.list(phospho), is.data.frame(phospho$volcano), is.data.frame(phospho$heatmap))
   volcano <- modality_volcano_plot(
     phospho$volcano,
-    title = "Phosphosite differential abundance",
+    title = "Phosphosite DE",
     x_lab = "site log2FC  NLGF_P301S vs P301S",
     alpha = phospho$provenance$alpha %||% 0.10
   )
-  heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = "Top phosphosite heatmap")
+  heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = "Top phosphosite z-score")
   patchwork::wrap_plots(list(volcano, heatmap), ncol = 2, widths = c(0.95, 1.05)) +
     patchwork::plot_annotation(title = title)
 }
