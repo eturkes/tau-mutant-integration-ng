@@ -761,6 +761,207 @@ geomx_ordination_plot <- function(ordination, title = "GeoMx ordination") {
     patchwork::plot_annotation(title = title, subtitle = subtitle)
 }
 
+geomx_gene_detection_plot <- function(detection, title = "GeoMx gene detectability") {
+  stopifnot(is.list(detection), is.data.frame(detection$genes),
+            is.data.frame(detection$filter_bins), is.data.frame(detection$marker_top),
+            is.data.frame(detection$marker_labels), is.data.frame(detection$top_detected))
+  genes <- detection$genes
+  need_gene <- c("symbol", "mean_logcpm", "detect_fraction_min_count", "filter_status",
+                 "filter_pass")
+  miss_gene <- setdiff(need_gene, names(genes))
+  if (length(miss_gene)) {
+    stop("GeoMx gene detection data missing columns: ",
+         paste(miss_gene, collapse = ", "), call. = FALSE)
+  }
+  genes <- genes[is.finite(genes$mean_logcpm) &
+                   is.finite(genes$detect_fraction_min_count), , drop = FALSE]
+  if (!nrow(genes)) stop("GeoMx gene detection data has no finite genes", call. = FALSE)
+  genes$filter_status <- factor(as.character(genes$filter_status),
+                                levels = c("low coverage", "filter passing"))
+
+  marker_labels <- detection$marker_labels
+  need_label <- c("symbol", "mean_logcpm", "detect_fraction_min_count", "marker_class")
+  miss_label <- setdiff(need_label, names(marker_labels))
+  if (length(miss_label)) {
+    stop("GeoMx marker-label data missing columns: ",
+         paste(miss_label, collapse = ", "), call. = FALSE)
+  }
+  marker_labels <- marker_labels[is.finite(marker_labels$mean_logcpm) &
+                                   is.finite(marker_labels$detect_fraction_min_count), ,
+                                 drop = FALSE]
+  if (!nrow(marker_labels)) stop("GeoMx marker-label data has no finite rows",
+                                 call. = FALSE)
+  marker_labels$marker_class <- factor(as.character(marker_labels$marker_class),
+                                       levels = c("Microglia", "Homeostatic", "DAM"))
+
+  marker_colours <- c(Microglia = "#0B7A75",
+                      Homeostatic = substate_colours[["Homeostatic"]],
+                      DAM = substate_colours[["DAM"]])
+  filter_colours <- c(`low coverage` = "#AFA89C", `filter passing` = "#3F5F7F")
+
+  detect_plot <- ggplot2::ggplot(
+    genes, ggplot2::aes(mean_logcpm, detect_fraction_min_count)
+  ) +
+    ggplot2::geom_point(ggplot2::aes(colour = filter_status),
+                        size = 0.42, alpha = 0.34) +
+    ggplot2::geom_point(
+      data = marker_labels,
+      ggplot2::aes(fill = marker_class),
+      shape = 21, colour = "#20242A", stroke = 0.28, size = 1.8,
+      inherit.aes = TRUE) +
+    ggrepel::geom_text_repel(
+      data = marker_labels,
+      ggplot2::aes(label = symbol),
+      size = 2.2, colour = "#20242A", max.overlaps = Inf, seed = 42L,
+      min.segment.length = 0, segment.colour = "grey65", box.padding = 0.12,
+      point.padding = 0.06, max.iter = 20000L, max.time = 3) +
+    ggplot2::scale_colour_manual(values = filter_colours, drop = FALSE,
+                                 name = "filter") +
+    ggplot2::scale_fill_manual(values = marker_colours, drop = FALSE,
+                               name = "labelled marker") +
+    ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                                limits = c(0, 1)) +
+    ggplot2::labs(
+      x = "mean TMM logCPM",
+      y = sprintf("AOIs with count >= %s", detection$provenance$min_count %||% 5),
+      title = "Expression versus detection",
+      subtitle = "All GeoMx WTA genes; labelled points are high-detection microglia markers"
+    ) +
+    theme_tau(base_size = 8.7) +
+    ggplot2::theme(legend.position = "bottom", legend.box = "horizontal")
+
+  bins <- detection$filter_bins
+  need_bin <- c("filter_status", "bin_mid", "n")
+  miss_bin <- setdiff(need_bin, names(bins))
+  if (length(miss_bin)) {
+    stop("GeoMx gene-detection filter bins missing columns: ",
+         paste(miss_bin, collapse = ", "), call. = FALSE)
+  }
+  bins <- bins[is.finite(bins$bin_mid) & is.finite(bins$n) & bins$n > 0, , drop = FALSE]
+  if (!nrow(bins)) stop("GeoMx gene-detection filter bins have no positive rows",
+                        call. = FALSE)
+  bins$filter_status <- factor(as.character(bins$filter_status),
+                               levels = c("low coverage", "filter passing"))
+  filter_plot <- ggplot2::ggplot(bins, ggplot2::aes(bin_mid, n, colour = filter_status)) +
+    ggplot2::geom_line(linewidth = 0.56, alpha = 0.85) +
+    ggplot2::geom_point(size = 1.25, alpha = 0.9) +
+    ggplot2::scale_colour_manual(values = filter_colours, drop = FALSE,
+                                 name = "filter") +
+    ggplot2::scale_x_continuous(labels = scales::label_percent(accuracy = 1),
+                                limits = c(0, 1)) +
+    ggplot2::scale_y_continuous(labels = scales::label_number(big.mark = ",")) +
+    ggplot2::labs(
+      x = sprintf("AOI fraction with count >= %s", detection$provenance$min_count %||% 5),
+      y = "genes",
+      title = "Low-coverage filter boundary",
+      subtitle = "edgeR filterByExpr decision over the primary GeoMx design"
+    ) +
+    theme_tau(base_size = 8.7) +
+    ggplot2::theme(legend.position = "bottom")
+
+  marker_top <- detection$marker_top
+  need_marker <- c("symbol", "marker_class", "mean_logcpm", "detect_fraction_min_count",
+                   "filter_pass")
+  miss_marker <- setdiff(need_marker, names(marker_top))
+  if (length(miss_marker)) {
+    stop("GeoMx marker-top data missing columns: ",
+         paste(miss_marker, collapse = ", "), call. = FALSE)
+  }
+  marker_top <- marker_top[is.finite(marker_top$mean_logcpm) &
+                             is.finite(marker_top$detect_fraction_min_count), ,
+                           drop = FALSE]
+  if (!nrow(marker_top)) stop("GeoMx marker-top data has no finite rows", call. = FALSE)
+  marker_top$marker_class <- factor(as.character(marker_top$marker_class),
+                                    levels = c("Microglia", "Homeostatic", "DAM"))
+  marker_top <- marker_top[order(marker_top$marker_class,
+                                 marker_top$detect_fraction_min_count,
+                                 marker_top$mean_logcpm,
+                                 marker_top$symbol,
+                                 method = "radix"), , drop = FALSE]
+  marker_top$symbol_key <- paste(marker_top$marker_class, marker_top$symbol, sep = " | ")
+  marker_top$symbol_plot <- factor(marker_top$symbol_key, levels = unique(marker_top$symbol_key))
+  marker_plot <- ggplot2::ggplot(marker_top, ggplot2::aes(detect_fraction_min_count,
+                                                          symbol_plot)) +
+    ggplot2::geom_segment(ggplot2::aes(x = 0, xend = detect_fraction_min_count,
+                                       yend = symbol_plot),
+                          colour = "#8A8174", linewidth = 0.36, alpha = 0.62) +
+    ggplot2::geom_point(ggplot2::aes(fill = mean_logcpm),
+                        shape = 21, colour = "#20242A", stroke = 0.24,
+                        size = 1.9, alpha = 0.95) +
+    ggplot2::scale_fill_gradient(low = "#F8F5ED", high = "#A63A50",
+                                 name = "mean logCPM") +
+    ggplot2::scale_x_continuous(labels = scales::label_percent(accuracy = 1),
+                                limits = c(0, 1)) +
+    ggplot2::scale_y_discrete(labels = function(x) sub("^.* \\| ", "", x)) +
+    ggplot2::facet_grid(ggplot2::vars(marker_class), scales = "free_y", space = "free_y") +
+    ggplot2::labs(
+      x = sprintf("AOI fraction with count >= %s", detection$provenance$min_count %||% 5),
+      y = NULL,
+      title = "Marker-gene measurability",
+      subtitle = "Top retained markers by detection within each signature"
+    ) +
+    theme_tau(base_size = 8.4) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.y = ggplot2::element_text(size = 6.9, lineheight = 0.9),
+      panel.spacing.y = grid::unit(0.45, "lines")
+    )
+
+  top_detected <- detection$top_detected
+  need_top <- c("symbol", "mean_logcpm", "detect_fraction_min_count", "marker_class")
+  miss_top <- setdiff(need_top, names(top_detected))
+  if (length(miss_top)) {
+    stop("GeoMx top-detected data missing columns: ",
+         paste(miss_top, collapse = ", "), call. = FALSE)
+  }
+  top_detected <- top_detected[is.finite(top_detected$mean_logcpm) &
+                                 is.finite(top_detected$detect_fraction_min_count), ,
+                               drop = FALSE]
+  if (!nrow(top_detected)) stop("GeoMx top-detected data has no finite rows",
+                                call. = FALSE)
+  top_detected <- top_detected[order(top_detected$mean_logcpm,
+                                     top_detected$symbol,
+                                     method = "radix"), , drop = FALSE]
+  top_detected$symbol_plot <- factor(top_detected$symbol, levels = top_detected$symbol)
+  top_detected$marker_hit <- ifelse(top_detected$marker_class == "other",
+                                    "other", "marker")
+  top_plot <- ggplot2::ggplot(top_detected, ggplot2::aes(mean_logcpm, symbol_plot)) +
+    ggplot2::geom_segment(ggplot2::aes(x = min(mean_logcpm), xend = mean_logcpm,
+                                       yend = symbol_plot),
+                          colour = "#8A8174", linewidth = 0.38, alpha = 0.65) +
+    ggplot2::geom_point(ggplot2::aes(fill = marker_hit),
+                        shape = 21, colour = "#20242A", stroke = 0.26,
+                        size = 2.0, alpha = 0.94) +
+    ggplot2::scale_fill_manual(values = c(marker = "#0B7A75", other = "#C8841C"),
+                               name = NULL) +
+    ggplot2::labs(
+      x = "mean TMM logCPM", y = NULL,
+      title = "Highest-detected genes",
+      subtitle = "Filter-passing genes ranked by detection and expression"
+    ) +
+    theme_tau(base_size = 8.5) +
+    ggplot2::theme(legend.position = "bottom",
+                   axis.text.y = ggplot2::element_text(size = 6.9))
+
+  subtitle <- sprintf(
+    "%s/%s genes pass filterByExpr(min.count=%s); marker genes present/pass: %s",
+    format(detection$provenance$n_kept_features %||% sum(genes$filter_pass), big.mark = ","),
+    format(detection$provenance$n_input_features %||% nrow(genes), big.mark = ","),
+    detection$provenance$min_count %||% 5,
+    paste(sprintf("%s %s/%s",
+                  names(detection$provenance$n_marker_filter_passing),
+                  detection$provenance$n_marker_filter_passing,
+                  detection$provenance$n_marker_present),
+          collapse = "; ")
+  )
+  left <- patchwork::wrap_plots(list(detect_plot, marker_plot), ncol = 1,
+                                heights = c(1.0, 1.05))
+  right <- patchwork::wrap_plots(list(filter_plot, top_plot), ncol = 1,
+                                 heights = c(0.88, 1.12))
+  patchwork::wrap_plots(list(left, right), ncol = 2, widths = c(1.25, 1)) +
+    patchwork::plot_annotation(title = title, subtitle = subtitle)
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

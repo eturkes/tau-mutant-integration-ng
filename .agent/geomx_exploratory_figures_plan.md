@@ -36,9 +36,11 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has four GeoMx figures after S3: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has five GeoMx figures after S4: `fig-geomx-qc-atlas` = AOI QC atlas;
   `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
   `fig-geomx-ordination` = slide-faceted PCA/MDS + scree + PC1/PC2 loadings;
+  `fig-geomx-gene-detection` = WTA gene detectability, existing filterByExpr decision,
+  microglia marker measurability, highest-detected genes;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
@@ -47,8 +49,9 @@ Local seam:
 - `geomx_de$qc` carries compact S1 QC data: long AOI metrics, per-slide/segment flag counts,
   thresholds, and provenance. `geomx_de$normalization` carries compact S2 raw/TMM
   distribution quantiles, TMM RLE quantiles, Q3/background AOI data, and saved voom trend.
-  `geomx_de$ordination` carries compact S3 PCA/MDS/scree/loading data. Report chunks read
-  all three through `modality_scatter_figures`.
+  `geomx_de$ordination` carries compact S3 PCA/MDS/scree/loading data.
+  `geomx_de$gene_detection` carries compact S4 gene-detection/marker-measurability data.
+  Report chunks read all four through `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -103,12 +106,17 @@ S3 [DONE 2026-07-08] - `fig-geomx-ordination`
   top-variable genes used for TMM-logCPM PCA/MDS; PC1 = 19.36%, PC2 = 6.94% variance
   explained. No AOI exclusion, DE change, or report-claim change.
 
-S4 - `fig-geomx-gene-detection`
+S4 [DONE 2026-07-08] - `fig-geomx-gene-detection`
 - Purpose: gene-level QC/detectability figure.
 - Panels: mean expression vs detection fraction, low-coverage filter boundary, labelled
   high-detection microglia/DAM/homeostatic marker genes, and top detected-driver summary.
 - Source basis: standR `plotGeneQC`; GeoMx WTA negative-probe handling.
 - Acceptance: documents which marker/pathway genes are measurable before interpretation.
+- Status: landed as compact `geomx_de$gene_detection` + visible `_modality.qmd` figure.
+  Live data = 91 AOIs, 19,959/19,963 genes pass `filterByExpr(min.count=5)`, 4
+  low-coverage genes, marker genes present/pass = Microglia 8/8, Homeostatic 10/10,
+  DAM 18/18. The figure documents measurability only; no AOI exclusion, DE change, or
+  report-claim change.
 
 S5 - `fig-geomx-sample-heatmap`
 - Purpose: sample/gene structure heatmap.

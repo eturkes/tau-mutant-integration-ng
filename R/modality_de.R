@@ -686,6 +686,205 @@ geomx_ordination_descriptor <- function(counts, meta, design, min_count = 5,
   )
 }
 
+geomx_gene_detection_descriptor <- function(counts, meta, design, min_count = 5,
+                                            marker_sets = list(
+                                              Microglia = microglia_identity_markers,
+                                              Homeostatic = canonical_microglia_markers$Homeostatic,
+                                              DAM = canonical_microglia_markers$DAM
+                                            ),
+                                            n_marker_label = 4L,
+                                            n_marker_top = 8L,
+                                            n_top_detected = 14L,
+                                            n_bins = 24L) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
+            is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
+            !any(names(marker_sets) == ""),
+            is.numeric(n_marker_label), length(n_marker_label) == 1L, n_marker_label >= 1L,
+            is.numeric(n_marker_top), length(n_marker_top) == 1L, n_marker_top >= 1L,
+            is.numeric(n_top_detected), length(n_top_detected) == 1L, n_top_detected >= 1L,
+            is.numeric(n_bins), length(n_bins) == 1L, n_bins >= 4L,
+            anyDuplicated(rownames(counts)) == 0L)
+
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for gene detection descriptor",
+                       call. = FALSE)
+  dge <- edgeR::normLibSizes(dge0, method = "TMM")
+  logcpm <- edgeR::cpm(dge, normalized.lib.sizes = TRUE, log = TRUE, prior.count = 1)
+  stopifnot(identical(rownames(logcpm), rownames(counts)),
+            identical(colnames(logcpm), colnames(counts)),
+            all(is.finite(logcpm)))
+
+  genes <- data.frame(
+    symbol = rownames(counts),
+    mean_count = as.numeric(rowMeans(counts)),
+    mean_logcpm = as.numeric(rowMeans(logcpm)),
+    detect_fraction_any = as.numeric(rowMeans(counts > 0)),
+    detect_fraction_min_count = as.numeric(rowMeans(counts >= min_count)),
+    detected_aoi_any = as.integer(rowSums(counts > 0)),
+    detected_aoi_min_count = as.integer(rowSums(counts >= min_count)),
+    filter_pass = as.logical(keep),
+    stringsAsFactors = FALSE
+  )
+  genes$filter_status <- factor(ifelse(genes$filter_pass, "filter passing", "low coverage"),
+                                levels = c("low coverage", "filter passing"))
+  stopifnot(all(is.finite(genes$mean_count)), all(genes$mean_count >= 0),
+            all(is.finite(genes$mean_logcpm)),
+            all(is.finite(genes$detect_fraction_any)),
+            all(genes$detect_fraction_any >= 0), all(genes$detect_fraction_any <= 1),
+            all(is.finite(genes$detect_fraction_min_count)),
+            all(genes$detect_fraction_min_count >= 0),
+            all(genes$detect_fraction_min_count <= 1),
+            all(is.finite(genes$detected_aoi_any)),
+            all(is.finite(genes$detected_aoi_min_count)))
+
+  marker_sets <- lapply(marker_sets, function(x) unique(trimws(as.character(x))))
+  marker_sets <- lapply(marker_sets, function(x) x[!is.na(x) & x != ""])
+  if (any(vapply(marker_sets, length, integer(1)) == 0L)) {
+    stop("GeoMx gene detection marker set is empty", call. = FALSE)
+  }
+  class_levels <- names(marker_sets)
+  marker_catalog <- do.call(rbind, lapply(class_levels, function(cls) {
+    data.frame(
+      marker_class = cls,
+      symbol = marker_sets[[cls]],
+      n_signature = length(marker_sets[[cls]]),
+      stringsAsFactors = FALSE
+    )
+  }))
+  marker_catalog$marker_class <- factor(marker_catalog$marker_class, levels = class_levels)
+  marker_catalog$present <- marker_catalog$symbol %in% genes$symbol
+  marker_metrics <- merge(
+    marker_catalog[marker_catalog$present, c("marker_class", "symbol", "n_signature"),
+                   drop = FALSE],
+    genes,
+    by = "symbol",
+    all.x = TRUE,
+    sort = FALSE
+  )
+  marker_metrics$marker_class <- factor(as.character(marker_metrics$marker_class),
+                                        levels = class_levels)
+  if (!nrow(marker_metrics)) stop("no GeoMx marker genes present in count matrix",
+                                  call. = FALSE)
+  missing_classes <- class_levels[!class_levels %in% as.character(marker_metrics$marker_class)]
+  if (length(missing_classes)) {
+    stop("no GeoMx marker genes present for class(es): ",
+         paste(missing_classes, collapse = ", "), call. = FALSE)
+  }
+
+  marker_order <- order(marker_metrics$marker_class,
+                        -as.integer(marker_metrics$filter_pass),
+                        -marker_metrics$detect_fraction_min_count,
+                        -marker_metrics$mean_logcpm,
+                        marker_metrics$symbol,
+                        method = "radix")
+  marker_metrics <- marker_metrics[marker_order, , drop = FALSE]
+  marker_top <- do.call(rbind, lapply(class_levels, function(cls) {
+    x <- marker_metrics[as.character(marker_metrics$marker_class) == cls, , drop = FALSE]
+    utils::head(x, as.integer(n_marker_top))
+  }))
+  rownames(marker_top) <- NULL
+
+  marker_labels <- do.call(rbind, lapply(class_levels, function(cls) {
+    x <- marker_metrics[as.character(marker_metrics$marker_class) == cls, , drop = FALSE]
+    utils::head(x, as.integer(n_marker_label))
+  }))
+  marker_labels <- marker_labels[order(-marker_labels$detect_fraction_min_count,
+                                       -marker_labels$mean_logcpm,
+                                       marker_labels$symbol,
+                                       method = "radix"), , drop = FALSE]
+  marker_labels <- marker_labels[!duplicated(marker_labels$symbol), , drop = FALSE]
+  marker_labels$marker_classes <- vapply(marker_labels$symbol, function(s) {
+    paste(as.character(unique(marker_metrics$marker_class[marker_metrics$symbol == s])),
+          collapse = "/")
+  }, character(1), USE.NAMES = FALSE)
+  rownames(marker_labels) <- NULL
+
+  breaks <- seq(0, 1, length.out = as.integer(n_bins) + 1L)
+  bin_id <- cut(pmin(pmax(genes$detect_fraction_min_count, 0), 1),
+                breaks = breaks, include.lowest = TRUE, labels = FALSE)
+  bin_raw <- data.frame(
+    filter_status = genes$filter_status,
+    bin = as.integer(bin_id),
+    n = 1L,
+    stringsAsFactors = FALSE
+  )
+  bin_count <- stats::aggregate(n ~ filter_status + bin, data = bin_raw, FUN = sum)
+  bin_grid <- expand.grid(
+    filter_status = levels(genes$filter_status),
+    bin = seq_len(as.integer(n_bins)),
+    stringsAsFactors = FALSE
+  )
+  filter_bins <- merge(bin_grid, bin_count, by = c("filter_status", "bin"),
+                       all.x = TRUE, sort = FALSE)
+  filter_bins$n[is.na(filter_bins$n)] <- 0L
+  filter_bins$filter_status <- factor(filter_bins$filter_status,
+                                      levels = levels(genes$filter_status))
+  filter_bins$bin_mid <- (breaks[filter_bins$bin] + breaks[filter_bins$bin + 1L]) / 2
+  filter_bins$bin_min <- breaks[filter_bins$bin]
+  filter_bins$bin_max <- breaks[filter_bins$bin + 1L]
+  filter_bins$n <- as.integer(filter_bins$n)
+  rownames(filter_bins) <- NULL
+
+  top_detected <- genes[genes$filter_pass %in% TRUE, , drop = FALSE]
+  top_detected <- top_detected[order(-top_detected$detect_fraction_min_count,
+                                     -top_detected$mean_logcpm,
+                                     -top_detected$mean_count,
+                                     top_detected$symbol,
+                                     method = "radix"), , drop = FALSE]
+  top_detected <- utils::head(top_detected, as.integer(n_top_detected))
+  top_detected$marker_class <- vapply(top_detected$symbol, function(s) {
+    cls <- as.character(unique(marker_metrics$marker_class[marker_metrics$symbol == s]))
+    if (length(cls)) paste(cls, collapse = "/") else "other"
+  }, character(1), USE.NAMES = FALSE)
+  rownames(top_detected) <- NULL
+
+  marker_summary <- do.call(rbind, lapply(class_levels, function(cls) {
+    cat <- marker_catalog[as.character(marker_catalog$marker_class) == cls, , drop = FALSE]
+    met <- marker_metrics[as.character(marker_metrics$marker_class) == cls, , drop = FALSE]
+    data.frame(
+      marker_class = cls,
+      n_signature = nrow(cat),
+      n_present = nrow(met),
+      n_filter_passing = sum(met$filter_pass),
+      n_detected_half = sum(met$detect_fraction_min_count >= 0.5),
+      median_detect_fraction_min_count = stats::median(met$detect_fraction_min_count),
+      median_mean_logcpm = stats::median(met$mean_logcpm),
+      stringsAsFactors = FALSE
+    )
+  }))
+  marker_summary$marker_class <- factor(marker_summary$marker_class, levels = class_levels)
+  rownames(marker_summary) <- NULL
+
+  list(
+    genes = genes,
+    filter_bins = filter_bins,
+    marker_top = marker_top,
+    marker_labels = marker_labels,
+    top_detected = top_detected,
+    marker_summary = marker_summary,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      n_low_coverage_features = sum(!keep),
+      min_count = min_count,
+      marker_sets = vapply(marker_sets, length, integer(1)),
+      n_marker_present = stats::setNames(marker_summary$n_present,
+                                         as.character(marker_summary$marker_class)),
+      n_marker_filter_passing = stats::setNames(marker_summary$n_filter_passing,
+                                                as.character(marker_summary$marker_class)),
+      detect_fraction = "fraction of AOIs with raw count >= min_count; expression is TMM-normalized mean logCPM",
+      filter_rule = "edgeR::filterByExpr on the primary GeoMx slide-adjusted design with min.count",
+      display = "descriptive gene detectability / marker measurability diagnostic; no AOIs or genes are removed beyond the existing primary-model filter"
+    )
+  )
+}
+
 # voom + TMM + limma, optionally blocking repeated AOIs by bio_unit via duplicateCorrelation
 # (the primary GeoMx model). Fails loud if the design has no residual df or the consensus
 # correlation is non-finite.
@@ -748,6 +947,8 @@ run_geomx_de <- function(geomx, min_count = 5) {
                                                    min_count = min_count),
     ordination = geomx_ordination_descriptor(counts, meta, fd$design,
                                              min_count = min_count),
+    gene_detection = geomx_gene_detection_descriptor(counts, meta, fd$design,
+                                                     min_count = min_count),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

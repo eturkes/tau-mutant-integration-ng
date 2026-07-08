@@ -28,8 +28,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = THIRTEEN figures: microglia (P1) + trajectory (P2) +
-three GeoMx exploratory figures (QC atlas; normalization/RLE; ordination) + three modality-native non-snRNAseq figures +
+REPORT SCOPE (current 2026-07-08): the rendered report = FOURTEEN figures: microglia (P1) + trajectory (P2) +
+four GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection) + three modality-native non-snRNAseq figures +
 two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
@@ -59,8 +59,11 @@ Open steps (one figure/session):
   aesthetics, variance explained, top loadings. Outcome: compact `geomx_de$ordination` +
   report plot; 91 AOIs, 19,959/19,963 genes kept, 2,000 variable genes used; PC1 = 19.36%
   and PC2 = 6.94%; no AOIs excluded and DE claims unchanged.
-- S4 [TODO] `fig-geomx-gene-detection`: gene detectability / marker measurability /
-  low-coverage filter figure.
+- S4 [DONE 2026-07-08] `fig-geomx-gene-detection`: gene detectability / marker measurability /
+  low-coverage filter figure. Outcome: compact `geomx_de$gene_detection` + report plot;
+  91 AOIs, 19,959/19,963 genes pass `filterByExpr(min.count=5)`, 4 low-coverage genes
+  dropped by the existing GeoMx filter, and marker genes present/pass = Microglia 8/8,
+  Homeostatic 10/10, DAM 18/18; no AOIs excluded and DE claims unchanged.
 - S5 [TODO] `fig-geomx-sample-heatmap`: AOI correlation or top-variable-gene heatmap with
   genotype/slide/segment/bio-unit tracks.
 - S6 [TODO] `fig-geomx-spatial-program-overlays`: coordinate small multiples for compact
@@ -72,7 +75,7 @@ Open steps (one figure/session):
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S4.
+Next `$session-prompt` = EXECUTE S5.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1011,6 +1014,17 @@ Next `$session-prompt` = EXECUTE S4.
   `filterByExpr(min.count=5)`, 2,000 variable genes used; PC1 = 19.36%, PC2 = 6.94%.
   No AOI exclusion or claim change. Focused target build green and warn=2 plot smoke-render
   clean; next = EXECUTE S4.
+- 2026-07-08 GeoMx exploratory figures S4 DONE -> `fig-geomx-gene-detection`. Added
+  `geomx_gene_detection_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$gene_detection`, and rendered
+  `geomx_gene_detection_plot()` in `_modality.qmd`. The figure shows mean TMM logCPM vs
+  AOI detection fraction, the existing low-coverage `filterByExpr(min.count=5)` decision,
+  microglia identity/homeostatic/DAM marker measurability, and highest-detected WTA genes.
+  Live data: 91 AOIs, 19,959/19,963 genes filter-passing, 4 low-coverage genes, marker
+  genes present/pass = Microglia 8/8, Homeostatic 10/10, DAM 18/18. No AOI exclusion,
+  DE change, or report-claim change. Focused target/render build green; full
+  `TZ=UTC CHECK_SKIP_SYNC=1 scripts/check.sh` green; Chromium PDF page-8 QA clean.
+  Next = EXECUTE S5.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

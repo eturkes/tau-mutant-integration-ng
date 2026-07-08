@@ -46,6 +46,15 @@ geomx_ordination_plot(msf$descriptive$GeoMx$ordination)
 ```
 
 ```{r}
+#| label: fig-geomx-gene-detection
+#| fig-width: 10.5
+#| fig-height: 8.4
+#| fig-cap: "GeoMx gene-detection figure. Top left: mean TMM logCPM against the fraction of AOIs with raw count >=5 for every WTA gene, with filterByExpr status and high-detection microglia marker labels. Top right: the low-coverage filter decision across detection-fraction bins. Bottom left: measurable microglia identity, homeostatic, and DAM marker genes. Bottom right: highest-detected filter-passing genes. This diagnostic documents marker measurability and changes no GeoMx exclusions."
+#| fig-alt: "GeoMx gene-detectability diagnostic showing all-gene mean expression versus detection fraction, the filterByExpr low-coverage decision by detection bins, measurable microglia identity, homeostatic, and DAM markers, and the highest-detected filter-passing genes."
+geomx_gene_detection_plot(msf$descriptive$GeoMx$gene_detection)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2
