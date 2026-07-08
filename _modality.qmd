@@ -35,7 +35,7 @@ proteome_modality_plot(msf$descriptive$Proteome, title = msf$panels$Proteome$tit
 #| fig-width: 10.5
 #| fig-height: 5.8
 #| fig-alt: "Bulk phosphoproteome figure with a phosphosite differential-abundance volcano plot and a genotype-grouped heatmap of top phosphosite abundances across runs."
-phospho_modality_plot(msf$descriptive$Phospho, title = "Bulk phosphoproteome")
+phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
 ```
 
 ```{r}
