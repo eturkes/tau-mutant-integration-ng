@@ -44,12 +44,12 @@ mf_unit$batch <- factor(mf_unit$batch, levels = sort(unique(mf_unit$batch), meth
 #| label: plot-microglia-substate-markers
 #| fig-width: 11
 #| fig-height: 4.3
-#| fig-alt: "Dot-plot grid with the three substates as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of cells expressing, so each gene set lights up its matching substate along the diagonal."
+#| fig-alt: "Dot-plot grid with the three substates as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching substate along the diagonal."
 ggplot(sm, aes(gene, substate)) +
   geom_point(aes(colour = expr_z, size = pct_expr)) +
   facet_grid(. ~ signature, scales = "free_x", space = "free_x") +
   scale_colour_rwb(name = "scaled mean\nexpression", midpoint = 0) +
-  scale_size_area(name = "% expressing", max_size = 5.2,
+  scale_size_area(name = "% expressing\nnuclei", max_size = 5.2,
                   breaks = c(0.1, 0.25, 0.5, 0.75),
                   labels = function(x) paste0(round(100 * x), "%")) +
   scale_y_discrete(limits = rev) +
