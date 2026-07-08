@@ -287,7 +287,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       ggplot2::aes(x = score, fill = background, size = n_feature),
       shape = 21, colour = "#2B2A27", stroke = 0.25) +
     scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), oob = scales::squish,
-                     name = "P301S - MAPTKI") +
+                     name = "P301S - MAPTKI\n          log2FC") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "score") +
@@ -303,7 +303,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                                                        colour = "#2B2A27")),
       size = ggplot2::guide_legend(order = 3)
     ) +
-    ggplot2::labs(x = "Aggregate amyloid log2FC", y = NULL, title = title) +
+    ggplot2::labs(x = NULL, y = NULL, title = title) +
     theme_tau(base_size = 10) +
     ggplot2::theme(
       axis.text.y = ggplot2::element_text(size = 8, lineheight = 0.92),
