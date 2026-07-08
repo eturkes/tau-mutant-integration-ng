@@ -686,6 +686,120 @@ geomx_ordination_descriptor <- function(counts, meta, design, min_count = 5,
   )
 }
 
+geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
+                                            min_count = 5,
+                                            n_variable_features = 40L,
+                                            z_limit = 2.5) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            is.list(top),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
+            is.numeric(n_variable_features), length(n_variable_features) == 1L,
+            n_variable_features >= 2L,
+            is.numeric(z_limit), length(z_limit) == 1L, is.finite(z_limit),
+            z_limit > 0,
+            anyDuplicated(rownames(counts)) == 0L)
+  need <- c("slide", "roi", "segment", "genotype", "SampleID", "bio_unit")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx sample heatmap metadata missing columns: ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for sample heatmap",
+                       call. = FALSE)
+  dge <- edgeR::normLibSizes(dge0[keep, , keep.lib.sizes = FALSE], method = "TMM")
+  logcpm <- edgeR::cpm(dge, normalized.lib.sizes = TRUE, log = TRUE, prior.count = 1)
+  stopifnot(identical(colnames(logcpm), rownames(meta)), all(is.finite(logcpm)))
+
+  feature_var <- apply(logcpm, 1L, stats::var)
+  var_rank <- data.frame(
+    symbol = rownames(logcpm),
+    variance = as.numeric(feature_var),
+    stringsAsFactors = FALSE
+  )
+  var_rank <- var_rank[is.finite(var_rank$variance) & var_rank$variance > 0, ,
+                       drop = FALSE]
+  if (nrow(var_rank) < 2L) {
+    stop("GeoMx sample heatmap has too few variable filter-passing genes",
+         call. = FALSE)
+  }
+  var_rank <- var_rank[order(-var_rank$variance, var_rank$symbol, method = "radix"), ,
+                       drop = FALSE]
+  feature_ids <- utils::head(var_rank$symbol, as.integer(n_variable_features))
+
+  mat <- logcpm[feature_ids, , drop = FALSE]
+  row_mean <- rowMeans(mat)
+  row_sd <- apply(mat, 1L, stats::sd)
+  row_sd[!is.finite(row_sd) | row_sd <= 0] <- 1
+  z <- sweep(sweep(mat, 1L, row_mean, "-"), 1L, row_sd, "/")
+  z[!is.finite(z)] <- 0
+
+  sample_hclust <- stats::hclust(stats::dist(t(z)), method = "average")
+  feature_hclust <- stats::hclust(stats::dist(z), method = "average")
+  sample_order <- colnames(z)[sample_hclust$order]
+  feature_order <- rownames(z)[feature_hclust$order]
+  z_plot <- pmax(pmin(z[feature_order, sample_order, drop = FALSE], z_limit), -z_limit)
+
+  heatmap <- as.data.frame(as.table(z_plot), stringsAsFactors = FALSE)
+  names(heatmap) <- c("symbol", "aoi", "z")
+  heatmap$sample_rank <- match(heatmap$aoi, sample_order)
+  heatmap$feature_rank <- match(heatmap$symbol, feature_order)
+  heatmap$symbol_plot <- factor(heatmap$symbol, levels = rev(feature_order))
+  rownames(heatmap) <- NULL
+
+  spatial <- geomx_spatial_descriptor(counts, meta, top)
+  sample <- meta[sample_order, , drop = FALSE]
+  sample_frame <- data.frame(
+    aoi = rownames(sample),
+    sample_rank = seq_along(sample_order),
+    slide = factor(as.character(sample$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = factor(as.character(sample$roi)),
+    segment = factor(as.character(sample$segment),
+                     levels = sort(unique(as.character(meta$segment)))),
+    sample_id = as.character(sample$SampleID),
+    genotype = factor(as.character(sample$genotype), levels = genotype_levels),
+    bio_unit = factor(as.character(sample$bio_unit)),
+    signed_response_score = as.numeric(spatial$aoi$signed_response_score[
+      match(sample_order, spatial$aoi$aoi)
+    ]),
+    stringsAsFactors = FALSE
+  )
+  feature_frame <- var_rank[match(feature_order, var_rank$symbol), , drop = FALSE]
+  feature_frame$feature_rank <- seq_along(feature_order)
+  rownames(feature_frame) <- NULL
+
+  stopifnot(all(is.finite(heatmap$z)), all(is.finite(heatmap$sample_rank)),
+            all(is.finite(heatmap$feature_rank)), !anyNA(heatmap$symbol_plot),
+            !anyNA(sample_frame$slide), !anyNA(sample_frame$segment),
+            !anyNA(sample_frame$genotype), !anyNA(sample_frame$bio_unit),
+            all(is.finite(sample_frame$signed_response_score)),
+            all(is.finite(feature_frame$variance)))
+
+  list(
+    heatmap = heatmap,
+    sample = sample_frame,
+    features = feature_frame,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      n_variable_features = length(feature_ids),
+      min_count = min_count,
+      z_limit = z_limit,
+      transform = "TMM-normalized logCPM, top variable filterByExpr-kept genes, row z-scored and clipped for display",
+      clustering = "average-linkage hierarchical clustering on Euclidean distances over the displayed row-z matrix",
+      sample_tracks = c("genotype", "slide", "segment", "bio_unit", "roi",
+                        "signed_response_score"),
+      display = "descriptive sample/gene heatmap; no AOIs or genes are excluded beyond the existing primary-model filter"
+    )
+  )
+}
+
 geomx_gene_detection_descriptor <- function(counts, meta, design, min_count = 5,
                                             marker_sets = list(
                                               Microglia = microglia_identity_markers,
@@ -948,6 +1062,8 @@ run_geomx_de <- function(geomx, min_count = 5) {
     ordination = geomx_ordination_descriptor(counts, meta, fd$design,
                                              min_count = min_count),
     gene_detection = geomx_gene_detection_descriptor(counts, meta, fd$design,
+                                                     min_count = min_count),
+    sample_heatmap = geomx_sample_heatmap_descriptor(counts, meta, fd$design, primary$top,
                                                      min_count = min_count),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),

@@ -1,10 +1,10 @@
 # Map - live codebase wiring
 
-Current surface (2026-07-08): lean 14-figure report DAG only. No committed test suite, Python/uv
+Current surface (2026-07-08): lean 15-figure report DAG only. No committed test suite, Python/uv
 surface, composition/sccomp/CmdStan arm, per-substate pseudobulk target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
 science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
-the rendered 14-figure final analysis document.
+the rendered 15-figure final analysis document.
 
 ## Bootstrap
 
@@ -56,13 +56,14 @@ P2 trajectory:
 Modality context:
 - `geomx_de <- run_geomx_de(geomx)` (primary DE + compact spatial descriptor + compact AOI
   QC atlas data + compact normalization/RLE descriptor + compact ordination descriptor +
-  compact gene-detection descriptor)
+  compact gene-detection descriptor + compact sample-heatmap descriptor)
 - `proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)`
 - `phospho_de_24m <- run_phospho_de_24m(phospho, sample_key)`
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries GeoMx QC through `descriptive$GeoMx$qc`, normalization/RLE through
   `descriptive$GeoMx$normalization`, PCA/MDS through `descriptive$GeoMx$ordination`,
-  and gene detectability through `descriptive$GeoMx$gene_detection`.
+  gene detectability through `descriptive$GeoMx$gene_detection`, and the clustered
+  top-variable-gene heatmap through `descriptive$GeoMx$sample_heatmap`.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`
@@ -99,9 +100,10 @@ Report:
 `R/modality_de.R`
 - Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits
   compact AOI QC descriptor fields for the exploratory QC atlas, compact normalization/RLE
-  fields for the raw/TMM/RLE/background/voom diagnostic, and compact ordination fields for
-  PCA/MDS/scree/loading diagnostics, plus compact gene-detection fields for marker
-  measurability and the existing `filterByExpr` decision. Auxiliary deconvolution/
+  fields for the raw/TMM/RLE/background/voom diagnostic, compact ordination fields for
+  PCA/MDS/scree/loading diagnostics, compact gene-detection fields for marker
+  measurability and the existing `filterByExpr` decision, and compact sample-heatmap
+  fields for clustered top-variable-gene row-z expression. Auxiliary deconvolution/
   run-index/sensitivity arms stay deleted.
 
 `R/figures.R`
@@ -112,7 +114,8 @@ Report:
 `R/plot.R`
 - Shared report theme, scales, modality and descriptive plot helpers including
   `geomx_qc_atlas_plot()`, `geomx_normalization_rle_plot()`, and
-  `geomx_ordination_plot()` / `geomx_gene_detection_plot()`.
+  `geomx_ordination_plot()` / `geomx_gene_detection_plot()` /
+  `geomx_sample_heatmap_plot()`.
 
 `R/report.R`
 - Quarto render wrapper plus embedded-lightbox repair for single-file offline HTML.
@@ -125,10 +128,11 @@ Report:
 - `_trajectory.qmd`: pseudotime density by genotype/substate.
 - `_modality.qmd`: GeoMx QC atlas, GeoMx normalization/RLE diagnostic,
   GeoMx ordination diagnostic, GeoMx gene-detection diagnostic,
+  GeoMx sample heatmap diagnostic,
   GeoMx/proteome/phospho descriptive figures,
   four-method amyloid response scatter, functional-category score panel.
 
-Rendered output = 14 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
+Rendered output = 15 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
 data builders pre-filter/guard finite values so report warnings are treated as real failures.
 
 ## Tracked vs Ignored

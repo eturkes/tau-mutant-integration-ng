@@ -16,12 +16,12 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-08): 14 figures, 3 qmd chapters, expected 29 targets. Infrastructure
+Live report scope (2026-07-08): 15 figures, 3 qmd chapters, expected 29 targets. Infrastructure
 that does not directly feed the final analysis document is removed: committed tests, Python/uv
 files, composition/sccomp/CmdStan target, per-substate pseudobulk, prose inventory, stageR
 layer, mechanism/crossmodality/qc/story chapters and modules. The GeoMx QC atlas,
-normalization/RLE, ordination, and gene-detection diagnostics are compact figures riding
-on `geomx_de`, not a restored QC chapter. Historical claims remain in git + `roadmap.md`;
+normalization/RLE, ordination, gene-detection, and sample-heatmap diagnostics are compact
+figures riding on `geomx_de`, not a restored QC chapter. Historical claims remain in git + `roadmap.md`;
 do not treat them as live pipeline contracts.
 
 ## Data
@@ -111,6 +111,10 @@ Modality context:
   fraction, existing `filterByExpr(min.count=5)` status, microglia identity/homeostatic/DAM
   marker measurability, and highest-detected genes. It excludes no AOIs and adds no new
   gene filter beyond the primary GeoMx model.
+- `geomx_de$sample_heatmap` is descriptive only: top-variable filter-passing TMM-logCPM
+  genes, row-z heatmap clipped for display, deterministic average-linkage AOI/gene
+  clustering, genotype/slide/segment/bio-unit/ROI tracks, and the existing signed GeoMx
+  amyloid-response score. It excludes no AOIs and changes no DE model.
 - Auxiliary deconvolution, run-index sensitivity, and broad mechanism/cross-modality
   target families stay deleted.
 

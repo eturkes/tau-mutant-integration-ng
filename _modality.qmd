@@ -55,6 +55,15 @@ geomx_gene_detection_plot(msf$descriptive$GeoMx$gene_detection)
 ```
 
 ```{r}
+#| label: fig-geomx-sample-heatmap
+#| fig-width: 10.5
+#| fig-height: 10.2
+#| fig-cap: "GeoMx sample heatmap. Top: clustered AOI annotation tracks for genotype, slide, segment, bio-unit, and ROI, followed by the signed GeoMx amyloid-response score used in the spatial plate. Bottom: row-z-scored expression for a capped set of top-variable filter-passing GeoMx genes, with AOIs and genes ordered by deterministic average-linkage clustering. This exploratory figure shows sample/gene structure only and changes no GeoMx exclusions."
+#| fig-alt: "GeoMx exploratory sample heatmap with AOI annotation tracks for genotype, slide, segment, bio-unit, and ROI, a signed amyloid-response score strip, and a clustered z-score heatmap of top-variable filter-passing GeoMx genes."
+geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2

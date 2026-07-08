@@ -962,6 +962,151 @@ geomx_gene_detection_plot <- function(detection, title = "GeoMx gene detectabili
     patchwork::plot_annotation(title = title, subtitle = subtitle)
 }
 
+geomx_sample_heatmap_plot <- function(sample_heatmap,
+                                      title = "GeoMx sample heatmap") {
+  stopifnot(is.list(sample_heatmap), is.data.frame(sample_heatmap$heatmap),
+            is.data.frame(sample_heatmap$sample), is.data.frame(sample_heatmap$features))
+  heatmap <- sample_heatmap$heatmap
+  sample <- sample_heatmap$sample
+  need_heat <- c("symbol", "sample_rank", "symbol_plot", "z")
+  miss_heat <- setdiff(need_heat, names(heatmap))
+  if (length(miss_heat)) {
+    stop("GeoMx sample heatmap data missing columns: ",
+         paste(miss_heat, collapse = ", "), call. = FALSE)
+  }
+  heatmap <- heatmap[is.finite(heatmap$sample_rank) & is.finite(heatmap$z), ,
+                     drop = FALSE]
+  if (!nrow(heatmap)) stop("GeoMx sample heatmap has no finite rows", call. = FALSE)
+  need_sample <- c("sample_rank", "genotype", "slide", "segment", "bio_unit", "roi",
+                   "signed_response_score")
+  miss_sample <- setdiff(need_sample, names(sample))
+  if (length(miss_sample)) {
+    stop("GeoMx sample heatmap sample data missing columns: ",
+         paste(miss_sample, collapse = ", "), call. = FALSE)
+  }
+  sample <- sample[is.finite(sample$sample_rank) &
+                     is.finite(sample$signed_response_score), , drop = FALSE]
+  if (!nrow(sample)) stop("GeoMx sample heatmap has no finite samples", call. = FALSE)
+  sample <- sample[order(sample$sample_rank, method = "radix"), , drop = FALSE]
+  n_sample <- max(sample$sample_rank)
+  x_limits <- c(0.5, n_sample + 0.5)
+
+  make_track_palette <- function(values, colours) {
+    levels <- sort(unique(as.character(values)))
+    stats::setNames(rep(colours, length.out = length(levels)), levels)
+  }
+  id_palette <- function(values, saturation = 0.48, value = 0.70) {
+    levels <- sort(unique(as.character(values)))
+    if (!length(levels)) return(character())
+    hue <- seq(0, 0.86, length.out = length(levels))
+    stats::setNames(grDevices::hsv(hue, saturation, value), levels)
+  }
+  track_one <- function(track, values, palette) {
+    value <- as.character(values)
+    data.frame(
+      sample_rank = sample$sample_rank,
+      track = track,
+      value = value,
+      fill = unname(palette[value]),
+      stringsAsFactors = FALSE
+    )
+  }
+  slide_palette <- make_track_palette(sample$slide, tau_discrete_colours)
+  segment_palette <- make_track_palette(sample$segment,
+                                        c("#3F5F7F", "#A63A50", "#0B7A75", "#C8841C"))
+  bio_palette <- id_palette(sample$bio_unit, saturation = 0.42, value = 0.66)
+  roi_palette <- id_palette(sample$roi, saturation = 0.34, value = 0.76)
+  tracks <- rbind(
+    track_one("genotype", sample$genotype, genotype_colours),
+    track_one("slide", sample$slide, slide_palette),
+    track_one("segment", sample$segment, segment_palette),
+    track_one("bio-unit", sample$bio_unit, bio_palette),
+    track_one("ROI", sample$roi, roi_palette)
+  )
+  if (any(is.na(tracks$fill))) stop("GeoMx sample heatmap track palette has missing fills",
+                                    call. = FALSE)
+  tracks$track <- factor(tracks$track,
+                         levels = rev(c("genotype", "slide", "segment", "bio-unit", "ROI")))
+
+  track_plot <- ggplot2::ggplot(tracks, ggplot2::aes(sample_rank, track, fill = fill)) +
+    ggplot2::geom_tile(width = 1, height = 0.88, colour = "#F8F5ED", linewidth = 0.08) +
+    ggplot2::scale_fill_identity() +
+    ggplot2::scale_x_continuous(limits = x_limits, expand = c(0, 0), breaks = NULL) +
+    ggplot2::labs(x = NULL, y = NULL, title = "AOI annotation tracks",
+                  subtitle = "Clustered AOI order") +
+    theme_tau(base_size = 8.4) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_blank(),
+      axis.ticks.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_text(size = 7.2),
+      panel.grid = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(4, 6, 1, 6)
+    )
+
+  score_lim <- max(abs(sample$signed_response_score), na.rm = TRUE)
+  score_lim <- if (is.finite(score_lim) && score_lim > 0) score_lim else 1
+  score_plot <- ggplot2::ggplot(
+    sample,
+    ggplot2::aes(sample_rank, signed_response_score, colour = genotype, shape = segment)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#8A8174", linewidth = 0.28) +
+    ggplot2::geom_segment(ggplot2::aes(xend = sample_rank, y = 0,
+                                       yend = signed_response_score),
+                          linewidth = 0.22, alpha = 0.66) +
+    ggplot2::geom_point(size = 1.35, alpha = 0.94) +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::scale_y_continuous(limits = c(-score_lim, score_lim),
+                                expand = ggplot2::expansion(mult = 0.08)) +
+    ggplot2::scale_x_continuous(limits = x_limits, expand = c(0, 0), breaks = NULL) +
+    ggplot2::labs(x = NULL, y = "signed score", title = "Amyloid-response score track",
+                  subtitle = "Mean signed z-score from the GeoMx amyloid-response gene set") +
+    theme_tau(base_size = 8.4) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_blank(),
+      axis.ticks.x = ggplot2::element_blank(),
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(1, 6, 4, 6)
+    )
+
+  z_lim <- sample_heatmap$provenance$z_limit %||% max(abs(heatmap$z), na.rm = TRUE)
+  z_lim <- if (is.finite(z_lim) && z_lim > 0) z_lim else 1
+  heat_plot <- ggplot2::ggplot(
+    heatmap,
+    ggplot2::aes(sample_rank, symbol_plot, fill = z)
+  ) +
+    ggplot2::geom_tile(width = 1, height = 0.96, colour = "#F8F5ED", linewidth = 0.05) +
+    scale_fill_rwb(midpoint = 0, limits = c(-z_lim, z_lim), oob = scales::squish,
+                   name = "row z") +
+    ggplot2::scale_x_continuous(limits = x_limits, expand = c(0, 0), breaks = NULL) +
+    ggplot2::labs(
+      x = "AOIs clustered by top-variable GeoMx genes",
+      y = NULL,
+      title = "Top-variable gene expression",
+      subtitle = sprintf("%s genes, %s AOIs; row z-scores clipped at +/-%.1f",
+                         sample_heatmap$provenance$n_variable_features %||%
+                           length(unique(heatmap$symbol)),
+                         sample_heatmap$provenance$n_aoi %||% nrow(sample),
+                         z_lim)
+    ) +
+    theme_tau(base_size = 8.1) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_blank(),
+      axis.ticks.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_text(size = 5.9, lineheight = 0.88),
+      panel.grid = ggplot2::element_blank(),
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(2, 6, 4, 6)
+    )
+
+  patchwork::wrap_plots(list(track_plot, score_plot, heat_plot),
+                        ncol = 1, heights = c(0.72, 0.95, 4.6)) +
+    patchwork::plot_annotation(
+      title = title,
+      subtitle = sample_heatmap$provenance$clustering %||%
+        "average-linkage clustering on TMM-logCPM row z-scores"
+    )
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

@@ -36,11 +36,13 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has five GeoMx figures after S4: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has six GeoMx figures after S5: `fig-geomx-qc-atlas` = AOI QC atlas;
   `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
   `fig-geomx-ordination` = slide-faceted PCA/MDS + scree + PC1/PC2 loadings;
   `fig-geomx-gene-detection` = WTA gene detectability, existing filterByExpr decision,
   microglia marker measurability, highest-detected genes;
+  `fig-geomx-sample-heatmap` = clustered top-variable-gene row-z heatmap with
+  genotype/slide/segment/bio-unit/ROI tracks and signed-response score;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
@@ -51,7 +53,8 @@ Local seam:
   distribution quantiles, TMM RLE quantiles, Q3/background AOI data, and saved voom trend.
   `geomx_de$ordination` carries compact S3 PCA/MDS/scree/loading data.
   `geomx_de$gene_detection` carries compact S4 gene-detection/marker-measurability data.
-  Report chunks read all four through `modality_scatter_figures`.
+  `geomx_de$sample_heatmap` carries compact S5 clustered top-variable-gene heatmap data.
+  Report chunks read all five through `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -118,12 +121,17 @@ S4 [DONE 2026-07-08] - `fig-geomx-gene-detection`
   DAM 18/18. The figure documents measurability only; no AOI exclusion, DE change, or
   report-claim change.
 
-S5 - `fig-geomx-sample-heatmap`
+S5 [DONE 2026-07-08] - `fig-geomx-sample-heatmap`
 - Purpose: sample/gene structure heatmap.
 - Panels: AOI correlation or top-variable-gene z-score heatmap with annotation tracks for
   genotype, slide, segment, bio-unit/ROI, and signed-response score.
 - Source basis: Bruker General Heatmap; standard GeoMx exploratory clustering.
 - Acceptance: keeps feature rows capped and precomputed so embedded report size stays lean.
+- Status: landed as compact `geomx_de$sample_heatmap` + visible `_modality.qmd` figure.
+  Live data = 91 AOIs, 19,959/19,963 genes pass `filterByExpr(min.count=5)`, 40
+  top-variable genes displayed as row-z scores clipped at +/-2.5, with deterministic
+  average-linkage AOI/gene clustering. The figure documents sample/gene structure only;
+  no AOI exclusion, DE change, or report-claim change.
 
 S6 - `fig-geomx-spatial-program-overlays`
 - Purpose: spatial small-multiple overlay beyond the existing single signed-score plate.
