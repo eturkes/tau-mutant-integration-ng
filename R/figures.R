@@ -664,11 +664,13 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   }))
 }
 
+.fig_other_annotated_role <- "Other annotated / no role-set hit"
+
 # Functional-category score summary for empirical off-diagonal features in
-# fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions, but every
-# threshold-passing item is retained: unmapped symbols fall into explicit fallback categories.
-# The phosphoproteomics panel is already parent-protein-collapsed upstream, so category scores use
-# the same averaged protein points displayed in the amyloid-effect scatter.
+# fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions; explicit
+# fallback categories are retained, but the unclassified other-annotated bucket is omitted from
+# the visible summary. The phosphoproteomics panel is already parent-protein-collapsed upstream,
+# so category scores use the same averaged protein points displayed in the amyloid-effect scatter.
 .fig_fallback_role <- function(gene_symbol, label) {
   token <- .fig_gene_tokens(c(gene_symbol, label))
   if (!length(token)) token <- as.character(label)
@@ -677,7 +679,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
           grepl("Rik$", token, perl = TRUE))) {
     return("Predicted / unannotated loci")
   }
-  "Other annotated / no role-set hit"
+  .fig_other_annotated_role
 }
 
 .fig_primary_role <- function(gene_symbol, label, group_sets, group_labels, fallback_priority) {
@@ -689,7 +691,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       group_priority = i, stringsAsFactors = FALSE))
   }
   fallback_order <- c("Predicted / unannotated loci", "Olfactory receptor / GPCR",
-                      "Other annotated / no role-set hit")
+                      .fig_other_annotated_role)
   lab <- .fig_fallback_role(gene_symbol, label)
   data.frame(group = lab, group_label = lab,
              group_priority = fallback_priority + match(lab, fallback_order),
@@ -796,6 +798,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   rows <- rows[is.finite(rows$score_maptki) & is.finite(rows$score_p301s) &
                  is.finite(rows$delta), , drop = FALSE]
   .fig_assert_nonempty(rows, "finite off-diagonal functional-category score summary")
+  rows <- rows[rows$group != .fig_other_annotated_role, , drop = FALSE]
+  .fig_assert_nonempty(rows, "categorized off-diagonal functional-category score summary")
   rows$rank_score <- rows$abs_delta * log1p(rows$n_feature)
   rows <- .fig_bind(lapply(order, function(m) {
     z <- rows[as.character(rows$modality) == m, , drop = FALSE]
@@ -854,7 +858,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback",
+      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback; visible summary excludes the other annotated/no role-set bucket",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),

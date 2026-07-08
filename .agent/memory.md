@@ -115,7 +115,8 @@ Modality context:
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
 - Four-method amyloid-response scatter labels use a hybrid within-method off-diagonal threshold:
   `max(|x-y| q0.99, 24th-largest |x-y|)`, yielding <=24 displayed labels per modality unless exact ties;
-  the functional-category panel uses the same selected off-diagonal features.
+  the functional-category panel scores the same selected off-diagonal features but displays only categorized
+  role/fallback buckets, excluding the other-annotated no-role bucket.
 - Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
   figures are ledger history, not live report/path contracts.
 - Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality
