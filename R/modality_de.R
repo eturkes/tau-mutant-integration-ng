@@ -239,6 +239,175 @@ geomx_spatial_descriptor <- function(counts, meta, top,
   )
 }
 
+geomx_contrast_diagnostic_descriptor <- function(top, alpha = 0.10,
+                                                 labels_per_contrast = 4L,
+                                                 interaction_top_n = 12L) {
+  contrast_order <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s",
+                      "tau_in_nlgf", "interaction")
+  contrast_labels <- c(
+    tau_alone = "Tau alone\nP301S - MAPTKI",
+    nlgf_in_maptki = "Amyloid | MAPTKI\nNLGF_MAPTKI - MAPTKI",
+    nlgf_in_p301s = "Amyloid | P301S\nNLGF_P301S - P301S",
+    tau_in_nlgf = "Tau | amyloid\nNLGF_P301S - NLGF_MAPTKI",
+    interaction = "Interaction\namyloid x tau"
+  )
+  stopifnot(is.list(top), all(contrast_order %in% names(top)),
+            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1,
+            is.numeric(labels_per_contrast), length(labels_per_contrast) == 1L,
+            labels_per_contrast >= 1L,
+            is.numeric(interaction_top_n), length(interaction_top_n) == 1L,
+            interaction_top_n >= 1L)
+
+  build_one <- function(cn) {
+    tt <- top[[cn]]
+    need <- c("symbol", "logFC", "P.Value", "adj.P.Val", "AveExpr", "CI.L", "CI.R")
+    missing <- setdiff(need, names(tt))
+    if (length(missing)) {
+      stop("GeoMx top table ", cn, " missing columns: ",
+           paste(missing, collapse = ", "), call. = FALSE)
+    }
+    symbol <- as.character(tt$symbol)
+    if (anyDuplicated(symbol)) {
+      stop("GeoMx top table ", cn, " has duplicated symbols", call. = FALSE)
+    }
+    out <- data.frame(
+      symbol = symbol,
+      contrast = cn,
+      contrast_label = unname(contrast_labels[[cn]]),
+      effect = as.numeric(tt$logFC),
+      ave_expr = as.numeric(tt$AveExpr),
+      p_value = as.numeric(tt$P.Value),
+      fdr = as.numeric(tt$adj.P.Val),
+      ci_low = as.numeric(tt$CI.L),
+      ci_high = as.numeric(tt$CI.R),
+      stringsAsFactors = FALSE
+    )
+    out <- out[is.finite(out$effect) & is.finite(out$ave_expr) &
+                 is.finite(out$p_value) & is.finite(out$fdr) &
+                 is.finite(out$ci_low) & is.finite(out$ci_high), ,
+               drop = FALSE]
+    if (!nrow(out)) stop("GeoMx contrast ", cn, " has no finite diagnostic rows",
+                         call. = FALSE)
+    out$neg_log10_fdr <- -log10(pmax(out$fdr, 1e-300))
+    out$supported <- out$fdr <= alpha
+    out$direction <- ifelse(
+      out$supported,
+      ifelse(out$effect < 0, "down", "up"),
+      "not supported"
+    )
+    out$abs_effect <- abs(out$effect)
+    out$rank_score <- out$neg_log10_fdr * sqrt(pmax(out$abs_effect,
+                                                    .Machine$double.eps))
+    out
+  }
+
+  volcano <- do.call(rbind, lapply(contrast_order, build_one))
+  rownames(volcano) <- NULL
+  volcano$contrast <- factor(volcano$contrast, levels = contrast_order)
+  volcano$contrast_label <- factor(volcano$contrast_label,
+                                   levels = unname(contrast_labels[contrast_order]))
+  volcano$direction <- factor(volcano$direction,
+                              levels = c("down", "not supported", "up"))
+  stopifnot(all(is.finite(volcano$effect)), all(is.finite(volcano$ave_expr)),
+            all(is.finite(volcano$neg_log10_fdr)), !anyNA(volcano$contrast),
+            !anyNA(volcano$contrast_label), !anyNA(volcano$direction))
+
+  label_rows <- do.call(rbind, lapply(contrast_order, function(cn) {
+    x <- volcano[as.character(volcano$contrast) == cn, , drop = FALSE]
+    x <- x[order(!x$supported, -x$rank_score, -x$neg_log10_fdr,
+                 -x$abs_effect, x$symbol, method = "radix"), , drop = FALSE]
+    utils::head(x, as.integer(labels_per_contrast))
+  }))
+  label_key <- paste(as.character(label_rows$contrast), label_rows$symbol, sep = "\r")
+  volcano$label_show <- paste(as.character(volcano$contrast), volcano$symbol, sep = "\r") %in%
+    label_key
+  volcano$label <- ifelse(volcano$label_show, volcano$symbol, "")
+  label_rows <- volcano[volcano$label_show, , drop = FALSE]
+  rownames(label_rows) <- NULL
+
+  support_grid <- expand.grid(
+    contrast = contrast_order,
+    direction = c("down", "up"),
+    stringsAsFactors = FALSE
+  )
+  support <- volcano[volcano$supported & as.character(volcano$direction) %in% c("down", "up"),
+                     c("contrast", "direction"), drop = FALSE]
+  support$n <- 1L
+  if (nrow(support)) {
+    support_count <- stats::aggregate(n ~ contrast + direction, data = support, FUN = sum)
+  } else {
+    support_count <- data.frame(contrast = character(), direction = character(),
+                                n = integer(), stringsAsFactors = FALSE)
+  }
+  support_counts <- merge(support_grid, support_count,
+                          by = c("contrast", "direction"), all.x = TRUE, sort = FALSE)
+  support_counts$n[is.na(support_counts$n)] <- 0L
+  support_counts$contrast_label <- unname(contrast_labels[support_counts$contrast])
+  support_counts$signed_n <- ifelse(support_counts$direction == "down",
+                                    -support_counts$n, support_counts$n)
+  support_counts$contrast <- factor(support_counts$contrast, levels = contrast_order)
+  support_counts$contrast_label <- factor(support_counts$contrast_label,
+                                          levels = unname(contrast_labels[contrast_order]))
+  support_counts$direction <- factor(support_counts$direction, levels = c("down", "up"))
+  support_counts <- support_counts[order(support_counts$contrast,
+                                         support_counts$direction, method = "radix"), ,
+                                   drop = FALSE]
+  rownames(support_counts) <- NULL
+
+  interaction_top <- volcano[as.character(volcano$contrast) == "interaction", ,
+                             drop = FALSE]
+  interaction_top <- interaction_top[order(!interaction_top$supported,
+                                           -interaction_top$rank_score,
+                                           -interaction_top$neg_log10_fdr,
+                                           -interaction_top$abs_effect,
+                                           interaction_top$symbol,
+                                           method = "radix"), , drop = FALSE]
+  interaction_top <- utils::head(interaction_top, as.integer(interaction_top_n))
+  interaction_top <- interaction_top[order(interaction_top$effect,
+                                           interaction_top$symbol,
+                                           method = "radix"), , drop = FALSE]
+  interaction_top$symbol_plot <- factor(interaction_top$symbol,
+                                        levels = interaction_top$symbol)
+  rownames(interaction_top) <- NULL
+
+  summary <- do.call(rbind, lapply(contrast_order, function(cn) {
+    x <- volcano[as.character(volcano$contrast) == cn, , drop = FALSE]
+    data.frame(
+      contrast = cn,
+      contrast_label = unname(contrast_labels[[cn]]),
+      n_features = nrow(x),
+      n_supported = sum(x$supported),
+      n_up = sum(x$supported & as.character(x$direction) == "up"),
+      n_down = sum(x$supported & as.character(x$direction) == "down"),
+      stringsAsFactors = FALSE
+    )
+  }))
+  summary$contrast <- factor(summary$contrast, levels = contrast_order)
+  summary$contrast_label <- factor(summary$contrast_label,
+                                   levels = unname(contrast_labels[contrast_order]))
+  rownames(summary) <- NULL
+
+  list(
+    volcano = volcano,
+    labels = label_rows,
+    support_counts = support_counts,
+    interaction_top = interaction_top,
+    summary = summary,
+    provenance = list(
+      alpha = alpha,
+      contrast_order = contrast_order,
+      contrast_labels = contrast_labels[contrast_order],
+      labels_per_contrast = as.integer(labels_per_contrast),
+      interaction_top_n = as.integer(interaction_top_n),
+      n_features_per_contrast = stats::setNames(
+        vapply(contrast_order, function(cn) nrow(top[[cn]]), integer(1)),
+        contrast_order
+      ),
+      display = "volcano and MA diagnostics from existing GeoMx primary topTables; no new model or exclusion"
+    )
+  )
+}
+
 geomx_qc_descriptor <- function(counts, meta, lower_q = 0.05, upper_q = 0.95) {
   stopifnot(is.matrix(counts), is.data.frame(meta),
             identical(colnames(counts), rownames(meta)),
@@ -1250,6 +1419,7 @@ run_geomx_de <- function(geomx, min_count = 5) {
                                                      min_count = min_count),
     spatial_programs = geomx_spatial_program_descriptor(counts, meta, fd$design,
                                                         min_count = min_count),
+    contrast_diagnostics = geomx_contrast_diagnostic_descriptor(primary$top),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

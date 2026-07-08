@@ -1217,6 +1217,203 @@ geomx_spatial_program_overlay_plot <- function(program_overlay,
                         heights = c(3.2, 1.0))
 }
 
+geomx_contrast_diagnostic_plot <- function(contrast_diagnostics,
+                                           title = "GeoMx contrast diagnostics") {
+  stopifnot(is.list(contrast_diagnostics),
+            is.data.frame(contrast_diagnostics$volcano),
+            is.data.frame(contrast_diagnostics$labels),
+            is.data.frame(contrast_diagnostics$support_counts),
+            is.data.frame(contrast_diagnostics$interaction_top),
+            is.data.frame(contrast_diagnostics$summary))
+  volcano <- contrast_diagnostics$volcano
+  need <- c("symbol", "contrast_label", "effect", "ave_expr", "neg_log10_fdr",
+            "direction", "label", "label_show", "fdr", "ci_low", "ci_high",
+            "supported")
+  miss <- setdiff(need, names(volcano))
+  if (length(miss)) {
+    stop("GeoMx contrast diagnostic data missing columns: ",
+         paste(miss, collapse = ", "), call. = FALSE)
+  }
+  volcano <- volcano[is.finite(volcano$effect) &
+                       is.finite(volcano$ave_expr) &
+                       is.finite(volcano$neg_log10_fdr) &
+                       is.finite(volcano$fdr), , drop = FALSE]
+  if (!nrow(volcano)) stop("GeoMx contrast diagnostic has no finite rows",
+                           call. = FALSE)
+  label_rows <- volcano[volcano$label_show %in% TRUE, , drop = FALSE]
+  if (!nrow(label_rows)) stop("GeoMx contrast diagnostic has no label rows",
+                              call. = FALSE)
+  alpha <- contrast_diagnostics$provenance$alpha %||% 0.10
+  effect_lim <- max(abs(c(volcano$effect, volcano$ci_low, volcano$ci_high)),
+                    na.rm = TRUE)
+  effect_lim <- if (is.finite(effect_lim) && effect_lim > 0) effect_lim else 1
+  y_cut <- -log10(alpha)
+  direction_colours <- c(down = "#2F78A0",
+                         `not supported` = "#AFA89C",
+                         up = "#A63A50")
+
+  volcano_plot <- ggplot2::ggplot(
+    volcano,
+    ggplot2::aes(effect, neg_log10_fdr)
+  ) +
+    ggplot2::geom_hline(yintercept = y_cut, colour = "#BFB8AA",
+                        linewidth = 0.25, linetype = "dotted") +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.25) +
+    ggplot2::geom_point(ggplot2::aes(colour = direction),
+                        size = 0.30, alpha = 0.28) +
+    ggrepel::geom_text_repel(
+      data = label_rows,
+      ggplot2::aes(label = label),
+      size = 1.75, colour = "#20242A", max.overlaps = Inf, seed = 42L,
+      min.segment.length = 0, segment.colour = "grey65", box.padding = 0.08,
+      point.padding = 0.03, max.iter = 20000L, max.time = 3) +
+    ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE,
+                                 name = NULL) +
+    ggplot2::scale_x_continuous(limits = c(-effect_lim, effect_lim),
+                                oob = scales::squish) +
+    ggplot2::facet_wrap(ggplot2::vars(contrast_label), nrow = 1) +
+    ggplot2::labs(
+      x = "GeoMx log2FC", y = "-log10 FDR",
+      title = "Volcano diagnostics",
+      subtitle = sprintf("Dotted line = FDR %.2f; labels are top-ranked per contrast",
+                         alpha)
+    ) +
+    theme_tau(base_size = 7.7) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      panel.spacing.x = grid::unit(0.18, "lines"),
+      strip.text = ggplot2::element_text(size = 6.1, lineheight = 0.88),
+      axis.text = ggplot2::element_text(size = 5.9),
+      axis.title = ggplot2::element_text(size = 7.0)
+    )
+
+  ma_plot <- ggplot2::ggplot(
+    volcano,
+    ggplot2::aes(ave_expr, effect)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#BFB8AA", linewidth = 0.25) +
+    ggplot2::geom_point(ggplot2::aes(colour = direction),
+                        size = 0.30, alpha = 0.28) +
+    ggrepel::geom_text_repel(
+      data = label_rows,
+      ggplot2::aes(label = label),
+      size = 1.65, colour = "#20242A", max.overlaps = Inf, seed = 42L,
+      min.segment.length = 0, segment.colour = "grey65", box.padding = 0.08,
+      point.padding = 0.03, max.iter = 20000L, max.time = 3) +
+    ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE,
+                                 name = NULL) +
+    ggplot2::scale_y_continuous(limits = c(-effect_lim, effect_lim),
+                                oob = scales::squish) +
+    ggplot2::facet_wrap(ggplot2::vars(contrast_label), nrow = 1) +
+    ggplot2::labs(
+      x = "mean log2 expression", y = "GeoMx log2FC",
+      title = "MA diagnostics",
+      subtitle = "Same primary limma-voom fit; colour marks FDR-supported direction"
+    ) +
+    theme_tau(base_size = 7.7) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      panel.spacing.x = grid::unit(0.18, "lines"),
+      strip.text = ggplot2::element_text(size = 6.1, lineheight = 0.88),
+      axis.text = ggplot2::element_text(size = 5.9),
+      axis.title = ggplot2::element_text(size = 7.0)
+    )
+
+  counts <- contrast_diagnostics$support_counts
+  need_counts <- c("contrast_label", "direction", "n", "signed_n")
+  miss_counts <- setdiff(need_counts, names(counts))
+  if (length(miss_counts)) {
+    stop("GeoMx support-count data missing columns: ",
+         paste(miss_counts, collapse = ", "), call. = FALSE)
+  }
+  counts <- counts[is.finite(counts$n) & is.finite(counts$signed_n), ,
+                   drop = FALSE]
+  if (!nrow(counts)) stop("GeoMx support-count data has no finite rows",
+                          call. = FALSE)
+  count_lim <- max(abs(counts$signed_n), na.rm = TRUE)
+  count_lim <- if (is.finite(count_lim) && count_lim > 0) count_lim else 1
+  count_plot <- ggplot2::ggplot(
+    counts,
+    ggplot2::aes(signed_n, contrast_label, colour = direction)
+  ) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.28) +
+    ggplot2::geom_segment(ggplot2::aes(x = 0, xend = signed_n,
+                                       yend = contrast_label),
+                          linewidth = 0.65, alpha = 0.82) +
+    ggplot2::geom_point(size = 2.0, alpha = 0.94) +
+    ggplot2::scale_colour_manual(values = direction_colours[c("down", "up")],
+                                 drop = FALSE, name = "direction") +
+    ggplot2::scale_x_continuous(
+      limits = c(-count_lim, count_lim),
+      labels = function(x) abs(x),
+      oob = scales::squish
+    ) +
+    ggplot2::labs(
+      x = sprintf("FDR <= %.2f genes", alpha), y = NULL,
+      title = "Signed support counts",
+      subtitle = "Left = lower in numerator; right = higher in numerator"
+    ) +
+    theme_tau(base_size = 8.2) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.y = ggplot2::element_text(size = 6.3, lineheight = 0.88)
+    )
+
+  interaction_top <- contrast_diagnostics$interaction_top
+  need_ix <- c("symbol_plot", "effect", "ci_low", "ci_high", "direction", "fdr",
+               "supported")
+  miss_ix <- setdiff(need_ix, names(interaction_top))
+  if (length(miss_ix)) {
+    stop("GeoMx interaction-top data missing columns: ",
+         paste(miss_ix, collapse = ", "), call. = FALSE)
+  }
+  interaction_top <- interaction_top[is.finite(interaction_top$effect) &
+                                       is.finite(interaction_top$ci_low) &
+                                       is.finite(interaction_top$ci_high) &
+                                       is.finite(interaction_top$fdr), ,
+                                     drop = FALSE]
+  if (!nrow(interaction_top)) {
+    stop("GeoMx interaction-top data has no finite rows", call. = FALSE)
+  }
+  ix_support_n <- sum(interaction_top$supported)
+  interaction_plot <- ggplot2::ggplot(
+    interaction_top,
+    ggplot2::aes(effect, symbol_plot)
+  ) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.28) +
+    ggplot2::geom_segment(ggplot2::aes(x = ci_low, xend = ci_high,
+                                       yend = symbol_plot, colour = direction),
+                          linewidth = 0.62, alpha = 0.86) +
+    ggplot2::geom_point(ggplot2::aes(fill = direction),
+                        shape = 21, colour = "#20242A", stroke = 0.24,
+                        size = 2.0, alpha = 0.96) +
+    ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE,
+                                 guide = "none") +
+    ggplot2::scale_fill_manual(values = direction_colours, drop = FALSE,
+                               name = "direction") +
+    ggplot2::scale_x_continuous(limits = c(-effect_lim, effect_lim),
+                                oob = scales::squish) +
+    ggplot2::labs(
+      x = "interaction log2FC with 95% CI", y = NULL,
+      title = "Interaction emphasis",
+      subtitle = sprintf("Top %s genes by interaction rank; %s FDR-supported",
+                         nrow(interaction_top), ix_support_n)
+    ) +
+    theme_tau(base_size = 8.2) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      axis.text.y = ggplot2::element_text(size = 6.5, lineheight = 0.90)
+    )
+
+  subtitle <- contrast_diagnostics$provenance$display %||%
+    "primary GeoMx topTables only; no new inference model"
+  bottom <- patchwork::wrap_plots(list(count_plot, interaction_plot),
+                                  ncol = 2, widths = c(0.95, 1.05))
+  patchwork::wrap_plots(list(volcano_plot, ma_plot, bottom),
+                        ncol = 1, heights = c(1.05, 1.05, 0.9)) +
+    patchwork::plot_annotation(title = title, subtitle = subtitle)
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi

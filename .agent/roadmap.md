@@ -28,8 +28,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = SIXTEEN figures: microglia (P1) + trajectory (P2) +
-six GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays) + three modality-native non-snRNAseq figures +
+REPORT SCOPE (current 2026-07-08): the rendered report = SEVENTEEN figures: microglia (P1) + trajectory (P2) +
+seven GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays; contrast diagnostics) + three modality-native non-snRNAseq figures +
 two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
@@ -75,14 +75,20 @@ Open steps (one figure/session):
   19,959/19,963 genes kept, scored features = Homeostatic 10/10, DAM 18/18, IFN 12/12,
   MHC/APC 7/7, Apoe 1/1, Trem2 1/1; coordinate-only status labelled because tissue
   images are absent from the live report path; no AOIs excluded and DE claims unchanged.
-- S7 [TODO] `fig-geomx-contrast-diagnostics`: GeoMx-only volcano/MA diagnostics for the
-  five canonical contrasts.
+- S7 [DONE 2026-07-08] `fig-geomx-contrast-diagnostics`: GeoMx-only volcano/MA
+  diagnostics for the five canonical contrasts. Outcome: compact
+  `geomx_de$contrast_diagnostics` + report plot; 99,795 contrast-feature rows
+  (19,959 genes x 5 contrasts), 20 deterministic labels, support counts at
+  FDR <= 0.10 = tau_alone 4 up/0 down, nlgf_in_maptki 5,258 up/1,559 down,
+  nlgf_in_p301s 1,386 up/541 down, tau_in_nlgf 126 up/270 down,
+  interaction 45 up/117 down; no new inference model, AOI exclusion, or
+  report-claim change.
 - S8 [TODO] `fig-geomx-roi-segment-replicates`: repeated-observation / ROI-segment /
   duplicateCorrelation block audit figure.
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S7.
+Next `$session-prompt` = EXECUTE S8.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1054,6 +1060,19 @@ Next `$session-prompt` = EXECUTE S7.
   or report-claim change. Focused target/render build green; rendered report has
   16 figures / 16 nonblank alts; full `scripts/check.sh` green; Chromium PDF page-10
   QA clean. Next = EXECUTE S7.
+- 2026-07-08 GeoMx exploratory figures S7 DONE -> `fig-geomx-contrast-diagnostics`.
+  Added `geomx_contrast_diagnostic_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$contrast_diagnostics`, and rendered
+  `geomx_contrast_diagnostic_plot()` in `_modality.qmd`. The figure shows five
+  canonical contrast volcano facets, five matching MA facets, signed FDR-support
+  counts, and top interaction genes with confidence intervals. Live data: 99,795
+  contrast-feature rows (19,959 genes x 5 contrasts), 20 deterministic labels,
+  support counts at FDR <= 0.10 = tau_alone 4 up/0 down, nlgf_in_maptki 5,258
+  up/1,559 down, nlgf_in_p301s 1,386 up/541 down, tau_in_nlgf 126 up/270 down,
+  interaction 45 up/117 down. No new inference model, AOI exclusion, DE change,
+  or report-claim change. Focused target build green; full `scripts/check.sh`
+  green; rendered HTML has 17 figures / 17 captions; Chromium PDF page-11 QA
+  clean. Next = EXECUTE S8.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

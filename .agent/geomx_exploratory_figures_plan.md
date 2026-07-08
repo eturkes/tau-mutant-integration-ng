@@ -36,13 +36,16 @@ Primary/current sources searched 2026-07-08:
     heatmaps, reverse-decon residual heatmaps, and fit-dependency scatter.
 
 Local seam:
-- Live report has six GeoMx figures after S5: `fig-geomx-qc-atlas` = AOI QC atlas;
+- Live report has eight GeoMx figures after S7: `fig-geomx-qc-atlas` = AOI QC atlas;
   `fig-geomx-normalization-rle` = raw/TMM logCPM, RLE, Q3/background, voom trend;
   `fig-geomx-ordination` = slide-faceted PCA/MDS + scree + PC1/PC2 loadings;
   `fig-geomx-gene-detection` = WTA gene detectability, existing filterByExpr decision,
   microglia marker measurability, highest-detected genes;
   `fig-geomx-sample-heatmap` = clustered top-variable-gene row-z heatmap with
   genotype/slide/segment/bio-unit/ROI tracks and signed-response score;
+  `fig-geomx-spatial-program-overlays` = coordinate-only biology program maps;
+  `fig-geomx-contrast-diagnostics` = volcano/MA/support diagnostics over the five
+  canonical GeoMx contrasts;
   `fig-modality-geomx-landscape` = slide-faceted AOI signed-score map + genotype score
   distribution + top score-gene drivers.
 - `geomx_de$spatial` already carries compact AOI fields:
@@ -54,7 +57,9 @@ Local seam:
   `geomx_de$ordination` carries compact S3 PCA/MDS/scree/loading data.
   `geomx_de$gene_detection` carries compact S4 gene-detection/marker-measurability data.
   `geomx_de$sample_heatmap` carries compact S5 clustered top-variable-gene heatmap data.
-  Report chunks read all five through `modality_scatter_figures`.
+  `geomx_de$spatial_programs` carries compact S6 coordinate-only biology program data.
+  `geomx_de$contrast_diagnostics` carries compact S7 volcano/MA/support data. Report
+  chunks read these descriptors through `modality_scatter_figures`.
 - Current lean DAG removed deconvolution targets. Any decon figure must either re-earn a
   compact decon/status target in its own session or render a truthful blocked/feasibility
   diagnostic, not an abundance claim.
@@ -147,12 +152,20 @@ S6 [DONE 2026-07-08] - `fig-geomx-spatial-program-overlays`
   explicit because tissue images are not in the live report path. No AOI exclusion, DE
   change, or report-claim change.
 
-S7 - `fig-geomx-contrast-diagnostics`
+S7 [DONE 2026-07-08] - `fig-geomx-contrast-diagnostics`
 - Purpose: GeoMx-only DE diagnostic figure.
 - Panels: five canonical contrast volcano/MA small multiples, top labels, signed support
   counts, and interaction emphasis.
 - Source basis: Bruker Volcano Plot; standR limma-voom + MA visualization.
 - Acceptance: uses existing `geomx_de$primary$top`; no new inference model.
+- Status: landed as compact `geomx_de$contrast_diagnostics` + visible
+  `_modality.qmd` figure. Live data = 99,795 contrast-feature rows
+  (19,959 genes x 5 canonical contrasts), 20 deterministic labels, and
+  FDR <= 0.10 support counts: tau_alone 4 up/0 down; nlgf_in_maptki
+  5,258 up/1,559 down; nlgf_in_p301s 1,386 up/541 down; tau_in_nlgf
+  126 up/270 down; interaction 45 up/117 down. The figure reuses the
+  existing primary GeoMx top tables; no new inference model, AOI exclusion,
+  DE change, or report-claim change.
 
 S8 - `fig-geomx-roi-segment-replicates`
 - Purpose: ROI/segment/repeated-observation structure figure.

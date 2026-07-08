@@ -16,11 +16,11 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-08): 16 figures, 3 qmd chapters, expected 29 targets. Infrastructure
+Live report scope (2026-07-08): 17 figures, 3 qmd chapters, expected 29 targets. Infrastructure
 that does not directly feed the final analysis document is removed: committed tests, Python/uv
 files, composition/sccomp/CmdStan target, per-substate pseudobulk, prose inventory, stageR
 layer, mechanism/crossmodality/qc/story chapters and modules. The GeoMx QC atlas,
-normalization/RLE, ordination, gene-detection, sample-heatmap, and spatial-program diagnostics are compact
+normalization/RLE, ordination, gene-detection, sample-heatmap, spatial-program, and contrast-diagnostic figures are compact
 figures riding on `geomx_de`, not a restored QC chapter. Historical claims remain in git + `roadmap.md`;
 do not treat them as live pipeline contracts.
 
@@ -120,6 +120,10 @@ Modality context:
   TMM-logCPM row-z summaries over filter-passing genes. Tissue images are absent from
   the live report path, so the figure must say coordinate-only. It excludes no AOIs and
   changes no DE model.
+- `geomx_de$contrast_diagnostics` is descriptive only: volcano/MA rows, deterministic top
+  labels, signed support counts, and an interaction top-gene panel from the existing
+  primary GeoMx top tables. It adds no inference model, excludes no AOIs, and changes no
+  DE model.
 - Auxiliary deconvolution, run-index sensitivity, and broad mechanism/cross-modality
   target families stay deleted.
 

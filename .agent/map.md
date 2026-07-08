@@ -1,10 +1,10 @@
 # Map - live codebase wiring
 
-Current surface (2026-07-08): lean 16-figure report DAG only. No committed test suite, Python/uv
+Current surface (2026-07-08): lean 17-figure report DAG only. No committed test suite, Python/uv
 surface, composition/sccomp/CmdStan arm, per-substate pseudobulk target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
 science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
-the rendered 15-figure final analysis document.
+the rendered 17-figure final analysis document.
 
 ## Bootstrap
 
@@ -57,7 +57,7 @@ Modality context:
 - `geomx_de <- run_geomx_de(geomx)` (primary DE + compact spatial descriptor + compact AOI
   QC atlas data + compact normalization/RLE descriptor + compact ordination descriptor +
   compact gene-detection descriptor + compact sample-heatmap descriptor + compact
-  spatial-program descriptor)
+  spatial-program descriptor + compact contrast-diagnostic descriptor)
 - `proteome_de_24m <- run_proteome_de_24m(proteomics, sample_key)`
 - `phospho_de_24m <- run_phospho_de_24m(phospho, sample_key)`
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
@@ -65,7 +65,8 @@ Modality context:
   `descriptive$GeoMx$normalization`, PCA/MDS through `descriptive$GeoMx$ordination`,
   gene detectability through `descriptive$GeoMx$gene_detection`, and the clustered
   top-variable-gene heatmap through `descriptive$GeoMx$sample_heatmap`, and coordinate-only
-  biology program overlays through `descriptive$GeoMx$spatial_programs`.
+  biology program overlays through `descriptive$GeoMx$spatial_programs`, and GeoMx
+  volcano/MA/support diagnostics through `descriptive$GeoMx$contrast_diagnostics`.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`
@@ -107,7 +108,8 @@ Report:
   measurability and the existing `filterByExpr` decision, and compact sample-heatmap
   fields for clustered top-variable-gene row-z expression, plus compact coordinate-only
   spatial-program fields for Homeostatic/DAM/IFN/MHC_APC signatures and Apoe/Trem2
-  single-gene row-z scores. Auxiliary deconvolution/run-index/sensitivity arms stay deleted.
+  single-gene row-z scores, plus compact contrast-diagnostic fields for volcano/MA,
+  signed support counts, and top interaction genes. Auxiliary deconvolution/run-index/sensitivity arms stay deleted.
 
 `R/figures.R`
 - Compact figure-data builders for rendered slots only:
@@ -118,7 +120,8 @@ Report:
 - Shared report theme, scales, modality and descriptive plot helpers including
   `geomx_qc_atlas_plot()`, `geomx_normalization_rle_plot()`, and
   `geomx_ordination_plot()` / `geomx_gene_detection_plot()` /
-  `geomx_sample_heatmap_plot()`.
+  `geomx_sample_heatmap_plot()` / `geomx_spatial_program_overlay_plot()` /
+  `geomx_contrast_diagnostic_plot()`.
 
 `R/report.R`
 - Quarto render wrapper plus embedded-lightbox repair for single-file offline HTML.
@@ -133,10 +136,11 @@ Report:
   GeoMx ordination diagnostic, GeoMx gene-detection diagnostic,
   GeoMx sample heatmap diagnostic,
   GeoMx spatial program overlays,
+  GeoMx contrast diagnostics,
   GeoMx/proteome/phospho descriptive figures,
   four-method amyloid response scatter, functional-category score panel.
 
-Rendered output = 16 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
+Rendered output = 17 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
 data builders pre-filter/guard finite values so report warnings are treated as real failures.
 
 ## Tracked vs Ignored

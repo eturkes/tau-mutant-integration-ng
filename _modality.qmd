@@ -73,6 +73,15 @@ geomx_spatial_program_overlay_plot(msf$descriptive$GeoMx$spatial_programs)
 ```
 
 ```{r}
+#| label: fig-geomx-contrast-diagnostics
+#| fig-width: 10.5
+#| fig-height: 10.8
+#| fig-cap: "GeoMx contrast diagnostics. Top: volcano plots for the five canonical GeoMx contrasts from the primary slide-adjusted, bio-unit-blocked limma-voom fit. Middle: matching MA plots over mean GeoMx expression. Bottom left: signed counts of FDR-supported genes, with negative counts lower in the contrast numerator and positive counts higher. Bottom right: top-ranked tau-by-amyloid interaction genes with confidence intervals. This figure reuses the existing GeoMx top tables and adds no new inference model or AOI exclusion."
+#| fig-alt: "GeoMx differential-expression diagnostic figure with five canonical contrast volcano facets, five matching MA facets, signed FDR-supported gene counts, and a focused tau-by-amyloid interaction gene panel with confidence intervals."
+geomx_contrast_diagnostic_plot(msf$descriptive$GeoMx$contrast_diagnostics)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2
