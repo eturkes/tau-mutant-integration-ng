@@ -665,6 +665,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 }
 
 .fig_predicted_unannotated_role <- "Predicted / unannotated loci"
+.fig_olfactory_role <- "Olfactory receptor"
 .fig_other_annotated_role <- "Other annotated / no role-set hit"
 .fig_uncategorized_roles <- c(.fig_predicted_unannotated_role, .fig_other_annotated_role)
 
@@ -676,7 +677,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 .fig_fallback_role <- function(gene_symbol, label) {
   token <- .fig_gene_tokens(c(gene_symbol, label))
   if (!length(token)) token <- as.character(label)
-  if (any(grepl("^Olfr[0-9]", token, perl = TRUE))) return("Olfactory receptor / GPCR")
+  if (any(grepl("^Olfr[0-9]", token, perl = TRUE))) return(.fig_olfactory_role)
   if (any(grepl("^(Gm[0-9]+|LOC[0-9]+)$", token, perl = TRUE) |
           grepl("Rik$", token, perl = TRUE))) {
     return(.fig_predicted_unannotated_role)
@@ -692,7 +693,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     return(data.frame(group = names(group_sets)[i], group_label = group_labels[i],
                       group_priority = i, stringsAsFactors = FALSE))
   }
-  fallback_order <- c(.fig_predicted_unannotated_role, "Olfactory receptor / GPCR",
+  fallback_order <- c(.fig_predicted_unannotated_role, .fig_olfactory_role,
                       .fig_other_annotated_role)
   lab <- .fig_fallback_role(gene_symbol, label)
   data.frame(group = lab, group_label = lab,
@@ -860,7 +861,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor/GPCR, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets",
+      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
