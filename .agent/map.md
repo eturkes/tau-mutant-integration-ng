@@ -60,6 +60,8 @@ Modality context:
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries the first-five-DAM-gene-clustered AOI design/DAM-gene track atlas through
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
+  The amyloid-response scatter's off-diagonal labels use a hybrid per-modality cutoff:
+  `max(|x-y| q0.99, 24th-largest |x-y|)`; the functional-category panel scores the same selected features.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`

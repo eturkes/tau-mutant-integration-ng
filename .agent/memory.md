@@ -113,6 +113,9 @@ Modality context:
   with genotype/tau/amyloid context above and top legends for genotype plus shared tau/amyloid no-versus-yes colors.
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
+- Four-method amyloid-response scatter labels use a hybrid within-method off-diagonal threshold:
+  `max(|x-y| q0.99, 24th-largest |x-y|)`, yielding <=24 displayed labels per modality unless exact ties;
+  the functional-category panel uses the same selected off-diagonal features.
 - Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
   figures are ledger history, not live report/path contracts.
 - Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality

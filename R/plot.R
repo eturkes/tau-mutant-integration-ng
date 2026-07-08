@@ -177,6 +177,12 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)))
   label_cutoff <- attr(df, "offdiag_cutoff", exact = TRUE)
   label_cutoff_source <- attr(df, "offdiag_cutoff_source", exact = TRUE)
+  threshold_cutoff <- if (!is.null(label_cutoff) && length(label_cutoff) == 1L &&
+                            is.finite(label_cutoff)) {
+    as.numeric(label_cutoff)
+  } else {
+    NA_real_
+  }
   df    <- df[is.finite(df$x) & is.finite(df$y), , drop = FALSE]
   stopifnot(nrow(df) > 0L)
   lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
@@ -200,11 +206,17 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   }
   label_box_padding <- if (label_n >= 80L) 0.08 else 0.25
   label_point_padding <- if (label_n >= 80L) 0.03 else 0.10
-  ggplot2::ggplot(df, ggplot2::aes(x, y)) +
+  p <- ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed",
-                         colour = "grey55", linewidth = 0.4) +
+                         colour = "grey55", linewidth = 0.4)
+  if (is.finite(threshold_cutoff)) {
+    p <- p +
+      ggplot2::geom_abline(slope = 1, intercept = c(-threshold_cutoff, threshold_cutoff),
+                           linetype = "dotted", colour = "#B7AA97", linewidth = 0.32)
+  }
+  p +
     ggplot2::geom_point(alpha = 0.25, size = 0.5, colour = point_colour) +
     # formula spelt out -> silence geom_smooth()'s default-formula message (keeps render logs clean)
     ggplot2::geom_smooth(method = "lm", formula = y ~ x, se = FALSE,

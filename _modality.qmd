@@ -42,7 +42,7 @@ phospho_modality_plot(msf$descriptive$Phospho, title = "Bulk phosphoproteome")
 #| label: plot-modality-amyloid-effect
 #| fig-width: 10.5
 #| fig-height: 10.4
-#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and empirical off-diagonal outliers labelled; phosphoproteomics is collapsed to parent proteins."
+#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and hybrid empirical off-diagonal outliers labelled; dotted diagonal bands show the per-method q0.99/top-24 label threshold, and phosphoproteomics is collapsed to parent proteins."
 panels <- lapply(msf$order, function(m) {
   modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title)
 })

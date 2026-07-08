@@ -345,12 +345,16 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
                                          offdiag_tail_quantile = 0.99,
+                                         offdiag_max_labels = 24L,
                                          group_min_genes = 1L,
                                          group_max_groups = 10L) {
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
             is.list(proteome_de_24m), is.list(phospho_de_24m),
             is.numeric(offdiag_tail_quantile), length(offdiag_tail_quantile) == 1L,
-            offdiag_tail_quantile > 0, offdiag_tail_quantile < 1)
+            offdiag_tail_quantile > 0, offdiag_tail_quantile < 1,
+            is.numeric(offdiag_max_labels), length(offdiag_max_labels) == 1L,
+            is.finite(offdiag_max_labels), offdiag_max_labels >= 1)
+  offdiag_max_labels <- as.integer(offdiag_max_labels)
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -481,14 +485,22 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                                phospho_gene, "phospho")))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
-  offdiag_cutoff <- modality_scatter_panel_cutoffs(panels, order,
-                                                   tail_quantile = offdiag_tail_quantile)
-  offdiag_cutoff_source <- sprintf("within-method |x-y| q%.3f", offdiag_tail_quantile)
+  offdiag_thresholds <- modality_scatter_panel_thresholds(
+    panels, order,
+    tail_quantile = offdiag_tail_quantile,
+    max_labels = offdiag_max_labels
+  )
+  offdiag_cutoff <- stats::setNames(offdiag_thresholds$cutoff, offdiag_thresholds$modality)
+  offdiag_cutoff_source <- sprintf(
+    "within-method |x-y| max(q%.3f, top-%d label budget)",
+    offdiag_tail_quantile, offdiag_max_labels
+  )
   for (m in order) {
     d <- panels[[m]]$data
     attr(d, "offdiag_cutoff") <- unname(offdiag_cutoff[[m]])
     attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
     attr(d, "offdiag_tail_quantile") <- offdiag_tail_quantile
+    attr(d, "offdiag_max_labels") <- offdiag_max_labels
     panels[[m]]$data <- d
   }
   groups <- modality_offdiag_group_score_data(
@@ -521,7 +533,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       x_meaning = "amyloid effect on the mutant-tau (P301S) background",
       interaction = "x - y is the tau-by-amyloid interaction contrast per feature; |x - y| ranks off-diagonal distance",
       offdiag_cutoff = offdiag_cutoff,
+      offdiag_thresholds = offdiag_thresholds,
       offdiag_tail_quantile = offdiag_tail_quantile,
+      offdiag_max_labels = offdiag_max_labels,
       offdiag_cutoff_source = offdiag_cutoff_source,
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
       phospho_site_features = attr(panels$Phospho$data, "phospho_site_n", exact = TRUE),

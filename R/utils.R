@@ -6,22 +6,71 @@
 
 # Shared amyloid-effect-scatter off-diagonal utilities. Production modality plots use
 # within-panel absolute |x-y| cutoffs so each method contributes outliers by its own
-# empirical spread.
-modality_scatter_panel_cutoffs <- function(panels, order = names(panels), tail_quantile = 0.99) {
+# empirical spread. Optional `max_labels` raises the cutoff to the Nth-largest distance:
+# this preserves the within-panel empirical rule while keeping rendered labels readable.
+modality_scatter_panel_thresholds <- function(panels, order = names(panels),
+                                              tail_quantile = 0.99,
+                                              max_labels = NULL) {
   stopifnot(is.list(panels), is.character(order), length(order) >= 1L,
             all(order %in% names(panels)),
             is.numeric(tail_quantile), length(tail_quantile) == 1L,
             tail_quantile > 0, tail_quantile < 1)
-  stats::setNames(vapply(order, function(m) {
+  if (!is.null(max_labels)) {
+    stopifnot(is.numeric(max_labels), length(max_labels) %in% c(1L, length(order)),
+              all(is.finite(max_labels)), all(max_labels >= 1))
+    if (length(max_labels) == 1L) {
+      max_labels <- stats::setNames(rep(as.integer(max_labels), length(order)), order)
+    } else {
+      stopifnot(!is.null(names(max_labels)), all(order %in% names(max_labels)))
+      max_labels <- as.integer(max_labels[order])
+      names(max_labels) <- order
+    }
+  }
+  rows <- lapply(order, function(m) {
     d <- panels[[m]]
     if (is.list(d) && is.data.frame(d$data)) d <- d$data
     stopifnot(is.data.frame(d), all(c("x", "y") %in% names(d)))
     keep <- is.finite(d$x) & is.finite(d$y)
     dist <- abs(d$y[keep] - d$x[keep])
     dist <- dist[is.finite(dist) & dist > 0]
-    if (length(dist) < 2L || length(unique(dist)) < 2L) return(NA_real_)
-    as.numeric(stats::quantile(dist, probs = tail_quantile, names = FALSE, type = 8))
-  }, numeric(1)), order)
+    n_dist <- length(dist)
+    uniq <- length(unique(dist))
+    q_cutoff <- if (n_dist >= 2L && uniq >= 2L) {
+      as.numeric(stats::quantile(dist, probs = tail_quantile, names = FALSE, type = 8))
+    } else {
+      NA_real_
+    }
+    n_budget <- if (is.null(max_labels)) NA_integer_ else as.integer(max_labels[[m]])
+    budget_cutoff <- if (!is.na(n_budget) && n_dist > n_budget && uniq >= 2L) {
+      sort(dist, decreasing = TRUE, method = "radix")[[n_budget]]
+    } else {
+      NA_real_
+    }
+    cutoff <- if (all(!is.finite(c(q_cutoff, budget_cutoff)))) {
+      NA_real_
+    } else {
+      max(c(q_cutoff, budget_cutoff), na.rm = TRUE)
+    }
+    data.frame(
+      modality = m,
+      cutoff = cutoff,
+      quantile_cutoff = q_cutoff,
+      label_budget_cutoff = budget_cutoff,
+      label_budget = n_budget,
+      n_at_cutoff = if (is.finite(cutoff)) sum(dist >= cutoff) else 0L,
+      n_features = n_dist,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+modality_scatter_panel_cutoffs <- function(panels, order = names(panels), tail_quantile = 0.99,
+                                           max_labels = NULL) {
+  thresholds <- modality_scatter_panel_thresholds(panels, order, tail_quantile, max_labels)
+  stats::setNames(thresholds$cutoff, thresholds$modality)
 }
 
 # Retained for sensitivity comparisons where one common scale is desired.
