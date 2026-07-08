@@ -41,9 +41,32 @@ Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-ne
 corroboration arcs (SCENIC, spatial-decon, celltype-specificity, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose.
 
-## Active plan: (none)
-Next `$session-prompt` mode = PLAN. Confirm the next roadmap direction with the
-user before writing a new plan.
+## Active plan: GeoMx exploratory figures -> `.agent/geomx_exploratory_figures_plan.md`
+Opened 2026-07-08 by direct user task after web search. Mode = EXECUTE. Goal =
+add GeoMx exploratory figures one session at a time while preserving the lean report
+claims unless a target-backed diagnostic exposes a real issue.
+
+Open steps (one figure/session):
+- S1 [TODO] `fig-geomx-qc-atlas`: AOI library/detection/nuclei/area/background/q3 QC by
+  slide/genotype/segment.
+- S2 [TODO] `fig-geomx-normalization-rle`: raw-vs-normalized distributions, RLE, q3 vs
+  negative-background, optional voom trend.
+- S3 [TODO] `fig-geomx-ordination`: deterministic PCA/MDS with genotype/slide/segment
+  aesthetics, variance explained, top loadings.
+- S4 [TODO] `fig-geomx-gene-detection`: gene detectability / marker measurability /
+  low-coverage filter figure.
+- S5 [TODO] `fig-geomx-sample-heatmap`: AOI correlation or top-variable-gene heatmap with
+  genotype/slide/segment/bio-unit tracks.
+- S6 [TODO] `fig-geomx-spatial-program-overlays`: coordinate small multiples for compact
+  biology scores/genes beyond the current signed-response map.
+- S7 [TODO] `fig-geomx-contrast-diagnostics`: GeoMx-only volcano/MA diagnostics for the
+  five canonical contrasts.
+- S8 [TODO] `fig-geomx-roi-segment-replicates`: repeated-observation / ROI-segment /
+  duplicateCorrelation block audit figure.
+- S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
+  with abundance display only if re-earned in-session.
+
+Next `$session-prompt` = EXECUTE S1.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -187,6 +210,12 @@ user before writing a new plan.
   NF-kB stem audit -> score heatmap, GeoMx sensitivity bubble/segment hybrid ->
   count heatmaps, and story mechanism stems -> point evidence. Targeted render
   green; Chromium PDF spot checks clean.
+- GeoMx exploratory figures [OPEN 2026-07-08 -> `.agent/geomx_exploratory_figures_plan.md`]:
+  user requested web-searched exploratory GeoMx figure inventory + roadmap sessions. Plan
+  records Bruker GeoScript/User Manual, standR workflow/manual, and SpatialDecon sources.
+  Implementation is deliberately one figure/session: S1 QC atlas, S2 normalization/RLE,
+  S3 ordination, S4 gene detection, S5 sample heatmap, S6 spatial program overlays,
+  S7 contrast diagnostics, S8 ROI/segment replicate audit, S9 decon feasibility/status.
 
 ## Ledger (trajectory)
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
@@ -944,6 +973,12 @@ user before writing a new plan.
   and `trajectory_figures` carry only rendered slots; `_targets.R` is the 29-target report DAG. `scripts/check.sh`
   is now a lean report gate: optional `rv sync`, forced `report` rebuild, target metadata scan, render-log scan.
   `AGENTS.md`, session prompt/skill, memory, and map now state the lean posture.
+- 2026-07-08 GeoMx exploratory figures PLAN OPENED (direct user task): web search
+  found common GeoMx exploratory figures in Bruker GeoScript/User Manual, standR workflow/manual, and
+  SpatialDecon docs: NGS/segment QC, normalization/RLE, PCA/MDS/loadings, gene detection,
+  heatmaps, spatial overlays, volcano/MA, ROI/segment structure, and decon/status diagnostics.
+  Wrote `.agent/geomx_exploratory_figures_plan.md`; roadmap Active plan now implements one figure
+  per session (S1-S9). Next = EXECUTE S1.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
