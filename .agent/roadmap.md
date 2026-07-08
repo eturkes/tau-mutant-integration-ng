@@ -28,8 +28,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = FIFTEEN figures: microglia (P1) + trajectory (P2) +
-five GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap) + three modality-native non-snRNAseq figures +
+REPORT SCOPE (current 2026-07-08): the rendered report = SIXTEEN figures: microglia (P1) + trajectory (P2) +
+six GeoMx exploratory figures (QC atlas; normalization/RLE; ordination; gene detection; sample heatmap; spatial program overlays) + three modality-native non-snRNAseq figures +
 two modality-context figures (four-method amyloid-response logFC scatter; functional-group aggregate scores over the scatter's
 off-diagonal genes/proteins). The pipeline loads snRNAseq plus lean GeoMx/proteome/phospho primary-DE
 targets solely for the modality figures. The dedicated mechanism/cross-modality/qc/story chapters, targets,
@@ -69,8 +69,12 @@ Open steps (one figure/session):
   compact `geomx_de$sample_heatmap` + report plot; 91 AOIs, 19,959/19,963 genes kept,
   40 top-variable genes displayed as row-z scores clipped at +/-2.5; no AOIs excluded
   and DE claims unchanged.
-- S6 [TODO] `fig-geomx-spatial-program-overlays`: coordinate small multiples for compact
-  biology scores/genes beyond the current signed-response map.
+- S6 [DONE 2026-07-08] `fig-geomx-spatial-program-overlays`: coordinate small multiples
+  for compact biology scores/genes beyond the current signed-response map. Outcome:
+  compact `geomx_de$spatial_programs` + report plot; 91 AOIs x 6 programs (546 rows),
+  19,959/19,963 genes kept, scored features = Homeostatic 10/10, DAM 18/18, IFN 12/12,
+  MHC/APC 7/7, Apoe 1/1, Trem2 1/1; coordinate-only status labelled because tissue
+  images are absent from the live report path; no AOIs excluded and DE claims unchanged.
 - S7 [TODO] `fig-geomx-contrast-diagnostics`: GeoMx-only volcano/MA diagnostics for the
   five canonical contrasts.
 - S8 [TODO] `fig-geomx-roi-segment-replicates`: repeated-observation / ROI-segment /
@@ -78,7 +82,7 @@ Open steps (one figure/session):
 - S9 [TODO] `fig-geomx-decon-feasibility`: SpatialDecon coverage/blocked-state/residual QC,
   with abundance display only if re-earned in-session.
 
-Next `$session-prompt` = EXECUTE S6.
+Next `$session-prompt` = EXECUTE S7.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1039,6 +1043,17 @@ Next `$session-prompt` = EXECUTE S6.
   build green; rendered report has 15 figures / 15 nonblank alts; full
   `CHECK_SKIP_SYNC=1 scripts/check.sh` green; Chromium PDF page-9 QA clean.
   Next = EXECUTE S6.
+- 2026-07-08 GeoMx exploratory figures S6 DONE -> `fig-geomx-spatial-program-overlays`.
+  Added `geomx_spatial_program_descriptor()` into `geomx_de`, passed it through
+  `modality_scatter_figures$descriptive$GeoMx$spatial_programs`, and rendered
+  `geomx_spatial_program_overlay_plot()` in `_modality.qmd`. The figure shows
+  coordinate-only AOI maps for Homeostatic/DAM/IFN/MHC_APC signatures plus Apoe/Trem2
+  single genes, with genotype median/IQR summaries. Live data: 91 AOIs x 6 programs
+  (546 rows), 19,959/19,963 genes filter-passing, scored features = Homeostatic 10/10,
+  DAM 18/18, IFN 12/12, MHC/APC 7/7, Apoe 1/1, Trem2 1/1. No AOI exclusion, DE change,
+  or report-claim change. Focused target/render build green; rendered report has
+  16 figures / 16 nonblank alts; full `scripts/check.sh` green; Chromium PDF page-10
+  QA clean. Next = EXECUTE S7.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

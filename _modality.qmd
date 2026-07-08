@@ -64,6 +64,15 @@ geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 ```
 
 ```{r}
+#| label: fig-geomx-spatial-program-overlays
+#| fig-width: 10.5
+#| fig-height: 9.8
+#| fig-cap: "GeoMx spatial program overlays. AOI coordinate maps show Homeostatic, DAM, IFN, and MHC/APC signature scores plus Apoe and Trem2 single-gene scores, all computed as TMM-logCPM row-z summaries over filter-passing GeoMx genes. The maps are coordinate-only because tissue image files are not in the live report path; rings show genotype, fill shows score, and the bottom panel summarises AOI score medians by genotype. This diagnostic changes no AOI exclusions or DE model."
+#| fig-alt: "GeoMx coordinate-only spatial overlay figure with slide-faceted AOI maps for homeostatic, DAM, IFN, MHC/APC, Apoe, and Trem2 program scores, plus genotype-level median and interquartile summaries for each program."
+geomx_spatial_program_overlay_plot(msf$descriptive$GeoMx$spatial_programs)
+```
+
+```{r}
 #| label: fig-modality-geomx-landscape
 #| fig-width: 10.5
 #| fig-height: 7.2

@@ -133,13 +133,19 @@ S5 [DONE 2026-07-08] - `fig-geomx-sample-heatmap`
   average-linkage AOI/gene clustering. The figure documents sample/gene structure only;
   no AOI exclusion, DE change, or report-claim change.
 
-S6 - `fig-geomx-spatial-program-overlays`
+S6 [DONE 2026-07-08] - `fig-geomx-spatial-program-overlays`
 - Purpose: spatial small-multiple overlay beyond the existing single signed-score plate.
 - Panels: AOI coordinate maps for a compact set of biology-first scores/genes, e.g. DAM
   score, homeostatic score, IFN score, Apoe/Trem2 or top amyloid-response drivers.
 - Source basis: Bruker SpatialOmicsOverlay concept; local coordinate-only fallback because
   OME-TIFF images are not in the live repo.
 - Acceptance: explicitly labels coordinate-only status if tissue images are unavailable.
+- Status: landed as compact `geomx_de$spatial_programs` + visible `_modality.qmd`
+  figure. Live data = 91 AOIs x 6 programs (546 AOI-program rows), 19,959/19,963
+  genes pass `filterByExpr(min.count=5)`, scored features = Homeostatic 10/10,
+  DAM 18/18, IFN 12/12, MHC/APC 7/7, Apoe 1/1, Trem2 1/1. Coordinate-only status is
+  explicit because tissue images are not in the live report path. No AOI exclusion, DE
+  change, or report-claim change.
 
 S7 - `fig-geomx-contrast-diagnostics`
 - Purpose: GeoMx-only DE diagnostic figure.

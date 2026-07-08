@@ -800,6 +800,189 @@ geomx_sample_heatmap_descriptor <- function(counts, meta, design, top,
   )
 }
 
+geomx_spatial_program_descriptor <- function(counts, meta, design,
+                                             min_count = 5,
+                                             signature_sets = list(
+                                               Homeostatic = canonical_microglia_markers$Homeostatic,
+                                               DAM = canonical_microglia_markers$DAM,
+                                               IFN = canonical_microglia_markers$IFN,
+                                               MHC_APC = canonical_microglia_markers$MHC_APC
+                                             ),
+                                             gene_features = c("Apoe", "Trem2"),
+                                             z_limit = 2.5) {
+  stopifnot(is.matrix(counts), is.data.frame(meta), is.matrix(design),
+            identical(colnames(counts), rownames(meta)),
+            identical(colnames(counts), rownames(design)),
+            qr(design)$rank == ncol(design),
+            is.numeric(min_count), length(min_count) == 1L, min_count >= 0,
+            is.list(signature_sets), length(signature_sets) >= 1L,
+            !is.null(names(signature_sets)), !any(names(signature_sets) == ""),
+            is.character(gene_features), length(gene_features) >= 1L,
+            is.numeric(z_limit), length(z_limit) == 1L, is.finite(z_limit),
+            z_limit > 0,
+            anyDuplicated(rownames(counts)) == 0L)
+  need <- c("slide", "roi", "segment", "genotype", "SampleID", "bio_unit",
+            "area", "x", "y")
+  missing <- setdiff(need, names(meta))
+  if (length(missing)) {
+    stop("GeoMx spatial-program metadata missing columns: ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+
+  dge0 <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge0, design = design, min.count = min_count)
+  if (!any(keep)) stop("no GeoMx features passed filterByExpr for spatial programs",
+                       call. = FALSE)
+  dge <- edgeR::normLibSizes(dge0[keep, , keep.lib.sizes = FALSE], method = "TMM")
+  logcpm <- edgeR::cpm(dge, normalized.lib.sizes = TRUE, log = TRUE, prior.count = 1)
+  stopifnot(identical(colnames(logcpm), rownames(meta)), all(is.finite(logcpm)))
+
+  score_rows <- function(symbols) {
+    symbols <- unique(trimws(as.character(symbols)))
+    symbols <- symbols[!is.na(symbols) & symbols != ""]
+    symbols[symbols %in% rownames(logcpm)]
+  }
+  z_score <- function(symbols) {
+    symbols <- score_rows(symbols)
+    if (!length(symbols)) {
+      stop("GeoMx spatial-program score has no filter-passing genes", call. = FALSE)
+    }
+    mat <- logcpm[symbols, , drop = FALSE]
+    row_mean <- rowMeans(mat)
+    row_sd <- apply(mat, 1L, stats::sd)
+    row_sd[!is.finite(row_sd) | row_sd <= 0] <- 1
+    z <- sweep(sweep(mat, 1L, row_mean, "-"), 1L, row_sd, "/")
+    z[!is.finite(z)] <- 0
+    colMeans(z)
+  }
+
+  sig_levels <- names(signature_sets)
+  program_catalog <- do.call(rbind, c(
+    lapply(sig_levels, function(nm) {
+      used <- score_rows(signature_sets[[nm]])
+      data.frame(
+        program_id = nm,
+        program_label = switch(nm,
+                               Homeostatic = "Homeostatic signature",
+                               DAM = "DAM signature",
+                               IFN = "IFN signature",
+                               MHC_APC = "MHC/APC signature",
+                               nm),
+        program_type = "signature",
+        n_input_features = length(unique(signature_sets[[nm]])),
+        n_scored_features = length(used),
+        scored_features = paste(used, collapse = ", "),
+        stringsAsFactors = FALSE
+      )
+    }),
+    lapply(gene_features, function(gene) {
+      used <- score_rows(gene)
+      data.frame(
+        program_id = gene,
+        program_label = gene,
+        program_type = "single gene",
+        n_input_features = 1L,
+        n_scored_features = length(used),
+        scored_features = paste(used, collapse = ", "),
+        stringsAsFactors = FALSE
+      )
+    })
+  ))
+  if (any(program_catalog$n_scored_features < 1L)) {
+    miss <- program_catalog$program_label[program_catalog$n_scored_features < 1L]
+    stop("GeoMx spatial-program score(s) lack filter-passing features: ",
+         paste(miss, collapse = ", "), call. = FALSE)
+  }
+  program_catalog$program_label <- factor(program_catalog$program_label,
+                                          levels = program_catalog$program_label)
+  rownames(program_catalog) <- NULL
+
+  score_list <- c(
+    lapply(sig_levels, function(nm) z_score(signature_sets[[nm]])),
+    lapply(gene_features, function(gene) z_score(gene))
+  )
+  names(score_list) <- program_catalog$program_id
+  base <- data.frame(
+    aoi = rownames(meta),
+    slide = factor(as.character(meta$slide), levels = sort(unique(as.character(meta$slide)))),
+    roi = as.character(meta$roi),
+    segment = factor(as.character(meta$segment), levels = sort(unique(as.character(meta$segment)))),
+    sample_id = as.character(meta$SampleID),
+    genotype = factor(as.character(meta$genotype), levels = genotype_levels),
+    bio_unit = factor(as.character(meta$bio_unit)),
+    aoi_area = as.numeric(meta$area),
+    x_coord = as.numeric(meta$x),
+    y_coord = as.numeric(meta$y),
+    stringsAsFactors = FALSE
+  )
+  stopifnot(!anyNA(base$slide), !anyNA(base$segment), !anyNA(base$genotype),
+            !anyNA(base$bio_unit), all(is.finite(base$aoi_area)),
+            all(base$aoi_area > 0), all(is.finite(base$x_coord)),
+            all(is.finite(base$y_coord)))
+
+  aoi <- do.call(rbind, lapply(seq_len(nrow(program_catalog)), function(i) {
+    pr <- program_catalog[i, , drop = FALSE]
+    score <- as.numeric(score_list[[as.character(pr$program_id)]][base$aoi])
+    data.frame(
+      base,
+      program_id = as.character(pr$program_id),
+      program_label = pr$program_label,
+      program_type = as.character(pr$program_type),
+      score = score,
+      score_abs = abs(score),
+      stringsAsFactors = FALSE
+    )
+  }))
+  aoi$program_label <- factor(as.character(aoi$program_label),
+                              levels = levels(program_catalog$program_label))
+  rownames(aoi) <- NULL
+  stopifnot(!anyNA(aoi$program_label), all(is.finite(aoi$score)),
+            all(is.finite(aoi$score_abs)))
+
+  genotype_summary <- do.call(rbind, lapply(split(aoi, list(aoi$program_label, aoi$genotype),
+                                                drop = TRUE), function(x) {
+    if (!nrow(x)) return(NULL)
+    data.frame(
+      program_label = x$program_label[[1L]],
+      genotype = x$genotype[[1L]],
+      n_aoi = nrow(x),
+      median_score = stats::median(x$score),
+      q25_score = as.numeric(stats::quantile(x$score, 0.25, names = FALSE)),
+      q75_score = as.numeric(stats::quantile(x$score, 0.75, names = FALSE)),
+      mean_score = mean(x$score),
+      stringsAsFactors = FALSE
+    )
+  }))
+  genotype_summary$program_label <- factor(as.character(genotype_summary$program_label),
+                                           levels = levels(program_catalog$program_label))
+  genotype_summary$genotype <- factor(as.character(genotype_summary$genotype),
+                                      levels = genotype_levels)
+  rownames(genotype_summary) <- NULL
+  stopifnot(!anyNA(genotype_summary$program_label), !anyNA(genotype_summary$genotype),
+            all(is.finite(genotype_summary$n_aoi)),
+            all(is.finite(genotype_summary$median_score)),
+            all(is.finite(genotype_summary$q25_score)),
+            all(is.finite(genotype_summary$q75_score)),
+            all(is.finite(genotype_summary$mean_score)))
+
+  list(
+    aoi = aoi,
+    programs = program_catalog,
+    genotype_summary = genotype_summary,
+    provenance = list(
+      n_aoi = ncol(counts),
+      n_input_features = nrow(counts),
+      n_kept_features = sum(keep),
+      min_count = min_count,
+      z_limit = z_limit,
+      transform = "TMM-normalized logCPM over filterByExpr-kept GeoMx genes; each feature row is z-scored across AOIs",
+      score_rule = "signature scores are the mean row z-score over present filter-passing marker genes; single-gene panels show that gene's row z-score",
+      coordinate_status = "coordinate-only GeoMx overlay: source tissue images/OME-TIFFs are not in the live repo",
+      display = "descriptive spatial program overlay; no AOIs or genes are excluded beyond the existing primary-model filter"
+    )
+  )
+}
+
 geomx_gene_detection_descriptor <- function(counts, meta, design, min_count = 5,
                                             marker_sets = list(
                                               Microglia = microglia_identity_markers,
@@ -1065,6 +1248,8 @@ run_geomx_de <- function(geomx, min_count = 5) {
                                                      min_count = min_count),
     sample_heatmap = geomx_sample_heatmap_descriptor(counts, meta, fd$design, primary$top,
                                                      min_count = min_count),
+    spatial_programs = geomx_spatial_program_descriptor(counts, meta, fd$design,
+                                                        min_count = min_count),
     provenance = list(
       counts = attr(counts, "geomx_count_provenance"),
       meta = attr(meta, "geomx_meta_provenance"),

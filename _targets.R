@@ -102,7 +102,9 @@ list(
 
   # --- cross-tau amyloid-response (four-method logFC scatter) ---
   # Primary per-contrast DE for the three non-snRNAseq modalities (R/modality_de.R): GeoMx
-  # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation; 24M bulk proteome and
+  # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation; compact GeoMx
+  # descriptors include QC, normalization/RLE, ordination, gene detection, sample heatmap,
+  # and coordinate-only spatial program overlays. 24M bulk proteome and
   # phosphosite limma-trend on log2 median-normalised, prevalence-filtered intensities (no batch).
   # Each returns per-contrast topTables with logFC keyed by the 5 canonical contrasts.
   tar_target(geomx_de,        run_geomx_de(geomx),                       format = "qs"),
@@ -114,7 +116,8 @@ list(
   # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
   # Functional-category scores over within-method Q99 off-diagonal genes/proteins from the
   # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein means; unmapped
-  # symbols kept in fallback categories).
+  # symbols kept in fallback categories). Carries compact GeoMx exploratory descriptors through
+  # `descriptive$GeoMx`.
   # Reads only the compact DE topTables (no heavy object).
   tar_target(modality_scatter_figures,
              modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de,

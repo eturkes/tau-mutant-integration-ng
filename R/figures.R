@@ -504,6 +504,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   geomx_descriptive$ordination <- geomx_de$ordination
   geomx_descriptive$gene_detection <- geomx_de$gene_detection
   geomx_descriptive$sample_heatmap <- geomx_de$sample_heatmap
+  geomx_descriptive$spatial_programs <- geomx_de$spatial_programs
   descriptive <- list(
     GeoMx = geomx_descriptive,
     Proteome = proteome_modality_descriptor(proteome_de_24m),
@@ -519,6 +520,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
             is.data.frame(descriptive$GeoMx$gene_detection$genes),
             is.list(descriptive$GeoMx$sample_heatmap),
             is.data.frame(descriptive$GeoMx$sample_heatmap$heatmap),
+            is.list(descriptive$GeoMx$spatial_programs),
+            is.data.frame(descriptive$GeoMx$spatial_programs$aoi),
             is.list(descriptive$Proteome), is.data.frame(descriptive$Proteome$pca),
             is.list(descriptive$Phospho), is.data.frame(descriptive$Phospho$heatmap))
 
@@ -545,7 +548,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data including GeoMx QC, normalization/RLE, ordination, gene-detection, and sample-heatmap descriptors; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data including GeoMx QC, normalization/RLE, ordination, gene-detection, sample-heatmap, and spatial-program descriptors; no heavy DE object"
     )
   )
 }

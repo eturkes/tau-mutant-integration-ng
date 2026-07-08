@@ -1107,6 +1107,116 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
     )
 }
 
+geomx_spatial_program_overlay_plot <- function(program_overlay,
+                                               title = "GeoMx spatial program overlays") {
+  stopifnot(is.list(program_overlay), is.data.frame(program_overlay$aoi),
+            is.data.frame(program_overlay$programs),
+            is.data.frame(program_overlay$genotype_summary))
+  aoi <- program_overlay$aoi
+  need <- c("slide", "genotype", "program_label", "x_coord", "y_coord", "score")
+  miss <- setdiff(need, names(aoi))
+  if (length(miss)) {
+    stop("GeoMx spatial-program AOI data missing columns: ",
+         paste(miss, collapse = ", "), call. = FALSE)
+  }
+  aoi <- aoi[is.finite(aoi$x_coord) & is.finite(aoi$y_coord) &
+               is.finite(aoi$score), , drop = FALSE]
+  if (!nrow(aoi)) stop("GeoMx spatial-program AOI data has no finite rows",
+                       call. = FALSE)
+  programs <- program_overlay$programs
+  need_program <- c("program_label", "program_type", "n_scored_features")
+  miss_program <- setdiff(need_program, names(programs))
+  if (length(miss_program)) {
+    stop("GeoMx spatial-program catalog missing columns: ",
+         paste(miss_program, collapse = ", "), call. = FALSE)
+  }
+  program_levels <- as.character(programs$program_label)
+  aoi$program_label <- factor(as.character(aoi$program_label), levels = program_levels)
+  aoi$genotype <- factor(as.character(aoi$genotype), levels = genotype_levels)
+  aoi$slide <- factor(aoi$slide)
+  stopifnot(!anyNA(aoi$program_label), !anyNA(aoi$genotype), !anyNA(aoi$slide))
+  score_lim <- program_overlay$provenance$z_limit %||% max(abs(aoi$score), na.rm = TRUE)
+  score_lim <- if (is.finite(score_lim) && score_lim > 0) score_lim else 1
+
+  spatial_map <- ggplot2::ggplot(aoi, ggplot2::aes(x_coord, y_coord)) +
+    ggplot2::geom_point(
+      ggplot2::aes(fill = score, colour = genotype),
+      shape = 21, size = 1.55, stroke = 0.34, alpha = 0.94) +
+    scale_fill_rwb(midpoint = 0, limits = c(-score_lim, score_lim),
+                   oob = scales::squish, name = "row z") +
+    scale_colour_genotype(name = "genotype") +
+    ggplot2::facet_grid(ggplot2::vars(program_label), ggplot2::vars(slide)) +
+    ggplot2::coord_equal() +
+    ggplot2::scale_y_reverse() +
+    ggplot2::labs(
+      x = "ROI coordinate X", y = "ROI coordinate Y",
+      title = title,
+      subtitle = program_overlay$provenance$coordinate_status %||%
+        "coordinate-only GeoMx overlay"
+    ) +
+    theme_tau(base_size = 7.8) +
+    ggplot2::guides(
+      fill = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.42, "lines"),
+                                      barwidth = grid::unit(4.0, "lines")),
+      colour = ggplot2::guide_legend(order = 2, override.aes = list(fill = "white",
+                                                                    size = 2.5))
+    ) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      axis.text = ggplot2::element_text(size = 5.6),
+      axis.title = ggplot2::element_text(size = 7.4),
+      strip.text.x = ggplot2::element_text(size = 7.0),
+      strip.text.y = ggplot2::element_text(size = 7.0, angle = 0),
+      panel.grid = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.18),
+      panel.spacing = grid::unit(0.32, "lines")
+    )
+
+  summary <- program_overlay$genotype_summary
+  need_summary <- c("program_label", "genotype", "n_aoi", "median_score",
+                    "q25_score", "q75_score")
+  miss_summary <- setdiff(need_summary, names(summary))
+  if (length(miss_summary)) {
+    stop("GeoMx spatial-program summary missing columns: ",
+         paste(miss_summary, collapse = ", "), call. = FALSE)
+  }
+  summary <- summary[is.finite(summary$n_aoi) & is.finite(summary$median_score) &
+                       is.finite(summary$q25_score) & is.finite(summary$q75_score), ,
+                     drop = FALSE]
+  if (!nrow(summary)) stop("GeoMx spatial-program summary has no finite rows",
+                           call. = FALSE)
+  summary$program_label <- factor(as.character(summary$program_label),
+                                  levels = program_levels)
+  summary$genotype <- factor(as.character(summary$genotype), levels = genotype_levels)
+  stopifnot(!anyNA(summary$program_label), !anyNA(summary$genotype))
+  summary_plot <- ggplot2::ggplot(
+    summary,
+    ggplot2::aes(genotype, median_score, colour = genotype)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#BFB8AA", linewidth = 0.25) +
+    ggplot2::geom_pointrange(
+      ggplot2::aes(ymin = q25_score, ymax = q75_score),
+      linewidth = 0.32, size = 0.82, alpha = 0.95) +
+    scale_colour_genotype(guide = "none") +
+    ggplot2::facet_wrap(ggplot2::vars(program_label), nrow = 1) +
+    ggplot2::scale_y_continuous(limits = c(-score_lim, score_lim),
+                                oob = scales::squish) +
+    ggplot2::labs(
+      x = NULL, y = "median row z",
+      title = "Program score by genotype",
+      subtitle = "Points show AOI median; ranges show interquartile interval"
+    ) +
+    theme_tau(base_size = 8.0) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 35, hjust = 1, size = 5.8),
+      strip.text = ggplot2::element_text(size = 6.6),
+      panel.spacing.x = grid::unit(0.28, "lines")
+    )
+
+  patchwork::wrap_plots(list(spatial_map, summary_plot), ncol = 1,
+                        heights = c(3.2, 1.0))
+}
+
 geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
   stopifnot(is.list(spatial), is.data.frame(spatial$aoi), is.data.frame(spatial$genes))
   aoi <- spatial$aoi
