@@ -28,7 +28,9 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = TEN figures: microglia (P1) + trajectory (P2) +
+REPORT SCOPE (current 2026-07-08): the rendered report = TEN visible figures plus per-figure folded code
+only (no visible document title, TOC, headings, captions, body prose, tables, or global code menu):
+microglia (P1) + trajectory (P2) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), two retained bulk modality-native
 figures (proteome, phosphoproteome), and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads

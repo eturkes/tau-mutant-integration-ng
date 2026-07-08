@@ -124,7 +124,7 @@ list(
              format = "qs"),
 
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
-  # caption-only post-render repair can run inside the same `report` target. The render still
+  # figure/code-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
   # warnings in the gate log. repair_embedded_lightbox() rewrites Quarto's local lightbox
   # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
@@ -136,8 +136,7 @@ list(
   ),
   tar_target(
     report_extra_files,
-    c("theme.scss", "assets/code-tools-fix.html",
-      list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
+    c("theme.scss", list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
     format = "file"
   ),
   tar_target(

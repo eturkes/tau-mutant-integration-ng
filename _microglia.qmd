@@ -1,5 +1,3 @@
-# Microglia: amyloid drives a homeostatic-to-DAM programme {#sec-microglia}
-
 ```{r}
 #| label: microglia-setup
 #| include: false
@@ -42,13 +40,10 @@ mf_unit$genotype <- factor(as.character(mf_unit$genotype), levels = genotype_lev
 mf_unit$batch <- factor(mf_unit$batch, levels = sort(unique(mf_unit$batch), method = "radix"))
 ```
 
-## Substate landscape
-
 ```{r}
-#| label: fig-microglia-substate-markers
+#| label: plot-microglia-substate-markers
 #| fig-width: 11
 #| fig-height: 4.3
-#| fig-cap: "Canonical marker genes that define the homeostatic, DAM and interferon substates."
 #| fig-alt: "Dot-plot grid with the three substates as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of cells expressing, so each gene set lights up its matching substate along the diagonal."
 ggplot(sm, aes(gene, substate)) +
   geom_point(aes(colour = expr_z, size = pct_expr)) +
@@ -68,10 +63,9 @@ ggplot(sm, aes(gene, substate)) +
 ```
 
 ```{r}
-#| label: fig-microglia-umap
+#| label: plot-microglia-umap
 #| fig-width: 10
 #| fig-height: 4.5
-#| fig-cap: "Primary substates and DAM score on the batch-integrated UMAP."
 #| fig-alt: "Two UMAP panels show primary substate labels and DAM activation score."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.25, alpha = 0.6) +
@@ -89,10 +83,9 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 ```
 
 ```{r}
-#| label: fig-microglia-umap-substate
+#| label: plot-microglia-umap-substate
 #| fig-width: 9.2
 #| fig-height: 6.4
-#| fig-cap: "Amyloid genotypes fill more of the DAM-labelled UMAP region."
 #| fig-alt: "Genotype-faceted UMAPs show amyloid samples occupying more DAM-labelled cells."
 ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   geom_point(size = 0.18, alpha = 0.55) +
@@ -103,13 +96,10 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
   theme(panel.grid = element_blank())
 ```
 
-## Amyloid expands the DAM compartment
-
 ```{r}
-#| label: fig-microglia-unit-composition
+#| label: plot-microglia-unit-composition
 #| fig-width: 9.5
 #| fig-height: 4.6
-#| fig-cap: "Replicate-unit composition shows the DAM expansion across batches."
 #| fig-alt: "Replicate-unit stacked bars show DAM expansion across batches and genotypes."
 ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
   geom_col(width = 0.72, colour = "#F8F6F1", linewidth = 0.18) +

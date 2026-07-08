@@ -16,7 +16,9 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-08): 10 figures, 3 qmd chapters, expected 29 targets.
+Live report scope (2026-07-08): 10 visible figures, 3 included qmd fragments, expected 29 targets.
+Rendered HTML surface = figure sequence + per-figure folded code only; no visible document title,
+TOC, headings, captions, body prose, tables, or global code-tools menu.
 Infrastructure that does not directly feed the final analysis document is removed: committed
 tests, Python/uv files, composition/sccomp/CmdStan target, per-substate pseudobulk, prose
 inventory, stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
@@ -117,8 +119,8 @@ Modality context:
   target families stay deleted.
 
 Report:
-- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`; no body prose beyond headings,
-  captions, alt text, and code display controls.
+- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`; visible HTML = figures plus
+  per-chunk folded code. Alt text stays in image attributes; captions/headings/TOC/title stay absent.
 - qmd chunks set `options(warn=2)`. Any warning during render is a failure.
 - Compact report targets must keep qmd renders off the 612MB annotated Seurat object.
 

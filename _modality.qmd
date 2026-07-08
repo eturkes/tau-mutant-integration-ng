@@ -1,5 +1,3 @@
-# The amyloid response across tau backgrounds, method by method {#sec-modality}
-
 ```{r}
 #| label: modality-setup
 #| include: false
@@ -16,42 +14,34 @@ theme_set(theme_tau())
 msf <- modality_scatter_figures
 ```
 
-## Non-snRNAseq modality-native figures
-
 ```{r}
-#| label: fig-geomx-sample-heatmap
+#| label: plot-geomx-sample-heatmap
 #| fig-width: 8.6
 #| fig-height: 5.4
-#| fig-cap: "GeoMx AOI DAM-gene tracks. AOIs are average-linkage clustered by the displayed five DAM marker-gene z-score tracks, then the dendrogram is rotated by mean displayed DAM z-score to keep low-DAM AOIs contiguous. Gene rows retain the first five rows from the prior full DAM-gene clustered order: B2m, Apoe, Ctsd, Tyrobp, and Trem2. The plot keeps compact genotype, tau-background, and amyloid-status context, with top legends for genotype and shared tau/amyloid no-versus-yes colors. Spatial/QC, bio/slide replicate, tech-replicate, and ROI tracks are omitted; ROI labels exactly encode genotype block plus technical replicate in this dataset. Categorical rows mark shared labels; gene rows are scaled within gene. This exploratory figure changes no GeoMx exclusions."
 #| fig-alt: "GeoMx AOI track atlas with AOI columns clustered by five displayed DAM marker-gene expression tracks and branch-ordered by mean DAM z-score, with genotype plus shared no-versus-yes tau and amyloid tracks above B2m, Apoe, Ctsd, Tyrobp, and Trem2; no spatial, QC, replicate, ROI, or expression heatmap tracks are displayed."
 geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 ```
 
 ```{r}
-#| label: fig-modality-proteome-landscape
+#| label: plot-modality-proteome-landscape
 #| fig-width: 10.5
 #| fig-height: 5.4
-#| fig-cap: "Bulk proteome descriptive figure. Left: PCA of the 16 median-normalised 24M protein-group intensity profiles, with points labelled by run index. Right: a protein-level volcano plot for the amyloid effect on the mutant-tau background (NLGF_P301S vs P301S), using log2 fold change against -log10 FDR and labelling the top-ranked proteins."
 #| fig-alt: "Bulk proteome figure with a genotype-coloured sample PCA and a protein differential-abundance volcano plot for NLGF_P301S versus P301S."
 proteome_modality_plot(msf$descriptive$Proteome, title = msf$panels$Proteome$title)
 ```
 
 ```{r}
-#| label: fig-modality-phospho-landscape
+#| label: plot-modality-phospho-landscape
 #| fig-width: 10.5
 #| fig-height: 5.8
-#| fig-cap: "Bulk phosphoproteome descriptive figure. Left: phosphosite-level volcano plot for the amyloid effect on the mutant-tau background (NLGF_P301S vs P301S). Right: a z-scored abundance heatmap for top-ranked phosphosites across the 16 24M runs, grouped by genotype."
 #| fig-alt: "Bulk phosphoproteome figure with a phosphosite differential-abundance volcano plot and a genotype-grouped heatmap of top phosphosite abundances across runs."
 phospho_modality_plot(msf$descriptive$Phospho, title = "Bulk phosphoproteome (24M)")
 ```
 
-## Per-method amyloid effect: tau-KO versus mutant-tau background
-
 ```{r}
-#| label: fig-modality-amyloid-effect
+#| label: plot-modality-amyloid-effect
 #| fig-width: 10.5
 #| fig-height: 10.4
-#| fig-cap: "Per-method amyloid (NLGF) log2 fold change on the tau-KO background (NLGF_MAPTKI vs MAPTKI, y) against the mutant-tau background (NLGF_P301S vs P301S, x). The dashed line is y=x, the null of a tau-independent amyloid response; the tau-by-amyloid interaction contrast is x minus y, so distance from the diagonal ranks its magnitude. Phosphoproteomics points are parent-protein means of finite phosphosite logFC pairs. Labels mark empirical off-diagonal outliers using a standardized within-method rule: unique display labels whose |x-y| exceeds that method's 99th percentile of |x-y|. The solid line is the OLS trend."
 #| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and empirical off-diagonal outliers labelled; phosphoproteomics is collapsed to parent-protein means."
 panels <- lapply(msf$order, function(m) {
   modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title)
@@ -59,13 +49,10 @@ panels <- lapply(msf$order, function(m) {
 wrap_plots(panels, ncol = 2)
 ```
 
-## Off-diagonal functional categories
-
 ```{r}
-#| label: fig-modality-functional-scores
+#| label: plot-modality-functional-scores
 #| fig-width: 10.5
 #| fig-height: 8.2
-#| fig-cap: "Within-method 99th-percentile off-diagonal genes and proteins from the amyloid-effect scatter assigned to one primary functional category per method. Broad role categories are assembled from mouse GO-BP annotations; threshold-passing items without a role-set hit are retained in explicit fallback categories rather than dropped. Phosphoproteomics categories use the same parent-protein mean points displayed in the scatter. Each segment connects the aggregate amyloid log2 fold change in NLGF_MAPTKI to the aggregate amyloid log2 fold change in NLGF_P301S; segment colour is P301S minus MAPTKI, and point size is the number of scored genes or proteins in the category."
 #| fig-alt: "Faceted dumbbell plots show modality-specific functional categories for within-method 99th-percentile off-diagonal genes or proteins, with paired points for aggregate NLGF_MAPTKI and NLGF_P301S amyloid responses connected by a segment coloured by the P301S minus MAPTKI score."
 functional_group_score_plot(msf$groups$summary, title = "Functional categories for within-method Q99 off-diagonal genes and proteins")
 ```

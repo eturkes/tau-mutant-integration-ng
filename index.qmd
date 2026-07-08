@@ -1,16 +1,13 @@
 ---
-title: "Tau Mutant Integration"
 format:
   html:
     theme: theme.scss        # deep-blue chrome + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)
     embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
     lightbox: auto           # dense figures are clickable in the offline HTML
-    toc: true
+    toc: false
     code-fold: true          # each echoed chunk -> native <details> "Code" toggle (offline HTML, no JS); include:false setup stays hidden
-    code-tools: true         # top-right menu: expand/collapse ALL code blocks + view source
-    include-after-body: assets/code-tools-fix.html   # re-bind Show/Hide All Code (stock selector misses the code-copy scaffold; see the file)
 execute:
-  echo: true                 # show plotting code as folded/togglable blocks; figures, captions, headings remain the default view
+  echo: true                 # show plotting code as folded/togglable blocks; figures remain the default view
 ---
 
 {{< include _microglia.qmd >}}

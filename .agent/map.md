@@ -64,7 +64,7 @@ Modality context:
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`
   so helper-only plot/source edits invalidate `report`.
-- `report_extra_files <- c("theme.scss", "assets/code-tools-fix.html", assets/fonts/*.woff2)`
+- `report_extra_files <- c("theme.scss", assets/fonts/*.woff2)`
 - `report <- render_report(...)`
 
 ## Modules
@@ -113,7 +113,7 @@ Report:
 
 ## Report
 
-`index.qmd` includes three chapters:
+`index.qmd` includes three qmd fragments, but the rendered HTML exposes no title/TOC/headings/captions:
 - `_microglia.qmd`: substate marker dot plot, substate/DAM UMAPs, genotype-faceted
   substate UMAP, replicate-unit substate composition.
 - `_trajectory.qmd`: pseudotime density by genotype/substate.
@@ -121,8 +121,8 @@ Report:
   proteome/phosphoproteome descriptive figures,
   four-method amyloid response scatter, functional-category score panel.
 
-Rendered output = 10 figures in `report/index.html`. Chapter chunks use `options(warn=2)`;
-data builders pre-filter/guard finite values so report warnings are treated as real failures.
+Rendered output = 10 figures plus per-figure folded code in `report/index.html`. Chunk setup uses
+`options(warn=2)`; data builders pre-filter/guard finite values so report warnings are treated as real failures.
 
 ## Tracked vs Ignored
 

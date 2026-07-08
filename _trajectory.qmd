@@ -1,5 +1,3 @@
-# The tau-amyloid synergy adds DAM cells rather than advancing them {#sec-trajectory}
-
 ```{r}
 #| label: trajectory-setup
 #| include: false
@@ -19,13 +17,10 @@ tr_pt$substate <- factor(as.character(tr_pt$substate),
                          levels = intersect(microglia_substate_levels, as.character(unique(tr_pt$substate))))
 ```
 
-## Amyloid drives a large shift along the activation axis
-
 ```{r}
-#| label: fig-trajectory-pt-density
+#| label: plot-trajectory-pt-density
 #| fig-width: 9.6
 #| fig-height: 5.6
-#| fig-cap: "High-pseudotime density is concentrated in DAM states."
 #| fig-alt: "Faceted area plots show high pseudotime concentrated in DAM states."
 ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
