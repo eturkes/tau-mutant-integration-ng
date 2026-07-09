@@ -80,7 +80,7 @@ ggplot(sm, aes(gene, subpopulation)) +
 ```{r}
 #| label: plot-microglia-umap
 #| fig-width: 12.4
-#| fig-height: 7.2
+#| fig-height: 4.4
 #| fig-alt: "Two UMAP panels show cluster-derived labels and DAM UCell z-scores."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = subpopulation)) +
   geom_point(size = 0.25, alpha = 0.6) +
