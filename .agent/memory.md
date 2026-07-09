@@ -117,8 +117,7 @@ Modality context:
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
 - Four-method amyloid-response scatter uses one shared off-diagonal feature cutoff:
-  `|x-y| >= 3`. Figure 9 caps text labels
-  at 24 per panel for readability only and draws all four facets on one shared square coordinate
+  `|x-y| >= 3`. Figure 9 labels all points past the cutoff and draws all four facets on one shared square coordinate
   range so the dotted cutoff bands have the same visual distance from the identity line; its line
   legend labels the dotted cutoff bands as `threshold: |x-y| >= 3 log2FC`. Figure 10
   scores all shared-cutoff selected features and displays categorized role/fallback buckets with

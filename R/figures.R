@@ -380,7 +380,6 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
                                          offdiag_cutoff = 3,
-                                         scatter_label_cap = 24L,
                                          group_min_genes = 1L,
                                          group_max_groups = 10L,
                                          group_min_abs_delta = 0.5) {
@@ -388,12 +387,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
             is.list(proteome_de_24m), is.list(phospho_de_24m),
             is.numeric(offdiag_cutoff), length(offdiag_cutoff) == 1L,
             is.finite(offdiag_cutoff), offdiag_cutoff > 0,
-            is.numeric(scatter_label_cap), length(scatter_label_cap) == 1L,
-            is.finite(scatter_label_cap), scatter_label_cap >= 1,
             is.numeric(group_min_abs_delta), length(group_min_abs_delta) == 1L,
             is.finite(group_min_abs_delta), group_min_abs_delta >= 0)
   offdiag_cutoff <- as.numeric(offdiag_cutoff)
-  scatter_label_cap <- as.integer(scatter_label_cap)
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -543,7 +539,6 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     d <- panels[[m]]$data
     attr(d, "offdiag_cutoff") <- offdiag_cutoff
     attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
-    attr(d, "scatter_label_cap") <- scatter_label_cap
     panels[[m]]$data <- d
   }
   groups <- modality_offdiag_group_score_data(
@@ -578,7 +573,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       offdiag_cutoff = offdiag_cutoff_by_modality,
       offdiag_thresholds = offdiag_thresholds,
       offdiag_cutoff_source = offdiag_cutoff_source,
-      scatter_label_cap = scatter_label_cap,
+      scatter_label_rule = "all points passing the stored |x-y| cutoff",
       group_min_abs_delta = group_min_abs_delta,
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
       phospho_site_features = attr(panels$Phospho$data, "phospho_site_n", exact = TRUE),
