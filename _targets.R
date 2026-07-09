@@ -116,7 +116,7 @@ list(
   # Functional-category scores over off-diagonal genes/proteins from the
   # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein aggregates; visible
   # summary keeps categorized role/fallback buckets and drops predicted/unannotated +
-  # other-annotated no-role buckets).
+  # other-annotated no-role buckets; each visible category label lists every retained scored feature).
   # Carries the retained compact GeoMx sample heatmap
   # through `descriptive$GeoMx`.
   # Reads only the compact DE topTables (no heavy object).

@@ -121,7 +121,8 @@ Modality context:
   range so the dotted cutoff bands have the same visual distance from the identity line; its line
   legend labels the dotted cutoff bands as `threshold: |x-y| >= 3.5 log2FC`. Figure 10
   scores all shared-cutoff selected features and displays categorized role/fallback buckets with
-  aggregate `|P301S - MAPTKI| >= 0.5`, excluding predicted/unannotated + other-annotated no-role buckets.
+  aggregate `|P301S - MAPTKI| >= 0.5`, excluding predicted/unannotated + other-annotated no-role buckets;
+  each visible category label lists every retained scored feature in that category.
   Current visible Figure 10 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
   categorized group rows under the live shared-cutoff/filter rule.
 - Phosphoproteome native heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
