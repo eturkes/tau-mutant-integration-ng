@@ -335,6 +335,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ggplot2::theme(
       axis.text.y = ggplot2::element_text(size = tau_report_axis_size, lineheight = 0.92),
       panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
+      legend.title = ggplot2::element_text(size = tau_report_base_size),
+      legend.text = ggplot2::element_text(size = tau_report_base_size * 0.8),
       legend.position = "bottom",
       legend.box = "vertical",
       legend.spacing.y = grid::unit(0.1, "lines")
