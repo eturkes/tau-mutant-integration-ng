@@ -182,8 +182,11 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                                          label_tail_quantile = 0.99,
                                          x_lab = "log2FC  NLGF_P301S vs P301S",
                                          y_lab = "log2FC  NLGF_MAPTKI vs MAPTKI",
-                                         point_colour = "#6F7782", label_colour = "#A63A50") {
-  stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)))
+                                         point_colour = "#6F7782", label_colour = "#A63A50",
+                                         xy_lim = NULL) {
+  stopifnot(is.data.frame(df), all(c("x", "y", label_col) %in% names(df)),
+            is.null(xy_lim) ||
+              (is.numeric(xy_lim) && length(xy_lim) == 1L && is.finite(xy_lim) && xy_lim > 0))
   label_cutoff <- attr(df, "offdiag_cutoff", exact = TRUE)
   label_cutoff_source <- attr(df, "offdiag_cutoff_source", exact = TRUE)
   threshold_cutoff <- if (!is.null(label_cutoff) && length(label_cutoff) == 1L &&
@@ -196,6 +199,7 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   stopifnot(nrow(df) > 0L)
   lim   <- max(abs(c(df$x, df$y)), na.rm = TRUE)
   lim   <- if (is.finite(lim) && lim > 0) lim else 1
+  if (!is.null(xy_lim)) lim <- as.numeric(xy_lim)
   # one label per feature: bulk assays reuse a site_id / gene across measured rows, so keep each label's
   # most-divergent threshold-passing instance (order is |y-x| desc) -> no duplicate repel labels.
   top   <- modality_scatter_label_rows(df, n_label = n_label, label_col = label_col,
@@ -203,7 +207,7 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                                        cutoff = label_cutoff,
                                        cutoff_source = label_cutoff_source)
   label_n <- nrow(top)
-  if (label_n >= 80L) lim <- lim * 1.08
+  if (label_n >= 80L && is.null(xy_lim)) lim <- lim * 1.08
   label_size <- if (label_n >= 150L) {
     tau_report_dense_label_size
   } else if (label_n >= 80L) {

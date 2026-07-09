@@ -1089,6 +1089,9 @@ user before writing the plan.
   live GeoMx maximum so GeoMx contributes no off-diagonal selected features. Figure 9 caps displayed
   text labels at 24 per panel for readability only; Figure 10 scores all shared-cutoff selected
   features and keeps the global aggregate display floor `|P301S - MAPTKI| >= 0.5`.
+- 2026-07-09 Figure 9 shared-scale cutoff bands DONE (ad hoc user task): Figure 9 now draws all four
+  amyloid-response scatter facets on one shared square coordinate range, so the two dotted `|x-y|=2.0`
+  cutoff bands sit the same visual distance from the center identity diagonal in every modality.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

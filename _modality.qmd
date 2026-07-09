@@ -50,11 +50,16 @@ phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
 #| label: plot-modality-amyloid-effect
 #| fig-width: 13.9
 #| fig-height: 16.8
-#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and shared absolute off-diagonal cutoff at |x-y| of 2.0; text labels are capped for readability, GeoMx has no threshold-passing labels, and phosphoproteomics is collapsed to parent proteins."
+#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line on a shared square coordinate scale, with an OLS trend and shared absolute off-diagonal cutoff at |x-y| of 2.0; text labels are capped for readability, GeoMx has no threshold-passing labels, and phosphoproteomics is collapsed to parent proteins."
 label_cap <- msf$provenance$scatter_label_cap %||% 24L
+scatter_lim <- max(vapply(msf$order, function(m) {
+  d <- msf$panels[[m]]$data
+  max(abs(c(d$x[is.finite(d$x)], d$y[is.finite(d$y)])), na.rm = TRUE)
+}, numeric(1)))
+scatter_lim <- if (is.finite(scatter_lim) && scatter_lim > 0) scatter_lim else 1
 panels <- lapply(msf$order, function(m) {
   modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title,
-                               n_label = label_cap)
+                               n_label = label_cap, xy_lim = scatter_lim)
 })
 wrap_plots(panels, ncol = 2)
 ```
