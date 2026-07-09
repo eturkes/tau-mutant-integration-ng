@@ -129,8 +129,9 @@ Report:
   four-method amyloid response scatter, functional-category score panel.
 
 Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
-`report/index.html`. Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite
-values so report warnings are treated as real failures.
+`report/tau-mutant-integration.html`; the browser/tab title is `Tau Mutant Integration`.
+Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite values so report
+warnings are treated as real failures.
 
 ## Tracked vs Ignored
 

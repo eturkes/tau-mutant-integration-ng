@@ -1,4 +1,6 @@
 ---
+pagetitle: "Tau Mutant Integration"
+output-file: tau-mutant-integration.html
 format:
   html:
     theme: theme.scss        # deep-blue chrome + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)

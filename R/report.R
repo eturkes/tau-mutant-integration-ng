@@ -7,7 +7,7 @@ repair_embedded_lightbox <- function(html_file) {
   count_matches <- function(x) {
     if (length(x) == 1L && x[[1]] == -1L) 0L else length(x)
   }
-  local_href_pattern <- 'href="index_files/figure-html/[^"]+\\.png"'
+  local_href_pattern <- 'href="[^"]+_files/figure-html/[^"]+\\.png"'
   local_href <- gregexpr(local_href_pattern, html, perl = TRUE)[[1]]
   n_local <- count_matches(local_href)
   if (n_local == 0L) {
@@ -15,7 +15,7 @@ repair_embedded_lightbox <- function(html_file) {
   }
 
   pattern <- paste0(
-    '<a\\s+href="index_files/figure-html/[^"]+\\.png"',
+    '<a\\s+href="[^"]+_files/figure-html/[^"]+\\.png"',
     '[^>]*class="lightbox"[^>]*>\\s*',
     '<img[^>]*\\ssrc="data:image/png;base64,[^"]+"[^>]*>\\s*</a>'
   )
@@ -33,7 +33,7 @@ repair_embedded_lightbox <- function(html_file) {
     if (identical(src, anchor)) {
       stop("lightbox href repair could not extract embedded src", call. = FALSE)
     }
-    anchor <- sub('href="index_files/figure-html/[^"]+\\.png"',
+    anchor <- sub(local_href_pattern,
                   paste0('href="', src, '"'), anchor, perl = TRUE)
     # GLightbox types each slide from the href's file extension; an embedded data: URI
     # has none, so GLightbox falls back to an <iframe> and the pop-out renders BLANK.
@@ -77,7 +77,11 @@ render_report <- function(report_sources,
     quiet = FALSE,
     as_job = FALSE
   )
-  html_file <- file.path("report", "index.html")
+  html_file <- file.path("report", "tau-mutant-integration.html")
   repair_embedded_lightbox(html_file)
+  legacy_html <- file.path("report", "index.html")
+  if (file.exists(legacy_html)) {
+    unlink(legacy_html)
+  }
   html_file
 }

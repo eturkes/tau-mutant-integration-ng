@@ -17,10 +17,11 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
 Live report scope (2026-07-09): 10 visible figures, 3 included qmd fragments, expected 29 targets.
-Rendered HTML surface = simple numbered figure headings (`Figure 1` ... `Figure 10`) + figures +
-per-figure folded code only; no visible document title, TOC, captions, body prose, tables, or global
-code-tools menu. Folded-code summaries and expanded code blocks are intentionally compact via
-`theme.scss`.
+Rendered HTML artifact = `report/tau-mutant-integration.html`; browser/tab title =
+`Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
+`Figure 10`) + figures + per-figure folded code only; no visible document title, TOC,
+captions, body prose, tables, or global code-tools menu. Folded-code summaries and expanded
+code blocks are intentionally compact via `theme.scss`.
 Infrastructure that does not directly feed the final analysis document is removed: committed
 tests, Python/uv files, composition/sccomp/CmdStan target, per-subpopulation pseudobulk, prose
 inventory, stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
@@ -129,9 +130,10 @@ Modality context:
   target families stay deleted.
 
 Report:
-- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`; visible HTML = simple numbered
-  figure headings + figures plus per-chunk folded code. Alt text stays in image attributes;
-  captions/TOC/title stay absent.
+- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`; rendered artifact =
+  `report/tau-mutant-integration.html`; visible HTML = simple numbered figure headings +
+  figures plus per-chunk folded code. Alt text stays in image attributes; captions/TOC/visible
+  title stay absent.
 - qmd chunks set `options(warn=2)`. Any warning during render is a failure.
 - Compact report targets must keep qmd renders off the 612MB annotated Seurat object.
 
