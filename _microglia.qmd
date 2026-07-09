@@ -90,7 +90,8 @@ p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = subpopulation)) +
 
 p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
   geom_point(size = 0.25, alpha = 0.6) +
-  scale_colour_rwb(name = "DAM z", midpoint = 0) +
+  scale_colour_rwb(name = "DAM\nz-score", midpoint = 0,
+                   limits = c(-2, 5), breaks = c(-2, 0, 2, 4)) +
   labs(x = "UMAP 1", y = "UMAP 2")
 
 (p_sub | p_dam) +
