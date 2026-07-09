@@ -254,7 +254,7 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
 # four-method amyloid-response scatter; phosphoproteomics uses the displayed parent-protein
 # means. Rows are modality-specific role categories, facets are modalities. Each
 # segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
-# P301S; segment colour is the requested contrast, P301S minus MAPTKI.
+# P301S; segment colour is the log2FC difference between tau backgrounds.
 functional_group_score_plot <- function(group_summary, title = NULL) {
   stopifnot(is.data.frame(group_summary))
   need <- c("modality", "group_label_plot", "n_feature", "score_maptki", "score_p301s", "delta")
@@ -277,9 +277,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   )
   lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
-  delta_lim <- max(abs(x$delta), na.rm = TRUE)
-  delta_lim <- if (is.finite(delta_lim) && delta_lim > 0) delta_lim else 1
-  delta_breaks <- c(-delta_lim, 0, delta_lim)
+  delta_breaks <- c(-3, 0, 3)
   n_min <- min(x$n_feature)
   n_max <- max(x$n_feature)
   size_breaks <- if (n_max - n_min <= 8L) {
@@ -308,12 +306,12 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       data = point_df,
       ggplot2::aes(x = score, fill = background, size = n_feature),
       shape = 21, colour = "#2B2A27", stroke = 0.25) +
-    scale_colour_rwb(midpoint = 0, limits = c(-delta_lim, delta_lim), breaks = delta_breaks,
+    scale_colour_rwb(midpoint = 0, limits = c(-3, 3), breaks = delta_breaks,
                      labels = function(x) format(round(x, 1), trim = TRUE),
-                     oob = scales::squish, name = "P301S - MAPTKI\n          log2FC") +
+                     oob = scales::squish, name = "log2FC difference") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
-                               name = "score") +
+                               name = "genotype") +
     ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
