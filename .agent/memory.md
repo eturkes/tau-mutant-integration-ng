@@ -91,9 +91,6 @@ Microglia composition:
 - No live composition inference target. Replicate-unit stacked bars are derived inside
   `microglia_report_data()` from annotated Seurat metadata and emitted as
   `unit_composition`.
-- Figure 1 marker panel rows are genotype-stratified: `subpopulation_marker_panel()`
-  summarizes each marker gene by subpopulation x genotype, and `_microglia.qmd`
-  renders each Homeostatic/DAM/IFN row as four genotype rows.
 
 Microglia DE:
 - Live target = `pb_de_microglia` only.

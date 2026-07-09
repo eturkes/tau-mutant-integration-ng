@@ -382,50 +382,33 @@ annotate_microglia <- function(seurat_obj, symbol_map,
 
 # Per-subpopulation marker-expression panel -- the "genes that DEFINE each subpopulation" dot-plot data.
 # For every marker SET (signature) and each of its genes present in `assay`, compute the mean
-# expression and the fraction of cells expressing (layer value > 0) WITHIN each subpopulation x genotype group.
+# expression and the fraction of cells expressing (layer value > 0) WITHIN each subpopulation group.
 # Symbols map -> ensembl via symbol_map (the SCT/RNA rownames are ensembl); genes absent from the
 # assay drop, a signature left under `min_present` errors (a near-empty set would misrepresent the
-# state). Subpopulation groups default to the set names (Homeostatic/DAM/IFN); every requested
-# subpopulation x genotype group must carry >= 1 cell. Returns a long data.frame
-# {signature, gene(symbol), ensembl, subpopulation, genotype, n_cells, mean_expr, pct_expr};
-# signature/gene/subpopulation/genotype are factors ordered as given so the qmd renders a clean
-# signature-blocked, marker-ordered dot grid. All numeric finite, pct in [0,1].
+# state). Subpopulation groups default to the set names (Homeostatic/DAM/IFN) and must each carry >= 1
+# cell in `subpopulation_col`. Returns a long data.frame {signature, gene(symbol), ensembl, subpopulation,
+# n_cells, mean_expr, pct_expr}; signature/gene/subpopulation are factors ordered as given so the qmd
+# renders a clean signature-blocked, marker-ordered dot grid. All numeric finite, pct in [0,1].
 # Pure: no RNG, no I/O. Feeds microglia_report$subpopulation_markers -> the Subpopulation-landscape dot plot.
 subpopulation_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
                                   subpopulations = names(marker_sets),
-                                  genotypes = genotype_levels,
                                   subpopulation_col = "microglia_subpopulation",
-                                  genotype_col = "genotype",
                                   assay = "SCT", layer = "data", min_present = 2L) {
   stopifnot(
     inherits(seurat_obj, "Seurat"),
     is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)),
     is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
     is.character(subpopulations), length(subpopulations) >= 1L, !anyDuplicated(subpopulations),
-    is.character(genotypes), length(genotypes) >= 1L, !anyDuplicated(genotypes),
-    subpopulation_col %in% colnames(seurat_obj@meta.data),
-    genotype_col %in% colnames(seurat_obj@meta.data)
+    subpopulation_col %in% colnames(seurat_obj@meta.data)
   )
   expr        <- SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer)
   present_ids <- rownames(expr)
   sub         <- as.character(seurat_obj@meta.data[[subpopulation_col]])
-  geno        <- factor(as.character(seurat_obj@meta.data[[genotype_col]]), levels = genotypes)
-  stopifnot(length(sub) == ncol(expr), length(geno) == ncol(expr), !anyNA(geno))
+  stopifnot(length(sub) == ncol(expr))
   miss <- setdiff(subpopulations, unique(sub))
   if (length(miss))                                    # a requested state with no cells would give NaN means
     stop("subpopulation_marker_panel: subpopulation(s) absent from ", subpopulation_col, ": ",
          paste(miss, collapse = ", "))
-  group_grid <- expand.grid(subpopulation = subpopulations, genotype = genotypes,
-                            KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
-  group_n <- vapply(seq_len(nrow(group_grid)), function(i) {
-    as.integer(sum(sub == group_grid$subpopulation[[i]] & geno == group_grid$genotype[[i]]))
-  }, integer(1))
-  if (any(group_n == 0L)) {
-    empty <- paste0(group_grid$subpopulation[group_n == 0L], " / ",
-                    group_grid$genotype[group_n == 0L])
-    stop("subpopulation_marker_panel: empty subpopulation x genotype group(s): ",
-         paste(empty, collapse = ", "))
-  }
   pieces <- lapply(names(marker_sets), function(sig) {
     hit <- symbols_to_ensembl(marker_sets[[sig]], symbol_map)   # named: names=symbol, values=ensembl (input order)
     hit <- hit[hit %in% present_ids]                            # keep only genes present in the assay
@@ -433,16 +416,13 @@ subpopulation_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
       stop("subpopulation_marker_panel: under ", min_present, " present gene(s) for signature '", sig,
            "' -- widen the set or map more symbols")
     set_mat <- expr[unname(hit), , drop = FALSE]                # genes x cells for this signature
-    do.call(rbind, lapply(seq_len(nrow(group_grid)), function(i) {
-      st <- group_grid$subpopulation[[i]]
-      gt <- group_grid$genotype[[i]]
-      m <- set_mat[, sub == st & geno == gt, drop = FALSE]
+    do.call(rbind, lapply(subpopulations, function(st) {
+      m <- set_mat[, sub == st, drop = FALSE]
       data.frame(
         signature = sig,
         gene      = names(hit),
         ensembl   = unname(hit),
         subpopulation  = st,
-        genotype  = gt,
         n_cells   = ncol(m),
         mean_expr = as.numeric(Matrix::rowMeans(m)),
         pct_expr  = as.numeric(Matrix::rowMeans(m > 0)),
@@ -453,7 +433,6 @@ subpopulation_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
   out <- do.call(rbind, pieces)
   out$signature <- factor(out$signature, levels = names(marker_sets))
   out$subpopulation  <- factor(out$subpopulation, levels = subpopulations)
-  out$genotype <- factor(out$genotype, levels = genotypes)
   out$gene      <- factor(out$gene, levels = unique(out$gene))   # signature-then-marker order preserved
   rownames(out) <- NULL
   stopifnot(

@@ -24,13 +24,12 @@ mf_umap$subpopulation <- factor(as.character(mf_umap$subpopulation), levels = pr
 mf_umap$genotype <- factor(as.character(mf_umap$genotype), levels = genotype_levels)
 
 # Subpopulation marker panel: the genes that DEFINE Homeostatic / DAM / IFN. Per-gene z-score of the
-# mean expression across displayed subpopulation x genotype rows (the Seurat DotPlot scale=TRUE idiom)
-# surfaces the state each gene marks regardless of its absolute level; a flat gene (sd 0) -> 0, never NaN.
+# mean expression across the three subpopulations (the Seurat DotPlot scale=TRUE idiom) surfaces the
+# state each gene marks regardless of its absolute level; a flat gene (sd 0) -> 0, never NaN.
 marker_states <- c("Homeostatic", "DAM", "IFN")
 sm <- mrd$subpopulation_markers
 sm$signature <- factor(as.character(sm$signature), levels = marker_states)
 sm$subpopulation  <- factor(as.character(sm$subpopulation),  levels = marker_states)
-sm$genotype <- factor(as.character(sm$genotype), levels = genotype_levels)
 sm$expr_z <- stats::ave(sm$mean_expr, as.character(sm$gene), FUN = function(x) {
   s <- stats::sd(x); if (!is.finite(s) || s == 0) rep(0, length(x)) else (x - mean(x)) / s
 })
@@ -53,16 +52,16 @@ compact_genotype_labels <- c(
 ```{r}
 #| label: plot-microglia-subpopulation-markers
 #| fig-width: 14.2
-#| fig-height: 11.2
-#| fig-alt: "Dot-plot grid with Homeostatic, DAM and IFN marker-gene column panels; each subpopulation row is split into four genotype rows, with dot colour showing per-gene scaled mean expression and dot size showing the percent of nuclei expressing."
-ggplot(sm, aes(gene, genotype)) +
+#| fig-height: 8.4
+#| fig-alt: "Dot-plot grid with Homeostatic, DAM and IFN marker-gene column panels and matching unlabelled subpopulation rows; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching subpopulation along the diagonal."
+ggplot(sm, aes(gene, subpopulation)) +
   geom_point(aes(colour = expr_z, size = pct_expr)) +
-  facet_grid(subpopulation ~ signature, scales = "free_x", space = "free_x") +
+  facet_grid(. ~ signature, scales = "free_x", space = "free_x") +
   scale_colour_rwb(name = "scaled mean\nexpression", midpoint = 0) +
   scale_size_area(name = "% expressing\nnuclei", max_size = 5.2,
                   breaks = c(0.1, 0.25, 0.5, 0.75),
                   labels = function(x) paste0(round(100 * x), "%")) +
-  scale_y_discrete(limits = rev(genotype_levels), labels = compact_genotype_labels) +
+  scale_y_discrete(limits = rev) +
   guides(colour = guide_colourbar(barheight = grid::unit(92, "pt")),
          size = guide_legend(
            keyheight = grid::unit(21, "pt"),
@@ -73,17 +72,15 @@ ggplot(sm, aes(gene, genotype)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
                                    size = tau_report_dense_axis_size,
                                    face = "italic"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
         panel.grid.major = element_line(linewidth = 0.2),
         panel.spacing.x = grid::unit(3.5, "pt"),
-        panel.spacing.y = grid::unit(4.5, "pt"),
         legend.position = "right",
         legend.spacing.y = grid::unit(8, "pt"),
         legend.key.height = grid::unit(21, "pt"),
         legend.title = element_text(lineheight = 1.08, margin = margin(b = 10)),
-        legend.text = element_text(lineheight = 1.08),
-        axis.text.y = element_text(size = tau_report_dense_axis_size, lineheight = 0.92),
-        axis.ticks.y = element_blank(),
-        strip.text.y = element_text(angle = 0, size = tau_report_dense_axis_size))
+        legend.text = element_text(lineheight = 1.08))
 ```
 
 <h2 class="figure-heading">Figure 2</h2>
