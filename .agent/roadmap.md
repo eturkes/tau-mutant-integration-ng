@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 2 vertical stack DONE (ad hoc user review): changed the two microglia UMAP
+  subplots from a horizontal patchwork to a vertical A/B stack and resized the figure device from
+  12.4x4.4 to 6.2x8.8 so each child plot keeps its prior subplot footprint.
 - 2026-07-09 Figure 7/8 bulk context merge DONE (ad hoc user task): combined the former
   Figure 7 proteome PCA and former Figure 8 phosphosite heatmap into one Figure 7 bulk context
   plate, removed both proteome and phosphoproteome volcano plots from the live report payload,

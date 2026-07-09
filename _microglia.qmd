@@ -87,9 +87,9 @@ ggplot(sm, aes(gene, subpopulation)) +
 
 ```{r}
 #| label: plot-microglia-umap
-#| fig-width: 12.4
-#| fig-height: 4.4
-#| fig-alt: "Two UMAP panels show cluster-derived labels and DAM UCell z-scores."
+#| fig-width: 6.2
+#| fig-height: 8.8
+#| fig-alt: "Two vertically stacked UMAP panels show cluster-derived labels and DAM UCell z-scores."
 p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = subpopulation)) +
   geom_point(size = 0.25, alpha = 0.6) +
   scale_colour_subpopulation(breaks = present_sub, name = "subpopulation") +
@@ -102,7 +102,7 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
                    limits = c(-2, 5), breaks = c(-2, 0, 2, 4)) +
   labs(x = "UMAP 1", y = "UMAP 2")
 
-(p_sub | p_dam) +
+(p_sub / p_dam) +
   plot_annotation(tag_levels = "A")
 ```
 

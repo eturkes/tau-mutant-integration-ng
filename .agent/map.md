@@ -128,8 +128,8 @@ Report:
 
 `index.qmd` includes three qmd fragments. The rendered HTML exposes simple numbered
 `Figure 1` ... `Figure 9` headings, but no title/TOC/captions:
-- `_microglia.qmd`: subpopulation marker dot plot, subpopulation/DAM UMAPs, genotype-faceted
-  subpopulation UMAP, replicate-unit subpopulation composition.
+- `_microglia.qmd`: subpopulation marker dot plot, vertically stacked subpopulation/DAM UMAPs,
+  genotype-faceted subpopulation UMAP, replicate-unit subpopulation composition.
 - `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `_modality.qmd`: GeoMx AOI metadata-track diagnostic,
   combined proteome PCA / phosphoproteome heatmap descriptive figure,
