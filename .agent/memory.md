@@ -118,9 +118,10 @@ Modality context:
   the functional-category panel scores the same selected off-diagonal features but displays only categorized
   role/fallback buckets, excluding predicted/unannotated + other-annotated no-role buckets.
 - Phosphoproteome native heatmap keeps the top mutant-tau amyloid phosphosite rows after excluding
-  parent gene `Plcb1` and collapsing exact duplicate log2 median-normalized profiles to the first
-  ranked representative, with `(+n)` label suffixes for equivalent site/isoform rows; the volcano is
-  not filtered by this display-only exclusion/deduplication.
+  parent gene `Plcb1`, keeping the same effect direction as the top-ranked candidate, and collapsing
+  exact duplicate log2 median-normalized profiles to the first ranked representative, with `(n)` label
+  suffixes for equivalent site/isoform rows; the volcano is not filtered by this display-only
+  exclusion/direction/deduplication.
 - Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
   figures are ledger history, not live report/path contracts.
 - Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality

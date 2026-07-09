@@ -331,11 +331,19 @@ phospho_modality_descriptor <- function(phospho_de_24m,
   }
   ranked <- ranked[ranked$feature %in% rownames(phospho_de_24m$matrix), , drop = FALSE]
   n_heatmap_candidates <- nrow(ranked)
+  heatmap_effect_sign <- sign(ranked$effect[which(ranked$effect != 0)[1L]])
+  if (!is.finite(heatmap_effect_sign) || heatmap_effect_sign == 0) {
+    stop("phosphosite heatmap candidates have no non-zero effect direction", call. = FALSE)
+  }
+  ranked <- ranked[sign(ranked$effect) == heatmap_effect_sign, , drop = FALSE]
+  if (!nrow(ranked)) stop("no phosphosite heatmap candidates remain after direction filter", call. = FALSE)
+  n_heatmap_opposite_direction_candidates <- n_heatmap_candidates - nrow(ranked)
+  n_heatmap_direction_candidates <- nrow(ranked)
   profile_key <- .fig_matrix_profile_key(phospho_de_24m$matrix[ranked$feature, , drop = FALSE])
   profile_n <- tabulate(match(profile_key, unique(profile_key)), nbins = length(unique(profile_key)))
   profile_n <- profile_n[match(profile_key, unique(profile_key))]
   ranked$label <- ifelse(profile_n > 1L,
-                         sprintf("%s (+%d)", ranked$label, profile_n - 1L),
+                         sprintf("%s (%d)", ranked$label, profile_n),
                          ranked$label)
   ranked <- ranked[!duplicated(profile_key), , drop = FALSE]
   heat_features <- utils::head(ranked$feature, as.integer(n_heatmap))
@@ -352,7 +360,9 @@ phospho_modality_descriptor <- function(phospho_de_24m,
       n_samples = ncol(phospho_de_24m$matrix),
       n_heatmap = length(heat_features),
       heatmap_exclude_genes = heatmap_exclude_genes,
-      n_heatmap_duplicate_candidates = n_heatmap_candidates - nrow(ranked),
+      n_heatmap_duplicate_candidates = n_heatmap_direction_candidates - nrow(ranked),
+      n_heatmap_opposite_direction_candidates = n_heatmap_opposite_direction_candidates,
+      heatmap_effect_direction = if (heatmap_effect_sign > 0) "positive" else "negative",
       heatmap_deduplicate = "exact log2 median-normalised input profiles; first ranked representative retained",
       display = "phosphosite volcano plus z-scored top-site abundance heatmap for the mutant-tau amyloid contrast"
     )
