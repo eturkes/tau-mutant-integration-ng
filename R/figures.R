@@ -618,7 +618,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   lab <- as.character(x)
   antigen_complement <- grepl("^Antigen\\s*/\\s*Complement(\\s*/|$)", lab)
   lab[antigen_complement] <- "Antigen / Complement"
-  slash <- grepl("/", lab, fixed = TRUE) & !antigen_complement
+  immune_inflammatory <- grepl("^Immune\\s*/\\s*Inflammatory\\b", lab)
+  lab[immune_inflammatory] <- "Immune / Inflammatory"
+  slash <- grepl("/", lab, fixed = TRUE) & !antigen_complement & !immune_inflammatory
   lab[slash] <- trimws(sub("\\s*/.*$", "", lab[slash]))
   lab[lab == "Synapse"] <- "Synaptic"
   lab
@@ -645,11 +647,10 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   stopifnot(length(pathway_sets) >= 1L)
 
   role_patterns <- list(
-    `Microglial activation / innate immune` =
-      c("IMMUNE", "INFLAMMATORY", "CYTOKINE", "INTERFERON", "LEUKOCYTE",
-        "MYELOID", "MACROPHAGE", "MICROGLIA", "TOLL_LIKE"),
     `Antigen / complement / phagocytosis` =
       c("ANTIGEN", "MHC", "COMPLEMENT", "PHAGOCYTOSIS", "OPSONIZATION"),
+    `Cell adhesion / migration` =
+      c("ADHESION", "MIGRATION", "MOTILITY", "EXTRACELLULAR_MATRIX", "CHEMOTAXIS"),
     `Lipid handling / sterol biology` =
       c("LIPID", "STEROL", "CHOLESTEROL", "LIPOPROTEIN", "FATTY_ACID"),
     `Endolysosome / vesicle traffic` =
@@ -658,15 +659,18 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     `Synapse / neuronal signalling` =
       c("SYNAP", "NEURON", "AXON", "DENDRITE", "NEUROTRANSMITTER",
         "ACTION_POTENTIAL", "MEMBRANE_POTENTIAL"),
-    `Cytoskeleton / adhesion / migration` =
-      c("CYTOSKELETON", "ACTIN", "MICROTUBULE", "ADHESION", "MIGRATION",
-        "MOTILITY", "EXTRACELLULAR_MATRIX"),
+    `Cytoskeleton / contractile machinery` =
+      c("CYTOSKELETON", "ACTIN", "MICROTUBULE", "TUBULIN", "SARCOMERE",
+        "MYOFIBRIL", "CONTRACTILE"),
     `Proteostasis / RNA translation` =
       c("TRANSLATION", "RIBOSOM", "PROTEASOM", "UBIQUITIN",
         "PROTEIN_FOLDING", "RNA_PROCESSING", "MRNA"),
     `Mitochondrial metabolism / oxidative stress` =
       c("MITOCHONDR", "OXIDATIVE", "RESPIRATORY_CHAIN", "ATP",
-        "ELECTRON_TRANSPORT", "REACTIVE_OXYGEN")
+        "ELECTRON_TRANSPORT", "REACTIVE_OXYGEN"),
+    `Immune / inflammatory signalling` =
+      c("IMMUNE", "INFLAMMATORY", "CYTOKINE", "INTERFERON", "LEUKOCYTE",
+        "MYELOID", "MACROPHAGE", "MICROGLIA", "TOLL_LIKE")
   )
   pathway_names <- toupper(names(pathway_sets))
   out <- lapply(role_patterns, function(patterns) {
@@ -718,7 +722,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 .fig_uncategorized_roles <- c(.fig_predicted_unannotated_role, .fig_other_annotated_role)
 
 # Functional-category score summary for shared-cutoff off-diagonal features in
-# fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions; explicit
+# fig-modality-amyloid-effect. Default role categories are priority-ordered GO-BP keyword
+# unions: narrow effector/process buckets first, broad immune/inflammatory last. Explicit
 # classified fallbacks are retained, but uncategorized fallback buckets are omitted from the
 # visible summary. The phosphoproteomics panel is already parent-protein-collapsed upstream, so
 # category scores use the same averaged protein points displayed in the amyloid-effect scatter.
@@ -780,7 +785,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
             is.finite(min_abs_delta), min_abs_delta >= 0)
   order <- modality_scatter_figures$order
   group_set_source <- if (is.null(group_sets)) {
-    "MSigDB mouse GO Biological Process keyword unions via msigdbr"
+    "priority-ordered MSigDB mouse GO Biological Process keyword unions via msigdbr"
   } else {
     "custom functional groups"
   }
@@ -835,9 +840,6 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       score_maptki <- mean(feature_hits$y)
       score_p301s <- mean(feature_hits$x)
       delta <- score_p301s - score_maptki
-      feature_line_n <- if (identical(m, "Proteome") &&
-                              identical(as.character(feature_hits$group_label[[1]]),
-                                        "Microglial Activation")) 4L else 3L
       data.frame(
         modality = m,
         group = grp,
@@ -858,7 +860,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
         top_genes = paste(unique(feature_hits$gene_symbol), collapse = ", "),
         top_features = paste(unique(feature_hits$score_label), collapse = ", "),
         top_features_plot = .fig_wrapped_feature_list(feature_hits$score_label,
-                                                      per_line = feature_line_n),
+                                                      per_line = 3L),
         stringsAsFactors = FALSE
       )
     }))
@@ -932,7 +934,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same shared off-diagonal rule as fig-modality-amyloid-effect: features pass the stored |x-y| cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped three features per line except the Proteome Microglial Activation row, which keeps four per line",
+      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP role union with narrow process buckets before the broad immune/inflammatory residual bucket, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped three features per line",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),

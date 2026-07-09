@@ -142,5 +142,9 @@ details.code-fold .sourceCode code { font-size: inherit; }
 
 @media print {
   html, body { overflow: visible !important; }
+  .figure-wide-inline { break-inside: avoid; page-break-inside: avoid; }
+  h2.figure-heading,
+  details.code-fold { break-after: avoid; page-break-after: avoid; }
+  .cell-output-display { break-before: avoid; page-break-before: avoid; }
   ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
 }

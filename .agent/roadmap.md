@@ -200,6 +200,11 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 category cleanup DONE (ad hoc user task): replaced the broad-first
+  `Microglial Activation` role bucket with priority-ordered GO-BP role buckets. Narrow process
+  buckets now claim selected off-diagonal features before a broad immune/inflammatory residual
+  bucket, so Figure 10 no longer presents assay-specific opposite-sign feature sets under the
+  same microglial-activation label.
 - 2026-07-09 fast-iteration cut: `scripts/check.sh` now invalidates/builds only `report`
   (no env sync, no all-target metadata/log scan), and `render_report()` resets/prunes `report/`
   so the sole user-facing output is `report/tau-mutant-integration.html`.
