@@ -17,6 +17,8 @@ tr_pt$subpopulation <- factor(as.character(tr_pt$subpopulation),
                          levels = intersect(microglia_subpopulation_levels, as.character(unique(tr_pt$subpopulation))))
 ```
 
+<h2 class="figure-heading">Figure 5</h2>
+
 ```{r}
 #| label: plot-trajectory-pt-density
 #| fig-width: 12.2

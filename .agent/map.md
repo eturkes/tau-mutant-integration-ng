@@ -1,6 +1,6 @@
 # Map - live codebase wiring
 
-Current surface (2026-07-08): lean 10-figure report DAG only. No committed test suite, Python/uv
+Current surface (2026-07-09): lean 10-figure report DAG only. No committed test suite, Python/uv
 surface, composition/sccomp/CmdStan arm, per-subpopulation pseudobulk target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
 science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
@@ -119,7 +119,8 @@ Report:
 
 ## Report
 
-`index.qmd` includes three qmd fragments, but the rendered HTML exposes no title/TOC/headings/captions:
+`index.qmd` includes three qmd fragments. The rendered HTML exposes simple numbered
+`Figure 1` ... `Figure 10` headings, but no title/TOC/captions:
 - `_microglia.qmd`: subpopulation marker dot plot, subpopulation/DAM UMAPs, genotype-faceted
   subpopulation UMAP, replicate-unit subpopulation composition.
 - `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
@@ -127,8 +128,9 @@ Report:
   proteome/phosphoproteome descriptive figures,
   four-method amyloid response scatter, functional-category score panel.
 
-Rendered output = 10 figures plus per-figure folded code in `report/index.html`. Chunk setup uses
-`options(warn=2)`; data builders pre-filter/guard finite values so report warnings are treated as real failures.
+Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
+`report/index.html`. Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite
+values so report warnings are treated as real failures.
 
 ## Tracked vs Ignored
 

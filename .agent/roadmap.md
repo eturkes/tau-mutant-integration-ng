@@ -28,8 +28,9 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-08): the rendered report = TEN visible figures plus per-figure folded code
-only (no visible document title, TOC, headings, captions, body prose, tables, or global code menu):
+REPORT SCOPE (current 2026-07-09): the rendered report = TEN visible figures with simple numbered
+`Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
+TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), two retained bulk modality-native
 figures (proteome, phosphoproteome), and two modality-context figures (four-method amyloid-response logFC
@@ -1070,6 +1071,10 @@ user before writing the plan.
   proteome and phosphoproteome native figures plus the two modality-context figures. `geomx_de`
   and `modality_scatter_figures` now carry only `sample_heatmap` as the GeoMx descriptive
   payload; rendered surface expected = 10 figures, target count unchanged at 29.
+- 2026-07-09 Report HTML polish DONE (ad hoc user task): added simple visible `Figure 1` ...
+  `Figure 10` headings across the 10 qmd figure chunks, kept `toc: false`, and shrank the native
+  Quarto `details.code-fold > summary` control plus expanded folded-code text in `theme.scss`.
+  Report surface remains title-free, caption-free, body-prose-free, and global-code-menu-free.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

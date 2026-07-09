@@ -14,6 +14,8 @@ theme_set(theme_tau())
 msf <- modality_scatter_figures
 ```
 
+<h2 class="figure-heading">Figure 6</h2>
+
 ```{r}
 #| label: plot-geomx-sample-heatmap
 #| fig-width: 12
@@ -21,6 +23,8 @@ msf <- modality_scatter_figures
 #| fig-alt: "GeoMx AOI track atlas with AOI columns clustered by five displayed DAM marker-gene expression tracks and branch-ordered by mean DAM z-score, with genotype plus shared no-versus-yes tau and amyloid tracks above B2m, Apoe, Ctsd, Tyrobp, and Trem2; no spatial, QC, replicate, ROI, or expression heatmap tracks are displayed."
 geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 ```
+
+<h2 class="figure-heading">Figure 7</h2>
 
 ```{r}
 #| label: plot-modality-proteome-landscape
@@ -30,6 +34,8 @@ geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 proteome_modality_plot(msf$descriptive$Proteome, title = msf$panels$Proteome$title)
 ```
 
+<h2 class="figure-heading">Figure 8</h2>
+
 ```{r}
 #| label: plot-modality-phospho-landscape
 #| fig-width: 13.4
@@ -37,6 +43,8 @@ proteome_modality_plot(msf$descriptive$Proteome, title = msf$panels$Proteome$tit
 #| fig-alt: "Bulk phosphoproteome figure with a phosphosite differential-abundance volcano plot and a genotype-grouped heatmap of top phosphosite abundances across runs."
 phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
 ```
+
+<h2 class="figure-heading">Figure 9</h2>
 
 ```{r}
 #| label: plot-modality-amyloid-effect
@@ -48,6 +56,8 @@ panels <- lapply(msf$order, function(m) {
 })
 wrap_plots(panels, ncol = 2)
 ```
+
+<h2 class="figure-heading">Figure 10</h2>
 
 ```{r}
 #| label: plot-modality-functional-scores

@@ -5,6 +5,7 @@ format:
     embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
     lightbox: auto           # dense figures are clickable in the offline HTML
     toc: false
+    anchor-sections: false   # visible headings stay plain "Figure N" labels, no hover anchor chrome
     code-fold: true          # each echoed chunk -> native <details> "Code" toggle (offline HTML, no JS); include:false setup stays hidden
 execute:
   echo: true                 # show plotting code as folded/togglable blocks; figures remain the default view

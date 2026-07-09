@@ -47,6 +47,8 @@ compact_genotype_labels <- c(
 )
 ```
 
+<h2 class="figure-heading">Figure 1</h2>
+
 ```{r}
 #| label: plot-microglia-subpopulation-markers
 #| fig-width: 14.2
@@ -77,6 +79,8 @@ ggplot(sm, aes(gene, subpopulation)) +
         legend.text = element_text(lineheight = 1.08))
 ```
 
+<h2 class="figure-heading">Figure 2</h2>
+
 ```{r}
 #| label: plot-microglia-umap
 #| fig-width: 12.4
@@ -98,6 +102,8 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
   plot_annotation(tag_levels = "A")
 ```
 
+<h2 class="figure-heading">Figure 3</h2>
+
 ```{r}
 #| label: plot-microglia-umap-subpopulation
 #| fig-width: 11.7
@@ -111,6 +117,8 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = subpopulation)) +
   labs(x = "UMAP 1", y = "UMAP 2") +
   theme(panel.grid = element_blank())
 ```
+
+<h2 class="figure-heading">Figure 4</h2>
 
 ```{r}
 #| label: plot-microglia-unit-composition
