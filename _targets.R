@@ -115,9 +115,10 @@ list(
   # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
   # Functional-category scores over off-diagonal genes/proteins from the
   # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein aggregates; visible
-  # summary keeps priority-ordered role/fallback buckets, puts narrow process buckets before the broad
-  # immune/inflammatory residual bucket, drops predicted/unannotated + other-annotated no-role buckets,
-  # and lists every retained scored feature in each visible category label).
+  # summary keeps priority-ordered GO term-family role/fallback buckets, separates
+  # complement/antigen from chemotaxis/phagocytosis before broader adhesion/ECM/motility and
+  # immune residual buckets, drops predicted/unannotated + other-annotated no-role buckets, and
+  # lists every retained scored feature in each visible category label).
   # Carries the retained compact GeoMx sample heatmap
   # through `descriptive$GeoMx`.
   # Reads only the compact DE topTables (no heavy object).

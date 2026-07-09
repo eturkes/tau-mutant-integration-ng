@@ -200,6 +200,11 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 role-label hardening DONE (ad hoc user review): split
+  phagocytosis/chemotaxis out of the complement/antigen bucket and replaced the vague cell-adhesion
+  row with clearer GO term-family buckets (`Leukocyte Adhesion / Migration`, `ECM / Substrate
+  Adhesion`, `Cell Motility / Cytoskeleton`). Current visible examples: `Camk1d` =
+  chemotaxis/phagocytosis, `Cr1l` = complement/antigen, `Icam2` = leukocyte adhesion/migration.
 - 2026-07-09 Figure 10 category cleanup DONE (ad hoc user task): replaced the broad-first
   `Microglial Activation` role bucket with priority-ordered GO-BP role buckets. Narrow process
   buckets now claim selected off-diagonal features before a broad immune/inflammatory residual

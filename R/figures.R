@@ -616,11 +616,18 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 
 .fig_functional_group_label <- function(x) {
   lab <- as.character(x)
-  antigen_complement <- grepl("^Antigen\\s*/\\s*Complement(\\s*/|$)", lab)
-  lab[antigen_complement] <- "Antigen / Complement"
+  complement <- grepl("^Complement\\s*/\\s*Antigen\\s+Presentation\\b", lab)
+  lab[complement] <- "Complement / Antigen Presentation"
+  chemotaxis <- grepl("^Chemotaxis\\s*/\\s*Phagocytosis\\b", lab)
+  lab[chemotaxis] <- "Chemotaxis / Phagocytosis"
+  leukocyte_adhesion <- grepl("^Leukocyte\\s+Adhesion\\s*/\\s*Migration\\b", lab)
+  lab[leukocyte_adhesion] <- "Leukocyte Adhesion / Migration"
+  ecm <- grepl("^Ecm\\s*/\\s*Substrate\\s+Adhesion\\b", lab)
+  lab[ecm] <- "ECM / Substrate Adhesion"
   immune_inflammatory <- grepl("^Immune\\s*/\\s*Inflammatory\\b", lab)
   lab[immune_inflammatory] <- "Immune / Inflammatory"
-  slash <- grepl("/", lab, fixed = TRUE) & !antigen_complement & !immune_inflammatory
+  keep_slash <- complement | chemotaxis | leukocyte_adhesion | ecm | immune_inflammatory
+  slash <- grepl("/", lab, fixed = TRUE) & !keep_slash
   lab[slash] <- trimws(sub("\\s*/.*$", "", lab[slash]))
   lab[lab == "Synapse"] <- "Synaptic"
   lab
@@ -647,10 +654,10 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   stopifnot(length(pathway_sets) >= 1L)
 
   role_patterns <- list(
-    `Antigen / complement / phagocytosis` =
-      c("ANTIGEN", "MHC", "COMPLEMENT", "PHAGOCYTOSIS", "OPSONIZATION"),
-    `Cell adhesion / migration` =
-      c("ADHESION", "MIGRATION", "MOTILITY", "EXTRACELLULAR_MATRIX", "CHEMOTAXIS"),
+    `Complement / antigen presentation` =
+      c("COMPLEMENT", "OPSONIZATION", "ANTIGEN", "MHC"),
+    `Chemotaxis / phagocytosis` =
+      c("PHAGOCYTOSIS", "CHEMOTAXIS", "GRANULOCYTE_MIGRATION", "NEUTROPHIL_MIGRATION"),
     `Lipid handling / sterol biology` =
       c("LIPID", "STEROL", "CHOLESTEROL", "LIPOPROTEIN", "FATTY_ACID"),
     `Endolysosome / vesicle traffic` =
@@ -659,8 +666,16 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     `Synapse / neuronal signalling` =
       c("SYNAP", "NEURON", "AXON", "DENDRITE", "NEUROTRANSMITTER",
         "ACTION_POTENTIAL", "MEMBRANE_POTENTIAL"),
-    `Cytoskeleton / contractile machinery` =
-      c("CYTOSKELETON", "ACTIN", "MICROTUBULE", "TUBULIN", "SARCOMERE",
+    `Leukocyte adhesion / migration` =
+      c("LEUKOCYTE_CELL_CELL_ADHESION", "LEUKOCYTE_ADHESION", "LEUKOCYTE_MIGRATION",
+        "DENDRITIC_CELL_MIGRATION", "MONONUCLEAR_CELL_MIGRATION",
+        "MYELOID_LEUKOCYTE_MIGRATION"),
+    `ECM / substrate adhesion` =
+      c("EXTRACELLULAR_MATRIX", "CELL_MATRIX_ADHESION", "CELL_SUBSTRATE_ADHESION",
+        "FOCAL_ADHESION"),
+    `Cell motility / cytoskeleton` =
+      c("MOTILITY", "AMEBOIDAL_TYPE_CELL_MIGRATION", "TISSUE_MIGRATION",
+        "CYTOSKELETON", "ACTIN", "MICROTUBULE", "TUBULIN", "SARCOMERE",
         "MYOFIBRIL", "CONTRACTILE"),
     `Proteostasis / RNA translation` =
       c("TRANSLATION", "RIBOSOM", "PROTEASOM", "UBIQUITIN",
@@ -722,11 +737,12 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 .fig_uncategorized_roles <- c(.fig_predicted_unannotated_role, .fig_other_annotated_role)
 
 # Functional-category score summary for shared-cutoff off-diagonal features in
-# fig-modality-amyloid-effect. Default role categories are priority-ordered GO-BP keyword
-# unions: narrow effector/process buckets first, broad immune/inflammatory last. Explicit
-# classified fallbacks are retained, but uncategorized fallback buckets are omitted from the
-# visible summary. The phosphoproteomics panel is already parent-protein-collapsed upstream, so
-# category scores use the same averaged protein points displayed in the amyloid-effect scatter.
+# fig-modality-amyloid-effect. Default role categories are priority-ordered GO-BP term-family
+# unions: complement/antigen, chemotaxis/phagocytosis, lipid/endolysosome/synapse, then broader
+# adhesion/ECM/motility buckets, with broad immune/inflammatory last. Explicit classified
+# fallbacks are retained, but uncategorized fallback buckets are omitted from the visible summary.
+# The phosphoproteomics panel is already parent-protein-collapsed upstream, so category scores
+# use the same averaged protein points displayed in the amyloid-effect scatter.
 .fig_fallback_role <- function(gene_symbol, label) {
   token <- .fig_gene_tokens(c(gene_symbol, label))
   if (!length(token)) token <- as.character(label)
@@ -934,7 +950,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same shared off-diagonal rule as fig-modality-amyloid-effect: features pass the stored |x-y| cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP role union with narrow process buckets before the broad immune/inflammatory residual bucket, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped three features per line",
+      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP term-family union, with complement/antigen and chemotaxis/phagocytosis separated before broader adhesion/ECM/motility and immune/inflammatory residual buckets; otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped three features per line",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
