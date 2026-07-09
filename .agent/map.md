@@ -60,7 +60,7 @@ Modality context:
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries the first-five-DAM-gene-clustered AOI design/DAM-gene track atlas through
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
-  The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 2.5`.
+  The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 3`.
   Figure 9 caps text labels at 24 per panel for readability only and draws all facets on one shared
   square coordinate range with a collected line legend for the dotted cutoff bands;
   the functional-category panel scores all same-cutoff selected features and displays categorized rows
