@@ -117,6 +117,8 @@ Modality context:
   `max(|x-y| q0.99, 24th-largest |x-y|)`, yielding <=24 displayed labels per modality unless exact ties;
   the functional-category panel scores the same selected off-diagonal features but displays only categorized
   role/fallback buckets, excluding predicted/unannotated + other-annotated no-role buckets.
+- Phosphoproteome native heatmap keeps the top mutant-tau amyloid phosphosite rows after excluding
+  parent gene `Plcb1`; the volcano is not filtered by this display-only exclusion.
 - Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
   figures are ledger history, not live report/path contracts.
 - Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality

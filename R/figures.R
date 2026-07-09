@@ -301,7 +301,8 @@ phospho_modality_descriptor <- function(phospho_de_24m,
                                         contrast = "nlgf_in_p301s",
                                         alpha = 0.10,
                                         n_label = 12L,
-                                        n_heatmap = 18L) {
+                                        n_heatmap = 18L,
+                                        heatmap_exclude_genes = "Plcb1") {
   stopifnot(is.list(phospho_de_24m), contrast %in% names(phospho_de_24m$top),
             is.matrix(phospho_de_24m$matrix), is.data.frame(phospho_de_24m$meta))
   tt <- phospho_de_24m$top[[contrast]]
@@ -310,6 +311,15 @@ phospho_modality_descriptor <- function(phospho_de_24m,
                                  alpha = alpha, n_label = n_label)
   ranked <- volcano[order(volcano$fdr, -volcano$rank_score, volcano$label,
                           volcano$feature, method = "radix"), , drop = FALSE]
+  heatmap_exclude_genes <- unique(as.character(heatmap_exclude_genes))
+  heatmap_exclude_genes <- heatmap_exclude_genes[!is.na(heatmap_exclude_genes) &
+                                                   nzchar(heatmap_exclude_genes)]
+  if (length(heatmap_exclude_genes)) {
+    .fig_require_cols(tt, c("feature", "gene"), "phospho top table")
+    ranked_gene <- as.character(tt$gene[match(ranked$feature, tt$feature)])
+    ranked <- ranked[is.na(ranked_gene) | !(ranked_gene %in% heatmap_exclude_genes), ,
+                     drop = FALSE]
+  }
   ranked <- ranked[ranked$feature %in% rownames(phospho_de_24m$matrix), , drop = FALSE]
   heat_features <- utils::head(ranked$feature, as.integer(n_heatmap))
   if (!length(heat_features)) stop("no phosphosite heatmap features overlap matrix", call. = FALSE)
@@ -324,6 +334,7 @@ phospho_modality_descriptor <- function(phospho_de_24m,
       n_features = nrow(phospho_de_24m$matrix),
       n_samples = ncol(phospho_de_24m$matrix),
       n_heatmap = length(heat_features),
+      heatmap_exclude_genes = heatmap_exclude_genes,
       display = "phosphosite volcano plus z-scored top-site abundance heatmap for the mutant-tau amyloid contrast"
     )
   )
