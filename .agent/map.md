@@ -66,7 +66,7 @@ Modality context:
   the functional-category panel scores all same-cutoff selected features and displays categorized rows
   with aggregate `|P301S - MAPTKI| >= 0.5`; role assignment is a priority-ordered GO
   term-family pass that separates complement/MHC, phagocytosis, and chemotaxis before broader
-  leukocyte-adhesion/matrix/motility and immune residual buckets, and each visible category label
+  cell-cell-adhesion/extracellular-matrix/motility and immune residual buckets, and each visible category label
   lists every retained scored feature.
   The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2

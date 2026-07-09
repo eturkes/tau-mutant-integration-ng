@@ -116,7 +116,7 @@ list(
   # Functional-category scores over off-diagonal genes/proteins from the
   # amyloid-effect scatter (phosphoproteomics scatter points are parent-protein aggregates; visible
   # summary keeps priority-ordered GO term-family role/fallback buckets, separates
-  # complement/MHC, phagocytosis, and chemotaxis before broader leukocyte-adhesion/matrix/motility
+  # complement/MHC, phagocytosis, and chemotaxis before broader cell-cell-adhesion/extracellular-matrix/motility
   # and immune residual buckets, drops predicted/unannotated + other-annotated no-role buckets,
   # and lists every retained scored feature in each visible category label).
   # Carries the retained compact GeoMx sample heatmap

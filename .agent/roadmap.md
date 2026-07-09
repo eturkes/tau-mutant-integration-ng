@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 accepted label polish DONE (ad hoc user review): visible buckets now use
+  `Cell-Cell Adhesion` for the leukocyte adhesion GO family and `Extracellular Matrix` for the
+  matrix/adhesion GO family.
 - 2026-07-09 Figure 10 label revision DONE (ad hoc user review): replaced disliked compact labels
   with literal shorter buckets (`Leukocyte Adhesion`, `Matrix`) and split `Chemotaxis / Phagocytosis`
   into `Phagocytosis` for `Camk1d` and `Chemotaxis` for `Mpp1`.

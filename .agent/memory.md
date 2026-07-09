@@ -124,7 +124,7 @@ Modality context:
   scores all shared-cutoff selected features and displays priority-ordered GO term-family
   role/fallback buckets with aggregate `|P301S - MAPTKI| >= 0.5`; complement/MHC, phagocytosis,
   and chemotaxis are separate buckets, lipid/endolysosome/synaptic buckets precede broader
-  leukocyte-adhesion, matrix, motility/cytoskeleton, and broad immune/inflammatory residual buckets,
+  cell-cell-adhesion, extracellular-matrix, motility/cytoskeleton, and broad immune/inflammatory residual buckets,
   predicted/unannotated + other-annotated no-role buckets
   are excluded, and each visible category label lists every retained scored feature in that category.
   Current visible Figure 10 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained

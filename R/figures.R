@@ -621,8 +621,10 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   phagocytosis <- lab == "Phagocytosis"
   chemotaxis <- lab == "Chemotaxis"
   leukocyte_adhesion <- lab == "Leukocyte Adhesion"
+  lab[leukocyte_adhesion] <- "Cell-Cell Adhesion"
   leukocyte_migration <- lab == "Leukocyte Migration"
   matrix <- lab == "Matrix"
+  lab[matrix] <- "Extracellular Matrix"
   immune_inflammatory <- grepl("^Immune\\s*/\\s*Inflammatory\\b", lab)
   lab[immune_inflammatory] <- "Immune / Inflammatory"
   keep_slash <- complement | phagocytosis | chemotaxis | leukocyte_adhesion |
@@ -742,7 +744,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 # Functional-category score summary for shared-cutoff off-diagonal features in
 # fig-modality-amyloid-effect. Default role categories are priority-ordered GO-BP term-family
 # unions: complement/MHC, phagocytosis, chemotaxis, lipid/endolysosome/synapse, then broader
-# leukocyte-adhesion/matrix/motility buckets, with broad immune/inflammatory last. Explicit classified
+# cell-cell-adhesion/extracellular-matrix/motility buckets, with broad immune/inflammatory last. Explicit classified
 # fallbacks are retained, but uncategorized fallback buckets are omitted from the visible summary.
 # The phosphoproteomics panel is already parent-protein-collapsed upstream, so category scores
 # use the same averaged protein points displayed in the amyloid-effect scatter.
@@ -955,7 +957,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same shared off-diagonal rule as fig-modality-amyloid-effect: features pass the stored |x-y| cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP term-family union, with complement/MHC, phagocytosis, and chemotaxis separated before broader leukocyte-adhesion/matrix/motility and immune/inflammatory residual buckets; otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped into at most two lines",
+      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP term-family union, with complement/MHC, phagocytosis, and chemotaxis separated before broader cell-cell-adhesion/extracellular-matrix/motility and immune/inflammatory residual buckets; otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped into at most two lines",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
