@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 label compaction DONE (ad hoc user review): shortened long visible
+  GO term-family labels (`Complement / MHC`, `Leukocyte Trafficking`, `ECM / Adhesion`) and
+  capped each retained feature list at two lines by increasing items per line when needed.
 - 2026-07-09 Figure 10 role-label hardening DONE (ad hoc user review): split
   phagocytosis/chemotaxis out of the complement/antigen bucket and replaced the vague cell-adhesion
   row with clearer GO term-family buckets (`Leukocyte Adhesion / Migration`, `ECM / Substrate

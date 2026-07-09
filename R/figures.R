@@ -617,13 +617,13 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 .fig_functional_group_label <- function(x) {
   lab <- as.character(x)
   complement <- grepl("^Complement\\s*/\\s*Antigen\\s+Presentation\\b", lab)
-  lab[complement] <- "Complement / Antigen Presentation"
+  lab[complement] <- "Complement / MHC"
   chemotaxis <- grepl("^Chemotaxis\\s*/\\s*Phagocytosis\\b", lab)
   lab[chemotaxis] <- "Chemotaxis / Phagocytosis"
   leukocyte_adhesion <- grepl("^Leukocyte\\s+Adhesion\\s*/\\s*Migration\\b", lab)
-  lab[leukocyte_adhesion] <- "Leukocyte Adhesion / Migration"
+  lab[leukocyte_adhesion] <- "Leukocyte Trafficking"
   ecm <- grepl("^Ecm\\s*/\\s*Substrate\\s+Adhesion\\b", lab)
-  lab[ecm] <- "ECM / Substrate Adhesion"
+  lab[ecm] <- "ECM / Adhesion"
   immune_inflammatory <- grepl("^Immune\\s*/\\s*Inflammatory\\b", lab)
   lab[immune_inflammatory] <- "Immune / Inflammatory"
   keep_slash <- complement | chemotaxis | leukocyte_adhesion | ecm | immune_inflammatory
@@ -754,11 +754,13 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   .fig_other_annotated_role
 }
 
-.fig_wrapped_feature_list <- function(x, per_line = 3L) {
-  stopifnot(is.numeric(per_line), length(per_line) == 1L, per_line >= 1L)
+.fig_wrapped_feature_list <- function(x, per_line = 3L, max_lines = 2L) {
+  stopifnot(is.numeric(per_line), length(per_line) == 1L, per_line >= 1L,
+            is.numeric(max_lines), length(max_lines) == 1L, max_lines >= 1L)
   x <- unique(trimws(as.character(x)))
   x <- x[!is.na(x) & x != ""]
   if (!length(x)) return("")
+  per_line <- max(as.integer(per_line), ceiling(length(x) / as.integer(max_lines)))
   line <- ceiling(seq_along(x) / as.integer(per_line))
   paste(vapply(split(x, line), paste, character(1), collapse = ", "),
         collapse = "\n")
@@ -950,7 +952,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same shared off-diagonal rule as fig-modality-amyloid-effect: features pass the stored |x-y| cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP term-family union, with complement/antigen and chemotaxis/phagocytosis separated before broader adhesion/ECM/motility and immune/inflammatory residual buckets; otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped three features per line",
+      category_assignment = "one primary role per scored item: first matching priority-ordered GO-BP term-family union, with complement/antigen and chemotaxis/phagocytosis separated before broader adhesion/ECM/motility and immune/inflammatory residual buckets; otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped into at most two lines",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
