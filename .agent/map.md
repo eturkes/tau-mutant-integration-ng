@@ -132,7 +132,7 @@ Report:
   genotype-faceted subpopulation UMAP, replicate-unit subpopulation composition.
 - `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `_modality.qmd`: GeoMx AOI metadata-track diagnostic,
-  combined proteome PCA / phosphoproteome heatmap descriptive figure,
+  vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
 
 Rendered output = 9 numbered figures plus compact per-figure folded code controls/content in

@@ -2159,7 +2159,21 @@ bulk_modality_context_plot <- function(proteome, phospho,
             is.list(phospho), is.data.frame(phospho$heatmap))
   pca <- proteome_pca_plot(proteome, title = proteome_title)
   heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = phospho_title)
-  patchwork::wrap_plots(list(pca, heatmap), ncol = 2, widths = c(0.78, 1.22))
+  widths <- c(pca = 0.78, heatmap = 1.22)
+  total_width <- sum(widths)
+  top <- patchwork::wrap_plots(
+    list(patchwork::plot_spacer(), pca, patchwork::plot_spacer()),
+    ncol = 3,
+    widths = c((total_width - widths[["pca"]]) / 2, widths[["pca"]],
+               (total_width - widths[["pca"]]) / 2)
+  )
+  bottom <- patchwork::wrap_plots(
+    list(patchwork::plot_spacer(), heatmap, patchwork::plot_spacer()),
+    ncol = 3,
+    widths = c((total_width - widths[["heatmap"]]) / 2, widths[["heatmap"]],
+               (total_width - widths[["heatmap"]]) / 2)
+  )
+  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = c(1, 1))
 }
 
 # Cross-modality support matrix ------------------------------------------------------------

@@ -200,6 +200,10 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 7 vertical stack DONE (ad hoc user review): changed the bulk context plate
+  from horizontal PCA/heatmap panels to a centered vertical stack. The figure device is now
+  15.6x19.6 with row spacers, preserving the old child plot allocations: PCA 6.084x9.8,
+  phosphosite heatmap 9.516x9.8.
 - 2026-07-09 Figure 2 vertical stack DONE (ad hoc user review): changed the two microglia UMAP
   subplots from a horizontal patchwork to a vertical A/B stack and resized the figure device from
   12.4x4.4 to 6.2x8.8 so each child plot keeps its prior subplot footprint.

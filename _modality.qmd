@@ -35,8 +35,8 @@ geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 ```{r}
 #| label: plot-modality-bulk-context
 #| fig-width: 15.6
-#| fig-height: 9.8
-#| fig-alt: "Bulk modality context figure combining a genotype-coloured proteome sample PCA with a genotype-grouped heatmap of top phosphosite abundances across runs."
+#| fig-height: 19.6
+#| fig-alt: "Bulk modality context figure vertically stacking a genotype-coloured proteome sample PCA above a genotype-grouped heatmap of top phosphosite abundances across runs."
 bulk_modality_context_plot(msf$descriptive$Proteome, msf$descriptive$Phospho)
 ```
 
