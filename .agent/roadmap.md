@@ -1075,6 +1075,10 @@ user before writing the plan.
   `Figure 10` headings across the 10 qmd figure chunks, kept `toc: false`, and shrank the native
   Quarto `details.code-fold > summary` control plus expanded folded-code text in `theme.scss`.
   Report surface remains title-free, caption-free, body-prose-free, and global-code-menu-free.
+- 2026-07-09 Figure 9/10 off-diagonal tightening DONE (ad hoc user task): tightened the four-method
+  amyloid-response scatter label rule from within-method `max(q0.99, top-24)` to `max(q0.99, top-8)`.
+  The functional-group score panel still scores the exact Figure 9 selected features, now with 10 displayed
+  categorized rows and no rows with `|P301S - MAPTKI| < 0.5` under the live sensitivity check.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

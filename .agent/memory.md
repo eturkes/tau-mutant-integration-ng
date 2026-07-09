@@ -117,7 +117,7 @@ Modality context:
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
 - Four-method amyloid-response scatter labels use a hybrid within-method off-diagonal threshold:
-  `max(|x-y| q0.99, 24th-largest |x-y|)`, yielding <=24 displayed labels per modality unless exact ties;
+  `max(|x-y| q0.99, 8th-largest |x-y|)`, yielding <=8 displayed labels per modality unless exact ties;
   the functional-category panel scores the same selected off-diagonal features but displays only categorized
   role/fallback buckets, excluding predicted/unannotated + other-annotated no-role buckets.
 - Phosphoproteome native heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
