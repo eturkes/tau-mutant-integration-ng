@@ -311,7 +311,7 @@ phospho_modality_descriptor <- function(phospho_de_24m,
                                         alpha = 0.10,
                                         n_label = 12L,
                                         n_heatmap = 18L,
-                                        heatmap_exclude_genes = "Plcb1") {
+                                        heatmap_exclude_genes = c("Plcb1", "Arhgef7")) {
   stopifnot(is.list(phospho_de_24m), contrast %in% names(phospho_de_24m$top),
             is.matrix(phospho_de_24m$matrix), is.data.frame(phospho_de_24m$meta))
   tt <- phospho_de_24m$top[[contrast]]
