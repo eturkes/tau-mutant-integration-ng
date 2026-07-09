@@ -296,6 +296,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   )
   point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
   bg_fill <- figure7_score_fill_colours
+  point_outline <- "#262B2F"
   visual_scale <- 1.08
   base_size <- tau_report_base_size * visual_scale
   axis_y_size <- tau_report_axis_size * visual_scale
@@ -309,15 +310,20 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       linewidth = 0.85, lineend = "round") +
     ggplot2::geom_point(
       data = point_df,
+      ggplot2::aes(x = score, size = n_feature),
+      shape = 21, colour = "white", fill = "white", stroke = 1.85,
+      show.legend = FALSE) +
+    ggplot2::geom_point(
+      data = point_df,
       ggplot2::aes(x = score, fill = background, size = n_feature),
-      shape = 21, colour = "#2B2A27", stroke = 0.32) +
+      shape = 21, colour = point_outline, stroke = 0.82, alpha = 0.98) +
     scale_colour_rwb(midpoint = 0, limits = c(-3, 3), breaks = delta_breaks,
                      labels = function(x) sprintf("%d", x),
                      oob = scales::squish, name = "log2FC difference") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "genotype") +
-    ggplot2::scale_size_continuous(range = c(2.0, 7.2), breaks = size_breaks,
+    ggplot2::scale_size_continuous(range = c(6.2, 11.8), breaks = size_breaks,
                                    name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
@@ -332,8 +338,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                                           )
                                         )),
       fill = ggplot2::guide_legend(order = 2,
-                                   override.aes = list(size = 4.0, shape = 21,
-                                                       colour = "#2B2A27")),
+                                   override.aes = list(size = 6.4, shape = 21,
+                                                       colour = point_outline)),
       size = ggplot2::guide_legend(order = 3)
     ) +
     ggplot2::labs(x = NULL, y = NULL, title = title) +
