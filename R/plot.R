@@ -307,7 +307,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       ggplot2::aes(x = score, fill = background, size = n_feature),
       shape = 21, colour = "#2B2A27", stroke = 0.25) +
     scale_colour_rwb(midpoint = 0, limits = c(-3, 3), breaks = delta_breaks,
-                     labels = function(x) format(round(x, 1), trim = TRUE),
+                     labels = function(x) sprintf("%.1f", x),
                      oob = scales::squish, name = "log2FC difference") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
