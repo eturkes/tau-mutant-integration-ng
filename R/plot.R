@@ -2113,7 +2113,8 @@ proteome_pca_plot <- function(proteome, title = "Bulk proteome PCA") {
       title = title) +
     theme_tau() +
     ggplot2::theme(legend.position = "bottom",
-                   legend.box = "vertical")
+                   legend.box = "vertical",
+                   aspect.ratio = 1)
 }
 
 phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundance") {
@@ -2160,6 +2161,7 @@ bulk_modality_context_plot <- function(proteome, phospho,
   pca <- proteome_pca_plot(proteome, title = proteome_title)
   heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = phospho_title)
   widths <- c(pca = 0.78, heatmap = 1.22)
+  heights <- c(pca = 6.2, heatmap = 9.8)
   total_width <- sum(widths)
   top <- patchwork::wrap_plots(
     list(patchwork::plot_spacer(), pca, patchwork::plot_spacer()),
@@ -2173,7 +2175,7 @@ bulk_modality_context_plot <- function(proteome, phospho,
     widths = c((total_width - widths[["heatmap"]]) / 2, widths[["heatmap"]],
                (total_width - widths[["heatmap"]]) / 2)
   )
-  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = c(1, 1))
+  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = heights)
 }
 
 # Cross-modality support matrix ------------------------------------------------------------
