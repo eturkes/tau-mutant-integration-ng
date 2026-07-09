@@ -320,8 +320,9 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
                                         barwidth = grid::unit(8.5, "lines"),
                                         theme = ggplot2::theme(
+                                          legend.spacing.x = grid::unit(0.65, "lines"),
                                           legend.title = ggplot2::element_text(
-                                            margin = ggplot2::margin(r = 10)
+                                            margin = ggplot2::margin(r = 30)
                                           )
                                         )),
       fill = ggplot2::guide_legend(order = 2,
