@@ -62,7 +62,12 @@ panels <- lapply(msf$order, function(m) {
                                n_label = label_cap, xy_lim = scatter_lim)
 })
 wrap_plots(panels, ncol = 2, guides = "collect") &
-  ggplot2::theme(legend.position = "bottom")
+  ggplot2::theme(
+    legend.position = "bottom",
+    legend.text = ggplot2::element_text(size = tau_report_base_size),
+    legend.key.width = grid::unit(1.5, "lines"),
+    legend.key.height = grid::unit(1.0, "lines")
+  )
 ```
 
 <h2 class="figure-heading">Figure 10</h2>

@@ -258,7 +258,8 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
     ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
     ggplot2::scale_colour_manual(
       values = c(cutoff = "#B7AA97"),
-      breaks = "cutoff", labels = cutoff_label, name = NULL) +
+      breaks = "cutoff", labels = cutoff_label, name = NULL,
+      guide = ggplot2::guide_legend(override.aes = list(linewidth = 0.9))) +
     ggplot2::scale_linetype_manual(
       values = c(cutoff = "dotted"),
       breaks = "cutoff", labels = cutoff_label, name = NULL) +

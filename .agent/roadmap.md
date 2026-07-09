@@ -1094,6 +1094,8 @@ user before writing the plan.
   cutoff bands sit the same visual distance from the center identity diagonal in every modality.
 - 2026-07-09 Figure 9 threshold legend DONE (ad hoc user task): added a collected line legend for
   the dotted off-diagonal cutoff bands, labelled `threshold: |x-y| >= 2 log2FC`.
+- 2026-07-09 Figure 9 threshold legend sizing DONE (ad hoc user task): enlarged the collected
+  threshold legend text/key to match the report axis-label scale.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
