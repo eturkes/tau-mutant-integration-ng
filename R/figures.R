@@ -261,6 +261,15 @@ trajectory_figure_data <- function(trajectory_report) {
   long
 }
 
+.fig_matrix_profile_key <- function(mat) {
+  mat <- as.matrix(mat)
+  stopifnot(is.numeric(mat))
+  vapply(seq_len(nrow(mat)), function(i) {
+    x <- mat[i, ]
+    paste(ifelse(is.na(x), "<NA>", sprintf("%.17g", x)), collapse = "\r")
+  }, character(1))
+}
+
 .fig_proteome_labels <- function(tt) {
   .fig_first_nonblank(if ("gene_first" %in% names(tt)) tt$gene_first else "",
                       if ("gene_symbols" %in% names(tt)) tt$gene_symbols else "",
@@ -321,6 +330,14 @@ phospho_modality_descriptor <- function(phospho_de_24m,
                      drop = FALSE]
   }
   ranked <- ranked[ranked$feature %in% rownames(phospho_de_24m$matrix), , drop = FALSE]
+  n_heatmap_candidates <- nrow(ranked)
+  profile_key <- .fig_matrix_profile_key(phospho_de_24m$matrix[ranked$feature, , drop = FALSE])
+  profile_n <- tabulate(match(profile_key, unique(profile_key)), nbins = length(unique(profile_key)))
+  profile_n <- profile_n[match(profile_key, unique(profile_key))]
+  ranked$label <- ifelse(profile_n > 1L,
+                         sprintf("%s (+%d)", ranked$label, profile_n - 1L),
+                         ranked$label)
+  ranked <- ranked[!duplicated(profile_key), , drop = FALSE]
   heat_features <- utils::head(ranked$feature, as.integer(n_heatmap))
   if (!length(heat_features)) stop("no phosphosite heatmap features overlap matrix", call. = FALSE)
   heat_labels <- ranked$label[match(heat_features, ranked$feature)]
@@ -335,6 +352,8 @@ phospho_modality_descriptor <- function(phospho_de_24m,
       n_samples = ncol(phospho_de_24m$matrix),
       n_heatmap = length(heat_features),
       heatmap_exclude_genes = heatmap_exclude_genes,
+      n_heatmap_duplicate_candidates = n_heatmap_candidates - nrow(ranked),
+      heatmap_deduplicate = "exact log2 median-normalised input profiles; first ranked representative retained",
       display = "phosphosite volcano plus z-scored top-site abundance heatmap for the mutant-tau amyloid contrast"
     )
   )

@@ -62,7 +62,8 @@ Modality context:
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
   The amyloid-response scatter's off-diagonal labels use a hybrid per-modality cutoff:
   `max(|x-y| q0.99, 24th-largest |x-y|)`; the functional-category panel scores the same selected features.
-  The phosphoproteome native heatmap excludes parent gene `Plcb1` from row selection while leaving
+  The phosphoproteome native heatmap excludes parent gene `Plcb1`, collapses exact duplicate log2
+  median-normalized profiles to the first ranked representative with `(+n)` label suffixes, and leaves
   the paired volcano unfiltered.
 
 Report:
