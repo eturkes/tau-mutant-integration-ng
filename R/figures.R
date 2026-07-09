@@ -733,11 +733,14 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   .fig_other_annotated_role
 }
 
-.fig_wrapped_feature_list <- function(x, width = 54L) {
+.fig_wrapped_feature_list <- function(x, per_line = 3L) {
+  stopifnot(is.numeric(per_line), length(per_line) == 1L, per_line >= 1L)
   x <- unique(trimws(as.character(x)))
   x <- x[!is.na(x) & x != ""]
   if (!length(x)) return("")
-  paste(strwrap(paste(x, collapse = ", "), width = width), collapse = "\n")
+  line <- ceiling(seq_along(x) / as.integer(per_line))
+  paste(vapply(split(x, line), paste, character(1), collapse = ", "),
+        collapse = "\n")
 }
 
 .fig_primary_role <- function(gene_symbol, label, group_sets, group_labels, fallback_priority) {
@@ -832,6 +835,9 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       score_maptki <- mean(feature_hits$y)
       score_p301s <- mean(feature_hits$x)
       delta <- score_p301s - score_maptki
+      feature_line_n <- if (identical(m, "Proteome") &&
+                              identical(as.character(feature_hits$group_label[[1]]),
+                                        "Microglial Activation")) 4L else 3L
       data.frame(
         modality = m,
         group = grp,
@@ -851,7 +857,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
         direction = if (delta >= 0) "P301S higher" else "MAPTKI higher",
         top_genes = paste(unique(feature_hits$gene_symbol), collapse = ", "),
         top_features = paste(unique(feature_hits$score_label), collapse = ", "),
-        top_features_plot = .fig_wrapped_feature_list(feature_hits$score_label),
+        top_features_plot = .fig_wrapped_feature_list(feature_hits$score_label,
+                                                      per_line = feature_line_n),
         stringsAsFactors = FALSE
       )
     }))
@@ -925,7 +932,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
       selection = "same shared off-diagonal rule as fig-modality-amyloid-effect: features pass the stored |x-y| cutoff; duplicate display labels collapsed after thresholding",
-      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature",
+      category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets; each visible category label lists every retained scored feature, wrapped three features per line except the Proteome Microglial Activation row, which keeps four per line",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(
         vapply(order, function(m) length(unique(selected$score_feature[as.character(selected$modality) == m])),
