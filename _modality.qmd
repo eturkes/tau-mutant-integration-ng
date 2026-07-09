@@ -80,7 +80,7 @@ wrap_plots(panels, ncol = 2) +
 
 ::: {.figure-wide-inline}
 
-<h2 class="figure-heading figure-heading-centered">Figure 10</h2>
+<h2 class="figure-heading">Figure 10</h2>
 
 ```{r}
 #| label: plot-modality-functional-scores
