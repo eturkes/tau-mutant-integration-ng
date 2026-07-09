@@ -123,7 +123,7 @@ ggplot(mf_unit, aes(batch, proportion, fill = subpopulation)) +
   scale_fill_subpopulation(breaks = present_sub, name = "subpopulation") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
                      expand = expansion(mult = c(0, 0.02))) +
-  labs(x = "batch", y = "unit proportion") +
+  labs(x = NULL, y = "proportion of nuclei") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         panel.grid.major.x = element_blank())
 ```
