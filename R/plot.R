@@ -278,6 +278,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   facet_ncol <- max(1L, length(modality_plot_levels))
   lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
+  lim <- lim * 1.12
   delta_breaks <- -3:3
   n_min <- min(x$n_feature)
   n_max <- max(x$n_feature)
@@ -325,7 +326,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                                name = "genotype") +
     ggplot2::scale_size_continuous(range = c(6.2, 18.5), breaks = size_breaks,
                                    name = "scored items") +
-    ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
+    ggplot2::scale_x_continuous(limits = c(-lim, lim), breaks = scales::breaks_width(2),
+                                oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
     ggplot2::facet_wrap(ggplot2::vars(modality_plot), ncol = facet_ncol, scales = "free_y") +
     ggplot2::guides(

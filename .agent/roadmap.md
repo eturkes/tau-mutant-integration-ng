@@ -200,6 +200,8 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 right-edge clipping fix DONE (ad hoc user review): padded the
+  functional-group x-scale so the maximum-score endpoint no longer sits on the panel boundary.
 - 2026-07-09 Figure 10 point-size expansion DONE (ad hoc user review): kept the
   existing minimum functional-group point size and raised only the maximum size so
   larger scored-item buckets read more prominently.
