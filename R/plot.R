@@ -2107,7 +2107,8 @@ proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
     ggrepel::geom_text_repel(ggplot2::aes(label = run_index), size = tau_report_label_size,
                              max.overlaps = Inf, seed = 42L, min.segment.length = 0,
                              segment.colour = "grey65", box.padding = 0.12,
-                             point.padding = 0.08, max.iter = 20000L, max.time = 3) +
+                             point.padding = 0.08, max.iter = 20000L, max.time = 3,
+                             show.legend = FALSE) +
     scale_colour_genotype(name = "genotype") +
     ggplot2::guides(colour = ggplot2::guide_legend(nrow = 2, byrow = TRUE)) +
     ggplot2::labs(

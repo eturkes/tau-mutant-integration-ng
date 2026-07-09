@@ -136,6 +136,9 @@ Report:
   title stay absent.
 - qmd chunks set `options(warn=2)`. Any warning during render is a failure.
 - Compact report targets must keep qmd renders off the 612MB annotated Seurat object.
+- Legend hygiene: `geom_text` / `ggrepel` layers that inherit mapped aesthetics must use
+  `show.legend = FALSE` unless text glyphs are intentionally part of the key; otherwise ggplot
+  can add the default `a` text glyph beside point keys.
 
 ## Environment And Gate
 
