@@ -13,7 +13,7 @@ Fresh clone:
 2. `scripts/install-rv.sh` - project R package manager.
 3. `scripts/install-quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - optional sync, force report render, target warning/error scan, render-log scan.
+5. `scripts/check.sh` - fast force-render of the final HTML target only.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -118,7 +118,8 @@ Report:
   `geomx_sample_heatmap_plot()`, `proteome_modality_plot()`, and `phospho_modality_plot()`.
 
 `R/report.R`
-- Quarto render wrapper plus embedded-lightbox repair for single-file offline HTML.
+- Quarto render wrapper, embedded-lightbox repair, and report-dir pruning so the final HTML is the only
+  user-facing output.
 
 ## Report
 
@@ -132,7 +133,8 @@ Report:
   four-method amyloid response scatter, functional-category score panel.
 
 Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
-`report/tau-mutant-integration.html`; the browser/tab title is `Tau Mutant Integration`.
+`report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.
+The browser/tab title is `Tau Mutant Integration`.
 Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite values so report
 warnings are treated as real failures.
 

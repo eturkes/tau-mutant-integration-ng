@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 fast-iteration cut: `scripts/check.sh` now invalidates/builds only `report`
+  (no env sync, no all-target metadata/log scan), and `render_report()` resets/prunes `report/`
+  so the sole user-facing output is `report/tau-mutant-integration.html`.
 - 2026-06-29 archived v1 -> branch `archive`; opened fresh orphan `main`; reset
   `.agent` docs + initial agent config; reframed history as `archive_digest.md`; drafted
   this streamlined phase plan.

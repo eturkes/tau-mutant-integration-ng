@@ -1,5 +1,35 @@
-# Report render helpers. Keep generated-HTML repair here so the targets `report`
-# file is exactly the artifact the user opens.
+# Report render helpers. The `report` target leaves one user-facing artifact:
+# `report/tau-mutant-integration.html`.
+
+reset_report_dir <- function(output_dir) {
+  stopifnot(is.character(output_dir), length(output_dir) == 1L)
+  if (dir.exists(output_dir)) {
+    unlink(list.files(output_dir, all.files = TRUE, no.. = TRUE, full.names = TRUE),
+           recursive = TRUE, force = TRUE)
+  } else {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  invisible(output_dir)
+}
+
+prune_report_dir <- function(html_file) {
+  stopifnot(is.character(html_file), length(html_file) == 1L, file.exists(html_file))
+  html <- paste(readLines(html_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  local_resource_pattern <- '(?:href|src)="[^"]*_files/[^"]+"'
+  local_refs <- gregexpr(local_resource_pattern, html, perl = TRUE)[[1]]
+  n_local_refs <- if (length(local_refs) == 1L && local_refs[[1]] == -1L) 0L else length(local_refs)
+  if (n_local_refs > 0L) {
+    stop("report HTML still references ", n_local_refs,
+         " local resource(s); refusing to prune sibling files", call. = FALSE)
+  }
+
+  entries <- list.files(dirname(html_file), all.files = TRUE, no.. = TRUE, full.names = TRUE)
+  extras <- entries[basename(entries) != basename(html_file)]
+  if (length(extras) > 0L) {
+    unlink(extras, recursive = TRUE, force = TRUE)
+  }
+  invisible(html_file)
+}
 
 repair_embedded_lightbox <- function(html_file) {
   stopifnot(is.character(html_file), length(html_file) == 1L, file.exists(html_file))
@@ -67,8 +97,10 @@ render_report <- function(report_sources,
   stopifnot(all(file.exists(c(report_sources, report_extra_files))))
   invisible(list(microglia_report, microglia_figures, trajectory_figures,
                  modality_scatter_figures))
+  html_file <- file.path("report", "tau-mutant-integration.html")
+  reset_report_dir(dirname(html_file))
   quarto::quarto_render(
-    input = ".",
+    input = "index.qmd",
     execute = TRUE,
     execute_dir = getwd(),
     execute_daemon = 0,
@@ -77,11 +109,7 @@ render_report <- function(report_sources,
     quiet = FALSE,
     as_job = FALSE
   )
-  html_file <- file.path("report", "tau-mutant-integration.html")
   repair_embedded_lightbox(html_file)
-  legacy_html <- file.path("report", "index.html")
-  if (file.exists(legacy_html)) {
-    unlink(legacy_html)
-  }
+  prune_report_dir(html_file)
   html_file
 }

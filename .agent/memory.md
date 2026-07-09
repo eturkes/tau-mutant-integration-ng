@@ -17,7 +17,8 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
 Live report scope (2026-07-09): 10 visible figures, 3 included qmd fragments, expected 29 targets.
-Rendered HTML artifact = `report/tau-mutant-integration.html`; browser/tab title =
+Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
+render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
 `Figure 10`) + figures + per-figure folded code only; no visible document title, TOC,
 captions, body prose, tables, or global code-tools menu. Folded-code summaries and expanded
@@ -158,12 +159,11 @@ Fresh bootstrap:
 5. `scripts/check.sh`
 
 `scripts/check.sh`:
-- runs `rv sync` unless `CHECK_SKIP_SYNC=1`
-- invalidates and rebuilds `report`
-- scans `targets::tar_meta()` warnings/errors/messages
-- scans render log for warning/error anchors
+- invalidates and rebuilds only the `report` target
+- does not sync the environment or scan all target metadata/logs
+- relies on qmd `options(warn=2)`, target failures, and `render_report()`'s self-contained/pruned HTML assertion
 
-Use `CHECK_SKIP_SYNC=1 scripts/check.sh` after a known-good sync for faster local iteration.
+Run `rv sync` manually after dependency changes; use `scripts/check.sh` for fast local report iteration.
 
 ## Maintenance
 
