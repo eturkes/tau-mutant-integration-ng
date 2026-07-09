@@ -117,10 +117,10 @@ Modality context:
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
 - Four-method amyloid-response scatter uses one shared off-diagonal feature cutoff:
-  `|x-y| >= 2.0`, a round cutoff above the live GeoMx maximum. Figure 9 caps text labels
+  `|x-y| >= 1.5`. Figure 9 caps text labels
   at 24 per panel for readability only and draws all four facets on one shared square coordinate
-  range so the dotted cutoff bands have the same visual distance from the identity line; its line
-  legend labels the dotted cutoff bands as `threshold: |x-y| >= 2 log2FC`. Figure 10
+  range so the dotted cutoff bands have the same visual distance from the identity line; its caption
+  labels the dotted cutoff bands from the stored cutoff. Figure 10
   scores all shared-cutoff selected features and displays categorized role/fallback buckets with
   aggregate `|P301S - MAPTKI| >= 0.5`, excluding predicted/unannotated + other-annotated no-role buckets.
   Current visible Figure 10 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
