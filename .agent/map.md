@@ -60,10 +60,10 @@ Modality context:
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries the first-five-DAM-gene-clustered AOI design/DAM-gene track atlas through
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
-  The amyloid-response scatter's off-diagonal labels use a hybrid per-modality cutoff:
-  `max(|x-y| q0.99, Nth-largest |x-y|)` with label budgets `snRNAseq=16`, `GeoMx=4`,
-  `Proteome=24`, `Phospho=24`; the functional-category panel scores the same selected features
-  and displays categorized rows with aggregate `|P301S - MAPTKI| >= 0.5`.
+  The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 2.0`.
+  Figure 9 caps text labels at 24 per panel for readability only; the functional-category panel
+  scores all same-cutoff selected features and displays categorized rows with aggregate
+  `|P301S - MAPTKI| >= 0.5`.
   The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
   median-normalized profiles to the first ranked representative without label suffixes, and leaves the

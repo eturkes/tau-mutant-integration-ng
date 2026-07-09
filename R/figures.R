@@ -365,7 +365,7 @@ phospho_modality_descriptor <- function(phospho_de_24m,
 }
 
 # Per-modality amyloid-response logFC pairs for fig-modality-amyloid-effect (one scatter per
-# method), plus compact functional-category scores for empirical off-diagonal features. y = logFC of
+# method), plus compact functional-category scores for shared-cutoff off-diagonal features. y = logFC of
 # `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI background), x = logFC of
 # `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Both per-contrast
 # topTables come from ONE fit per modality (identical feature rows), aligned by the modality's
@@ -379,20 +379,21 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          y_contrast = "nlgf_in_maptki",
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
-                                         offdiag_tail_quantile = 0.99,
-                                         offdiag_max_labels = c(snRNAseq = 16L, GeoMx = 4L,
-                                                               Proteome = 24L, Phospho = 24L),
+                                         offdiag_cutoff = 2,
+                                         scatter_label_cap = 24L,
                                          group_min_genes = 1L,
                                          group_max_groups = 10L,
                                          group_min_abs_delta = 0.5) {
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
             is.list(proteome_de_24m), is.list(phospho_de_24m),
-            is.numeric(offdiag_tail_quantile), length(offdiag_tail_quantile) == 1L,
-            offdiag_tail_quantile > 0, offdiag_tail_quantile < 1,
-            is.numeric(offdiag_max_labels), length(offdiag_max_labels) >= 1L,
-            all(is.finite(offdiag_max_labels)), all(offdiag_max_labels >= 1),
+            is.numeric(offdiag_cutoff), length(offdiag_cutoff) == 1L,
+            is.finite(offdiag_cutoff), offdiag_cutoff > 0,
+            is.numeric(scatter_label_cap), length(scatter_label_cap) == 1L,
+            is.finite(scatter_label_cap), scatter_label_cap >= 1,
             is.numeric(group_min_abs_delta), length(group_min_abs_delta) == 1L,
             is.finite(group_min_abs_delta), group_min_abs_delta >= 0)
+  offdiag_cutoff <- as.numeric(offdiag_cutoff)
+  scatter_label_cap <- as.integer(scatter_label_cap)
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -523,34 +524,31 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                                phospho_gene, "phospho")))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
-  offdiag_label_budget <- if (length(offdiag_max_labels) == 1L) {
-    stats::setNames(rep(as.integer(offdiag_max_labels), length(order)), order)
-  } else {
-    stopifnot(!is.null(names(offdiag_max_labels)), all(order %in% names(offdiag_max_labels)))
-    stats::setNames(as.integer(offdiag_max_labels[order]), order)
-  }
-  offdiag_thresholds <- modality_scatter_panel_thresholds(
-    panels, order,
-    tail_quantile = offdiag_tail_quantile,
-    max_labels = offdiag_label_budget
-  )
-  offdiag_cutoff <- stats::setNames(offdiag_thresholds$cutoff, offdiag_thresholds$modality)
-  offdiag_cutoff_source <- stats::setNames(sprintf(
-    "within-method |x-y| max(q%.3f, top-%d label budget)",
-    offdiag_tail_quantile, offdiag_label_budget
-  ), order)
+  offdiag_cutoff_by_modality <- stats::setNames(rep(offdiag_cutoff, length(order)), order)
+  offdiag_cutoff_source <- sprintf("shared |x-y| >= %.1f", offdiag_cutoff)
+  offdiag_thresholds <- .fig_bind(lapply(order, function(m) {
+    d <- panels[[m]]$data
+    dist <- abs(d$y - d$x)
+    dist <- dist[is.finite(dist) & dist > 0]
+    data.frame(
+      modality = m,
+      cutoff = offdiag_cutoff,
+      max_distance = if (length(dist)) max(dist) else NA_real_,
+      n_at_cutoff = sum(dist >= offdiag_cutoff),
+      n_features = length(dist),
+      stringsAsFactors = FALSE
+    )
+  }))
   for (m in order) {
     d <- panels[[m]]$data
-    attr(d, "offdiag_cutoff") <- unname(offdiag_cutoff[[m]])
-    attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source[[m]]
-    attr(d, "offdiag_tail_quantile") <- offdiag_tail_quantile
-    attr(d, "offdiag_max_labels") <- offdiag_label_budget[[m]]
+    attr(d, "offdiag_cutoff") <- offdiag_cutoff
+    attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
+    attr(d, "scatter_label_cap") <- scatter_label_cap
     panels[[m]]$data <- d
   }
   groups <- modality_offdiag_group_score_data(
     list(panels = panels, order = order),
     group_sets = group_gene_sets,
-    tail_quantile = offdiag_tail_quantile,
     min_genes = group_min_genes,
     max_groups = group_max_groups,
     min_abs_delta = group_min_abs_delta
@@ -577,11 +575,10 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       y_meaning = "amyloid effect on the tau-KO (MAPTKI) background",
       x_meaning = "amyloid effect on the mutant-tau (P301S) background",
       interaction = "x - y is the tau-by-amyloid interaction contrast per feature; |x - y| ranks off-diagonal distance",
-      offdiag_cutoff = offdiag_cutoff,
+      offdiag_cutoff = offdiag_cutoff_by_modality,
       offdiag_thresholds = offdiag_thresholds,
-      offdiag_tail_quantile = offdiag_tail_quantile,
-      offdiag_max_labels = offdiag_label_budget,
       offdiag_cutoff_source = offdiag_cutoff_source,
+      scatter_label_cap = scatter_label_cap,
       group_min_abs_delta = group_min_abs_delta,
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
       phospho_site_features = attr(panels$Phospho$data, "phospho_site_n", exact = TRUE),
@@ -592,7 +589,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + empirical off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, proteome PCA/volcano, phosphoproteome volcano/heatmap; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + shared-cutoff off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, proteome PCA/volcano, phosphoproteome volcano/heatmap; no heavy DE object"
     )
   )
 }
@@ -725,7 +722,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
 .fig_other_annotated_role <- "Other annotated / no role-set hit"
 .fig_uncategorized_roles <- c(.fig_predicted_unannotated_role, .fig_other_annotated_role)
 
-# Functional-category score summary for empirical off-diagonal features in
+# Functional-category score summary for shared-cutoff off-diagonal features in
 # fig-modality-amyloid-effect. Default role categories are broad GO-BP keyword unions; explicit
 # classified fallbacks are retained, but uncategorized fallback buckets are omitted from the
 # visible summary. The phosphoproteomics panel is already parent-protein-collapsed upstream, so
@@ -924,7 +921,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       min_genes = as.integer(min_genes),
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
-      selection = "same within-method off-diagonal rule as fig-modality-amyloid-effect: each method uses its own empirical |x-y| tail cutoff; duplicate display labels collapsed after thresholding",
+      selection = "same shared off-diagonal rule as fig-modality-amyloid-effect: features pass the stored |x-y| cutoff; duplicate display labels collapsed after thresholding",
       category_assignment = "one primary role per scored item: first matching broad GO-BP role union, otherwise predicted/unannotated, olfactory receptor, or other annotated fallback; visible summary excludes predicted/unannotated and other annotated/no role-set buckets",
       phosphoproteomics_scoring = "phosphoproteomics points are parent-protein aggregates of finite phosphosite logFC pairs; category scores use those displayed protein points",
       n_labeled_features = stats::setNames(

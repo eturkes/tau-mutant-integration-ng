@@ -1084,6 +1084,11 @@ user before writing the plan.
   proteome 24, phosphoproteome 24. Figure 10 now filters displayed aggregate rows to
   `|P301S - MAPTKI| >= 0.5`, so near-overlap aggregate categories stay out while the stronger
   proteomic/phosphoproteomic and snRNAseq outliers return.
+- 2026-07-09 Figure 9/10 shared-cutoff correction DONE (ad hoc user task): replaced modality-specific
+  Figure 9 feature thresholds with one round shared cutoff, `|x-y| >= 2.0`, chosen just above the
+  live GeoMx maximum so GeoMx contributes no off-diagonal selected features. Figure 9 caps displayed
+  text labels at 24 per panel for readability only; Figure 10 scores all shared-cutoff selected
+  features and keeps the global aggregate display floor `|P301S - MAPTKI| >= 0.5`.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

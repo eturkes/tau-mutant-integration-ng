@@ -50,9 +50,11 @@ phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
 #| label: plot-modality-amyloid-effect
 #| fig-width: 13.9
 #| fig-height: 16.8
-#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and hybrid empirical off-diagonal outliers labelled; dotted diagonal bands show the per-method q0.99/modality-specific label-budget threshold, and phosphoproteomics is collapsed to parent proteins."
+#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds against a dashed identity line, with an OLS trend and shared absolute off-diagonal cutoff at |x-y| of 2.0; text labels are capped for readability, GeoMx has no threshold-passing labels, and phosphoproteomics is collapsed to parent proteins."
+label_cap <- msf$provenance$scatter_label_cap %||% 24L
 panels <- lapply(msf$order, function(m) {
-  modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title)
+  modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title,
+                               n_label = label_cap)
 })
 wrap_plots(panels, ncol = 2)
 ```

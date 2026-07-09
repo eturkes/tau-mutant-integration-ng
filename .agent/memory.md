@@ -116,11 +116,11 @@ Modality context:
   with genotype/tau/amyloid context above and top legends for genotype plus shared tau/amyloid no-versus-yes colors.
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
-- Four-method amyloid-response scatter labels use a hybrid within-method off-diagonal threshold:
-  `max(|x-y| q0.99, Nth-largest |x-y|)` with label budgets `snRNAseq=16`, `GeoMx=4`,
-  `Proteome=24`, `Phospho=24`; the functional-category panel scores the same selected
-  off-diagonal features but displays only categorized role/fallback buckets with aggregate
-  `|P301S - MAPTKI| >= 0.5`, excluding predicted/unannotated + other-annotated no-role buckets.
+- Four-method amyloid-response scatter uses one shared off-diagonal feature cutoff:
+  `|x-y| >= 2.0`, a round cutoff above the live GeoMx maximum. Figure 9 caps text labels
+  at 24 per panel for readability only; Figure 10 scores all shared-cutoff selected features
+  and displays categorized role/fallback buckets with aggregate `|P301S - MAPTKI| >= 0.5`,
+  excluding predicted/unannotated + other-annotated no-role buckets.
 - Phosphoproteome native heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
   parent genes `Plcb1` and `Arhgef7`, keeping the same effect direction as the top-ranked candidate,
   and silently collapsing exact duplicate log2 median-normalized profiles to the first ranked
