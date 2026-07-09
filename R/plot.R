@@ -318,7 +318,12 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ggplot2::facet_wrap(ggplot2::vars(modality_plot), ncol = 2, scales = "free_y") +
     ggplot2::guides(
       colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
-                                        barwidth = grid::unit(8.5, "lines")),
+                                        barwidth = grid::unit(8.5, "lines"),
+                                        theme = ggplot2::theme(
+                                          legend.title = ggplot2::element_text(
+                                            margin = ggplot2::margin(r = 10)
+                                          )
+                                        )),
       fill = ggplot2::guide_legend(order = 2,
                                    override.aes = list(size = 3.5, shape = 21,
                                                        colour = "#2B2A27")),
