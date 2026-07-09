@@ -123,6 +123,8 @@ Modality context:
   legend labels the dotted cutoff bands as `threshold: |x-y| >= 2 log2FC`. Figure 10
   scores all shared-cutoff selected features and displays categorized role/fallback buckets with
   aggregate `|P301S - MAPTKI| >= 0.5`, excluding predicted/unannotated + other-annotated no-role buckets.
+  Current visible Figure 10 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
+  categorized group rows under the live shared-cutoff/filter rule.
 - Phosphoproteome native heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
   parent genes `Plcb1` and `Arhgef7`, keeping the same effect direction as the top-ranked candidate,
   and silently collapsing exact duplicate log2 median-normalized profiles to the first ranked

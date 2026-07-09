@@ -251,10 +251,10 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
 }
 
 # Functional-category aggregate scores for empirical off-diagonal genes/proteins in the
-# four-method amyloid-response scatter; phosphoproteomics uses the displayed parent-protein
-# means. Rows are modality-specific role categories, facets are modalities. Each
-# segment connects the aggregate amyloid logFC under MAPTKI to the aggregate amyloid logFC under
-# P301S; segment colour is the log2FC difference between tau backgrounds.
+# amyloid-response scatter; phosphoproteomics uses the displayed parent-protein means. Rows
+# are modality-specific role categories, and facets are the modalities with retained summary
+# rows. Each segment connects the aggregate amyloid logFC under MAPTKI to the aggregate
+# amyloid logFC under P301S; segment colour is the log2FC difference between tau backgrounds.
 functional_group_score_plot <- function(group_summary, title = NULL) {
   stopifnot(is.data.frame(group_summary))
   need <- c("modality", "group_label_plot", "n_feature", "score_maptki", "score_p301s", "delta")
@@ -275,6 +275,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     modality_plot_levels[match(as.character(x$modality), modality_levels)],
     levels = modality_plot_levels
   )
+  facet_ncol <- max(1L, length(modality_plot_levels))
   lim <- max(abs(c(x$score_maptki, x$score_p301s)), na.rm = TRUE)
   lim <- if (is.finite(lim) && lim > 0) lim else 1
   delta_breaks <- -3:3
@@ -315,7 +316,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
-    ggplot2::facet_wrap(ggplot2::vars(modality_plot), ncol = 2, scales = "free_y") +
+    ggplot2::facet_wrap(ggplot2::vars(modality_plot), ncol = facet_ncol, scales = "free_y") +
     ggplot2::guides(
       colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
                                         barwidth = grid::unit(8.5, "lines"),
