@@ -299,6 +299,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   visual_scale <- 1.08
   base_size <- tau_report_base_size * visual_scale
   axis_y_size <- tau_report_axis_size * visual_scale
+  title_size <- base_size * 1.06
 
   ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
     ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.35) +
@@ -344,10 +345,11 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
       legend.text = ggplot2::element_text(size = base_size * 0.8),
       legend.position = "bottom",
       legend.box = "vertical",
+      legend.box.just = "center",
       legend.spacing.y = grid::unit(0.1, "lines"),
       plot.title = ggplot2::element_text(face = "bold", colour = "#262B2F",
-                                         size = ggplot2::rel(0.9), hjust = 0.5,
-                                         margin = ggplot2::margin(b = 18)),
+                                         size = title_size, hjust = 0.64,
+                                         margin = ggplot2::margin(t = 10, b = 26)),
       plot.title.position = "plot"
     )
 }

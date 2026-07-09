@@ -1098,6 +1098,10 @@ user before writing the plan.
   threshold legend text/key to match the report axis-label scale.
 - 2026-07-09 Figure 9 threshold text-only DONE (ad hoc user task): removed the dotted swatch from
   the threshold note and set its text between the axis-label scale and the larger 1.35x draft.
+- 2026-07-09 Figure 10 title polish DONE (ad hoc user task): centered the functional-group
+  plot guide stack, shifted the inner plot title right to align with it, enlarged the title,
+  and added vertical title padding; the special centered Figure 10 heading also gets slightly
+  larger padded spacing.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
