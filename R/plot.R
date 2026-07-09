@@ -2139,7 +2139,7 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
     scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
                    name = "row z") +
     ggplot2::scale_x_discrete(drop = TRUE) +
-    ggplot2::labs(x = "24M run index", y = NULL, title = title) +
+    ggplot2::labs(x = NULL, y = NULL, title = title) +
     theme_tau() +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1,
