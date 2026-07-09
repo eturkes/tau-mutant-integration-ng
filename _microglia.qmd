@@ -15,27 +15,27 @@ mrd <- microglia_report
 cf  <- mrd$cell_frame
 mf  <- microglia_figures
 
-substate_levels <- c(microglia_substate_levels, "ambiguous", "unassigned")
-present_sub <- intersect(substate_levels, as.character(unique(cf$substate)))
-cf$substate <- factor(as.character(cf$substate), levels = present_sub)
+subpopulation_levels <- c(microglia_subpopulation_levels, "ambiguous", "unassigned")
+present_sub <- intersect(subpopulation_levels, as.character(unique(cf$subpopulation)))
+cf$subpopulation <- factor(as.character(cf$subpopulation), levels = present_sub)
 
-mf_umap <- mf$umap_by_substate
-mf_umap$substate <- factor(as.character(mf_umap$substate), levels = present_sub)
+mf_umap <- mf$umap_by_subpopulation
+mf_umap$subpopulation <- factor(as.character(mf_umap$subpopulation), levels = present_sub)
 mf_umap$genotype <- factor(as.character(mf_umap$genotype), levels = genotype_levels)
 
-# Substate marker panel: the genes that DEFINE Homeostatic / DAM / IFN. Per-gene z-score of the
-# mean expression across the three substates (the Seurat DotPlot scale=TRUE idiom) surfaces the
+# Subpopulation marker panel: the genes that DEFINE Homeostatic / DAM / IFN. Per-gene z-score of the
+# mean expression across the three subpopulations (the Seurat DotPlot scale=TRUE idiom) surfaces the
 # state each gene marks regardless of its absolute level; a flat gene (sd 0) -> 0, never NaN.
 marker_states <- c("Homeostatic", "DAM", "IFN")
-sm <- mrd$substate_markers
+sm <- mrd$subpopulation_markers
 sm$signature <- factor(as.character(sm$signature), levels = marker_states)
-sm$substate  <- factor(as.character(sm$substate),  levels = marker_states)
+sm$subpopulation  <- factor(as.character(sm$subpopulation),  levels = marker_states)
 sm$expr_z <- stats::ave(sm$mean_expr, as.character(sm$gene), FUN = function(x) {
   s <- stats::sd(x); if (!is.finite(s) || s == 0) rep(0, length(x)) else (x - mean(x)) / s
 })
 
 mf_unit <- mf$unit_composition
-mf_unit$substate <- factor(as.character(mf_unit$substate), levels = present_sub)
+mf_unit$subpopulation <- factor(as.character(mf_unit$subpopulation), levels = present_sub)
 mf_unit$genotype <- factor(as.character(mf_unit$genotype), levels = genotype_levels)
 mf_unit$batch <- factor(mf_unit$batch, levels = sort(unique(mf_unit$batch), method = "radix"))
 
@@ -48,11 +48,11 @@ compact_genotype_labels <- c(
 ```
 
 ```{r}
-#| label: plot-microglia-substate-markers
+#| label: plot-microglia-subpopulation-markers
 #| fig-width: 14.2
 #| fig-height: 8.4
-#| fig-alt: "Dot-plot grid with the three substates as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching substate along the diagonal."
-ggplot(sm, aes(gene, substate)) +
+#| fig-alt: "Dot-plot grid with the three subpopulations as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching subpopulation along the diagonal."
+ggplot(sm, aes(gene, subpopulation)) +
   geom_point(aes(colour = expr_z, size = pct_expr)) +
   facet_grid(. ~ signature, scales = "free_x", space = "free_x") +
   scale_colour_rwb(name = "scaled mean\nexpression", midpoint = 0) +
@@ -75,9 +75,9 @@ ggplot(sm, aes(gene, substate)) +
 #| fig-width: 12.4
 #| fig-height: 7.2
 #| fig-alt: "Two UMAP panels show cluster-derived labels and DAM UCell z-scores."
-p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = substate)) +
+p_sub <- ggplot(cf, aes(umap_1, umap_2, colour = subpopulation)) +
   geom_point(size = 0.25, alpha = 0.6) +
-  scale_colour_substate(breaks = present_sub, name = "substate") +
+  scale_colour_subpopulation(breaks = present_sub, name = "subpopulation") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
   labs(x = "UMAP 1", y = "UMAP 2")
 
@@ -91,14 +91,14 @@ p_dam <- ggplot(cf, aes(umap_1, umap_2, colour = DAM_UCell_z)) +
 ```
 
 ```{r}
-#| label: plot-microglia-umap-substate
+#| label: plot-microglia-umap-subpopulation
 #| fig-width: 11.7
 #| fig-height: 9.7
 #| fig-alt: "Genotype-faceted UMAPs show amyloid samples occupying more DAM-labelled cells."
-ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
+ggplot(mf_umap, aes(umap_1, umap_2, colour = subpopulation)) +
   geom_point(size = 0.18, alpha = 0.55) +
   facet_wrap(~ genotype, ncol = 2) +
-  scale_colour_substate(breaks = present_sub, name = "substate") +
+  scale_colour_subpopulation(breaks = present_sub, name = "subpopulation") +
   guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
   labs(x = "UMAP 1", y = "UMAP 2") +
   theme(panel.grid = element_blank())
@@ -109,10 +109,10 @@ ggplot(mf_umap, aes(umap_1, umap_2, colour = substate)) +
 #| fig-width: 11.8
 #| fig-height: 7.6
 #| fig-alt: "Replicate-unit stacked bars show DAM expansion across batches and genotypes."
-ggplot(mf_unit, aes(batch, proportion, fill = substate)) +
+ggplot(mf_unit, aes(batch, proportion, fill = subpopulation)) +
   geom_col(width = 0.72, colour = "#F8F6F1", linewidth = 0.18) +
   facet_grid(. ~ genotype, labeller = labeller(genotype = compact_genotype_labels)) +
-  scale_fill_substate(breaks = present_sub, name = "substate") +
+  scale_fill_subpopulation(breaks = present_sub, name = "subpopulation") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"),
                      expand = expansion(mult = c(0, 0.02))) +
   labs(x = "batch", y = "unit proportion") +

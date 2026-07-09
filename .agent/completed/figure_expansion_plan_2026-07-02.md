@@ -70,17 +70,17 @@ Synthesis:
 1. Evidence map: claim x source-status tile from `synthesis_report`.
 
 Microglia:
-2. Genotype-faceted UMAP by substate.
+2. Genotype-faceted UMAP by subpopulation.
 3. UMAP score triptych: homeostatic / DAM / MHC-APC z.
-4. 16-unit substate composition bars by genotype_batch.
-5. Substate score distributions by genotype and substate.
+4. 16-unit subpopulation composition bars by genotype_batch.
+5. Subpopulation score distributions by genotype and subpopulation.
 6. Composition method concordance/significance grid.
 7. Whole-microglia volcano small multiples across all 5 contrasts.
-8. Substate DE fit/skip and min-cell audit figure.
-9. DAM/Homeostatic within-substate DE paired volcano or effect grid.
+8. Subpopulation DE fit/skip and min-cell audit figure.
+9. DAM/Homeostatic within-subpopulation DE paired volcano or effect grid.
 
 Trajectory:
-10. Pseudotime density by genotype x substate.
+10. Pseudotime density by genotype x subpopulation.
 11. Unit-level mean pseudotime vs DAM fraction scatter, batch-labelled.
 12. Kitagawa channel forest across all 5 contrasts.
 13. Trajectory sensitivity/omitted-fraction audit.

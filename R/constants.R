@@ -19,13 +19,13 @@ contrast_definitions <- list(
 # Pan-microglia identity markers -- state-INDEPENDENT core, expressed across homeostatic AND
 # activated/DAM microglia (Csf1r/C1q complement/Ctss/Fcrls/Hexb/Tyrobp). The QC purity signature
 # (P1-S2): a cluster scoring LOW here is non-microglial contamination. Deliberately DISTINCT from
-# the Homeostatic SUBSTATE below (DAM legitimately downregulates P2ry12/Tmem119) -> homeostatic
+# the Homeostatic SUBPOPULATION below (DAM legitimately downregulates P2ry12/Tmem119) -> homeostatic
 # markers must NEVER be used to test "is this a microglia at all".
 microglia_identity_markers <- c("Csf1r", "C1qa", "C1qb", "C1qc", "Ctss", "Fcrls", "Hexb", "Tyrobp")
 
-# Canonical mouse-microglia substate signatures (P1-S2). UCell rank-based enrichment -> z-scale
-# per signature -> argmax. The 4 substate sets {Homeostatic, DAM, IFN, Proliferative} drive the
-# substate argmax; MHC_APC is an AUXILIARY antigen-presentation axis (scored + reported, NOT
+# Canonical mouse-microglia subpopulation signatures (P1-S2). UCell rank-based enrichment -> z-scale
+# per signature -> argmax. The 4 subpopulation sets {Homeostatic, DAM, IFN, Proliferative} drive the
+# subpopulation argmax; MHC_APC is an AUXILIARY antigen-presentation axis (scored + reported, NOT
 # argmax'd -- it co-varies with DAM: ARM = DAM + MHC, Sala Frigerio 2019). DAM merges the
 # Trem2-independent (s1) and Trem2-dependent (s2) arms: DAM~MGnD~ARM~WAM is ONE Apoe-Trem2
 # convergent programme, scored broadly so the ~18% snRNA DAM-gene dropout (Thrupp 2020) cannot
@@ -42,9 +42,9 @@ canonical_microglia_markers <- list(
   MHC_APC       = c("Cd74", "H2-Aa", "H2-Ab1", "H2-Eb1", "H2-K1", "Tap1", "B2m")
 )
 
-# Substate signatures that drive the cluster/cell ARGMAX (subset of canonical_microglia_markers;
+# Subpopulation signatures that drive the cluster/cell ARGMAX (subset of canonical_microglia_markers;
 # MHC_APC stays auxiliary -- scored, never argmax'd).
-microglia_substate_levels <- c("Homeostatic", "DAM", "IFN", "Proliferative")
+microglia_subpopulation_levels <- c("Homeostatic", "DAM", "IFN", "Proliferative")
 
 # Non-microglial contamination signatures (UCell QC; P1-S2 prune_contaminant_clusters). A cluster
 # scoring high here AND low on microglia_identity_markers is dropped. snRNA carries pervasive

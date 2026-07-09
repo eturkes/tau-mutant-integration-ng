@@ -1,7 +1,7 @@
 # Map - live codebase wiring
 
 Current surface (2026-07-08): lean 10-figure report DAG only. No committed test suite, Python/uv
-surface, composition/sccomp/CmdStan arm, per-substate pseudobulk target, prose-inventory
+surface, composition/sccomp/CmdStan arm, per-subpopulation pseudobulk target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
 science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
 the rendered 10-figure final analysis document.
@@ -88,7 +88,7 @@ Report:
 `R/microglia.R`
 - Reprocess, annotate, compact report bundle. `microglia_report_data()` is the only
   report path that reads the heavy annotated Seurat object for microglia figures; it
-  emits per-cell UMAP/scores, replicate-unit substate composition, marker dot-plot data,
+  emits per-cell UMAP/scores, replicate-unit subpopulation composition, marker dot-plot data,
   prune/provenance.
 
 `R/trajectory.R`
@@ -116,9 +116,9 @@ Report:
 ## Report
 
 `index.qmd` includes three qmd fragments, but the rendered HTML exposes no title/TOC/headings/captions:
-- `_microglia.qmd`: substate marker dot plot, substate/DAM UMAPs, genotype-faceted
-  substate UMAP, replicate-unit substate composition.
-- `_trajectory.qmd`: pseudotime density by genotype/substate.
+- `_microglia.qmd`: subpopulation marker dot plot, subpopulation/DAM UMAPs, genotype-faceted
+  subpopulation UMAP, replicate-unit subpopulation composition.
+- `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `_modality.qmd`: GeoMx AOI metadata-track diagnostic,
   proteome/phosphoproteome descriptive figures,
   four-method amyloid response scatter, functional-category score panel.

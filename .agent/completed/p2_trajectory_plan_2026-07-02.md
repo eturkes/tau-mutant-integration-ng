@@ -11,7 +11,7 @@ test whether cells also advance FURTHER along the axis (PROGRESSION) BEYOND that
 DECOMPOSE the two channels. MEASURED quantity = position/extent of advance along an inferred CROSS-SECTIONAL
 ordering; "rate/acceleration" is the biological INTERPRETATION under the age-matched-snapshot + common-baseline
 assumption (stated, NOT measured — no longitudinal time / RNA velocity here). Input = cached
-`microglia_annotated` (612MB: harmony reduction + per-cell UCell scores + substate labels +
+`microglia_annotated` (612MB: harmony reduction + per-cell UCell scores + subpopulation labels +
 genotype/batch/genotype_batch). Precondition MET (P1 closed) -> NO external/data gate. Outputs =
 `microglia_trajectory` + `trajectory_progression` + `trajectory_glmm_sensitivity` targets + `_trajectory.qmd`
 report section.
@@ -32,7 +32,7 @@ nothing for a single near-linear axis. Kept descriptively-marginal at most.)
   CONDITIONING on the H->D lineage is a potential SELECTION effect (if the omitted IFN/prolif fraction differs
   by genotype the summaries shift) -> store n_on_lineage + omitted fraction PER UNIT + an all-retained
   sensitivity. CONCORDANCE check = UCell DAM-minus-Homeostatic SCORE-AXIS (zero-dep, assumption-light) -> record
-  Spearman rho; it SHARES the marker system that defines the substate labels, so it catches gross trajectory
+  Spearman rho; it SHARES the marker system that defines the subpopulation labels, so it catches gross trajectory
   failure, NOT shared-marker bias -> a concordance check, NOT independent robustness. ROOTING validated POST-HOC
   (DAM_UCell monotone in pt + canonical markers), framed as an ACTIVATION ORDERING, NOT developmental
   time/potency — v1's 3 potency proxies (RNA entropy, n_genes, CytoTRACE2) all REJECTED
@@ -95,7 +95,7 @@ S1 — Trajectory + pseudotime target.
   NEW `R/trajectory.R` pure helpers: `build_activation_trajectory` (slingshot harmony[1:15], homeostatic->DAM,
   rooted; seed + provenance) | `score_axis_pseudotime` (UCell DAM-minus-Homeostatic) | `trajectory_concordance`
   (Spearman slingshot-vs-score-axis) | provenance (dims/root/pkg versions/rho, mirror reprocess_provenance).
-  Target `microglia_trajectory` = COMPACT per-cell frame {cell, genotype_batch, genotype, substate,
+  Target `microglia_trajectory` = COMPACT per-cell frame {cell, genotype_batch, genotype, subpopulation,
   on_lineage[H/D-membership flag], pt_raw, pt01[Smithson-Verkuilen squeeze], score_axis_pt, DAM_UCell,
   Homeostatic_UCell} + lineage/provenance lists (~small; NEVER the 612MB object — cheap-render invariant).
   Unit-test pure helpers on a synthetic 2-cluster embedding fixture (lineage present, pseudotime monotone,
@@ -126,8 +126,8 @@ S2a — Per-replicate summary + contrast fit + Kitagawa decomposition (estimatio
     literal prefix also dodges regex-metachar pitfalls). S1's cell_frame omits batch; deriving it here avoids
     re-touching the built microglia_trajectory target. Reused by pseudotime_per_replicate + glmmtmb_pt_sensitivity.
   - `pseudotime_per_replicate(cell_frame, lineage_states, dam_state = "DAM", min_within = 10L)`: filter to
-    is.finite(pt_raw) (on-lineage); assert substate %in% lineage_states + validate_trajectory_units(unit,geno);
-    batch = derive_batch(genotype_batch, genotype) per unit. dam_onset = stats::median(pt_raw[substate==dam_state])
+    is.finite(pt_raw) (on-lineage); assert subpopulation %in% lineage_states + validate_trajectory_units(unit,geno);
+    batch = derive_batch(genotype_batch, genotype) per unit. dam_onset = stats::median(pt_raw[subpopulation==dam_state])
     PRE-DECLARED. per_unit cols {genotype_batch, genotype, batch, n_cells, sd_pt, mean_pt, median_pt, q90,
     frac_past}; frac_past = mean(pt_raw > dam_onset) = the ONLY
     genuinely [0,1] measure. within_<lc> (lc = tolower(state) -> within_homeostatic / within_dam; ONE sanitizer, S2b
@@ -189,7 +189,7 @@ S2a — Per-replicate summary + contrast fit + Kitagawa decomposition (estimatio
   `jitter = 0`: when >0 ADD a deterministic NON-additive perturbation ((gi*bi) %% 5)*jitter to pt_raw (gi/bi =
   genotype/batch indices, NO RNG) -> breaks the saturated design's zero residual (sigma > 0) for S2b's STRUCTURAL
   orchestrator test; default 0 keeps the component tests EXACT-pure. Cols {cell,
-  genotype_batch, genotype, substate, on_lineage, pt_raw, pt01} (NO batch col -> exercises derive_batch, matching
+  genotype_batch, genotype, subpopulation, on_lineage, pt_raw, pt01} (NO batch col -> exercises derive_batch, matching
   the real cell_frame).
   S2a TESTS (tests/test_trajectory.R; all on the deterministic fixture / make_meta16, warn=2):
   - derive_batch round-trip + fail-loud on a corrupted genotype_batch + a VECTOR call (>1 genotype, exercises the
@@ -225,7 +225,7 @@ S2b — Progression interaction inference + orchestrator + target (pure-R; the l
     normal.kind = "Inversion", sample.kind = "Rejection") inside (pin all 3 kinds, matching S1). perm_p =
     (1 + sum(|t*| >= |t_obs|)) / (n_perm + 1). Returns list(t_obs, n_perm, perm_p).
   - `run_trajectory_progression(microglia_trajectory, min_within = 10L, n_perm = 2000L, seed = 42L)`: per_rep =
-    pseudotime_per_replicate(cell_frame, lineage_states from provenance$lineage_substates) -> meta =
+    pseudotime_per_replicate(cell_frame, lineage_states from provenance$lineage_subpopulations) -> meta =
     per_unit[, c("genotype_batch","genotype","batch")] with rownames(meta) = per_unit$genotype_batch ->
     assert_complete_crossing(meta, "genotype_batch") (needs genotype_batch + genotype + batch cols = the 4x4
     balance check, fail-loud) -> factorial_design(meta) (reads genotype/batch + the rownames -> design rownames =
@@ -252,7 +252,7 @@ S2b — Progression interaction inference + orchestrator + target (pure-R; the l
   Target `trajectory_progression` = run_trajectory_progression(microglia_trajectory) -> ADD to _targets.R AFTER
   the microglia_trajectory target: tar_target(trajectory_progression,
   run_trajectory_progression(microglia_trajectory), format = "qs"). Reads the COMPACT S1 target; pure-R.
-  WITHIN-STATE FLOOR mirrors P1 run_pb_de_substate.
+  WITHIN-STATE FLOOR mirrors P1 run_pb_de_subpopulation.
   PRE-REGISTER (encoded in run_trajectory_progression, BEFORE fitting): PRIMARY = progression_cf (Kitagawa) +
   within_homeostatic (composition-robust); frac_past = the interpretable bridge; mean_pt FLAGGED
   composition-conflated. Family = BH across the 2 PRIMARY; rest EXPLORATORY (separate FDR). Primary FDR 0.05,

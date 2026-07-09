@@ -36,7 +36,7 @@ figures (proteome, phosphoproteome), and two modality-context figures (four-meth
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
 snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures; GeoMx carries only
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
-chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-substate pseudobulk,
+chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
 the live DAG (Ledger 2026-07-08). 29 targets remain. P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
@@ -55,8 +55,8 @@ user before writing the plan.
   2x2 factorial + 5 contrasts, report-render quality gate. Historical Python/uv/test-loop gate was removed
   during the lean iteration cut.
 - P1 snRNAseq microglia core [DONE 2026-06-30; live DAG leaned 2026-07-07]: reprocess (SCT) +
-  substates (homeostatic / DAM / IFN / proliferative, UCell), whole-microglia pseudobulk DE, and direct
-  replicate-unit composition bars in the compact report bundle. Historical composition/sccomp/stageR/per-substate
+  subpopulations (homeostatic / DAM / IFN / proliferative, UCell), whole-microglia pseudobulk DE, and direct
+  replicate-unit composition bars in the compact report bundle. Historical composition/sccomp/stageR/per-subpopulation
   DE machinery is retired from the live path. Synergy is carried into P2 as DAM-cell composition rather than
   progression/acceleration. Digest -> history.md.
 - P2 Interaction trajectory [DONE 2026-07-02 -> `.agent/completed/p2_trajectory_plan_2026-07-02.md`]:
@@ -79,7 +79,7 @@ user before writing the plan.
   gated GeoMx tissue-abundance follow-up to the P4 "SpatialDecon not earned"
   row. S0 chose the default: install/run SpatialDecon only after a compact
   full-reference profile earns it, keep nuclei absolute counts disabled, report
-  broad abundance primary and microglia substates only if stable. Final status:
+  broad abundance primary and microglia subpopulations only if stable. Final status:
   profile earned, SpatialDecon ran, abundance DE blocked by unresolved AOIs;
   residual audit is report QC; synthesis says blocked, not skipped.
 - Prose-to-figures reduction [DONE 2026-07-03 -> `.agent/completed/prose_to_figures_plan_2026-07-03.md`]:
@@ -127,7 +127,7 @@ user before writing the plan.
   user feedback: the matured palette was too dull. Raised chroma without
   returning to toy-like defaults: deep-blue/teal/slate HTML chrome,
   steel-blue/teal/amber/cranberry genotype accents, blue/cranberry/amber/violet
-  substate accents, stronger blue/paper/cranberry signed fills, and a richer
+  subpopulation accents, stronger blue/paper/cranberry signed fills, and a richer
   blue-teal sequential count gradient. Figure grammar from the visual maturity
   pass is unchanged. Rendered main path remains 33 figures / 33 captions / 33
   nonblank alts, duplicate IDs 0; full gate green.
@@ -178,7 +178,7 @@ user before writing the plan.
   user feedback: many figures remained overly simplistic. Enriched the retained
   conventional report figures without changing claims: QC design now includes
   replicate-unit support; story mechanism/cross-modality plate shows a signed
-  evidence ladder plus all clearance-pair rows; substate and trajectory audits
+  evidence ladder plus all clearance-pair rows; subpopulation and trajectory audits
   expose replicate-unit distributions; trajectory decomposition uses a signed
   reconstruction path; NF-kB gate shows primary/supportive signed rows; GeoMx
   sensitivity shows supported-row totals plus lost/gained/flip changes. Targeted
@@ -232,10 +232,10 @@ user before writing the plan.
   (Explore) + 2026 SOTA web sweep (4-agent) -> reconciled v1 vs SOTA. Decision gate (3 forks): single-cell
   DE DROPPED (pseudobulk sole inference, Squair/Murphy-Skene; v1 NEBULA interaction was null); composition =
   sccomp + propeller; normalisation = SCT-v2 (v1 continuity, user choice over SOTA logNorm lean). Locked
-  defaults: UCell scoring, Harmony batch-only (sex aliased), 4 argmax substates + aux MHC/APC, voomQW +
+  defaults: UCell scoring, Harmony batch-only (sex aliased), 4 argmax subpopulations + aux MHC/APC, voomQW +
   robust eBayes + stageR. Key reframing from mining: the tau x amyloid interaction is STATIC-NULL (v1 matched-
   power null even single-cell) -> the synergy is a position/extent effect (rate only under the age-matched snapshot assumption), deferred to P2 (trajectory); P1
-  nails the robust amyloid->DAM headline + substates + composition. Carry Thrupp 2020 (snRNA under-detects
+  nails the robust amyloid->DAM headline + subpopulations + composition. Carry Thrupp 2020 (snRNA under-detects
   ~18% DAM activation genes). 5 steps S1-S5; next = S1 reprocess+cluster.
 - 2026-06-29 P1-S1 DONE -> `microglia_processed` target + `R/microglia.R` (reprocess_microglia +
   marker_mean_by_cluster) + `tests/test_microglia.R`. SCT-v2/glmGamPoi -> Harmony(batch-only) -> Louvain
@@ -245,13 +245,13 @@ user before writing the plan.
   the gate via tar_meta -> silenced by Seurat's own `Seurat.warn.umap.uwot=FALSE` (other warnings still
   surface). Also strips stale upstream meta shadows (pca1/umap1 coords-as-cols, SCT_snn_res.0.01). Acceptance:
   reductions {pca,harmony,umap}+cluster factor present; post-Harmony marker separation confirmed (distinct
-  argmax per substate); re-run STABLE (observed ARI=1.0 under recorded threads; clusters derive from the
+  argmax per subpopulation); re-run STABLE (observed ARI=1.0 under recorded threads; clusters derive from the
   seeded PCA->Harmony->SNN->Louvain chain, UMAP is viz-only; NOT bitwise-guaranteed per up-to-tolerance); gate green.
 - 2026-06-30 P1-S2..S4 DONE (annotate / composition / pseudobulk-DE; outcomes folded to history.md + memory.md P1
   sections, full detail in the archived plan) -> P1-S5 DONE -> P1 CLOSED. S5 = `_microglia.qmd` microglia chapter
-  (substate UMAP, composition forest/table, amyloid->DAM volcano + DE counts, under-powered-interaction + P2
+  (subpopulation UMAP, composition forest/table, amyloid->DAM volcano + DE counts, under-powered-interaction + P2
   pointer, Thrupp + dropout caveats) reading a COMPACT `microglia_report` target (microglia_report_data extracts
-  umap+substate+z+prune/provenance from the 612MB annotated -> the gate's force-render stays cheap ~12s). Prose
+  umap+subpopulation+z+prune/provenance from the 612MB annotated -> the gate's force-render stays cheap ~12s). Prose
   INLINE-COMPUTED from targets (never hardcoded). Adversarial self-review fixed 3 prose-accuracy issues (interaction
   df.total-vs-residual-df conflation; sccomp CI reported factually, not asserted "spanning zero"; dropout caveat
   backed against the DAM-ENRICHED ceiling -- dropped clusters' DAM medians overlap kept HOMEOSTATIC, so the floor
@@ -280,7 +280,7 @@ user before writing the plan.
   primary; S3 source-compiled glmmTMB/TMB). Plan = 3 steps (later split to 4; see below). next = EXECUTE S1.
 - 2026-06-30 P2-S1 DONE -> `R/trajectory.R` (build_activation_trajectory + pure helpers) + target
   `microglia_trajectory` + `tests/test_trajectory.R` + rproject.toml slingshot. slingshot on harmony[1:15], FORCED
-  single Homeostatic->DAM lineage (2 substate super-clusters -> clean by construction), IFN/Prolif omitted
+  single Homeostatic->DAM lineage (2 subpopulation super-clusters -> clean by construction), IFN/Prolif omitted
   (on_lineage flag + NA pt). LIVE: direction correct (mean pt Homeo 22.3 < DAM 36.2; Spearman pt-vs-DAM +0.56);
   score-axis concordance rho=0.62 (moderate-large, clears 0.5 gross-failure floor; slingshot=transcriptome vs
   score-axis=marker contrast -> related-not-identical); sensitivity robust (dims-10/20 + all-retained rho 0.99 vs
@@ -451,7 +451,7 @@ user before writing the plan.
   present + 245 matched sites. Next = S2.
 - 2026-07-02 P3-S2 DONE -> RNA mechanism targets: `mechanism_collectri` (prior drift gate), `mechanism_gene_sets`
   (native mouse MSigDB GO BP/CC/MF + project sets DAM/Homeostatic/MHC_APC/IFN/NF-kB union + activated/repressed
-  targets), `mechanism_tf` (decoupleR ULM CollecTRI on whole microglia + fit substates), `mechanism_pathway`
+  targets), `mechanism_tf` (decoupleR ULM CollecTRI on whole microglia + fit subpopulations), `mechanism_pathway`
   (fgsea preranked GSEA), and `nfkb_attenuation` (predeclared primary-family gate). Live build clean in tar_meta;
   GO fgsea capped at maxSize=500 per fgsea manual runtime guidance, project sets uncapped; known sub-1e-10 fgsea
   p-value floor notices are recorded as provenance and any other fgsea warning fails loud; MSigDB/project gene-set
@@ -582,7 +582,7 @@ user before writing the plan.
   inline visual-density pass. Added 9 labelled `fig-*` chunks: synthesis
   claim-source evidence map plus 8 microglia figures (genotype-faceted UMAP,
   score triptych/distributions, 16-unit composition, composition concordance,
-  all-contrast whole-MG volcanoes, substate fit audit, within-substate DE counts).
+  all-contrast whole-MG volcanoes, subpopulation fit audit, within-subpopulation DE counts).
   Forced report render warning-clean (106 chunks). Claims unchanged: robust
   amyloid-to-DAM activation, DAM composition interaction, under-powered
   interaction DE, and no supported progression beyond composition. Next = S3
@@ -625,17 +625,17 @@ user before writing the plan.
   audit, and report/synthesis rewiring only if earned. Active S0 route gate awaits
   user choice; no implementation yet.
 - 2026-07-02 Spatial decon follow-up S0/S1 DONE: user chose the recommended
-  broad-first SpatialDecon route with gated substate attempt. Added
+  broad-first SpatialDecon route with gated subpopulation attempt. Added
   SpatialDecon 1.22.0 to the repo lock; built `geomx_reference_profile` from the
-  full snRNAseq RDS + retained microglia substates + GeoMx gene overlap. Live
+  full snRNAseq RDS + retained microglia subpopulations + GeoMx gene overlap. Live
   compact target warning-clean/tar_meta clean: broad 15,919 genes x 6 profiles
-  earned, substate 16,079 genes x 8 profiles earned, Proliferative absent
+  earned, subpopulation 16,079 genes x 8 profiles earned, Proliferative absent
   recorded, serialized 1.88 MB. Next = S2 decon fit.
 - 2026-07-02 Spatial decon follow-up S2 DONE -> `geomx_decon`. Added
   SpatialDecon fit adapter around GeoMx RNA/data + Q3-scaled background,
   warning/message capture, beta/proportion/residual-QC normalisation, independent
-  broad/substate arms, and two-stage microglia-substate assembly. Live target
-  warning-clean/tar_meta clean but NOT earned: broad and substate arms both
+  broad/subpopulation arms, and two-stage microglia-subpopulation assembly. Live target
+  warning-clean/tar_meta clean but NOT earned: broad and subpopulation arms both
   blocked by the same 4/91 unresolved AOIs with beta_total=0
   (E03/E04/E05/G12 on DSP-1001660019825-A); 87 AOIs resolved, residual QC stored,
   nuclei absolute rescaling disabled (42 sentinels), no abundance claim. Full
@@ -643,10 +643,10 @@ user before writing the plan.
   blocked-abundance passthrough + residual audit.
 - 2026-07-02 Spatial decon follow-up S3 DONE -> `geomx_abundance_de`. Added the
   abundance-DE orchestrator and nearest-neighbour residual audit. Live target
-  warning-clean/tar_meta clean, 5.93 KB: broad/substate/microglia-substate DE all
+  warning-clean/tar_meta clean, 5.93 KB: broad/subpopulation/microglia-subpopulation DE all
   blocked by the same 4 unresolved SpatialDecon AOIs; canonical 5-contrast empty
   top tables preserve downstream shape. Residual audit earned descriptively for
-  broad and substate arms (91 AOIs x 4 slides; genotype-residualised RMS
+  broad and subpopulation arms (91 AOIs x 4 slides; genotype-residualised RMS
   nearest-neighbour summaries), no abundance claim. Full `scripts/check.sh` green
   across 49 current targets/branches. Next = S4 report/synthesis integration.
 - 2026-07-02 Spatial decon follow-up S4 DONE -> report/synthesis integration.
@@ -859,7 +859,7 @@ user before writing the plan.
   caches. New memory.md "Repo layout" section locks the rule. Gate green before + after.
 - 2026-07-06 Report figure-cut / chapter teardown DONE (user task, confirmed full-teardown scope): permanent
   pivot to a FIVE-figure microglia+trajectory report. Cut the rendered document to exactly old figures
-  2,3,4,7,16 (renumber 1-5): fig-microglia-substate-markers, fig-microglia-umap, fig-microglia-umap-substate,
+  2,3,4,7,16 (renumber 1-5): fig-microglia-subpopulation-markers, fig-microglia-umap, fig-microglia-umap-subpopulation,
   fig-microglia-unit-composition, fig-trajectory-pt-density. DELETED the qc/mechanism/cross-modality chapters +
   every one of their targets + R modules + tests: `_qc.qmd`/`_mechanism.qmd`/`_crossmodality.qmd`, `R/mechanism.R`,
   `R/crossmodality.R`, `tests/test_mechanism.R`, `tests/test_crossmodality.R`; dropped all geomx/proteome/phospho +
@@ -949,7 +949,7 @@ user before writing the plan.
   PDF page 5 clean.
 - 2026-07-07 Lean iteration infrastructure cut DONE (user task): optimized for faster report iteration over
   robustness. Removed committed tests, Python/uv config, prose inventory, CmdStan/sccomp composition arm,
-  stageR layer, per-substate pseudobulk, and dead figure/plot/constants helpers that did not feed the current
+  stageR layer, per-subpopulation pseudobulk, and dead figure/plot/constants helpers that did not feed the current
   10-figure report. `microglia_report_data()` now emits replicate-unit composition directly; `microglia_figures`
   and `trajectory_figures` carry only rendered slots; `_targets.R` is the 29-target report DAG. `scripts/check.sh`
   is now a lean report gate: optional `rv sync`, forced `report` rebuild, target metadata scan, render-log scan.
@@ -1097,7 +1097,7 @@ ctx (final)      date   work unit  (session step [+ review]; commits chronologic
 67% 134K/200K    06-29  P0-S5 gate scripts/check.sh + P0 close +review (998950d, 961dd22, b53f22f)
 53% 106K/200K    06-29  P1 plan +review (0555e55, 0316bcb)
 72% 145K/200K    06-29  P1-S1 microglia reprocess+cluster +review (6c69986, 1706fa9)
-84% 168K/200K    06-30  P1-S2 substate annotate + prune +review (612dbd0, 5992e39)
+84% 168K/200K    06-30  P1-S2 subpopulation annotate + prune +review (612dbd0, 5992e39)
 88% 176K/200K    06-30  P1-S3 composition propeller + sccomp +review (7713248, cdff4bc)
 76% 151K/200K    06-30  infra: gitignore .tokensave/ index (7a2518b)
 79% 158K/200K    06-30  P1-S3 composition close: live sccomp arm +review (e27c41e, 7ca25f9)

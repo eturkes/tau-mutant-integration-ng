@@ -13,8 +13,8 @@ theme_set(theme_tau())
 trf   <- trajectory_figures
 tr_pt <- trf$pt_density
 tr_pt$genotype <- factor(as.character(tr_pt$genotype), levels = genotype_levels)
-tr_pt$substate <- factor(as.character(tr_pt$substate),
-                         levels = intersect(microglia_substate_levels, as.character(unique(tr_pt$substate))))
+tr_pt$subpopulation <- factor(as.character(tr_pt$subpopulation),
+                         levels = intersect(microglia_subpopulation_levels, as.character(unique(tr_pt$subpopulation))))
 ```
 
 ```{r}
@@ -22,10 +22,10 @@ tr_pt$substate <- factor(as.character(tr_pt$substate),
 #| fig-width: 12.2
 #| fig-height: 9.2
 #| fig-alt: "Faceted area plots show high pseudotime concentrated in DAM states."
-ggplot(tr_pt, aes(x_mid, n, fill = substate)) +
+ggplot(tr_pt, aes(x_mid, n, fill = subpopulation)) +
   geom_area(alpha = 0.78, colour = "white", linewidth = 0.15) +
-  facet_grid(substate ~ genotype, scales = "free_y") +
-  scale_fill_substate(guide = "none") +
+  facet_grid(subpopulation ~ genotype, scales = "free_y") +
+  scale_fill_subpopulation(guide = "none") +
   labs(x = "activation pseudotime", y = "nuclei per bin") +
   theme(panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = 30, hjust = 1))

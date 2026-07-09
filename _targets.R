@@ -53,15 +53,15 @@ list(
   # SCT object fine. memory="transient"+gc (global default) release it between targets.
   tar_target(microglia_processed,  reprocess_microglia(microglia_seurat_raw), format = "qs"),
 
-  # S2: UCell substate scoring (identity + Homeostatic/DAM/IFN/Proliferative + MHC_APC aux + contam)
-  # -> drop clear contaminant clusters -> calibrated argmax substate labels on the clean population.
+  # S2: UCell subpopulation scoring (identity + Homeostatic/DAM/IFN/Proliferative + MHC_APC aux + contam)
+  # -> drop clear contaminant clusters -> calibrated argmax subpopulation labels on the clean population.
   tar_target(microglia_annotated,  annotate_microglia(microglia_processed, symbol_map), format = "qs"),
 
   # Whole-microglia pseudobulk limma-voom DE across the 5 canonical contrasts. The report
   # uses these topTables for the snRNAseq panel in the four-method amyloid-response scatter.
   tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated), format = "qs"),
 
-  # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + substate +
+  # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + subpopulation +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.
   tar_target(microglia_report, microglia_report_data(microglia_annotated, symbol_map), format = "qs"),
@@ -71,7 +71,7 @@ list(
 
   # --- P2 interaction trajectory ---
   # S1: activation pseudotime. slingshot on the harmony embedding (dims 1:15), forced single
-  # Homeostatic->DAM lineage (2 substate super-clusters), IFN/Proliferative omitted (off-lineage
+  # Homeostatic->DAM lineage (2 subpopulation super-clusters), IFN/Proliferative omitted (off-lineage
   # flag, not deleted). Compact per-cell frame (pt_raw/pt01/score-axis + on-lineage flag) +
   # per-unit omitted fraction + a fixed sensitivity (dims 10 & 20 vs primary 15, + all-retained)
   # + score-axis concordance. Reads the 612MB annotated object once; stores a compact target

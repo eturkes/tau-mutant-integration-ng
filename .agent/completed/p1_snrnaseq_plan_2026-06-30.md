@@ -9,9 +9,9 @@ locked 2026-06-29 (see "Resolved decisions"); fold the durable ones to memory.md
 From `microglia_seurat_raw` (RNA counts, 33683 x 26104, already broad-annotated Microglia)
 produce, as targets DAG nodes feeding ONE incremental report section:
 1. reprocessed (SCT) + integrated (Harmony) + clustered microglia object;
-2. substate labels (homeostatic / DAM / IFN / proliferative; aux MHC/APC score);
-3. compositional test of substate shifts across the 5 contrasts (sccomp + propeller);
-4. pseudobulk DE across the 5 contrasts (whole-MG + per-substate) -> the robust
+2. subpopulation labels (homeostatic / DAM / IFN / proliferative; aux MHC/APC score);
+3. compositional test of subpopulation shifts across the 5 contrasts (sccomp + propeller);
+4. pseudobulk DE across the 5 contrasts (whole-MG + per-subpopulation) -> the robust
    amyloid->DAM activation programme (headline #1) + an honest under-powered interaction
    (no large-effect genes) that forward-points to P2 (trajectory);
 5. a `_microglia.qmd` report section + CLOSE-OUT.
@@ -29,12 +29,12 @@ hdWGCNA, the ledger/contest machinery.
 2. Composition = sccomp PRIMARY + propeller-logit cross-check (concordance = robustness at n~=4).
    Accept the cmdstanr/CmdStan install weight.
 3. Normalisation = SCTransform v2 (v1 continuity). Restores v1's reprocess recipe (SCT +
-   glmGamPoi, regress percent_mt+percent_contam); substate scoring on the SCT assay. v1 Harmonised
+   glmGamPoi, regress percent_mt+percent_contam); subpopulation scoring on the SCT assay. v1 Harmonised
    over c("batch","sex") (archive rmd/02a:21); REVISED to batch-only (sex perfectly aliased w/ batch -
    batch01/03 male, 02/04 female, archive_digest - so batch-only is equivalent-or-finer, sex is absorbed).
 Folded into default (SOTA-clear, no gate): UCell over AddModuleScore (per-signature calibrated before
 argmax - raw UCell scores aren't cross-signature comparable); Harmony over BATCH ONLY (never integrate
-over genotype/amyloid -> DAM is biology); 4 substates by CALIBRATED argmax + ambiguous/unassigned bucket
+over genotype/amyloid -> DAM is biology); 4 subpopulations by CALIBRATED argmax + ambiguous/unassigned bucket
 + aux MHC/APC score; voomWithQualityWeights + eBayes(robust=TRUE); per-contrast BH base FDR + stageR
 screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate on one contrast alone).
 
@@ -59,7 +59,7 @@ screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate 
   (needs raw CellRanger matrix w/ empty droplets; we have the 26k filtered subset) -> regress
   percent_mt+percent_contam in SCT + flag contaminant clusters instead.
 - QC confounds (precomputed in meta, memory: doublets, percent_ribo, percent_malat1): audit by
-  cluster/genotype/substate (v1 trajectory flagged ribo/ambient confounding); prune/down-weight w/ logged
+  cluster/genotype/subpopulation (v1 trajectory flagged ribo/ambient confounding); prune/down-weight w/ logged
   rationale. Locked SCT recipe regresses percent_mt+percent_contam; adding ribo/malat1 to vars.to.regress is
   a FALLBACK iff a cluster is confounded (don't silently mutate the locked recipe).
 - Canonical mouse markers (expand constants.R per these): homeostatic P2ry12/P2ry13/Cx3cr1/Tmem119/Hexb/
@@ -87,7 +87,7 @@ screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate 
   -> FindNeighbors+RunUMAP(reduction="harmony", dims=1:20) -> FindClusters(Louvain, multi-res, pick).
   assay="SCT". Seed+RNGkind+thread-count fixed & recorded -> reproducible UP TO TOLERANCE, NOT bitwise (memory
   contract; multithreaded Harmony/UMAP/RcppParallel). NO genotype/amyloid in integration.
-- Substates: UCell::AddModuleScore_UCell(assay="SCT") on {Homeostatic, DAM, IFN, Proliferative} -> z-scale
+- Subpopulations: UCell::AddModuleScore_UCell(assay="SCT") on {Homeostatic, DAM, IFN, Proliferative} -> z-scale
   per signature -> CLUSTER-level assignment primary, per-cell argmax secondary (raw UCell not cross-signature
   calibrated); ambiguous (top-two within tol / all sub-null) -> unassigned bucket; cross-tab vs de-novo
   clusters + v1 labels (reconcile); aux MHC/APC + *_contam + rbc + doublet/ribo scores -> flag/prune
@@ -100,8 +100,8 @@ screen-confirm ACROSS the 5-contrast family (a contrast-FAMILY tool; degenerate 
   propeller-logit call STANDS; asin/sccomp sign-or-significance differences flagged+reported, never averaged. Batch
   random(sccomp)-vs-fixed(propeller) asymmetry intentional (priors regularise few-level batch); state it.
 - Pseudobulk DE: build_pseudobulk(replicate=genotype_batch) on RNA counts -> extend fit_limma_voom
-  (voomWithQualityWeights + eBayes(robust=TRUE)) across 5 contrasts; whole-MG always; per-substate ONLY where
-  every genotype_batch unit clears a PRE-DECLARED min-cell floor (e.g. >=10/unit) for that substate, else skip
+  (voomWithQualityWeights + eBayes(robust=TRUE)) across 5 contrasts; whole-MG always; per-subpopulation ONLY where
+  every genotype_batch unit clears a PRE-DECLARED min-cell floor (e.g. >=10/unit) for that subpopulation, else skip
   -> descriptive-only + log the cell-count table. per-contrast BH = base FDR + stageR family-screen across the
   5 contrasts. filterByExpr(group=genotype) per level.
 
@@ -119,18 +119,18 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
   assay.use; future.globals.maxSize raised for SCT; Seurat.warn.umap.uwot=FALSE (else UMAP notice -> tar_meta
   warning -> gate fail). Stale upstream meta shadows (pca1/umap1, SCT_snn_res.0.01) stripped.
 
-- **S2 substate annotation + QC prune** [DEP: UCell]. **[DONE 2026-06-30]**
+- **S2 subpopulation annotation + QC prune** [DEP: UCell]. **[DONE 2026-06-30]**
   constants.R restructured (microglia_identity_markers pan-QC + canonical_microglia_markers
-  Homeostatic/DAM/IFN/Proliferative+MHC_APC + microglia_substate_levels + contam_signatures);
+  Homeostatic/DAM/IFN/Proliferative+MHC_APC + microglia_subpopulation_levels + contam_signatures);
   microglia.R::annotate_microglia (UCell score -> prune -> calibrated argmax) + pure helpers
-  marker_sets_to_ensembl/zscale_signatures/assign_substate/cluster_mean_z/flag_contaminant_clusters; target
+  marker_sets_to_ensembl/zscale_signatures/assign_subpopulation/cluster_mean_z/flag_contaminant_clusters; target
   `microglia_annotated` (612MB). UCell added (BioCsoft). ACCEPT met: every retained cell labelled-or-bucketed
-  (postcondition !anyNA); per-signature z-calibration; per-substate self-enrichment asserted (build-time);
+  (postcondition !anyNA); per-signature z-calibration; per-subpopulation self-enrichment asserted (build-time);
   contaminant clusters {6,7,8,11}=2944 cells dropped w/ @misc$microglia_prune rationale (id_med<0.15 OR
-  mglike_frac<0.30, thresholds in natural gaps; doublets all-0 no-op); substate x genotype table in
-  $substate_provenance; Thrupp noted (constants+code); gate green. Key finding: amyloid->homeostatic->DAM
+  mglike_frac<0.30, thresholds in natural gaps; doublets all-0 no-op); subpopulation x genotype table in
+  $subpopulation_provenance; Thrupp noted (constants+code); gate green. Key finding: amyloid->homeostatic->DAM
   confirmed descriptively; genotype-associated QC dropout (cluster 6 = 86% NLGF_MAPTKI) carried to S3 caveat.
-  Gotcha: z-based prune FAILS (ambient contam pervasive -> use RAW identity-vs-contam); per-cell substate noisy
+  Gotcha: z-based prune FAILS (ambient contam pervasive -> use RAW identity-vs-contam); per-cell subpopulation noisy
   (cluster-level primary authoritative).
 
 - **S3 composition** [DEP: speckle + sccomp(off-lock cmdstanr/CmdStan)]. **[DONE 2026-06-30]**
@@ -150,18 +150,18 @@ wire target + full run -> verify quality gate (scripts/check.sh) before AND afte
 
 - **S4 pseudobulk DE** [DEP: stageR(Bioc)]. **[DONE 2026-06-30]** R/de_pb.R: fit_limma_voom -> voomWithQualityWeights
   (quality_weights default) + confint topTables; stage_wise_test (stageR omnibus-F screen + Holm confirm),
-  interaction_power (MDE@80%), de_pseudobulk (generic) + run_pb_de_microglia/run_pb_de_substate orchestrators +
-  dam_direction; pseudobulk_counts/build_pseudobulk gained `cells=` (per-substate subset, avoids Seurat::subset);
-  de_sc.R forward-ref comment FIXED (single-cell DE dropped). targets pb_de_microglia + pb_de_substate built live
+  interaction_power (MDE@80%), de_pseudobulk (generic) + run_pb_de_microglia/run_pb_de_subpopulation orchestrators +
+  dam_direction; pseudobulk_counts/build_pseudobulk gained `cells=` (per-subpopulation subset, avoids Seurat::subset);
+  de_sc.R forward-ref comment FIXED (single-cell DE dropped). targets pb_de_microglia + pb_de_subpopulation built live
   (clean tar_meta). stageR added (rproject.toml BioCsoft, 1.34.0, no heavy deps). tests extended (warn=2 clean).
   ALL ACCEPT MET (live 2026-06-30, full gate green): whole-MG kept 14512, stageR screened 3545; sig |logFC|>0.5
   FDR<0.05 = tau_alone 0/0, nlgf_in_maptki 555/457, nlgf_in_p301s 940/1148, tau_in_nlgf 202/764, interaction 0/0
   (123 stageR-confirmed small-effect). DAM markers amyloid-UP frac 1.00/0.94 meanLFC +1.37/+1.85 -> headline
-  concordant v1. interaction MDE@80%=0.92 log2FC (under-powered <~0.9, NOT absent) -> synergy handed P2. Per-substate
+  concordant v1. interaction MDE@80%=0.92 log2FC (under-powered <~0.9, NOT absent) -> synergy handed P2. Per-subpopulation
   Homeostatic+DAM FIT, IFN(min5)+Proliferative(0) SKIP; cell_counts stored. Detail -> memory.md (P1-S4).
 
 - **S5 report section + CLOSE-OUT** [render].
-  `_microglia.qmd` (UCell substate UMAP, proportions, composition results, amyloid->DAM DE programme,
+  `_microglia.qmd` (UCell subpopulation UMAP, proportions, composition results, amyloid->DAM DE programme,
   under-powered interaction (no large-effect DE) + P2 forward-pointer, Thrupp caveat); include in index.qmd; add to
   tar_quarto(extra_files) if needed; figures via theme_tau + scale_*_genotype (British English, hyphens).
   New tests wired into gate. Update memory (SOTA decisions, gotchas) + map (P1 wiring) + history (P1 digest);
@@ -177,8 +177,8 @@ stageR (S4). Re-derive any new sysdep via ldd-scan of new .so (memory).
 - sccomp/CmdStan install weight (Stan compile) -> if it fights the project-local pin, fall back to
   propeller-only + record the blocker (decision was sccomp+propeller; degrade only if truly stuck).
 - SCT DE-conservative on nuclei (SOTA caveat the user accepted for v1 continuity) -> DE is on RAW counts
-  (pseudobulk) so this hits clustering/scoring not DE; watch that SCT clustering still resolves substates.
-- Per-substate pseudobulk thin for rare states (IFN/proliferative) -> PRE-DECLARED min-cell floor per unit
-  gates fit-or-skip (not just filterByExpr); report n; substate DE is secondary to whole-MG.
+  (pseudobulk) so this hits clustering/scoring not DE; watch that SCT clustering still resolves subpopulations.
+- Per-subpopulation pseudobulk thin for rare states (IFN/proliferative) -> PRE-DECLARED min-cell floor per unit
+  gates fit-or-skip (not just filterByExpr); report n; subpopulation DE is secondary to whole-MG.
 - 8G load peak is the load_snrnaseq BUILD (cached); reprocess works on the 340MB subset -> moderate.
 - Keep gate green each step; near 80% context -> drive to clean state + close out.

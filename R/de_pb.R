@@ -14,7 +14,7 @@ pseudobulk_counts <- function(seurat_obj, group_col, assay = "RNA", layer = "cou
   # violated invariant fails loud instead of silently summing the wrong cells into each group.
   stopifnot(identical(rownames(seurat_obj@meta.data), colnames(counts)),
             length(groups) == ncol(counts), !anyNA(groups))
-  if (!is.null(cells)) {   # restrict to a cell subset (e.g. one substate) BEFORE aggregating
+  if (!is.null(cells)) {   # restrict to a cell subset (e.g. one subpopulation) BEFORE aggregating
     stopifnot(!anyDuplicated(cells), all(cells %in% colnames(counts)))   # bad/dup cell -> fail loud
     sel <- colnames(counts) %in% cells
     counts <- counts[, sel, drop = FALSE]

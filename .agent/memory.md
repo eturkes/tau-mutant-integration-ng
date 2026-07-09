@@ -20,7 +20,7 @@ Live report scope (2026-07-08): 10 visible figures, 3 included qmd fragments, ex
 Rendered HTML surface = figure sequence + per-figure folded code only; no visible document title,
 TOC, headings, captions, body prose, tables, or global code-tools menu.
 Infrastructure that does not directly feed the final analysis document is removed: committed
-tests, Python/uv files, composition/sccomp/CmdStan target, per-substate pseudobulk, prose
+tests, Python/uv files, composition/sccomp/CmdStan target, per-subpopulation pseudobulk, prose
 inventory, stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
 non-snRNAseq modality-native set = GeoMx sample heatmap (former Figure 10) + proteome +
 phosphoproteome; the other GeoMx exploratory/native panels are historical only. Historical
@@ -55,7 +55,7 @@ Durable headline:
 - Non-snRNAseq modalities provide context figures, not resurrected mechanism or
   cross-modality chapters.
 
-Substates: Homeostatic, DAM, IFN, Proliferative. Current coherent clusters contain
+Subpopulations: Homeostatic, DAM, IFN, Proliferative. Current coherent clusters contain
 Homeostatic/DAM/IFN; no Proliferative-dominant cluster in the built annotated object.
 
 ## Analysis Contracts
@@ -77,8 +77,8 @@ Microglia reprocess:
 - Re-run is seed-deterministic up to tolerance, not bitwise.
 
 Microglia annotate:
-- UCell scoring on SCT data; cluster-level substate assignment is authoritative.
-- Contaminant pruning uses raw identity-vs-contaminant evidence, not z-scaled substate
+- UCell scoring on SCT data; cluster-level subpopulation assignment is authoritative.
+- Contaminant pruning uses raw identity-vs-contaminant evidence, not z-scaled subpopulation
   scores.
 - Prune asymmetry exists: dropped low-quality clusters are enriched for NLGF_MAPTKI but
   are not DAM-high. Report caveat factually.
@@ -92,7 +92,7 @@ Microglia DE:
 - Live target = `pb_de_microglia` only.
 - Raw RNA pseudobulk by genotype_batch, limma voom with quality weights, topTables for
   the four-method amyloid-response scatter.
-- No stageR, per-substate DE, MDE, or DAM-direction helper in the live DAG.
+- No stageR, per-subpopulation DE, MDE, or DAM-direction helper in the live DAG.
 
 Trajectory:
 - Slingshot on Harmony embedding with forced Homeostatic -> DAM lineage.

@@ -111,7 +111,7 @@ reprocess_microglia <- function(seurat_obj,
 }
 
 # Mean per-cell expression of each marker SET across the levels of a cluster column -- the
-# post-Harmony substate-separation check (homeostatic/DAM/IFN must stay distinguishable; if
+# post-Harmony subpopulation-separation check (homeostatic/DAM/IFN must stay distinguishable; if
 # they collapse, Harmony over-corrected -> lower theta or go uncorrected). Markers are matched
 # to assay rownames AS GIVEN (map symbols -> ensembl upstream via symbols_to_ensembl; the
 # SCT/RNA assays carry ensembl rownames). Returns a clusters x marker-set matrix: the per-cell
@@ -146,7 +146,7 @@ marker_mean_by_cluster <- function(seurat_obj, marker_sets,
   out
 }
 
-# --- P1-S2: UCell substate annotation + contaminant-cluster prune --------------------------
+# --- P1-S2: UCell subpopulation annotation + contaminant-cluster prune --------------------------
 
 # Map named marker-symbol sets -> present ensembl ids via symbol_map (assay rownames are ensembl).
 # Drops symbols with no ensembl hit AND ids absent from `present_ids`. A set reduced to 0 errors
@@ -188,9 +188,9 @@ zscale_signatures <- function(score_mat) {
   z
 }
 
-# Argmax substate assignment with explicit ambiguous/unassigned buckets (never force-assign). For
+# Argmax subpopulation assignment with explicit ambiguous/unassigned buckets (never force-assign). For
 # each row (a cell or a cluster) of a z-scaled signature matrix:
-#   unassigned : best signature z <= eps (no positive enrichment for ANY substate; eps also absorbs
+#   unassigned : best signature z <= eps (no positive enrichment for ANY subpopulation; eps also absorbs
 #                floating-point zeros, e.g. a degenerate single-cluster object whose centred z ~ 1e-17)
 #   ambiguous  : the top-two are BOTH > amb_floor (genuinely enriched) AND within tol (co-dominant)
 #   else       : the argmax signature name.
@@ -199,7 +199,7 @@ zscale_signatures <- function(score_mat) {
 # argmax (best z in (eps, amb_floor]) IS assigned: argmax must pick a winner where one positively
 # enriched signature dominates. Requires finite input (z-scale upstream coerces non-finite -> 0).
 # Returns a row-named character vector. Pure.
-assign_substate <- function(z_mat, tol = 0.10, amb_floor = 0.10, eps = 1e-8) {
+assign_subpopulation <- function(z_mat, tol = 0.10, amb_floor = 0.10, eps = 1e-8) {
   stopifnot(is.matrix(z_mat), ncol(z_mat) >= 2L, !is.null(colnames(z_mat)), all(is.finite(z_mat)))
   apply(z_mat, 1L, function(r) {
     o <- order(r, decreasing = TRUE)
@@ -234,8 +234,8 @@ flag_contaminant_clusters <- function(stats, id_floor = 0.15, mglike_floor = 0.3
   rownames(stats)[stats$id_med < id_floor | stats$mglike_frac < mglike_floor]
 }
 
-# Annotate the reprocessed microglia: UCell-score identity + substate + aux + contaminant
-# signatures, drop clear contaminant clusters, assign substates on the clean population.
+# Annotate the reprocessed microglia: UCell-score identity + subpopulation + aux + contaminant
+# signatures, drop clear contaminant clusters, assign subpopulations on the clean population.
 #   1. UCell (rank-based; robust to dropout/depth/batch) scores every signature on the SCT `layer`
 #      (ncores=1 -> deterministic, no parallel warning). Raw scores -> meta `<sig>_UCell`.
 #   2. Prune: per cluster, raw microglia-identity median + fraction of cells whose identity beats
@@ -245,7 +245,7 @@ flag_contaminant_clusters <- function(stats, id_floor = 0.15, mglike_floor = 0.3
 #      ids+counts, and the dropped genotype x cluster table go in @misc$microglia_prune -- nothing
 #      hidden (the dropout is mildly genotype-associated; reported, and the dropped clusters are NOT
 #      DAM-high so the amyloid->DAM headline cannot be a pruning artifact).
-#   3. On RETAINED cells: z-scale the 4 substate signatures (calibrate per signature on the clean
+#   3. On RETAINED cells: z-scale the 4 subpopulation signatures (calibrate per signature on the clean
 #      population) -> cluster-mean-z argmax = PRIMARY label (broadcast to its cells); per-cell-z
 #      argmax = SECONDARY (diagnostic; noisier for sparse states). MHC_APC z = a continuous aux
 #      axis (ARM = DAM + MHC). Ambiguous/unassigned buckets, never force-assigned.
@@ -256,7 +256,7 @@ annotate_microglia <- function(seurat_obj, symbol_map,
                                marker_sets      = canonical_microglia_markers,
                                identity_markers = microglia_identity_markers,
                                contam_sets      = contam_signatures,
-                               substate_levels  = microglia_substate_levels,
+                               subpopulation_levels  = microglia_subpopulation_levels,
                                cluster_col = "microglia_clusters",
                                assay = "SCT", layer = "data",
                                id_floor = 0.15, mglike_floor = 0.30,
@@ -264,7 +264,7 @@ annotate_microglia <- function(seurat_obj, symbol_map,
   stopifnot(
     inherits(seurat_obj, "Seurat"), assay %in% SeuratObject::Assays(seurat_obj),
     cluster_col %in% colnames(seurat_obj@meta.data),
-    is.list(marker_sets), all(substate_levels %in% names(marker_sets)), "MHC_APC" %in% names(marker_sets),
+    is.list(marker_sets), all(subpopulation_levels %in% names(marker_sets)), "MHC_APC" %in% names(marker_sets),
     is.list(contam_sets), length(contam_sets) >= 1L, !is.null(names(contam_sets)),
     is.character(identity_markers), length(identity_markers) >= 1L,
     is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)),
@@ -338,23 +338,23 @@ annotate_microglia <- function(seurat_obj, symbol_map,
   obj <- subset(obj, cells = colnames(obj)[keep])
   obj@meta.data[[cluster_col]] <- droplevels(factor(obj@meta.data[[cluster_col]]))
 
-  # --- substate assignment on the clean population (z-scale calibrated on retained cells) ---
-  z_sub <- zscale_signatures(as.matrix(obj@meta.data[paste0(substate_levels, "_UCell")]))
-  colnames(z_sub) <- substate_levels
-  for (s in substate_levels) obj@meta.data[[paste0(s, "_UCell_z")]] <- z_sub[, s]
+  # --- subpopulation assignment on the clean population (z-scale calibrated on retained cells) ---
+  z_sub <- zscale_signatures(as.matrix(obj@meta.data[paste0(subpopulation_levels, "_UCell")]))
+  colnames(z_sub) <- subpopulation_levels
+  for (s in subpopulation_levels) obj@meta.data[[paste0(s, "_UCell_z")]] <- z_sub[, s]
   obj@meta.data[["MHC_APC_UCell_z"]] <-
     as.numeric(zscale_signatures(as.matrix(obj@meta.data["MHC_APC_UCell"])))
 
   cl  <- droplevels(factor(obj@meta.data[[cluster_col]]))
   cmz <- cluster_mean_z(z_sub, cl)
-  cluster_label <- assign_substate(cmz, tol = tol, amb_floor = amb_floor)          # PRIMARY (cluster)
-  lvls <- c(substate_levels, "ambiguous", "unassigned")
-  obj@meta.data[["microglia_substate"]] <- factor(cluster_label[as.character(cl)], levels = lvls)
-  obj@meta.data[["microglia_substate_percell"]] <-                                  # SECONDARY (cell)
-    factor(assign_substate(z_sub, tol = tol, amb_floor = amb_floor), levels = lvls)
+  cluster_label <- assign_subpopulation(cmz, tol = tol, amb_floor = amb_floor)          # PRIMARY (cluster)
+  lvls <- c(subpopulation_levels, "ambiguous", "unassigned")
+  obj@meta.data[["microglia_subpopulation"]] <- factor(cluster_label[as.character(cl)], levels = lvls)
+  obj@meta.data[["microglia_subpopulation_percell"]] <-                                  # SECONDARY (cell)
+    factor(assign_subpopulation(z_sub, tol = tol, amb_floor = amb_floor), levels = lvls)
 
   # --- postconditions: every retained cell labelled-or-bucketed; reductions survive the subset ---
-  sub <- obj@meta.data[["microglia_substate"]]
+  sub <- obj@meta.data[["microglia_subpopulation"]]
   stopifnot(
     !anyNA(sub),                                                       # every retained cell bucketed
     all(c("pca", "harmony", "umap") %in% SeuratObject::Reductions(obj))# reductions survive subset
@@ -362,15 +362,15 @@ annotate_microglia <- function(seurat_obj, symbol_map,
   # Self-CONSISTENCY guard, not independent validation: the labels derive from these same z-scaled
   # scores, so this only catches a sign/indexing inversion (s-labelled cells must out-score non-s
   # cells on the raw s signature). It cannot detect wrong marker definitions or overfit thresholds.
-  for (s in intersect(levels(droplevels(sub)), substate_levels)) {
+  for (s in intersect(levels(droplevels(sub)), subpopulation_levels)) {
     sc <- obj@meta.data[[paste0(s, "_UCell")]]
     if (any(sub != s)) stopifnot(mean(sc[sub == s]) > mean(sc[sub != s]))   # skip when s is the only state
   }
 
   obj@misc$microglia_prune <- prune_log
-  obj@misc$substate_provenance <- list(
+  obj@misc$subpopulation_provenance <- list(
     cluster_mean_z = cmz, cluster_label = cluster_label,
-    substate_table = table(genotype = obj$genotype, substate = sub),
+    subpopulation_table = table(genotype = obj$genotype, subpopulation = sub),
     n_used = attr(ens_sets, "n_used"),
     thresholds = c(id_floor = id_floor, mglike_floor = mglike_floor, tol = tol, amb_floor = amb_floor),
     assay = assay, layer = layer
@@ -380,49 +380,49 @@ annotate_microglia <- function(seurat_obj, symbol_map,
 
 # --- P1-S5: compact report-data extraction (keeps the gate render cheap) --------------------
 
-# Per-substate marker-expression panel -- the "genes that DEFINE each substate" dot-plot data.
+# Per-subpopulation marker-expression panel -- the "genes that DEFINE each subpopulation" dot-plot data.
 # For every marker SET (signature) and each of its genes present in `assay`, compute the mean
-# expression and the fraction of cells expressing (layer value > 0) WITHIN each substate group.
+# expression and the fraction of cells expressing (layer value > 0) WITHIN each subpopulation group.
 # Symbols map -> ensembl via symbol_map (the SCT/RNA rownames are ensembl); genes absent from the
 # assay drop, a signature left under `min_present` errors (a near-empty set would misrepresent the
-# state). Substate groups default to the set names (Homeostatic/DAM/IFN) and must each carry >= 1
-# cell in `substate_col`. Returns a long data.frame {signature, gene(symbol), ensembl, substate,
-# n_cells, mean_expr, pct_expr}; signature/gene/substate are factors ordered as given so the qmd
+# state). Subpopulation groups default to the set names (Homeostatic/DAM/IFN) and must each carry >= 1
+# cell in `subpopulation_col`. Returns a long data.frame {signature, gene(symbol), ensembl, subpopulation,
+# n_cells, mean_expr, pct_expr}; signature/gene/subpopulation are factors ordered as given so the qmd
 # renders a clean signature-blocked, marker-ordered dot grid. All numeric finite, pct in [0,1].
-# Pure: no RNG, no I/O. Feeds microglia_report$substate_markers -> the Substate-landscape dot plot.
-substate_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
-                                  substates = names(marker_sets),
-                                  substate_col = "microglia_substate",
+# Pure: no RNG, no I/O. Feeds microglia_report$subpopulation_markers -> the Subpopulation-landscape dot plot.
+subpopulation_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
+                                  subpopulations = names(marker_sets),
+                                  subpopulation_col = "microglia_subpopulation",
                                   assay = "SCT", layer = "data", min_present = 2L) {
   stopifnot(
     inherits(seurat_obj, "Seurat"),
     is.data.frame(symbol_map), all(c("symbol", "ensembl") %in% colnames(symbol_map)),
     is.list(marker_sets), length(marker_sets) >= 1L, !is.null(names(marker_sets)),
-    is.character(substates), length(substates) >= 1L, !anyDuplicated(substates),
-    substate_col %in% colnames(seurat_obj@meta.data)
+    is.character(subpopulations), length(subpopulations) >= 1L, !anyDuplicated(subpopulations),
+    subpopulation_col %in% colnames(seurat_obj@meta.data)
   )
   expr        <- SeuratObject::GetAssayData(seurat_obj, assay = assay, layer = layer)
   present_ids <- rownames(expr)
-  sub         <- as.character(seurat_obj@meta.data[[substate_col]])
+  sub         <- as.character(seurat_obj@meta.data[[subpopulation_col]])
   stopifnot(length(sub) == ncol(expr))
-  miss <- setdiff(substates, unique(sub))
+  miss <- setdiff(subpopulations, unique(sub))
   if (length(miss))                                    # a requested state with no cells would give NaN means
-    stop("substate_marker_panel: substate(s) absent from ", substate_col, ": ",
+    stop("subpopulation_marker_panel: subpopulation(s) absent from ", subpopulation_col, ": ",
          paste(miss, collapse = ", "))
   pieces <- lapply(names(marker_sets), function(sig) {
     hit <- symbols_to_ensembl(marker_sets[[sig]], symbol_map)   # named: names=symbol, values=ensembl (input order)
     hit <- hit[hit %in% present_ids]                            # keep only genes present in the assay
     if (length(hit) < min_present)                              # a single-gene panel row misrepresents the signature
-      stop("substate_marker_panel: under ", min_present, " present gene(s) for signature '", sig,
+      stop("subpopulation_marker_panel: under ", min_present, " present gene(s) for signature '", sig,
            "' -- widen the set or map more symbols")
     set_mat <- expr[unname(hit), , drop = FALSE]                # genes x cells for this signature
-    do.call(rbind, lapply(substates, function(st) {
+    do.call(rbind, lapply(subpopulations, function(st) {
       m <- set_mat[, sub == st, drop = FALSE]
       data.frame(
         signature = sig,
         gene      = names(hit),
         ensembl   = unname(hit),
-        substate  = st,
+        subpopulation  = st,
         n_cells   = ncol(m),
         mean_expr = as.numeric(Matrix::rowMeans(m)),
         pct_expr  = as.numeric(Matrix::rowMeans(m > 0)),
@@ -432,7 +432,7 @@ substate_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
   })
   out <- do.call(rbind, pieces)
   out$signature <- factor(out$signature, levels = names(marker_sets))
-  out$substate  <- factor(out$substate, levels = substates)
+  out$subpopulation  <- factor(out$subpopulation, levels = subpopulations)
   out$gene      <- factor(out$gene, levels = unique(out$gene))   # signature-then-marker order preserved
   rownames(out) <- NULL
   stopifnot(
@@ -445,37 +445,37 @@ substate_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
 # Extract ONLY what _microglia.qmd plots from the ~612MB annotated Seurat, so a
 # report render reads one compact target instead of the full object. The bundle
 # carries the per-cell UMAP/score frame, the unit-composition bars, and the
-# substate marker panel. Pure: no RNG, no I/O.
+# subpopulation marker panel. Pure: no RNG, no I/O.
 microglia_report_data <- function(seurat_obj, symbol_map,
-                                  substate_col = "microglia_substate",
+                                  subpopulation_col = "microglia_subpopulation",
                                   z_cols = c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z"),
                                   marker_sets = canonical_microglia_markers[c("Homeostatic", "DAM", "IFN")],
-                                  marker_substates = c("Homeostatic", "DAM", "IFN"),
+                                  marker_subpopulations = c("Homeostatic", "DAM", "IFN"),
                                   marker_layer = "data") {
   stopifnot(
     inherits(seurat_obj, "Seurat"),
     is.data.frame(symbol_map),
     "umap" %in% SeuratObject::Reductions(seurat_obj),
-    substate_col %in% colnames(seurat_obj@meta.data),
+    subpopulation_col %in% colnames(seurat_obj@meta.data),
     "genotype" %in% colnames(seurat_obj@meta.data),
     "genotype_batch" %in% colnames(seurat_obj@meta.data),
     "batch" %in% colnames(seurat_obj@meta.data),
     all(z_cols %in% colnames(seurat_obj@meta.data)),
     !is.null(seurat_obj@misc$microglia_prune),
-    !is.null(seurat_obj@misc$substate_provenance)
+    !is.null(seurat_obj@misc$subpopulation_provenance)
   )
   md  <- seurat_obj@meta.data
   emb <- SeuratObject::Embeddings(seurat_obj, "umap")
   stopifnot(identical(rownames(emb), rownames(md)), ncol(emb) >= 2L)   # umap cell-aligned to meta
-  sub <- md[[substate_col]]
-  observed_substates <- unique(as.character(sub))
-  sub_levels <- intersect(c(microglia_substate_levels, "ambiguous", "unassigned"), observed_substates)
-  if (!length(sub_levels)) sub_levels <- sort(observed_substates, method = "radix")
+  sub <- md[[subpopulation_col]]
+  observed_subpopulations <- unique(as.character(sub))
+  sub_levels <- intersect(c(microglia_subpopulation_levels, "ambiguous", "unassigned"), observed_subpopulations)
+  if (!length(sub_levels)) sub_levels <- sort(observed_subpopulations, method = "radix")
   cell_frame <- data.frame(
     umap_1   = as.numeric(emb[, 1]),                      # as.numeric strips cell names -> no row.names inference
     umap_2   = as.numeric(emb[, 2]),
     genotype = factor(as.character(md$genotype), levels = genotype_levels),
-    substate = factor(as.character(sub), levels = sub_levels),
+    subpopulation = factor(as.character(sub), levels = sub_levels),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   cell_frame[z_cols] <- md[, z_cols, drop = FALSE]         # append the activation z-scores by name (cell-aligned)
@@ -484,7 +484,7 @@ microglia_report_data <- function(seurat_obj, symbol_map,
   unit_tab <- as.data.frame(
     table(
       genotype_batch = factor(as.character(md$genotype_batch), levels = unit_levels),
-      substate = factor(as.character(sub), levels = sub_levels)
+      subpopulation = factor(as.character(sub), levels = sub_levels)
     ),
     stringsAsFactors = FALSE
   )
@@ -506,30 +506,30 @@ microglia_report_data <- function(seurat_obj, symbol_map,
                                  unit_comp$n_cells / unit_comp$unit_total, NA_real_)
   unit_comp$genotype <- factor(as.character(unit_comp$genotype), levels = genotype_levels)
   unit_comp <- unit_comp[order(match(unit_comp$genotype, genotype_levels),
-                               unit_comp$genotype_batch, unit_comp$substate,
+                               unit_comp$genotype_batch, unit_comp$subpopulation,
                                method = "radix"), , drop = FALSE]
   rownames(unit_comp) <- NULL
-  prov  <- seurat_obj@misc$substate_provenance
+  prov  <- seurat_obj@misc$subpopulation_provenance
   prune <- seurat_obj@misc$microglia_prune
   # cell_frame is the single source of truth -> assert the passed-through summaries AGREE with it
   # (catches drift between the S2/S3 provenance table and this S5 per-cell frame).
-  sub_counts <- table(factor(as.character(sub), levels = colnames(prov$substate_table)))
+  sub_counts <- table(factor(as.character(sub), levels = colnames(prov$subpopulation_table)))
   stopifnot(
-    !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),   # every cell placed (annotate guarantees it)
+    !anyNA(cell_frame$genotype), !anyNA(cell_frame$subpopulation),   # every cell placed (annotate guarantees it)
     all(is.finite(cell_frame$umap_1)), all(is.finite(cell_frame$umap_2)),   # finite coords -> no ggplot drop
     all(vapply(z_cols, function(z) all(is.finite(cell_frame[[z]])), logical(1))),
     all(is.finite(unit_comp$n_cells)), all(is.finite(unit_comp$unit_total)),
     all(is.finite(unit_comp$proportion)), !anyNA(unit_comp$genotype),
     !anyNA(unit_comp$batch),
-    identical(as.integer(colSums(prov$substate_table)), as.integer(sub_counts)),  # provenance == per-cell counts
+    identical(as.integer(colSums(prov$subpopulation_table)), as.integer(sub_counts)),  # provenance == per-cell counts
     isTRUE(prune$n_retained == ncol(seurat_obj))               # retained count == frame rows
   )
-  # Genes-that-define-each-substate dot-plot data (compact: ~40 genes x 3 substates). Computed
+  # Genes-that-define-each-subpopulation dot-plot data (compact: ~40 genes x 3 subpopulations). Computed
   # here (the sole point with the heavy annotated object + its SCT layer) so the qmd reads it off
   # the ~0.5MB target like cell_frame -- no extra heavy load at render.
-  substate_markers <- substate_marker_panel(
-    seurat_obj, symbol_map, marker_sets = marker_sets, substates = marker_substates,
-    substate_col = substate_col, assay = "SCT", layer = marker_layer)
+  subpopulation_markers <- subpopulation_marker_panel(
+    seurat_obj, symbol_map, marker_sets = marker_sets, subpopulations = marker_subpopulations,
+    subpopulation_col = subpopulation_col, assay = "SCT", layer = marker_layer)
   list(cell_frame = cell_frame, n_cells = ncol(seurat_obj), prune = prune, provenance = prov,
-       substate_markers = substate_markers, unit_composition = unit_comp)
+       subpopulation_markers = subpopulation_markers, unit_composition = unit_comp)
 }

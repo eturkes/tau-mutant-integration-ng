@@ -25,7 +25,7 @@ genotype_colours <- c(
   NLGF_P301S  = "#A63A50"
 )
 
-substate_colours <- c(
+subpopulation_colours <- c(
   Homeostatic   = "#2F78A0",
   DAM           = "#A63A50",
   IFN           = "#C8841C",
@@ -117,17 +117,17 @@ scale_colour_tau_background <- function(...) {
 }
 scale_color_tau_background <- scale_colour_tau_background
 
-# Microglia-substate colour/fill scales: keep coherent biology colours stable wherever
-# substates are mapped. `breaks=` can be narrowed to present_sub in a qmd.
-scale_colour_substate <- function(..., breaks = microglia_substate_levels) {
-  ggplot2::scale_colour_manual(values = substate_colours, limits = microglia_substate_levels,
+# Microglia-subpopulation colour/fill scales: keep coherent biology colours stable wherever
+# subpopulations are mapped. `breaks=` can be narrowed to present_sub in a qmd.
+scale_colour_subpopulation <- function(..., breaks = microglia_subpopulation_levels) {
+  ggplot2::scale_colour_manual(values = subpopulation_colours, limits = microglia_subpopulation_levels,
                                breaks = breaks, drop = FALSE, ...)
 }
-scale_fill_substate <- function(..., breaks = microglia_substate_levels) {
-  ggplot2::scale_fill_manual(values = substate_colours, limits = microglia_substate_levels,
+scale_fill_subpopulation <- function(..., breaks = microglia_subpopulation_levels) {
+  ggplot2::scale_fill_manual(values = subpopulation_colours, limits = microglia_subpopulation_levels,
                              breaks = breaks, drop = FALSE, ...)
 }
-scale_color_substate <- scale_colour_substate
+scale_color_subpopulation <- scale_colour_subpopulation
 
 # Binary and signed-direction helpers keep TRUE/FALSE and up/down states out of ggplot's
 # high-saturation defaults.
@@ -804,8 +804,8 @@ geomx_gene_detection_plot <- function(detection, title = "GeoMx gene detectabili
                                        levels = c("Microglia", "Homeostatic", "DAM"))
 
   marker_colours <- c(Microglia = "#0B7A75",
-                      Homeostatic = substate_colours[["Homeostatic"]],
-                      DAM = substate_colours[["DAM"]])
+                      Homeostatic = subpopulation_colours[["Homeostatic"]],
+                      DAM = subpopulation_colours[["DAM"]])
   filter_colours <- c(`low coverage` = "#AFA89C", `filter passing` = "#3F5F7F")
 
   detect_plot <- ggplot2::ggplot(

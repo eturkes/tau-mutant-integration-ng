@@ -1,7 +1,7 @@
 # Activation-trajectory pseudotime (P2-S1). Order microglia along the homeostatic->DAM
-# axis with slingshot on the BATCH-CORRECTED harmony embedding, seeded by the substate
+# axis with slingshot on the BATCH-CORRECTED harmony embedding, seeded by the subpopulation
 # biology. PRIMARY lineage = a forced single clean Homeostatic->DAM curve (clusterLabels =
-# the 2 substate super-clusters -> MST on 2 nodes = one edge = one lineage; principal curve
+# the 2 subpopulation super-clusters -> MST on 2 nodes = one edge = one lineage; principal curve
 # still fits the full high-dim cell cloud). IFN/Proliferative cells are OMITTED from the
 # lineage (off-lineage flag + NA pt), not deleted -> per-unit omitted fraction is reported,
 # never hidden. Pseudotime is an ACTIVATION ORDERING (position/extent of advance), NOT
@@ -13,7 +13,7 @@
 # Marker SCORE-AXIS pseudotime proxy = raw UCell DAM minus Homeostatic. Assumption-light
 # (no population z-centring): both are UCell scores on the same rank-based [0,1] scale, so
 # their difference is a direct per-cell activation contrast. Used ONLY as a CONCORDANCE
-# anchor for the slingshot ordering (it shares the marker SYSTEM that defines the substate
+# anchor for the slingshot ordering (it shares the marker SYSTEM that defines the subpopulation
 # labels -> catches gross trajectory failure, NOT a statistically independent robustness
 # check). Pure.
 score_axis_pseudotime <- function(dam_score, homeo_score) {
@@ -128,21 +128,21 @@ validate_trajectory_units <- function(unit_vec, geno_vec, levels = genotype_leve
 }
 
 # Orchestrate the activation-trajectory target from microglia_annotated. Reads the cached
-# harmony embedding + per-cell UCell scores + substate labels (NO recompute), fits the
+# harmony embedding + per-cell UCell scores + subpopulation labels (NO recompute), fits the
 # PRIMARY Homeostatic->DAM slingshot pseudotime (dims 1:primary_dims), a FIXED sensitivity
 # table (alt dims + an all-cells-retained re-fit), and the marker score-axis concordance.
 # Returns a COMPACT target (per-cell frame + per-unit table + lineage/sensitivity/provenance
 # lists) -- NEVER the 612MB Seurat (cheap-render invariant; only the report-side qmd must stay
-# light, but the target itself is small too). FORK CHOICES (dims, lineage substates) are
+# light, but the target itself is small too). FORK CHOICES (dims, lineage subpopulations) are
 # PRE-DECLARED here, not retuned after inspecting contrasts.
 build_activation_trajectory <- function(seurat_obj,
                                          primary_dims = 15L,
                                          sensitivity_dims = c(10L, 20L),
-                                         lineage_substates = c("Homeostatic", "DAM"),
-                                         root_substate = "Homeostatic",
-                                         terminal_substate = "DAM",
+                                         lineage_subpopulations = c("Homeostatic", "DAM"),
+                                         root_subpopulation = "Homeostatic",
+                                         terminal_subpopulation = "DAM",
                                          reduction = "harmony",
-                                         substate_col = "microglia_substate",
+                                         subpopulation_col = "microglia_subpopulation",
                                          dam_col = "DAM_UCell",
                                          homeo_col = "Homeostatic_UCell",
                                          unit_col = "genotype_batch",
@@ -152,7 +152,7 @@ build_activation_trajectory <- function(seurat_obj,
   stopifnot(
     inherits(seurat_obj, "Seurat"),
     reduction %in% SeuratObject::Reductions(seurat_obj),
-    all(c(substate_col, dam_col, homeo_col, unit_col, genotype_col) %in%
+    all(c(subpopulation_col, dam_col, homeo_col, unit_col, genotype_col) %in%
           colnames(seurat_obj@meta.data)),
     is.numeric(primary_dims), length(primary_dims) == 1L,
     primary_dims >= 2L, primary_dims == round(primary_dims),       # positive whole-number dims
@@ -165,16 +165,16 @@ build_activation_trajectory <- function(seurat_obj,
             ncol(emb_full) >= max(c(primary_dims, sensitivity_dims)),
             is.numeric(md[[dam_col]]), is.numeric(md[[homeo_col]])) # score cols numeric, not factor
 
-  sub <- as.character(md[[substate_col]])
+  sub <- as.character(md[[subpopulation_col]])
   dam <- as.numeric(md[[dam_col]]); homeo <- as.numeric(md[[homeo_col]])
-  on_lineage <- sub %in% lineage_substates
+  on_lineage <- sub %in% lineage_subpopulations
   stopifnot(sum(on_lineage) >= 2L,
-            root_substate %in% sub[on_lineage], terminal_substate %in% sub[on_lineage])
+            root_subpopulation %in% sub[on_lineage], terminal_subpopulation %in% sub[on_lineage])
 
   # PRIMARY: forced single Homeostatic->DAM lineage on the on-lineage cells, dims 1:primary.
   emb_on <- emb_full[on_lineage, seq_len(primary_dims), drop = FALSE]
   prim <- run_slingshot_lineage(emb_on, sub[on_lineage],
-                                root_substate, terminal_substate, seed)
+                                root_subpopulation, terminal_subpopulation, seed)
   pt_raw <- stats::setNames(rep(NA_real_, nrow(md)), rownames(md))
   pt_raw[names(prim$pt)] <- prim$pt
 
@@ -191,7 +191,7 @@ build_activation_trajectory <- function(seurat_obj,
   sens_rows <- list()
   for (d in sensitivity_dims) {
     alt <- run_slingshot_lineage(emb_full[on_lineage, seq_len(d), drop = FALSE],
-                                 sub[on_lineage], root_substate, terminal_substate, seed)
+                                 sub[on_lineage], root_subpopulation, terminal_subpopulation, seed)
     ok <- is.finite(alt$pt) & is.finite(prim$pt[names(alt$pt)])
     sens_rows[[length(sens_rows) + 1L]] <- data.frame(
       variant = paste0("dims_", d),
@@ -200,7 +200,7 @@ build_activation_trajectory <- function(seurat_obj,
       n_lineages = alt$n_lineages, n_shared = sum(ok), stringsAsFactors = FALSE)
   }
   allret <- run_slingshot_lineage(emb_full[, seq_len(primary_dims), drop = FALSE],
-                                  sub, root_substate, terminal_substate, seed)
+                                  sub, root_subpopulation, terminal_subpopulation, seed)
   shared <- intersect(names(prim$pt), names(allret$pt)[is.finite(allret$pt)])
   sens_rows[[length(sens_rows) + 1L]] <- data.frame(
     variant = "all_retained", n_lineages = allret$n_lineages, n_shared = length(shared),
@@ -219,7 +219,7 @@ build_activation_trajectory <- function(seurat_obj,
     cell = rownames(md),
     genotype_batch = unit_vec,
     genotype = factor(geno_vec, levels = genotype_levels),
-    substate = factor(sub, levels = sort(unique(sub))),
+    subpopulation = factor(sub, levels = sort(unique(sub))),
     on_lineage = on_lineage,
     pt_raw = pt_raw, pt01 = pt01, score_axis_pt = score_axis_pt,
     DAM_UCell = dam, Homeostatic_UCell = homeo,
@@ -240,9 +240,9 @@ build_activation_trajectory <- function(seurat_obj,
   prov <- trajectory_provenance(seed)
   prov$primary_dims <- primary_dims
   prov$sensitivity_dims <- sensitivity_dims
-  prov$lineage_substates <- lineage_substates
-  prov$root_substate <- root_substate
-  prov$terminal_substate <- terminal_substate
+  prov$lineage_subpopulations <- lineage_subpopulations
+  prov$root_subpopulation <- root_subpopulation
+  prov$terminal_subpopulation <- terminal_subpopulation
   prov$reduction <- reduction
   prov$concordance_rho <- conc$rho
   prov$concordance_n <- conc$n
@@ -269,7 +269,7 @@ build_activation_trajectory <- function(seurat_obj,
   on <- is.finite(pt_raw)
   stopifnot(
     prim$n_lineages == 1L,                                   # single clean primary lineage
-    identical(prim$lineage, c(root_substate, terminal_substate)),
+    identical(prim$lineage, c(root_subpopulation, terminal_subpopulation)),
     sum(on) == sum(on_lineage), !anyNA(pt_raw[on_lineage]),  # every on-lineage cell ordered
     prov$dam_pt_rho > 0, prov$homeo_pt_rho < 0,              # DAM rises, Homeo falls along pt (rooting)
     all(pt01[on] > 0 & pt01[on] < 1),                        # squeeze opened the interval
@@ -323,13 +323,13 @@ derive_batch <- function(genotype_batch, genotype) {
 pseudotime_per_replicate <- function(cell_frame, lineage_states, dam_state = "DAM",
                                      min_within = 10L) {
   stopifnot(is.data.frame(cell_frame),
-            all(c("genotype_batch", "genotype", "substate", "pt_raw") %in% names(cell_frame)),
+            all(c("genotype_batch", "genotype", "subpopulation", "pt_raw") %in% names(cell_frame)),
             is.character(lineage_states), dam_state %in% lineage_states,
             "min_within must be a single integer >= 2 (within-state sd needs >=2 cells/unit)" =
               (length(min_within) == 1L && is.finite(min_within) && min_within >= 2L))
   cf   <- cell_frame[is.finite(cell_frame$pt_raw), , drop = FALSE]   # on-lineage cells
   stopifnot("no on-lineage cells: every pt_raw is non-finite" = nrow(cf) > 0L)
-  sub  <- as.character(cf$substate)
+  sub  <- as.character(cf$subpopulation)
   unit <- as.character(cf$genotype_batch)
   geno <- as.character(cf$genotype)
   stopifnot(all(sub %in% lineage_states))                  # on-lineage cells are all lineage states
@@ -596,9 +596,9 @@ freedman_lane_interaction <- function(y, design, int_col = "tau_nlgf", weights =
 run_trajectory_progression <- function(microglia_trajectory, min_within = 10L,
                                        n_perm = 2000L, seed = 42L) {
   prov_in        <- microglia_trajectory$provenance
-  lineage_states <- prov_in$lineage_substates
-  dam_state      <- prov_in$terminal_substate
-  root_state     <- prov_in$root_substate
+  lineage_states <- prov_in$lineage_subpopulations
+  dam_state      <- prov_in$terminal_subpopulation
+  root_state     <- prov_in$root_subpopulation
   stopifnot(is.list(microglia_trajectory), "cell_frame" %in% names(microglia_trajectory),
             is.character(lineage_states), length(lineage_states) >= 2L,
             dam_state %in% lineage_states, root_state %in% lineage_states)
@@ -885,7 +885,7 @@ glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
 # compact object -- never the 612MB Seurat. All three inputs are ALREADY compact (microglia_trajectory
 # ~3.3MB in memory; the two inference targets are small), so no heavy object is read here. Pure: no
 # RNG, no I/O. The per-cell plotting frame is asserted render-clean by construction (finite pt on
-# on-lineage cells, finite score-axis, no missing genotype/substate) so the qmd never trips a ggplot
+# on-lineage cells, finite score-axis, no missing genotype/subpopulation) so the qmd never trips a ggplot
 # missing-value warning under warn=2 (which would red the gate).
 # ============================================================================================
 trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
@@ -907,7 +907,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
   mp  <- microglia_trajectory$provenance
   stopifnot(
     is.data.frame(tcf),
-    all(c("genotype", "substate", "on_lineage", "pt_raw", "score_axis_pt") %in% names(tcf)),
+    all(c("genotype", "subpopulation", "on_lineage", "pt_raw", "score_axis_pt") %in% names(tcf)),
     # NESTED fields the body reads (mirror microglia_report_data: guard EVERY field the body pulls,
     # not just the top-level containers) -> a malformed input fails HERE, never as a silent NULL that
     # only breaks mid-render.
@@ -920,7 +920,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     is.data.frame(microglia_trajectory$sensitivity),
     all(c("variant", "spearman_vs_primary") %in% names(microglia_trajectory$sensitivity)),
     # provenance source fields the inline prose pulls (assembled into out$provenance below):
-    all(c("primary_dims", "lineage_substates", "root_substate", "terminal_substate",
+    all(c("primary_dims", "lineage_subpopulations", "root_subpopulation", "terminal_subpopulation",
           "concordance_rho", "concordance_floor", "concordant", "dam_pt_rho", "homeo_pt_rho",
           "omitted_frac_overall") %in% names(mp)),
     all(c("dam_onset", "used_states", "within_skip", "primary_measures", "planned_primary",
@@ -932,7 +932,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
   # pseudotime panels and uses the always-defined score-axis for the concordance panel).
   cell_frame <- data.frame(
     genotype      = tcf$genotype,                          # factor over genotype_levels (preserved)
-    substate      = tcf$substate,
+    subpopulation      = tcf$subpopulation,
     on_lineage    = tcf$on_lineage,
     pt_raw        = tcf$pt_raw,
     score_axis_pt = tcf$score_axis_pt,
@@ -964,9 +964,9 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     provenance = list(
       # slingshot trajectory build (microglia_trajectory):
       primary_dims       = mp$primary_dims,
-      lineage_substates  = mp$lineage_substates,
-      root_substate      = mp$root_substate,
-      terminal_substate  = mp$terminal_substate,
+      lineage_subpopulations  = mp$lineage_subpopulations,
+      root_subpopulation      = mp$root_subpopulation,
+      terminal_subpopulation  = mp$terminal_subpopulation,
       concordance_rho    = mp$concordance_rho,
       concordance_floor  = mp$concordance_floor,
       concordant         = mp$concordant,
@@ -1012,7 +1012,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
   perm_inlined <- c("mean_pt", "progression_cf")          # rows whose perm_p the qmd prints via round() (headline stat)
   stopifnot(
     nrow(cell_frame) >= 1L, is.logical(on), !anyNA(on), any(on),  # logical mask (cf[cf$on_lineage,]) -> no NA, >= 1 on-lineage
-    !anyNA(cell_frame$genotype), !anyNA(cell_frame$substate),
+    !anyNA(cell_frame$genotype), !anyNA(cell_frame$subpopulation),
     all(is.finite(cell_frame$pt_raw[on])),                # every on-lineage cell ordered
     all(is.finite(cell_frame$score_axis_pt)),             # score-axis defined for all cells
     all(c("measure", "family", "coef", "ci_l", "ci_r", "p_value", "fdr") %in% names(it)),  # cols exist BEFORE finite
@@ -1050,7 +1050,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     gl$method != "failed" || length(gl$fail_reason) == 1L,   # failed branch prints fail_reason instead
     # provenance: fields the qmd feeds a geom (dam_onset -> geom_hline; *_loading -> geom_col) or inline-
     # formats must be finite (NA = warn=2 red / "NA" text); dims/perm/seed integer-valued for %d; the
-    # substate/version strings non-NA; concordant a scalar flag; the rest (assembled, not inline-read) non-NULL.
+    # subpopulation/version strings non-NA; concordant a scalar flag; the rest (assembled, not inline-read) non-NULL.
     all(vapply(pv[c("dam_onset", "composition_loading", "progression_loading", "cross_loading",
                     "dam_pt_rho", "homeo_pt_rho", "concordance_rho", "concordance_floor",
                     "recon_resid_max", "omitted_frac_overall",
@@ -1061,7 +1061,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
     pv$recon_resid_max < 1e-6,
     abs(pv$composition_loading + pv$progression_loading + pv$cross_loading - 1) < 1e-5,
     all(vapply(pv[c("primary_dims", "n_perm", "seed")], int1, logical(1))),
-    all(vapply(pv[c("root_substate", "terminal_substate", "limma_version", "r_version")], str1, logical(1))),
+    all(vapply(pv[c("root_subpopulation", "terminal_subpopulation", "limma_version", "r_version")], str1, logical(1))),
     is.logical(pv$concordant), length(pv$concordant) == 1L, !is.na(pv$concordant),
     !any(vapply(pv, is.null, logical(1))))                # every assembled provenance field non-NULL
   out

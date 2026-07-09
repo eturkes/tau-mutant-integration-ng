@@ -13,7 +13,7 @@ io, design+contrasts, plot+report theme, loader); data load -> 4 analysis-ready
 modalities; QC **sanity** pass (loads + sane metrics, light figures); 2x2 factorial +
 5-contrast machinery; concrete runnable quality gate.
 OUT (-> P1+): full snRNAseq microglia reprocess (SCT/Harmony/cluster-prune), microglia
-substate assignment, single-cell DE (NEBULA/glmmTMB), pseudobulk DE *results*. P0
+subpopulation assignment, single-cell DE (NEBULA/glmmTMB), pseudobulk DE *results*. P0
 builds the contrast + pseudobulk *machinery* and smoke-tests it; it runs no analysis.
 
 ## Data (live, verified through `storage/data` symlink -> host Documents)

@@ -12,7 +12,7 @@ state expansion, with explicit checks for the v1 headline mechanisms:
 - Honest interpretation: RNA-derived TF/pathway = microglia-specific static expression; kinase =
   24M bulk hippocampus phosphosite support, NOT microglia-sorted.
 
-Inputs already built: `pb_de_microglia`, `pb_de_substate`, `composition_results`,
+Inputs already built: `pb_de_microglia`, `pb_de_subpopulation`, `composition_results`,
 `trajectory_report`, `symbol_map`, `phospho`, `sample_key`. Outputs: focused
 mechanism targets + `_mechanism.qmd` report chapter. Full GeoMx / proteome / phospho
 cross-modality interpretation stays P4; P3 may build a minimal phosphosite-DE leaf ONLY
@@ -60,9 +60,9 @@ Current-method sweep (2026-07-02):
 Lean, on-lock, mechanism-specific:
 
 1. RNA pathway / TF activity from the existing microglia pseudobulk statistics.
-   Unit = replicate-correct pseudobulk DE already built in P1. Whole microglia + fit substates
-   (Homeostatic, DAM); skipped substates remain skipped. Build ranked gene-symbol t matrices from
-   `pb_de_microglia` / `pb_de_substate` via `symbol_map`; duplicate symbols keep max |t|.
+   Unit = replicate-correct pseudobulk DE already built in P1. Whole microglia + fit subpopulations
+   (Homeostatic, DAM); skipped subpopulations remain skipped. Build ranked gene-symbol t matrices from
+   `pb_de_microglia` / `pb_de_subpopulation` via `symbol_map`; duplicate symbols keep max |t|.
 
 2. NF-kB attenuation is a targeted RNA check, not a new broad arc.
    Define NF-kB family from CollecTRI sources matching `Rela`, `Nfkb1`, `Nfkb2`, `Rel`, `Relb` plus
@@ -71,7 +71,7 @@ Lean, on-lock, mechanism-specific:
    - SUPPORTIVE: `tau_in_nlgf` contrast = mutant tau effect on the amyloid background.
    Verdict gate = negative `interaction` in the primary whole-microglia RNA family with FDR<0.10
    after small-family correction across the predeclared TF-family and NF-kB-target GSEA tests.
-   `tau_in_nlgf` and substate rows can corroborate localisation but cannot by themselves prove
+   `tau_in_nlgf` and subpopulation rows can corroborate localisation but cannot by themselves prove
    attenuation of the amyloid response. If only directionally consistent, report as suggestive.
 
 3. Kinase activity uses a minimal 24M phosphosite-DE target.
@@ -167,24 +167,24 @@ Add targets:
   `msigdbr(db_species="MM", species="Mus musculus")`, plus compact project sets: DAM, Homeostatic,
   MHC_APC, IFN, NF-kB target union and activated/repressed target sets from CollecTRI family sources.
   Apply min_size 5 for custom, 15 for GO.
-- `mechanism_tf` = decoupleR CollecTRI activity on whole microglia + fit substates across 5 contrasts.
+- `mechanism_tf` = decoupleR CollecTRI activity on whole microglia + fit subpopulations across 5 contrasts.
 - `mechanism_pathway` = fgsea preranked GSEA on the same RNA ranked matrices.
 - `nfkb_attenuation` = targeted table for NF-kB-family TF activity + NF-kB-target GSEA in `interaction`
-  and `tau_in_nlgf`, by whole microglia + fit substates.
+  and `tau_in_nlgf`, by whole microglia + fit subpopulations.
 
 Contracts:
 - Pseudobulk is the inference unit; no cell-level TF tests.
 - FDR: ULM p BH within population x contrast; fgsea padj within population x collection x contrast.
   NF-kB attenuation verdict additionally applies a small primary-family BH across the two primary
-  whole-microglia tests (TF family, target GSEA) at `interaction`; substate/tau_in_nlgf rows are supportive.
+  whole-microglia tests (TF family, target GSEA) at `interaction`; subpopulation/tau_in_nlgf rows are supportive.
 - Direction: decoupleR consensus score if present; ULM score fallback recorded. fgsea direction = NES.
-- Fit substates only: Homeostatic and DAM unless current target says otherwise; IFN/proliferative skipped
+- Fit subpopulations only: Homeostatic and DAM unless current target says otherwise; IFN/proliferative skipped
   status travels into the result.
 
 Acceptance:
 - Fresh target builds warning-free; `tar_meta` clean for new targets.
 - Unit tests cover gene-set size filtering, NF-kB source extraction, FDR/direction convention, skipped
-  substate propagation, and the rule that `tau_in_nlgf` alone cannot call attenuation supported.
+  subpopulation propagation, and the rule that `tau_in_nlgf` alone cannot call attenuation supported.
 - Live smoke prints top TFs/pathways for amyloid, interaction, tau_in_nlgf; no hardcoded expected winner.
 - `scripts/check.sh` green.
 

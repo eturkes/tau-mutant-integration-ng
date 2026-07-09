@@ -97,17 +97,17 @@ microglia_figure_data <- function(microglia_report) {
   stopifnot(is.list(microglia_report))
   cf <- microglia_report$cell_frame
   score_cols <- c("Homeostatic_UCell_z", "DAM_UCell_z", "MHC_APC_UCell_z")
-  .fig_require_cols(cf, c("umap_1", "umap_2", "genotype", "substate", score_cols),
+  .fig_require_cols(cf, c("umap_1", "umap_2", "genotype", "subpopulation", score_cols),
                     "microglia_report$cell_frame")
   .fig_require_cols(microglia_report$unit_composition,
-                    c("genotype_batch", "substate", "n_cells", "genotype", "batch",
+                    c("genotype_batch", "subpopulation", "n_cells", "genotype", "batch",
                       "unit_total", "proportion"),
                     "microglia_report$unit_composition")
-  umap <- cf[c("umap_1", "umap_2", "genotype", "substate")]
+  umap <- cf[c("umap_1", "umap_2", "genotype", "subpopulation")]
   comp <- microglia_report$unit_composition
 
   out <- list(
-    umap_by_substate = umap,
+    umap_by_subpopulation = umap,
     unit_composition = comp,
     provenance = list(
       source_targets = "microglia_report",
@@ -115,7 +115,7 @@ microglia_figure_data <- function(microglia_report) {
     )
   )
 
-  .fig_assert_finite(out$umap_by_substate, c("umap_1", "umap_2"), "umap_by_substate")
+  .fig_assert_finite(out$umap_by_subpopulation, c("umap_1", "umap_2"), "umap_by_subpopulation")
   .fig_assert_finite(out$unit_composition, c("n_cells", "unit_total", "proportion"),
                      "unit_composition")
   out
@@ -124,10 +124,10 @@ microglia_figure_data <- function(microglia_report) {
 trajectory_figure_data <- function(trajectory_report) {
   stopifnot(is.list(trajectory_report))
   cf <- trajectory_report$cell_frame
-  .fig_require_cols(cf, c("genotype", "substate", "on_lineage", "pt_raw"),
+  .fig_require_cols(cf, c("genotype", "subpopulation", "on_lineage", "pt_raw"),
                     "trajectory cell_frame")
   pt <- cf[cf$on_lineage %in% TRUE & is.finite(cf$pt_raw), , drop = FALSE]
-  density <- .fig_histogram(pt, "pt_raw", c("genotype", "substate"), bins = 55L, lower = 0)
+  density <- .fig_histogram(pt, "pt_raw", c("genotype", "subpopulation"), bins = 55L, lower = 0)
 
   out <- list(
     pt_density = density,

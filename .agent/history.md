@@ -38,14 +38,14 @@ one-shot FRESH-CLONE rebuild is the design contract, verified incrementally acro
 -> the warn=2 + render-log checks always exercise (no cached-clean blind spot); residual = out-of-band edits to
 `_report/` outputs, moot since it re-renders from source. Gate review-hardened post-close.
 
-Deferred -> P1+: microglia reprocess (SCT/Harmony/cluster-prune), substate assignment, single-cell DE
+Deferred -> P1+: microglia reprocess (SCT/Harmony/cluster-prune), subpopulation assignment, single-cell DE
 (NEBULA/glmmTMB), pseudobulk DE RESULTS, edgeR-QLF/DESeq2/dream, BPCells (8G RAM relief), col-map DAG
 validation (P4). Out of scope (v1 bloat): cisTarget mm10/SCENIC, SEA-AD human validation.
 
 ## P1 snRNAseq microglia core -- closed 2026-06-30 (-> `.agent/completed/p1_snrnaseq_plan_2026-06-30.md`)
 
-The first analysis phase: reprocess + integrate + cluster microglia (S1), UCell substates + contaminant prune
-(S2), substate composition (S3), pseudobulk DE (S4), `_microglia.qmd` report + close (S5). Built the robust
+The first analysis phase: reprocess + integrate + cluster microglia (S1), UCell subpopulations + contaminant prune
+(S2), subpopulation composition (S3), pseudobulk DE (S4), `_microglia.qmd` report + close (S5). Built the robust
 amyloid->DAM activation headline, supported three complementary ways (composition, DE, UCell score), plus an
 HONEST under-powered interaction handed to P2. Live facts -> memory.md (P1-S1..S5 sections); wiring -> map.md.
 Below = decisions + rejected alternatives.
@@ -62,11 +62,11 @@ Below = decisions + rejected alternatives.
 - NORMALISATION: SCTransform v2 (v1 continuity; user choice over the SOTA logNorm lean). Harmony over BATCH ONLY
   (sex perfectly aliased with batch; never integrate over genotype/amyloid -> DAM is biology). REJECTED: logNorm,
   Harmony over batch+sex.
-- SUBSTATES: UCell (rank-based, dropout-robust) calibrated PER-SIGNATURE then cluster-argmax (raw UCell not
-  cross-signature comparable; cluster-PRIMARY authoritative, per-cell NOISY); 4 substates + aux MHC/APC.
+- SUBPOPULATIONS: UCell (rank-based, dropout-robust) calibrated PER-SIGNATURE then cluster-argmax (raw UCell not
+  cross-signature comparable; cluster-PRIMARY authoritative, per-cell NOISY); 4 subpopulations + aux MHC/APC.
   Contaminant prune on RAW identity-vs-contam (z FAILS -- ambient contam pervasive destroys the absolute "is a
   microglia"); dropped {6,7,8,11}=2944/26104. REJECTED: AddModuleScore (control-bin, unstable on sparse nuclei),
-  z-based prune, per-cell substate proportions, over-pruning.
+  z-based prune, per-cell subpopulation proportions, over-pruning.
 - HEADLINE (robust, microglia-led): amyloid (NLGF) drives homeostatic->DAM. Confirmed 3 ways -- composition
   (propeller DAM-up FDR~1e-10/1e-13, sccomp concordant), DE (DAM markers amyloid-UP frac 1.00/0.94, meanLFC
   +1.37/+1.85 -> v1-concordant), UCell DAM score shift. INTERACTION (honest, OUTCOME-OPEN): 0 large-effect DE
@@ -152,7 +152,7 @@ progression. Built direct-mouse CollecTRI/OmniPath priors, RNA TF/pathway target
 - RNA MECHANISM: existing replicate-corrected pseudobulk DE is the inference unit; no cell-level TF/pathway tests.
   CollecTRI TF activity + bounded native-mouse MSigDB GO fgsea + compact project gene sets. NF-kB attenuation is
   a targeted gate: only whole-microglia `interaction` can support attenuation, and support requires concordant
-  negative primary rows after small-family correction. `tau_in_nlgf` and substates are supportive-only.
+  negative primary rows after small-family correction. `tau_in_nlgf` and subpopulations are supportive-only.
 - KINASE: built a narrow 24M bulk hippocampus phosphosite DE leaf solely to feed kinase-substrate activity.
   Exactly 16 sample-key runs, no batch term, positive log2 + median normalisation + prevalence filter, duplicate
   biological sites collapsed before decoupleR. Run-index sensitivity is carried because the 24M acquisition order is
@@ -199,7 +199,7 @@ map.md. Below = decisions + rejected alternatives.
   support only with coherent supported evidence in >=2 modalities, or one non-microglia modality plus a strong
   whole-microglia anchor. Live qualitative call: Apoe-Trem2 earns focused measured support in amyloid-on-P301S;
   App-Cd74 and Pros1-Mertk remain measured but unearned. REJECTED: full off-lock CCC stack and v1-style LR ledger.
-- INTEGRATION: `crossmodality_table` harmonises symbols across snRNAseq whole/substate RNA, GeoMx, proteome,
+- INTEGRATION: `crossmodality_table` harmonises symbols across snRNAseq whole/subpopulation RNA, GeoMx, proteome,
   raw/corrected phospho, TF activity and kinase activity. Duplicate features collapse by best FDR then absolute
   statistic with provenance retained. Count-honesty distinction is load-bearing: `modality_class` drives broad
   modality counts; `modality_group` is layer-level evidence. Pathway rows are descriptive ranked-statistic summaries,
@@ -286,15 +286,15 @@ Closed the P4 gap where SpatialDecon abundance was not earned because no compact
 GeoMx-native SpatialDecon follow-up, then rewired report/synthesis state to the actual blocked fit. Live facts ->
 memory.md (Spatial decon follow-up sections); wiring -> map.md. Below = decisions + rejected alternatives.
 
-- ROUTE: broad-first SpatialDecon with a separately gated microglia-substate attempt. Added `SpatialDecon`
+- ROUTE: broad-first SpatialDecon with a separately gated microglia-subpopulation attempt. Added `SpatialDecon`
   project-locally; built `geomx_reference_profile` from the full snRNAseq RDS plus retained P1 microglia labels.
-  Broad and substate profiles both earned gates; Proliferative was recorded absent rather than fabricated. REJECTED:
+  Broad and subpopulation profiles both earned gates; Proliferative was recorded absent rather than fabricated. REJECTED:
   nuclei-rescaled absolute cell counts while 42/91 nuclei sentinels remain, plaque-niche localisation from whole-tissue
-  ROIs, full CCC, v1 ledger revival, and forcing substate abundance if unstable.
+  ROIs, full CCC, v1 ledger revival, and forcing subpopulation abundance if unstable.
 - FIT OUTCOME: SpatialDecon ran warning-clean on GeoMx RNA/data with Q3-scaled negative-probe background. Broad and
-  substate arms both blocked on the same 4/91 unresolved AOIs with near-zero total beta; 87 AOIs resolved and residual
+  subpopulation arms both blocked on the same 4/91 unresolved AOIs with near-zero total beta; 87 AOIs resolved and residual
   QC remains descriptive fit QC. Because broad abundance did not earn a clean fit, no log-beta abundance DE or
-  microglia-substate tissue-abundance claim is made.
+  microglia-subpopulation tissue-abundance claim is made.
 - INTEGRATION/API: `geomx_abundance_de` returns blocked canonical 5-contrast empty top tables plus residual audit;
   `spatial_decon_report` is the compact handoff (no beta matrices). `clearance_axis`, `crossmodality_report`, and
   `synthesis_report` now derive SpatialDecon status from this attempted fit, not the historical P4 preflight. A future
@@ -401,7 +401,7 @@ Closed the user's request to optimize for faster report iteration over broad inf
 
 - LIVE PATH: kept only code/config that directly feeds the current 10-figure final analysis report.
 - REMOVED: committed tests, Python/uv config, prose inventory, composition/sccomp/CmdStan target, stageR layer,
-  per-substate pseudobulk, and dead helper surface no longer reached by the rendered chapters.
+  per-subpopulation pseudobulk, and dead helper surface no longer reached by the rendered chapters.
 - REPORT DATA: `microglia_report_data()` now emits replicate-unit composition directly; figure-data targets carry
   only rendered slots.
 - GATE: `scripts/check.sh` is now a lean report gate: optional `rv sync`, forced `report` rebuild, target metadata

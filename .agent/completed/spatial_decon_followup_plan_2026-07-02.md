@@ -19,7 +19,7 @@ Default route = gated SpatialDecon, broad-first and two-stage-aware:
 
 Out by default: new CCC model, v1 ledger revival, absolute cell counting,
 claiming plaque-niche localisation from geometric whole-tissue ROIs, or forcing
-microglial substate abundance if the reference profile is collinear.
+microglial subpopulation abundance if the reference profile is collinear.
 
 ## Research Digest
 Local current state:
@@ -41,13 +41,13 @@ Local current state:
 
 v1 archive mining:
 - v1 Arc L used SpatialDecon in a two-stage shape: broad profile for total
-  microglia, then substate fractions anchored to total microglia. Useful.
+  microglia, then subpopulation fractions anchored to total microglia. Useful.
 - Durable gotchas: Q3-scale negative-probe background, disable nuclei count
   conversion, quantify profile collinearity, residualise spatial autocorrelation
-  by genotype/slide, and interpret substate abundance as model-estimated tissue
+  by genotype/slide, and interpret subpopulation abundance as model-estimated tissue
   composition, not proof.
 - Rejected v1 carry-over: ledger rows, full prose chapter shape, hardcoded
-  common-gene counts, direct symbol rownames, and treating collinear substate
+  common-gene counts, direct symbol rownames, and treating collinear subpopulation
   output as if it were equally stable as broad-cell output.
 
 Current docs / method sweep:
@@ -72,7 +72,7 @@ Current docs / method sweep:
   https://www.nature.com/articles/s41587-021-01139-4
 
 ## Default Design
-Broad-first SpatialDecon with substate attempt guarded separately.
+Broad-first SpatialDecon with subpopulation attempt guarded separately.
 
 1. Reference profile is the key deliverable.
    Build a compact `geomx_reference_profile` target from the full snRNAseq RDS,
@@ -82,15 +82,15 @@ Broad-first SpatialDecon with substate attempt guarded separately.
 
 2. Profile levels are explicit.
    Broad profile = non-microglia broad annotations plus pooled retained
-   microglia. Substate profile = non-microglia broad annotations plus coherent
-   microglia substates that pass min-cell gates. Proliferative is recorded as
+   microglia. Subpopulation profile = non-microglia broad annotations plus coherent
+   microglia subpopulations that pass min-cell gates. Proliferative is recorded as
    absent unless the current annotation actually contains a coherent cluster.
 
 3. Earning rules are predeclared.
    Broad abundance can be earned if common-gene coverage, per-class cell counts,
    profile collinearity, SpatialDecon fit, finite beta, and warning capture pass.
-   Substate abundance is optional and earns only if its own profile/stability
-   gates pass; a collinear substate profile becomes a reported negative, not a
+   Subpopulation abundance is optional and earns only if its own profile/stability
+   gates pass; a collinear subpopulation profile becomes a reported negative, not a
    tuning prompt.
 
 4. Deconvolution uses local GeoMx scale correctly.
@@ -114,12 +114,12 @@ Broad-first SpatialDecon with substate attempt guarded separately.
 ## Alternatives
 Alternative A - broad-only SpatialDecon.
 Pros: strongest estimability, smallest profile surface, likely cleanest tissue
-composition readout. Cons: cannot test DAM tissue substate abundance; only total
+composition readout. Cons: cannot test DAM tissue subpopulation abundance; only total
 microglia and other broad classes.
 
 Alternative B - full two-stage SpatialDecon as primary.
 Pros: closest to v1 Arc L and directly asks whether DAM abundance in tissue
-corroborates snRNAseq composition. Cons: microglia substates are transcriptionally
+corroborates snRNAseq composition. Cons: microglia subpopulations are transcriptionally
 close; current Proliferative is absent; high risk of collinear, unstable output.
 
 Alternative C - RCTD/spacexr or cell2location side branch.
@@ -128,8 +128,8 @@ Cons: less GeoMx-native, heavier dependency/object surface, likely a new phase
 rather than a follow-up; not needed until SpatialDecon fails in an informative
 way.
 
-Default choice: broad-first SpatialDecon with a gated substate attempt. It gives a
-real chance to earn spatial abundance while making "substate not estimable" a
+Default choice: broad-first SpatialDecon with a gated subpopulation attempt. It gives a
+real chance to earn spatial abundance while making "subpopulation not estimable" a
 valid outcome.
 
 ## Steps
@@ -138,7 +138,7 @@ explicitly docs-only and a lighter check is justified.
 
 ### S0 - Route gate [DONE 2026-07-02]
 User chose the recommended default: broad-first SpatialDecon with a gated
-substate attempt. Proceed to S1 without changing the default design.
+subpopulation attempt. Proceed to S1 without changing the default design.
 
 Acceptance:
 - User chooses default / alternative A / alternative B / alternative C / another
@@ -154,10 +154,10 @@ Result:
 - `SpatialDecon` 1.22.0 installed project-locally and smoke-loaded under
   `warn=2` with no warnings/messages.
 - `geomx_reference_profile` loads the full snRNAseq RDS once, overlays retained
-  microglia substates by barcode, caps at 500 cells/class, and stores only
-  broad/substate profiles plus QC/provenance.
+  microglia subpopulations by barcode, caps at 500 cells/class, and stores only
+  broad/subpopulation profiles plus QC/provenance.
 - Live target warning-clean: 1.88 MB serialized; broad profile earned
-  (15,919 genes x 6 profiles, max |cor| 0.674); substate profile earned
+  (15,919 genes x 6 profiles, max |cor| 0.674); subpopulation profile earned
   (16,079 genes x 8 profiles, max |cor| 0.902); Microglia_Proliferative is
   recorded absent.
 
@@ -169,7 +169,7 @@ Contracts:
   rows to unique symbols, caps cells per class with a fixed seed, and stores only
   compact profile/QC matrices.
 - Reference labels combine full-object `broad_annotations` with
-  `microglia_annotated` retained-cell substates by cell barcode.
+  `microglia_annotated` retained-cell subpopulations by cell barcode.
 - QC records common genes, cells per class, absent/under-min classes, max profile
   correlation, condition number, memory estimate, package version, and seed.
 - Heavy target uses transient memory/garbage-collection settings and drops the
@@ -189,11 +189,11 @@ silently skipping after S1 earned the profile.
 
 Result:
 - GeoMx RNA `data` and Q3-scaled background were aligned and SpatialDecon ran
-  warning-clean for both broad and substate profiles.
+  warning-clean for both broad and subpopulation profiles.
 - Broad arm: blocked because 4/91 AOIs have beta_total=0 after the fit
-  (the same unresolved AOIs recur in the substate arm).
-- Substate arm: independently attempted and blocked for the same 4 unresolved
-  AOIs; two-stage substate assembly is therefore blocked.
+  (the same unresolved AOIs recur in the subpopulation arm).
+- Subpopulation arm: independently attempted and blocked for the same 4 unresolved
+  AOIs; two-stage subpopulation assembly is therefore blocked.
 - Nuclei absolute rescaling remains disabled (42 sentinels). No abundance claim
   is earned at S2; S3 should pass through the blocked state and surface residual
   diagnostics rather than fitting log-beta DE.
@@ -202,7 +202,7 @@ Contracts:
 - Use GeoMx RNA `data` layer as linear Q3-normalised `norm`; verify same AOI
   order as metadata and background.
 - Background = `geomx_q3_scaled_background(meta)` broadcast to gene x AOI.
-- Run broad profile first. Run substate profile only as its own gated arm.
+- Run broad profile first. Run subpopulation profile only as its own gated arm.
 - Capture SpatialDecon warnings/messages; no leaked warning can reach tar_meta or
   the render log.
 - Store beta, proportions derived from beta, fit residual/QC, profile gate
@@ -215,7 +215,7 @@ Acceptance:
   and warning/message capture.
 - Fresh target build warning-clean. If blocked, reasons are precise and flow to
   report prose.
-- Broad fit is required before claiming any abundance result; substate failure
+- Broad fit is required before claiming any abundance result; subpopulation failure
   does not invalidate a clean broad result.
 - `scripts/check.sh` green.
 
@@ -227,27 +227,27 @@ Result:
   deconvolution arms and otherwise returns canonical blocked outputs with empty
   5-contrast top tables.
 - Live target warning-clean/tar_meta clean, 5.93 KB serialized. Broad,
-  substate, and microglia-substate abundance DE are all blocked because the
+  subpopulation, and microglia-subpopulation abundance DE are all blocked because the
   SpatialDecon fit still has 4 unresolved AOIs with beta_total=0.
-- Residual audit is available despite blocked abundance: broad and substate
+- Residual audit is available despite blocked abundance: broad and subpopulation
   arms each cover 91 AOIs across 4 slides, using nearest-neighbour summaries of
   genotype-residualised per-AOI RMS residuals. Median RMS residual is ~0.821 for
-  broad and substate; descriptive only, no new claim axis.
+  broad and subpopulation; descriptive only, no new claim axis.
 - `scripts/check.sh` green across 49 current targets/branches.
 
 Contracts:
 - Fit log-beta abundance by the existing GeoMx design:
   `~0 + genotype + slide`, `duplicateCorrelation(block = bio_unit)`, 5 canonical
   contrasts, unblocked sensitivity.
-- Broad abundance is primary. Substate contrasts are shown only when substate
+- Broad abundance is primary. Subpopulation contrasts are shown only when subpopulation
   decon status is earned.
 - Spatial audit = per-slide Moran's I or nearest-neighbour residual summary,
   genotype-residualised where estimable; descriptive only, not a new claim axis.
-- Report all broad cell types and all attempted substates, not only microglia.
+- Report all broad cell types and all attempted subpopulations, not only microglia.
 
 Acceptance:
 - Tests cover abundance-DE structure, canonical contrast coverage, blocked
-  decon passthrough, broad/substate gating, and residualised spatial-audit shape.
+  decon passthrough, broad/subpopulation gating, and residualised spatial-audit shape.
 - Fresh target build warning-clean with `tar_meta` clean.
 - Output states whether amyloid/interactions affect total microglia or DAM-like
   abundance, or whether the profile made that unearned.
@@ -307,7 +307,7 @@ Result:
 
 Contracts:
 - Check claim scope: model-estimated tissue abundance, not cell counts; GeoMx
-  whole-tissue ROIs, not plaque niches; broad/substate distinction clear.
+  whole-tissue ROIs, not plaque niches; broad/subpopulation distinction clear.
 - Check stale negatives: no remaining missing-profile negative after S1 built
   the reference profile.
 - Check figure/caption labels if a new section adds figures.

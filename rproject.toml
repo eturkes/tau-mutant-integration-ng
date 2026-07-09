@@ -25,7 +25,7 @@ dependencies = [
     "SeuratObject",
     "harmony",
     { name = "glmGamPoi", repository = "BioCsoft" },
-    # substate scoring: UCell rank-based signature enrichment (robust to dropout/depth; P1-S2)
+    # subpopulation scoring: UCell rank-based signature enrichment (robust to dropout/depth; P1-S2)
     { name = "UCell",      repository = "BioCsoft" },
     # differential expression (Bioconductor)
     { name = "limma",        repository = "BioCsoft" },

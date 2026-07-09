@@ -9,7 +9,7 @@ ledger/adjudication machinery.
 
 Inputs already built:
 - P1: `microglia_report`, `composition_results`, `pb_de_microglia`,
-  `pb_de_substate`.
+  `pb_de_subpopulation`.
 - P2: `trajectory_report`.
 - P3: `mechanism_report`.
 - P4: `crossmodality_report`, with `crossmodality_divergence` available only if

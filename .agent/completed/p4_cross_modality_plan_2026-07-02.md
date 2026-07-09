@@ -18,7 +18,7 @@ P4 asks what the non-snRNAseq modalities add:
   claims ledger / contest machinery.
 
 Inputs already built: `geomx`, `proteomics`, `phospho`, `sample_key`,
-`pb_de_microglia`, `pb_de_substate`, `composition_results`,
+`pb_de_microglia`, `pb_de_subpopulation`, `composition_results`,
 `trajectory_report`, `mechanism_report`, `mechanism_gene_sets`,
 `phospho_de_24m`, `kinase_activity`, `kinase_mechanism_summary`, `symbol_map`.
 
@@ -36,7 +36,7 @@ Local / v1:
 - v1 GeoMx DE used raw counts + limma-voom + slide fixed effect. v1 spatial
   deconvolution used SpatialDecon and found useful composition evidence but
   carried load-bearing gotchas: Q3-scale the negative-probe background, drop
-  nuclei rescaling, expect collinear microglia substate profiles, and report
+  nuclei rescaling, expect collinear microglia subpopulation profiles, and report
   residualised spatial autocorrelation rather than raw slide-confounded Moran's I.
 - v1 bulk proteomics summed peptide/PTM rows to parent protein groups, median
   normalised log2 intensities, and used limma-trend. v1 phospho added a
@@ -268,7 +268,7 @@ Outcome:
   live S1 preflight remains `defer`; `clearance_axis_data()` now fails loud if a
   future preflight becomes `earned` before those targets exist.
 - Added `clearance_axis`: measured APP/TREM2/APOE/CD74/PROS1/MERTK,
-  complement, and synaptic-anchor rows across whole/substate microglia RNA,
+  complement, and synaptic-anchor rows across whole/subpopulation microglia RNA,
   GeoMx primary DE, and 24M bulk anchors, plus synaptic GO-set availability.
 - Live fresh build warning-clean / `tar_meta` clean. Spatial decon action =
   skipped (`defer`: 42 nuclei sentinels + no compact profile). CCC-lite verdict
@@ -301,7 +301,7 @@ Acceptance:
 Outcome:
 - Added S4 helpers in `R/crossmodality.R`, targets `crossmodality_table`,
   `crossmodality_pathway`, and `crossmodality_divergence`, plus synthetic tests.
-- `crossmodality_table` harmonises symbol-level evidence across snRNAseq whole/substate
+- `crossmodality_table` harmonises symbol-level evidence across snRNAseq whole/subpopulation
   RNA, GeoMx, proteome, raw/corrected phospho, TF activity, and kinase summaries.
   Duplicate RNA/protein/phosphosite rows collapse with feature/site provenance and
   missingness rows; canonical contrast coverage fails loud.
