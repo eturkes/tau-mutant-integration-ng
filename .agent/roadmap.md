@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 point-size expansion DONE (ad hoc user review): kept the
+  existing minimum functional-group point size and raised only the maximum size so
+  larger scored-item buckets read more prominently.
 - 2026-07-09 Figure 10 accepted label polish DONE (ad hoc user review): visible buckets now use
   `Cell-Cell Adhesion` for the leukocyte adhesion GO family and `Extracellular Matrix` for the
   matrix/adhesion GO family.

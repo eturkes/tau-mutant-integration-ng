@@ -323,7 +323,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "genotype") +
-    ggplot2::scale_size_continuous(range = c(6.2, 11.8), breaks = size_breaks,
+    ggplot2::scale_size_continuous(range = c(6.2, 18.5), breaks = size_breaks,
                                    name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
