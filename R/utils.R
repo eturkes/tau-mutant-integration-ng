@@ -4,10 +4,10 @@
 # NULL-coalescing infix (rlang-style; kept local to avoid the dep). Used by R/plot.R.
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-# Shared amyloid-effect-scatter off-diagonal utilities. Production modality plots pass
-# a stored shared absolute |x-y| cutoff; the panel-tail path remains available for
-# sensitivity checks. Optional `max_labels` raises an empirical cutoff to the Nth-largest
-# distance, keeping rendered labels readable when that path is used.
+# Shared amyloid-effect-scatter off-diagonal utilities. Production modality plots use
+# within-panel absolute |x-y| cutoffs so each method contributes outliers by its own
+# empirical spread. Optional `max_labels` raises the cutoff to the Nth-largest distance:
+# this preserves the within-panel empirical rule while keeping rendered labels readable.
 modality_scatter_panel_thresholds <- function(panels, order = names(panels),
                                               tail_quantile = 0.99,
                                               max_labels = NULL) {

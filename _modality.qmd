@@ -50,11 +50,8 @@ phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
 #| label: plot-modality-amyloid-effect
 #| fig-width: 13.9
 #| fig-height: 16.8
-#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds on a shared square coordinate scale; the caption labels the dotted threshold bands as absolute off-diagonal distance |x-y| greater than or equal to 1.5 log2FC, with text labels capped for readability and phosphoproteomics collapsed to parent proteins."
+#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds on a shared square coordinate scale; a large text note labels the dotted threshold bands as absolute off-diagonal distance |x-y| greater than or equal to 2 log2FC, with text labels capped for readability, no GeoMx threshold-passing labels, and phosphoproteomics collapsed to parent proteins."
 label_cap <- msf$provenance$scatter_label_cap %||% 24L
-offdiag_cutoff <- unique(as.numeric(msf$provenance$offdiag_cutoff))
-offdiag_cutoff <- offdiag_cutoff[is.finite(offdiag_cutoff)]
-offdiag_cutoff <- if (length(offdiag_cutoff) == 1L) offdiag_cutoff else NA_real_
 scatter_lim <- max(vapply(msf$order, function(m) {
   d <- msf$panels[[m]]$data
   max(abs(c(d$x[is.finite(d$x)], d$y[is.finite(d$y)])), na.rm = TRUE)
@@ -66,11 +63,7 @@ panels <- lapply(msf$order, function(m) {
 })
 wrap_plots(panels, ncol = 2) +
   plot_annotation(
-    caption = if (is.finite(offdiag_cutoff)) {
-      sprintf("threshold: |x-y| >= %.1f log2FC", offdiag_cutoff)
-    } else {
-      "threshold: stored off-diagonal cutoff"
-    },
+    caption = "threshold: |x-y| >= 2 log2FC",
     theme = ggplot2::theme(
       plot.caption = ggplot2::element_text(
         size = tau_report_base_size * 1.2,
