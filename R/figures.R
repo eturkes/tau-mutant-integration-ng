@@ -611,6 +611,16 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   lab
 }
 
+.fig_functional_group_label <- function(x) {
+  lab <- as.character(x)
+  antigen_complement <- grepl("^Antigen\\s*/\\s*Complement(\\s*/|$)", lab)
+  lab[antigen_complement] <- "Antigen / Complement"
+  slash <- grepl("/", lab, fixed = TRUE) & !antigen_complement
+  lab[slash] <- trimws(sub("\\s*/.*$", "", lab[slash]))
+  lab[lab == "Synapse"] <- "Synaptic"
+  lab
+}
+
 .fig_default_pathway_sets <- function(collection = "M5", subcollection = "GO:BP",
                                       min_size = 10L, max_size = 500L) {
   x <- suppressMessages(msigdbr::msigdbr(db_species = "MM", species = "Mus musculus",
@@ -764,7 +774,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   group_sets <- lapply(group_sets, .fig_gene_tokens)
   group_sets <- group_sets[vapply(group_sets, length, integer(1)) > 0L]
   stopifnot(length(group_sets) >= 1L)
-  group_labels <- .fig_pathway_label(names(group_sets))
+  group_labels <- .fig_functional_group_label(.fig_pathway_label(names(group_sets)))
   fallback_priority <- length(group_sets)
 
   selected <- .fig_bind(lapply(order, function(m) {
