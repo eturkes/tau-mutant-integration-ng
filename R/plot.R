@@ -2137,7 +2137,7 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
     ggplot2::facet_grid(. ~ genotype, scales = "free_x", space = "free_x",
                          labeller = ggplot2::labeller(genotype = genotype_strip_labels)) +
     scale_fill_rwb(midpoint = 0, limits = c(-lim, lim), oob = scales::squish,
-                   name = "row z") +
+                   name = "z-score") +
     ggplot2::scale_x_discrete(drop = TRUE) +
     ggplot2::labs(x = NULL, y = NULL, title = title) +
     theme_tau() +
@@ -2148,7 +2148,9 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
                                           lineheight = 0.9),
       strip.text.x = ggplot2::element_text(lineheight = 0.9),
       panel.spacing.x = grid::unit(0.16, "lines"),
-      legend.position = "bottom"
+      legend.position = "bottom",
+      legend.box.spacing = grid::unit(0, "pt"),
+      legend.margin = ggplot2::margin(t = -24, r = 0, b = -8, l = 0)
     )
 }
 
