@@ -1079,6 +1079,11 @@ user before writing the plan.
   amyloid-response scatter label rule from within-method `max(q0.99, top-24)` to `max(q0.99, top-8)`.
   The functional-group score panel still scores the exact Figure 9 selected features, now with 10 displayed
   categorized rows and no rows with `|P301S - MAPTKI| < 0.5` under the live sensitivity check.
+- 2026-07-09 Figure 9/10 modality-aware threshold correction DONE (ad hoc user task): replaced the
+  uniform top-8 off-diagonal label budget with modality-specific budgets: snRNAseq 16, GeoMx 4,
+  proteome 24, phosphoproteome 24. Figure 10 now filters displayed aggregate rows to
+  `|P301S - MAPTKI| >= 0.5`, so near-overlap aggregate categories stay out while the stronger
+  proteomic/phosphoproteomic and snRNAseq outliers return.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

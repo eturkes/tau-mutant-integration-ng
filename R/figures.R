@@ -380,16 +380,19 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
                                          offdiag_tail_quantile = 0.99,
-                                         offdiag_max_labels = 8L,
+                                         offdiag_max_labels = c(snRNAseq = 16L, GeoMx = 4L,
+                                                               Proteome = 24L, Phospho = 24L),
                                          group_min_genes = 1L,
-                                         group_max_groups = 10L) {
+                                         group_max_groups = 10L,
+                                         group_min_abs_delta = 0.5) {
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
             is.list(proteome_de_24m), is.list(phospho_de_24m),
             is.numeric(offdiag_tail_quantile), length(offdiag_tail_quantile) == 1L,
             offdiag_tail_quantile > 0, offdiag_tail_quantile < 1,
-            is.numeric(offdiag_max_labels), length(offdiag_max_labels) == 1L,
-            is.finite(offdiag_max_labels), offdiag_max_labels >= 1)
-  offdiag_max_labels <- as.integer(offdiag_max_labels)
+            is.numeric(offdiag_max_labels), length(offdiag_max_labels) >= 1L,
+            all(is.finite(offdiag_max_labels)), all(offdiag_max_labels >= 1),
+            is.numeric(group_min_abs_delta), length(group_min_abs_delta) == 1L,
+            is.finite(group_min_abs_delta), group_min_abs_delta >= 0)
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -520,22 +523,28 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                                phospho_gene, "phospho")))
   )
   order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
+  offdiag_label_budget <- if (length(offdiag_max_labels) == 1L) {
+    stats::setNames(rep(as.integer(offdiag_max_labels), length(order)), order)
+  } else {
+    stopifnot(!is.null(names(offdiag_max_labels)), all(order %in% names(offdiag_max_labels)))
+    stats::setNames(as.integer(offdiag_max_labels[order]), order)
+  }
   offdiag_thresholds <- modality_scatter_panel_thresholds(
     panels, order,
     tail_quantile = offdiag_tail_quantile,
-    max_labels = offdiag_max_labels
+    max_labels = offdiag_label_budget
   )
   offdiag_cutoff <- stats::setNames(offdiag_thresholds$cutoff, offdiag_thresholds$modality)
-  offdiag_cutoff_source <- sprintf(
+  offdiag_cutoff_source <- stats::setNames(sprintf(
     "within-method |x-y| max(q%.3f, top-%d label budget)",
-    offdiag_tail_quantile, offdiag_max_labels
-  )
+    offdiag_tail_quantile, offdiag_label_budget
+  ), order)
   for (m in order) {
     d <- panels[[m]]$data
     attr(d, "offdiag_cutoff") <- unname(offdiag_cutoff[[m]])
-    attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
+    attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source[[m]]
     attr(d, "offdiag_tail_quantile") <- offdiag_tail_quantile
-    attr(d, "offdiag_max_labels") <- offdiag_max_labels
+    attr(d, "offdiag_max_labels") <- offdiag_label_budget[[m]]
     panels[[m]]$data <- d
   }
   groups <- modality_offdiag_group_score_data(
@@ -543,7 +552,8 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     group_sets = group_gene_sets,
     tail_quantile = offdiag_tail_quantile,
     min_genes = group_min_genes,
-    max_groups = group_max_groups
+    max_groups = group_max_groups,
+    min_abs_delta = group_min_abs_delta
   )
   descriptive <- list(
     GeoMx = list(sample_heatmap = geomx_de$sample_heatmap),
@@ -570,8 +580,9 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       offdiag_cutoff = offdiag_cutoff,
       offdiag_thresholds = offdiag_thresholds,
       offdiag_tail_quantile = offdiag_tail_quantile,
-      offdiag_max_labels = offdiag_max_labels,
+      offdiag_max_labels = offdiag_label_budget,
       offdiag_cutoff_source = offdiag_cutoff_source,
+      group_min_abs_delta = group_min_abs_delta,
       n_features = vapply(order, function(m) nrow(panels[[m]]$data), integer(1)),
       phospho_site_features = attr(panels$Phospho$data, "phospho_site_n", exact = TRUE),
       phospho_parent_proteins = nrow(panels$Phospho$data),
@@ -752,7 +763,8 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
                                               offdiag_cutoff = NULL,
                                               cutoff_source = NULL,
                                               min_genes = 1L,
-                                              max_groups = 10L) {
+                                              max_groups = 10L,
+                                              min_abs_delta = 0) {
   stopifnot(is.list(modality_scatter_figures), is.list(modality_scatter_figures$panels),
             is.character(modality_scatter_figures$order),
             length(modality_scatter_figures$order) >= 1L,
@@ -761,7 +773,9 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
             is.null(offdiag_cutoff) ||
               (is.numeric(offdiag_cutoff) && length(offdiag_cutoff) == 1L),
             is.numeric(min_genes), length(min_genes) == 1L, min_genes >= 1L,
-            is.numeric(max_groups), length(max_groups) == 1L, max_groups >= 1L)
+            is.numeric(max_groups), length(max_groups) == 1L, max_groups >= 1L,
+            is.numeric(min_abs_delta), length(min_abs_delta) == 1L,
+            is.finite(min_abs_delta), min_abs_delta >= 0)
   order <- modality_scatter_figures$order
   group_set_source <- if (is.null(group_sets)) {
     "MSigDB mouse GO Biological Process keyword unions via msigdbr"
@@ -848,6 +862,10 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
   .fig_assert_nonempty(rows, "finite off-diagonal functional-category score summary")
   rows <- rows[!rows$group %in% .fig_uncategorized_roles, , drop = FALSE]
   .fig_assert_nonempty(rows, "categorized off-diagonal functional-category score summary")
+  if (min_abs_delta > 0) {
+    rows <- rows[abs(rows$delta) >= min_abs_delta, , drop = FALSE]
+    .fig_assert_nonempty(rows, "delta-filtered off-diagonal functional-category score summary")
+  }
   rows$rank_score <- rows$abs_delta * log1p(rows$n_feature)
   rows <- .fig_bind(lapply(order, function(m) {
     z <- rows[as.character(rows$modality) == m, , drop = FALSE]
@@ -902,6 +920,7 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
       offdiag_tail_quantile = tail_quantile,
       offdiag_cutoff = provenance_cutoff,
       offdiag_cutoff_source = provenance_cutoff_source,
+      min_abs_delta = min_abs_delta,
       min_genes = as.integer(min_genes),
       max_groups = as.integer(max_groups),
       n_group_sets = length(group_sets),
