@@ -51,7 +51,7 @@ compact_genotype_labels <- c(
 #| label: plot-microglia-subpopulation-markers
 #| fig-width: 14.2
 #| fig-height: 8.4
-#| fig-alt: "Dot-plot grid with the three subpopulations as rows and their canonical marker genes grouped into homeostatic, DAM and interferon column panels; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching subpopulation along the diagonal."
+#| fig-alt: "Dot-plot grid with Homeostatic, DAM and IFN marker-gene column panels and matching unlabelled subpopulation rows; dot colour is the per-gene scaled mean expression and dot size is the percent of nuclei expressing, so each gene set lights up its matching subpopulation along the diagonal."
 ggplot(sm, aes(gene, subpopulation)) +
   geom_point(aes(colour = expr_z, size = pct_expr)) +
   facet_grid(. ~ signature, scales = "free_x", space = "free_x") +
@@ -64,6 +64,8 @@ ggplot(sm, aes(gene, subpopulation)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
                                    size = tau_report_dense_axis_size,
                                    face = "italic"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
         panel.grid.major = element_line(linewidth = 0.2),
         panel.spacing.x = grid::unit(3.5, "pt"),
         legend.position = "right",
