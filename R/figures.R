@@ -380,20 +380,29 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
                                          offdiag_cutoff = 1.5,
-                                         scatter_label_cap = 24L,
+                                         scatter_label_cap = c(snRNAseq = 24L, GeoMx = 24L,
+                                                               Proteome = 96L, Phospho = 96L),
                                          group_min_genes = 1L,
                                          group_max_groups = 10L,
                                          group_min_abs_delta = 0.5) {
+  order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
   stopifnot(is.list(pb_de_microglia), is.data.frame(symbol_map), is.list(geomx_de),
             is.list(proteome_de_24m), is.list(phospho_de_24m),
             is.numeric(offdiag_cutoff), length(offdiag_cutoff) == 1L,
             is.finite(offdiag_cutoff), offdiag_cutoff > 0,
-            is.numeric(scatter_label_cap), length(scatter_label_cap) == 1L,
-            is.finite(scatter_label_cap), scatter_label_cap >= 1,
+            is.numeric(scatter_label_cap),
+            length(scatter_label_cap) %in% c(1L, length(order)),
+            all(is.finite(scatter_label_cap)), all(scatter_label_cap >= 1),
             is.numeric(group_min_abs_delta), length(group_min_abs_delta) == 1L,
             is.finite(group_min_abs_delta), group_min_abs_delta >= 0)
   offdiag_cutoff <- as.numeric(offdiag_cutoff)
-  scatter_label_cap <- as.integer(scatter_label_cap)
+  if (length(scatter_label_cap) == 1L) {
+    scatter_label_cap <- stats::setNames(rep(as.integer(scatter_label_cap), length(order)), order)
+  } else {
+    stopifnot(!is.null(names(scatter_label_cap)), all(order %in% names(scatter_label_cap)))
+    scatter_label_cap <- as.integer(scatter_label_cap[order])
+    names(scatter_label_cap) <- order
+  }
 
   pair <- function(top_list, key_col, label_fun, gene_fun, modality) {
     stopifnot(is.list(top_list), all(c(y_contrast, x_contrast) %in% names(top_list)))
@@ -523,7 +532,6 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       data  = collapse_phospho_by_protein(pair(phospho_de_24m$top, "feature", site_id_label,
                                                phospho_gene, "phospho")))
   )
-  order <- c("snRNAseq", "GeoMx", "Proteome", "Phospho")
   offdiag_cutoff_by_modality <- stats::setNames(rep(offdiag_cutoff, length(order)), order)
   offdiag_cutoff_source <- sprintf("shared |x-y| >= %.1f", offdiag_cutoff)
   offdiag_thresholds <- .fig_bind(lapply(order, function(m) {
@@ -543,7 +551,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     d <- panels[[m]]$data
     attr(d, "offdiag_cutoff") <- offdiag_cutoff
     attr(d, "offdiag_cutoff_source") <- offdiag_cutoff_source
-    attr(d, "scatter_label_cap") <- scatter_label_cap
+    attr(d, "scatter_label_cap") <- scatter_label_cap[[m]]
     panels[[m]]$data <- d
   }
   groups <- modality_offdiag_group_score_data(

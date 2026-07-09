@@ -50,8 +50,14 @@ phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
 #| label: plot-modality-amyloid-effect
 #| fig-width: 13.9
 #| fig-height: 16.8
-#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds on a shared square coordinate scale; the caption labels the dotted threshold bands as absolute off-diagonal distance |x-y| greater than or equal to 1.5 log2FC, with text labels capped for readability and phosphoproteomics collapsed to parent proteins."
-label_cap <- msf$provenance$scatter_label_cap %||% 24L
+#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds on a shared square coordinate scale; the caption labels the dotted threshold bands as absolute off-diagonal distance |x-y| greater than or equal to 1.5 log2FC, with higher label budgets for proteomics and phosphoproteomics and phosphoproteomics collapsed to parent proteins."
+label_cap <- msf$provenance$scatter_label_cap %||% stats::setNames(rep(24L, length(msf$order)), msf$order)
+if (length(label_cap) == 1L) {
+  label_cap <- stats::setNames(rep(as.integer(label_cap), length(msf$order)), msf$order)
+} else {
+  label_cap <- as.integer(label_cap[msf$order])
+  names(label_cap) <- msf$order
+}
 offdiag_cutoff <- unique(as.numeric(msf$provenance$offdiag_cutoff))
 offdiag_cutoff <- offdiag_cutoff[is.finite(offdiag_cutoff)]
 offdiag_cutoff <- if (length(offdiag_cutoff) == 1L) offdiag_cutoff else NA_real_
@@ -62,7 +68,7 @@ scatter_lim <- max(vapply(msf$order, function(m) {
 scatter_lim <- if (is.finite(scatter_lim) && scatter_lim > 0) scatter_lim else 1
 panels <- lapply(msf$order, function(m) {
   modality_interaction_scatter(msf$panels[[m]]$data, title = msf$panels[[m]]$title,
-                               n_label = label_cap, xy_lim = scatter_lim)
+                               n_label = label_cap[[m]], xy_lim = scatter_lim)
 })
 wrap_plots(panels, ncol = 2) +
   plot_annotation(
@@ -90,8 +96,14 @@ wrap_plots(panels, ncol = 2) +
 #| label: plot-modality-functional-scores
 #| fig-width: 18.8
 #| fig-height: 10.8
-#| fig-alt: "Faceted dumbbell plots show categorized modality-specific functional groups for off-diagonal genes or proteins after removing uncategorized fallback buckets and small aggregate differences; paired points for aggregate NLGF_MAPTKI and NLGF_P301S amyloid responses are connected by a segment coloured by log2FC difference."
-functional_group_score_plot(msf$groups$summary, title = "Off-diagonal functional groups")
+#| fig-alt: "Faceted dumbbell plots show categorized modality-specific functional groups for the same stored off-diagonal cutoff as Figure 9, after removing uncategorized fallback buckets and small aggregate differences; paired points for aggregate NLGF_MAPTKI and NLGF_P301S amyloid responses are connected by a segment coloured by log2FC difference."
+group_cutoff_label <- if (is.finite(offdiag_cutoff)) {
+  sprintf("|x-y| >= %.1f", offdiag_cutoff)
+} else {
+  "stored cutoff"
+}
+functional_group_score_plot(msf$groups$summary,
+                            title = sprintf("Off-diagonal functional groups (%s)", group_cutoff_label))
 ```
 
 :::

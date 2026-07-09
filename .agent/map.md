@@ -61,9 +61,9 @@ Modality context:
   carries the first-five-DAM-gene-clustered AOI design/DAM-gene track atlas through
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
   The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 1.5`.
-  Figure 9 caps text labels at 24 per panel for readability only and draws all facets on one shared
+  Figure 9 caps text labels by modality (snRNAseq/GeoMx 24, proteome/phosphoproteome 96) and draws all facets on one shared
   square coordinate range with a caption for the dotted cutoff bands;
-  the functional-category panel scores all same-cutoff selected features and displays categorized rows
+  the functional-category panel title states the same cutoff and scores all same-cutoff selected features, displaying categorized rows
   with aggregate `|P301S - MAPTKI| >= 0.5`.
   The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
