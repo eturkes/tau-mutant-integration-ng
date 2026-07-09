@@ -219,35 +219,26 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   }
   label_box_padding <- if (label_n >= 80L) 0.08 else 0.25
   label_point_padding <- if (label_n >= 80L) 0.03 else 0.10
-  line_labels <- c(
-    identity = "identity: y = x",
-    cutoff = sprintf("shared cutoff: |x-y| = %.1f", threshold_cutoff)
-  )
-  line_keys <- data.frame(
-    slope = 1,
-    intercept = 0,
-    line_key = factor("identity", levels = names(line_labels)),
-    stringsAsFactors = FALSE
-  )
+  cutoff_label <- sprintf("threshold: |x-y| >= %g log2FC", threshold_cutoff)
+  cutoff_keys <- data.frame()
   if (is.finite(threshold_cutoff)) {
-    line_keys <- rbind(
-      line_keys,
-      data.frame(
-        slope = 1,
-        intercept = c(-threshold_cutoff, threshold_cutoff),
-        line_key = factor("cutoff", levels = names(line_labels)),
-        stringsAsFactors = FALSE
-      )
+    cutoff_keys <- data.frame(
+      slope = 1,
+      intercept = c(-threshold_cutoff, threshold_cutoff),
+      line_key = factor("cutoff", levels = "cutoff"),
+      stringsAsFactors = FALSE
     )
   }
   p <- ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
+    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+                         colour = "grey55", linewidth = 0.4) +
     ggplot2::geom_abline(
-      data = line_keys,
+      data = cutoff_keys,
       ggplot2::aes(slope = slope, intercept = intercept, colour = line_key,
                    linetype = line_key),
-      linewidth = 0.4, show.legend = TRUE)
+      linewidth = 0.4, show.legend = nrow(cutoff_keys) > 0L)
   p +
     ggplot2::geom_point(alpha = 0.25, size = 0.5, colour = point_colour) +
     # formula spelt out -> silence geom_smooth()'s default-formula message (keeps render logs clean)
@@ -266,11 +257,11 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                              segment.colour = "grey65") +
     ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
     ggplot2::scale_colour_manual(
-      values = c(identity = "grey55", cutoff = "#B7AA97"),
-      breaks = names(line_labels), labels = line_labels, name = "threshold") +
+      values = c(cutoff = "#B7AA97"),
+      breaks = "cutoff", labels = cutoff_label, name = NULL) +
     ggplot2::scale_linetype_manual(
-      values = c(identity = "dashed", cutoff = "dotted"),
-      breaks = names(line_labels), labels = line_labels, name = "threshold") +
+      values = c(cutoff = "dotted"),
+      breaks = "cutoff", labels = cutoff_label, name = NULL) +
     ggplot2::labs(x = x_lab, y = y_lab, title = title) +
     theme_tau()
 }

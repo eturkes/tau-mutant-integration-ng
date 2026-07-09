@@ -120,7 +120,7 @@ Modality context:
   `|x-y| >= 2.0`, a round cutoff above the live GeoMx maximum. Figure 9 caps text labels
   at 24 per panel for readability only and draws all four facets on one shared square coordinate
   range so the dotted cutoff bands have the same visual distance from the identity line; its line
-  legend defines dashed `y=x` and dotted `|x-y|=2.0` reference lines. Figure 10
+  legend labels the dotted cutoff bands as `threshold: |x-y| >= 2 log2FC`. Figure 10
   scores all shared-cutoff selected features and displays categorized role/fallback buckets with
   aggregate `|P301S - MAPTKI| >= 0.5`, excluding predicted/unannotated + other-annotated no-role buckets.
 - Phosphoproteome native heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding

@@ -62,7 +62,7 @@ Modality context:
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
   The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 2.0`.
   Figure 9 caps text labels at 24 per panel for readability only and draws all facets on one shared
-  square coordinate range with a collected line legend for dashed identity and dotted cutoff bands;
+  square coordinate range with a collected line legend for the dotted cutoff bands;
   the functional-category panel scores all same-cutoff selected features and displays categorized rows
   with aggregate `|P301S - MAPTKI| >= 0.5`.
   The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,

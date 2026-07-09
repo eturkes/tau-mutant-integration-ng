@@ -1092,8 +1092,8 @@ user before writing the plan.
 - 2026-07-09 Figure 9 shared-scale cutoff bands DONE (ad hoc user task): Figure 9 now draws all four
   amyloid-response scatter facets on one shared square coordinate range, so the two dotted `|x-y|=2.0`
   cutoff bands sit the same visual distance from the center identity diagonal in every modality.
-- 2026-07-09 Figure 9 threshold legend DONE (ad hoc user task): added a collected line legend defining
-  dashed `y=x` as the identity line and dotted `|x-y|=2.0` as the shared off-diagonal cutoff bands.
+- 2026-07-09 Figure 9 threshold legend DONE (ad hoc user task): added a collected line legend for
+  the dotted off-diagonal cutoff bands, labelled `threshold: |x-y| >= 2 log2FC`.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but
