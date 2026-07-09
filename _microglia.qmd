@@ -60,6 +60,8 @@ ggplot(sm, aes(gene, subpopulation)) +
                   breaks = c(0.1, 0.25, 0.5, 0.75),
                   labels = function(x) paste0(round(100 * x), "%")) +
   scale_y_discrete(limits = rev) +
+  guides(colour = guide_colourbar(barheight = grid::unit(92, "pt")),
+         size = guide_legend(keyheight = grid::unit(21, "pt"))) +
   labs(x = NULL, y = NULL) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
                                    size = tau_report_dense_axis_size,
@@ -69,7 +71,10 @@ ggplot(sm, aes(gene, subpopulation)) +
         panel.grid.major = element_line(linewidth = 0.2),
         panel.spacing.x = grid::unit(3.5, "pt"),
         legend.position = "right",
-        legend.key.height = grid::unit(13, "pt"))
+        legend.spacing.y = grid::unit(8, "pt"),
+        legend.key.height = grid::unit(21, "pt"),
+        legend.title = element_text(lineheight = 1.08, margin = margin(b = 4)),
+        legend.text = element_text(lineheight = 1.08))
 ```
 
 ```{r}
