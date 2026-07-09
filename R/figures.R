@@ -310,7 +310,7 @@ phospho_modality_descriptor <- function(phospho_de_24m,
                                         contrast = "nlgf_in_p301s",
                                         alpha = 0.10,
                                         n_label = 12L,
-                                        n_heatmap = 18L,
+                                        n_heatmap = 20L,
                                         heatmap_exclude_genes = c("Plcb1", "Arhgef7")) {
   stopifnot(is.list(phospho_de_24m), contrast %in% names(phospho_de_24m$top),
             is.matrix(phospho_de_24m$matrix), is.data.frame(phospho_de_24m$meta))
@@ -340,11 +340,6 @@ phospho_modality_descriptor <- function(phospho_de_24m,
   n_heatmap_opposite_direction_candidates <- n_heatmap_candidates - nrow(ranked)
   n_heatmap_direction_candidates <- nrow(ranked)
   profile_key <- .fig_matrix_profile_key(phospho_de_24m$matrix[ranked$feature, , drop = FALSE])
-  profile_n <- tabulate(match(profile_key, unique(profile_key)), nbins = length(unique(profile_key)))
-  profile_n <- profile_n[match(profile_key, unique(profile_key))]
-  ranked$label <- ifelse(profile_n > 1L,
-                         sprintf("%s (%d)", ranked$label, profile_n),
-                         ranked$label)
   ranked <- ranked[!duplicated(profile_key), , drop = FALSE]
   heat_features <- utils::head(ranked$feature, as.integer(n_heatmap))
   if (!length(heat_features)) stop("no phosphosite heatmap features overlap matrix", call. = FALSE)

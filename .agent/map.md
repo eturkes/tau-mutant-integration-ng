@@ -62,10 +62,10 @@ Modality context:
   `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
   The amyloid-response scatter's off-diagonal labels use a hybrid per-modality cutoff:
   `max(|x-y| q0.99, 24th-largest |x-y|)`; the functional-category panel scores the same selected features.
-  The phosphoproteome native heatmap selects 18 rows, excludes parent genes `Plcb1` and `Arhgef7`,
+  The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
-  median-normalized profiles to the first ranked representative with `(n)` label suffixes, and leaves
-  the paired volcano unfiltered.
+  median-normalized profiles to the first ranked representative without label suffixes, and leaves the
+  paired volcano unfiltered.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`
