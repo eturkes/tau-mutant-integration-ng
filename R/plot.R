@@ -363,41 +363,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
 }
 
 # Modality-native descriptive plates -------------------------------------------------------
-# Live report uses the GeoMx DAM-gene AOI heatmap plus bulk proteome PCA/volcano and
-# phosphoproteome volcano/heatmap; these stay separate from the integrated scatter below.
-modality_volcano_plot <- function(volcano, title = NULL,
-                                  x_lab = "log2FC  NLGF_P301S vs P301S",
-                                  alpha = 0.10) {
-  stopifnot(is.data.frame(volcano),
-            all(c("effect", "neg_log10_fdr", "direction", "label", "label_show") %in%
-                  names(volcano)),
-            is.numeric(alpha), length(alpha) == 1L, alpha > 0, alpha < 1)
-  x <- volcano[is.finite(volcano$effect) & is.finite(volcano$neg_log10_fdr), ,
-               drop = FALSE]
-  if (!nrow(x)) stop("volcano has no finite rows", call. = FALSE)
-  labels <- x[x$label_show %in% TRUE, , drop = FALSE]
-  lim <- max(abs(x$effect), na.rm = TRUE)
-  lim <- if (is.finite(lim) && lim > 0) lim else 1
-  y_cut <- -log10(alpha)
-  direction_colours <- c(down = "#2F78A0", `not significant` = "#AFA89C", up = "#A63A50")
-
-  ggplot2::ggplot(x, ggplot2::aes(effect, neg_log10_fdr)) +
-    ggplot2::geom_hline(yintercept = y_cut, colour = "#BFB8AA", linewidth = 0.3,
-                        linetype = "dotted") +
-    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
-    ggplot2::geom_point(ggplot2::aes(colour = direction), alpha = 0.45, size = 0.75) +
-    ggrepel::geom_text_repel(
-      data = labels,
-      ggplot2::aes(label = label),
-      size = tau_report_label_size, colour = "#20242A", max.overlaps = Inf, seed = 42L,
-      min.segment.length = 0, segment.colour = "grey65", box.padding = 0.16,
-      point.padding = 0.06, max.iter = 20000L, max.time = 3) +
-    ggplot2::scale_colour_manual(values = direction_colours, drop = FALSE, name = NULL) +
-    ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
-    ggplot2::labs(x = x_lab, y = "-log10 FDR", title = title) +
-    theme_tau() +
-    ggplot2::theme(legend.position = "bottom")
-}
+# Live report uses the GeoMx DAM-gene AOI heatmap plus one bulk context plate:
+# proteome PCA beside the phosphoproteome abundance heatmap.
 
 geomx_qc_atlas_plot <- function(qc, title = "GeoMx AOI QC atlas") {
   stopifnot(is.list(qc), is.data.frame(qc$metrics), is.data.frame(qc$flag_counts))
@@ -2122,14 +2089,14 @@ geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
                         heights = c(1.12, 0.88))
 }
 
-proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
-  stopifnot(is.list(proteome), is.data.frame(proteome$pca), is.data.frame(proteome$volcano))
+proteome_pca_plot <- function(proteome, title = "Bulk proteome PCA") {
+  stopifnot(is.list(proteome), is.data.frame(proteome$pca))
   pca <- proteome$pca
   need <- c("pc1", "pc2", "pc1_var", "pc2_var", "genotype", "run_index")
   miss <- setdiff(need, names(pca))
   if (length(miss)) stop("proteome PCA data missing columns: ", paste(miss, collapse = ", "),
                          call. = FALSE)
-  pca_plot <- ggplot2::ggplot(pca, ggplot2::aes(pc1, pc2, colour = genotype)) +
+  ggplot2::ggplot(pca, ggplot2::aes(pc1, pc2, colour = genotype)) +
     ggplot2::geom_hline(yintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "#D5D0C4", linewidth = 0.25) +
     ggplot2::geom_point(size = 2.4, alpha = 0.95) +
@@ -2147,13 +2114,6 @@ proteome_modality_plot <- function(proteome, title = "Bulk proteome") {
     theme_tau() +
     ggplot2::theme(legend.position = "bottom",
                    legend.box = "vertical")
-
-  volcano <- modality_volcano_plot(
-    proteome$volcano,
-    title = "Protein differential abundance",
-    alpha = proteome$provenance$alpha %||% 0.10
-  )
-  patchwork::wrap_plots(list(pca_plot, volcano), ncol = 2, widths = c(0.9, 1.1))
 }
 
 phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundance") {
@@ -2192,17 +2152,14 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
     )
 }
 
-phospho_modality_plot <- function(phospho, title = "Bulk phosphoproteome") {
-  stopifnot(is.list(phospho), is.data.frame(phospho$volcano), is.data.frame(phospho$heatmap))
-  volcano <- modality_volcano_plot(
-    phospho$volcano,
-    title = "Phosphosite DE",
-    x_lab = "site log2FC  NLGF_P301S vs P301S",
-    alpha = phospho$provenance$alpha %||% 0.10
-  )
-  heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = "Top phosphosite z-score")
-  patchwork::wrap_plots(list(volcano, heatmap), ncol = 2, widths = c(0.95, 1.05)) +
-    patchwork::plot_annotation(title = title)
+bulk_modality_context_plot <- function(proteome, phospho,
+                                       proteome_title = "Bulk proteome PCA",
+                                       phospho_title = "Top phosphosite z-score") {
+  stopifnot(is.list(proteome), is.data.frame(proteome$pca),
+            is.list(phospho), is.data.frame(phospho$heatmap))
+  pca <- proteome_pca_plot(proteome, title = proteome_title)
+  heatmap <- phospho_site_heatmap_plot(phospho$heatmap, title = phospho_title)
+  patchwork::wrap_plots(list(pca, heatmap), ncol = 2, widths = c(0.78, 1.22))
 }
 
 # Cross-modality support matrix ------------------------------------------------------------

@@ -91,6 +91,7 @@ h2.figure-heading:first-of-type { margin-top: 0; }
   margin-left: 50%;
   transform: translateX(-50%);
 }
+.figure-print-block { break-inside: avoid; page-break-inside: avoid; }
 code, pre, kbd, samp, .sourceCode {
   font-family: $font-family-monospace;
   font-size: 1rem;
@@ -142,6 +143,7 @@ details.code-fold .sourceCode code { font-size: inherit; }
 
 @media print {
   html, body { overflow: visible !important; }
+  .figure-print-block { break-inside: avoid; page-break-inside: avoid; }
   .figure-wide-inline { break-inside: avoid; page-break-inside: avoid; }
   h2.figure-heading,
   details.code-fold { break-after: avoid; page-break-after: avoid; }

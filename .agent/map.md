@@ -1,10 +1,10 @@
 # Map - live codebase wiring
 
-Current surface (2026-07-09): lean 10-figure report DAG only. No committed test suite, Python/uv
+Current surface (2026-07-09): lean 9-figure report DAG only. No committed test suite, Python/uv
 surface, composition/sccomp/CmdStan arm, per-subpopulation pseudobulk target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
 science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
-the rendered 10-figure final analysis document.
+the rendered 9-figure final analysis document.
 
 ## Bootstrap
 
@@ -59,19 +59,19 @@ Modality context:
 - `phospho_de_24m <- run_phospho_de_24m(phospho, sample_key)`
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries the first-five-DAM-gene-clustered AOI design/DAM-gene track atlas through
-  `descriptive$GeoMx$sample_heatmap`, plus proteome and phosphoproteome native payloads.
+  `descriptive$GeoMx$sample_heatmap`, plus the proteome PCA and phosphoproteome heatmap payloads.
   The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 3.5`.
-  Figure 9 labels all points past the cutoff and draws all facets on one shared
+  Figure 8 labels all points past the cutoff and draws all facets on one shared
   square coordinate range with a collected line legend for the dotted cutoff bands;
   the functional-category panel scores all same-cutoff selected features and displays categorized rows
   with aggregate `|P301S - MAPTKI| >= 0.5`; role assignment is a priority-ordered GO
   term-family pass that separates complement/MHC, phagocytosis, and chemotaxis before broader
   cell-cell-adhesion/extracellular-matrix/motility and immune residual buckets, and each visible category label
   lists every retained scored feature.
-  The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
+  The bulk context plate combines the proteome sample PCA with the phosphoproteome native heatmap.
+  The heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
-  median-normalized profiles to the first ranked representative without label suffixes, and leaves the
-  paired volcano unfiltered.
+  median-normalized profiles to the first ranked representative without label suffixes.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`
@@ -118,7 +118,7 @@ Report:
 
 `R/plot.R`
 - Shared report theme, scales, modality and rendered descriptive plot helpers including
-  `geomx_sample_heatmap_plot()`, `proteome_modality_plot()`, and `phospho_modality_plot()`.
+  `geomx_sample_heatmap_plot()` and `bulk_modality_context_plot()`.
 
 `R/report.R`
 - Quarto render wrapper, embedded-lightbox repair, and report-dir pruning so the final HTML is the only
@@ -127,15 +127,15 @@ Report:
 ## Report
 
 `index.qmd` includes three qmd fragments. The rendered HTML exposes simple numbered
-`Figure 1` ... `Figure 10` headings, but no title/TOC/captions:
+`Figure 1` ... `Figure 9` headings, but no title/TOC/captions:
 - `_microglia.qmd`: subpopulation marker dot plot, subpopulation/DAM UMAPs, genotype-faceted
   subpopulation UMAP, replicate-unit subpopulation composition.
 - `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `_modality.qmd`: GeoMx AOI metadata-track diagnostic,
-  proteome/phosphoproteome descriptive figures,
+  combined proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
 
-Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
+Rendered output = 9 numbered figures plus compact per-figure folded code controls/content in
 `report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.
 The browser/tab title is `Tau Mutant Integration`.
 Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite values so report

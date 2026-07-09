@@ -14,6 +14,8 @@ theme_set(theme_tau())
 msf <- modality_scatter_figures
 ```
 
+::: {.figure-print-block}
+
 <h2 class="figure-heading">Figure 6</h2>
 
 ```{r}
@@ -24,27 +26,25 @@ msf <- modality_scatter_figures
 geomx_sample_heatmap_plot(msf$descriptive$GeoMx$sample_heatmap)
 ```
 
+:::
+
+::: {.figure-print-block}
+
 <h2 class="figure-heading">Figure 7</h2>
 
 ```{r}
-#| label: plot-modality-proteome-landscape
-#| fig-width: 13.2
-#| fig-height: 8.8
-#| fig-alt: "Bulk proteome figure with a genotype-coloured sample PCA and a protein differential-abundance volcano plot for NLGF_P301S versus P301S."
-proteome_modality_plot(msf$descriptive$Proteome, title = msf$panels$Proteome$title)
+#| label: plot-modality-bulk-context
+#| fig-width: 15.6
+#| fig-height: 9.8
+#| fig-alt: "Bulk modality context figure combining a genotype-coloured proteome sample PCA with a genotype-grouped heatmap of top phosphosite abundances across runs."
+bulk_modality_context_plot(msf$descriptive$Proteome, msf$descriptive$Phospho)
 ```
+
+:::
+
+::: {.figure-print-block}
 
 <h2 class="figure-heading">Figure 8</h2>
-
-```{r}
-#| label: plot-modality-phospho-landscape
-#| fig-width: 13.4
-#| fig-height: 9.8
-#| fig-alt: "Bulk phosphoproteome figure with a phosphosite differential-abundance volcano plot and a genotype-grouped heatmap of top phosphosite abundances across runs."
-phospho_modality_plot(msf$descriptive$Phospho, title = NULL)
-```
-
-<h2 class="figure-heading">Figure 9</h2>
 
 ```{r}
 #| label: plot-modality-amyloid-effect
@@ -78,9 +78,11 @@ wrap_plots(panels, ncol = 2) +
   )
 ```
 
-::: {.figure-wide-inline}
+:::
 
-<h2 class="figure-heading">Figure 10</h2>
+::: {.figure-wide-inline .figure-print-block}
+
+<h2 class="figure-heading">Figure 9</h2>
 
 ```{r}
 #| label: plot-modality-functional-scores

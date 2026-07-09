@@ -159,12 +159,10 @@ trajectory_figure_data <- function(trajectory_report) {
   out
 }
 
-.fig_volcano_points <- function(tt, labels, feature_col = "feature", alpha = 0.10,
-                                n_label = 12L) {
-  .fig_require_cols(tt, c(feature_col, "logFC", "P.Value", "adj.P.Val"), "modality volcano")
-  stopifnot(length(labels) == nrow(tt), is.numeric(alpha), length(alpha) == 1L,
-            alpha > 0, alpha < 1, is.numeric(n_label), length(n_label) == 1L,
-            n_label >= 1L)
+.fig_contrast_rank_points <- function(tt, labels, feature_col = "feature") {
+  .fig_require_cols(tt, c(feature_col, "logFC", "P.Value", "adj.P.Val"),
+                    "modality contrast points")
+  stopifnot(length(labels) == nrow(tt))
   out <- data.frame(
     feature = as.character(tt[[feature_col]]),
     label = .fig_first_nonblank(labels, tt[[feature_col]]),
@@ -175,22 +173,11 @@ trajectory_figure_data <- function(trajectory_report) {
   )
   out <- out[is.finite(out$effect) & is.finite(out$p_value) & is.finite(out$fdr), ,
              drop = FALSE]
-  .fig_assert_nonempty(out, "modality volcano points")
+  .fig_assert_nonempty(out, "modality contrast points")
   out$neg_log10_p <- -log10(pmax(out$p_value, 1e-300))
-  out$neg_log10_fdr <- -log10(pmax(out$fdr, 1e-300))
-  out$direction <- ifelse(out$fdr < alpha & out$effect > 0, "up",
-                          ifelse(out$fdr < alpha & out$effect < 0, "down",
-                                 "not significant"))
-  out$direction <- factor(out$direction, levels = c("down", "not significant", "up"))
   out$rank_score <- abs(out$effect) * out$neg_log10_p
-  ord <- order(out$fdr, -out$rank_score, out$label, out$feature,
-               method = "radix", na.last = TRUE)
-  out$label_rank <- NA_integer_
-  out$label_rank[utils::head(ord, as.integer(n_label))] <- seq_len(min(n_label, nrow(out)))
-  out$label_show <- is.finite(out$label_rank)
-  .fig_assert_finite(out, c("effect", "p_value", "fdr", "neg_log10_p", "neg_log10_fdr",
-                            "rank_score"),
-                     "modality volcano points")
+  .fig_assert_finite(out, c("effect", "p_value", "fdr", "neg_log10_p", "rank_score"),
+                     "modality contrast points")
   rownames(out) <- NULL
   out
 }
@@ -282,44 +269,32 @@ trajectory_figure_data <- function(trajectory_report) {
                       tt$feature)
 }
 
-proteome_modality_descriptor <- function(proteome_de_24m,
-                                         contrast = "nlgf_in_p301s",
-                                         alpha = 0.10,
-                                         n_label = 12L) {
-  stopifnot(is.list(proteome_de_24m), contrast %in% names(proteome_de_24m$top),
+proteome_modality_descriptor <- function(proteome_de_24m) {
+  stopifnot(is.list(proteome_de_24m),
             is.matrix(proteome_de_24m$matrix), is.data.frame(proteome_de_24m$meta))
-  tt <- proteome_de_24m$top[[contrast]]
-  volcano <- .fig_volcano_points(tt, .fig_proteome_labels(tt),
-                                 feature_col = "feature", alpha = alpha,
-                                 n_label = n_label)
   list(
     pca = .fig_bulk_pca_data(proteome_de_24m$matrix, proteome_de_24m$meta,
                              label = "proteome"),
-    volcano = volcano,
     provenance = list(
-      contrast = contrast,
-      alpha = alpha,
       n_features = nrow(proteome_de_24m$matrix),
       n_samples = ncol(proteome_de_24m$matrix),
-      display = "sample PCA of median-normalised protein-group intensities plus protein volcano for the mutant-tau amyloid contrast"
+      display = "sample PCA of median-normalised protein-group intensities"
     )
   )
 }
 
 phospho_modality_descriptor <- function(phospho_de_24m,
                                         contrast = "nlgf_in_p301s",
-                                        alpha = 0.10,
-                                        n_label = 12L,
                                         n_heatmap = 20L,
                                         heatmap_exclude_genes = c("Plcb1", "Arhgef7")) {
   stopifnot(is.list(phospho_de_24m), contrast %in% names(phospho_de_24m$top),
             is.matrix(phospho_de_24m$matrix), is.data.frame(phospho_de_24m$meta))
   tt <- phospho_de_24m$top[[contrast]]
   labels <- .fig_phosphosite_labels(tt)
-  volcano <- .fig_volcano_points(tt, labels, feature_col = "feature",
-                                 alpha = alpha, n_label = n_label)
-  ranked <- volcano[order(volcano$fdr, -volcano$rank_score, volcano$label,
-                          volcano$feature, method = "radix"), , drop = FALSE]
+  contrast_points <- .fig_contrast_rank_points(tt, labels, feature_col = "feature")
+  ranked <- contrast_points[order(contrast_points$fdr, -contrast_points$rank_score,
+                                  contrast_points$label, contrast_points$feature,
+                                  method = "radix"), , drop = FALSE]
   heatmap_exclude_genes <- unique(as.character(heatmap_exclude_genes))
   heatmap_exclude_genes <- heatmap_exclude_genes[!is.na(heatmap_exclude_genes) &
                                                    nzchar(heatmap_exclude_genes)]
@@ -345,12 +320,10 @@ phospho_modality_descriptor <- function(phospho_de_24m,
   if (!length(heat_features)) stop("no phosphosite heatmap features overlap matrix", call. = FALSE)
   heat_labels <- ranked$label[match(heat_features, ranked$feature)]
   list(
-    volcano = volcano,
     heatmap = .fig_matrix_heatmap_data(phospho_de_24m$matrix, phospho_de_24m$meta,
                                        heat_features, heat_labels),
     provenance = list(
       contrast = contrast,
-      alpha = alpha,
       n_features = nrow(phospho_de_24m$matrix),
       n_samples = ncol(phospho_de_24m$matrix),
       n_heatmap = length(heat_features),
@@ -359,7 +332,7 @@ phospho_modality_descriptor <- function(phospho_de_24m,
       n_heatmap_opposite_direction_candidates = n_heatmap_opposite_direction_candidates,
       heatmap_effect_direction = if (heatmap_effect_sign > 0) "positive" else "negative",
       heatmap_deduplicate = "exact log2 median-normalised input profiles; first ranked representative retained",
-      display = "phosphosite volcano plus z-scored top-site abundance heatmap for the mutant-tau amyloid contrast"
+      display = "z-scored top-site abundance heatmap for the mutant-tau amyloid contrast"
     )
   )
 }
@@ -584,7 +557,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                       Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + shared-cutoff off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, proteome PCA/volcano, phosphoproteome volcano/heatmap; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + shared-cutoff off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, proteome PCA, phosphoproteome heatmap; no heavy DE object"
     )
   )
 }

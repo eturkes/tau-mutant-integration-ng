@@ -16,18 +16,19 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-09): 10 visible figures, 3 included qmd fragments, expected 29 targets.
+Live report scope (2026-07-09): 9 visible figures, 3 included qmd fragments, expected 29 targets.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
-`Figure 10`) + figures + per-figure folded code only; no visible document title, TOC,
+`Figure 9`) + figures + per-figure folded code only; no visible document title, TOC,
 captions, body prose, tables, or global code-tools menu. Folded-code summaries and expanded
 code blocks are intentionally compact via `theme.scss`.
 Infrastructure that does not directly feed the final analysis document is removed: committed
 tests, Python/uv files, composition/sccomp/CmdStan target, per-subpopulation pseudobulk, prose
 inventory, stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
-non-snRNAseq modality-native set = GeoMx sample heatmap (former Figure 10) + proteome +
-phosphoproteome; the other GeoMx exploratory/native panels are historical only. Historical
+non-snRNAseq modality-native set = GeoMx sample heatmap (former Figure 10) + one bulk context plate
+combining the proteome PCA and phosphoproteome heatmap; proteome and phosphoproteome volcano plots are
+removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
 claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
 ## Data
@@ -118,21 +119,22 @@ Modality context:
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
 - Four-method amyloid-response scatter uses one shared off-diagonal feature cutoff:
-  `|x-y| >= 3.5`. Figure 9 labels all points past the cutoff and draws all four facets on one shared square coordinate
+  `|x-y| >= 3.5`. Figure 8 labels all points past the cutoff and draws all four facets on one shared square coordinate
   range so the dotted cutoff bands have the same visual distance from the identity line; its line
-  legend labels the dotted cutoff bands as `threshold: |x-y| >= 3.5 log2FC`. Figure 10
+  legend labels the dotted cutoff bands as `threshold: |x-y| >= 3.5 log2FC`. Figure 9
   scores all shared-cutoff selected features and displays priority-ordered GO term-family
   role/fallback buckets with aggregate `|P301S - MAPTKI| >= 0.5`; complement/MHC, phagocytosis,
   and chemotaxis are separate buckets, lipid/endolysosome/synaptic buckets precede broader
   cell-cell-adhesion, extracellular-matrix, motility/cytoskeleton, and broad immune/inflammatory residual buckets,
   predicted/unannotated + other-annotated no-role buckets
   are excluded, and each visible category label lists every retained scored feature in that category.
-  Current visible Figure 10 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
+  Current visible Figure 9 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
   categorized group rows under the live shared-cutoff/filter rule.
-- Phosphoproteome native heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
+- Bulk context plate combines the proteome sample PCA with the phosphoproteome native heatmap. The
+  heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
   parent genes `Plcb1` and `Arhgef7`, keeping the same effect direction as the top-ranked candidate,
   and silently collapsing exact duplicate log2 median-normalized profiles to the first ranked
-  representative; the volcano is not filtered by this display-only exclusion/direction/deduplication.
+  representative.
 - Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
   figures are ledger history, not live report/path contracts.
 - Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality

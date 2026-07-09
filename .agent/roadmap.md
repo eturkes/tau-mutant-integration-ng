@@ -28,12 +28,12 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-09): the rendered report = TEN visible figures with simple numbered
-`Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
+REPORT SCOPE (current 2026-07-09): the rendered report = NINE visible figures with simple numbered
+`Figure 1` ... `Figure 9` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
-one GeoMx modality-native figure (the former Figure 10 sample heatmap), two retained bulk modality-native
-figures (proteome, phosphoproteome), and two modality-context figures (four-method amyloid-response logFC
+one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
+figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
 snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures; GeoMx carries only
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
@@ -200,6 +200,10 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 7/8 bulk context merge DONE (ad hoc user task): combined the former
+  Figure 7 proteome PCA and former Figure 8 phosphosite heatmap into one Figure 7 bulk context
+  plate, removed both proteome and phosphoproteome volcano plots from the live report payload,
+  and renumbered the four-method scatter / functional-group panels to Figures 8/9.
 - 2026-07-09 Figure 10 right-edge clipping fix DONE (ad hoc user review): padded the
   functional-group x-scale so the maximum-score endpoint no longer sits on the panel boundary.
 - 2026-07-09 Figure 10 point-size expansion DONE (ad hoc user review): kept the
