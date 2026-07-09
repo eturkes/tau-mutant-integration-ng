@@ -200,8 +200,6 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
-- 2026-07-09 Figure 8 heatmap x-axis label polish DONE (ad hoc user review): changed the
-  phosphosite heatmap sample/run labels from 90-degree rotation to upright centered tick labels.
 - 2026-07-09 Figure 10 right-edge clipping fix DONE (ad hoc user review): padded the
   functional-group x-scale so the maximum-score endpoint no longer sits on the panel boundary.
 - 2026-07-09 Figure 10 point-size expansion DONE (ad hoc user review): kept the

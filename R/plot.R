@@ -2180,7 +2180,7 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
     ggplot2::labs(x = NULL, y = NULL, title = title) +
     theme_tau() +
     ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 0, vjust = 0.5, hjust = 0.5,
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1,
                                           size = tau_report_dense_axis_size),
       axis.text.y = ggplot2::element_text(size = tau_report_dense_axis_size,
                                           lineheight = 0.9),
