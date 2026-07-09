@@ -1151,6 +1151,9 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
 
   genotype_values <- unique(as.character(tracks$value[track_id_chr == "genotype"]))
   genotype_levels_present <- genotype_levels[genotype_levels %in% genotype_values]
+  legend_square_size <- 5.4
+  genotype_legend_fills <- unname(genotype_colours[genotype_levels_present])
+  if (!length(genotype_legend_fills)) genotype_legend_fills <- "#333333"
   genotype_key <- data.frame()
   if (length(genotype_levels_present)) {
     genotype_key <- data.frame(
@@ -1162,7 +1165,8 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
   }
 
   main_plot <- ggplot2::ggplot(tracks, ggplot2::aes(sample_rank, track_id, fill = fill_key)) +
-    ggplot2::geom_tile(width = 1, height = 0.9, colour = "#F8F5ED", linewidth = 0.05) +
+    ggplot2::geom_tile(width = 1, height = 0.9, colour = "#F8F5ED", linewidth = 0.05,
+                       key_glyph = ggplot2::draw_key_point) +
     ggplot2::geom_point(
       data = genotype_key,
       mapping = ggplot2::aes(sample_rank, track_id, colour = genotype),
@@ -1182,7 +1186,9 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
         nrow = 1,
         byrow = TRUE,
         title.position = "left",
-        label.position = "right"
+        label.position = "right",
+        override.aes = list(shape = 22, size = legend_square_size, alpha = 1,
+                            colour = "#F8F5ED", stroke = 0.12)
       )
     ) +
     ggplot2::scale_colour_manual(
@@ -1195,7 +1201,9 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
         byrow = TRUE,
         title.position = "left",
         label.position = "right",
-        override.aes = list(shape = 15, size = 3.6, alpha = 1)
+        override.aes = list(shape = 22, size = legend_square_size, alpha = 1,
+                            fill = genotype_legend_fills, colour = "#F8F5ED",
+                            stroke = 0.12)
       )
     ) +
     ggplot2::scale_y_discrete(labels = label_map,
@@ -1221,9 +1229,9 @@ geomx_sample_heatmap_plot <- function(sample_heatmap,
                                            colour = "#333333"),
       legend.text = ggplot2::element_text(size = tau_report_axis_size, colour = "#333333",
                                           margin = ggplot2::margin(l = 6, r = 10)),
-      legend.key.size = grid::unit(0.24, "in"),
+      legend.key.size = grid::unit(0.29, "in"),
       legend.spacing.x = grid::unit(0.2, "in"),
-      legend.spacing.y = grid::unit(0.02, "in"),
+      legend.spacing.y = grid::unit(0.05, "in"),
       legend.margin = ggplot2::margin(0, 0, 0, 0),
       legend.box.margin = ggplot2::margin(0, 0, -2, 0),
       plot.margin = ggplot2::margin(1, 8, 6, 6)
