@@ -1096,6 +1096,8 @@ user before writing the plan.
   the dotted off-diagonal cutoff bands, labelled `threshold: |x-y| >= 2 log2FC`.
 - 2026-07-09 Figure 9 threshold legend sizing DONE (ad hoc user task): enlarged the collected
   threshold legend text/key to match the report axis-label scale.
+- 2026-07-09 Figure 9 threshold text-only DONE (ad hoc user task): removed the dotted swatch from
+  the threshold note and set its text between the axis-label scale and the larger 1.35x draft.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

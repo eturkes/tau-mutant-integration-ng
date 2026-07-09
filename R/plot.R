@@ -219,26 +219,16 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
   }
   label_box_padding <- if (label_n >= 80L) 0.08 else 0.25
   label_point_padding <- if (label_n >= 80L) 0.03 else 0.10
-  cutoff_label <- sprintf("threshold: |x-y| >= %g log2FC", threshold_cutoff)
-  cutoff_keys <- data.frame()
-  if (is.finite(threshold_cutoff)) {
-    cutoff_keys <- data.frame(
-      slope = 1,
-      intercept = c(-threshold_cutoff, threshold_cutoff),
-      line_key = factor("cutoff", levels = "cutoff"),
-      stringsAsFactors = FALSE
-    )
-  }
   p <- ggplot2::ggplot(df, ggplot2::aes(x, y)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.25) +
     ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed",
-                         colour = "grey55", linewidth = 0.4) +
-    ggplot2::geom_abline(
-      data = cutoff_keys,
-      ggplot2::aes(slope = slope, intercept = intercept, colour = line_key,
-                   linetype = line_key),
-      linewidth = 0.4, show.legend = nrow(cutoff_keys) > 0L)
+                         colour = "grey55", linewidth = 0.4)
+  if (is.finite(threshold_cutoff)) {
+    p <- p +
+      ggplot2::geom_abline(slope = 1, intercept = c(-threshold_cutoff, threshold_cutoff),
+                           linetype = "dotted", colour = "#B7AA97", linewidth = 0.4)
+  }
   p +
     ggplot2::geom_point(alpha = 0.25, size = 0.5, colour = point_colour) +
     # formula spelt out -> silence geom_smooth()'s default-formula message (keeps render logs clean)
@@ -256,13 +246,6 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
                              max.iter = 20000L, max.time = 3,
                              segment.colour = "grey65") +
     ggplot2::coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
-    ggplot2::scale_colour_manual(
-      values = c(cutoff = "#B7AA97"),
-      breaks = "cutoff", labels = cutoff_label, name = NULL,
-      guide = ggplot2::guide_legend(override.aes = list(linewidth = 0.9))) +
-    ggplot2::scale_linetype_manual(
-      values = c(cutoff = "dotted"),
-      breaks = "cutoff", labels = cutoff_label, name = NULL) +
     ggplot2::labs(x = x_lab, y = y_lab, title = title) +
     theme_tau()
 }
