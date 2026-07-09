@@ -296,30 +296,34 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   )
   point_df$background <- factor(point_df$background, levels = c("MAPTKI", "P301S"))
   bg_fill <- figure7_score_fill_colours
+  visual_scale <- 1.08
+  base_size <- tau_report_base_size * visual_scale
+  axis_y_size <- tau_report_axis_size * visual_scale
 
   ggplot2::ggplot(x, ggplot2::aes(y = group_label_plot)) +
-    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.3) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#BFB8AA", linewidth = 0.35) +
     ggplot2::geom_segment(
       ggplot2::aes(x = score_maptki, xend = score_p301s, yend = group_label_plot,
                    colour = delta),
-      linewidth = 0.75, lineend = "round") +
+      linewidth = 0.85, lineend = "round") +
     ggplot2::geom_point(
       data = point_df,
       ggplot2::aes(x = score, fill = background, size = n_feature),
-      shape = 21, colour = "#2B2A27", stroke = 0.25) +
+      shape = 21, colour = "#2B2A27", stroke = 0.32) +
     scale_colour_rwb(midpoint = 0, limits = c(-3, 3), breaks = delta_breaks,
                      labels = function(x) sprintf("%d", x),
                      oob = scales::squish, name = "log2FC difference") +
     ggplot2::scale_fill_manual(values = bg_fill, breaks = names(bg_fill),
                                labels = c(MAPTKI = "NLGF_MAPTKI", P301S = "NLGF_P301S"),
                                name = "genotype") +
-    ggplot2::scale_size_area(max_size = 5.8, breaks = size_breaks, name = "scored items") +
+    ggplot2::scale_size_continuous(range = c(2.0, 7.2), breaks = size_breaks,
+                                   name = "scored items") +
     ggplot2::scale_x_continuous(limits = c(-lim, lim), oob = scales::squish) +
     ggplot2::scale_y_discrete(drop = TRUE) +
     ggplot2::facet_wrap(ggplot2::vars(modality_plot), ncol = facet_ncol, scales = "free_y") +
     ggplot2::guides(
-      colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.45, "lines"),
-                                        barwidth = grid::unit(8.5, "lines"),
+      colour = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.52, "lines"),
+                                        barwidth = grid::unit(9.2, "lines"),
                                         theme = ggplot2::theme(
                                           legend.spacing.x = grid::unit(0.65, "lines"),
                                           legend.title = ggplot2::element_text(
@@ -327,20 +331,24 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
                                           )
                                         )),
       fill = ggplot2::guide_legend(order = 2,
-                                   override.aes = list(size = 3.5, shape = 21,
+                                   override.aes = list(size = 4.0, shape = 21,
                                                        colour = "#2B2A27")),
       size = ggplot2::guide_legend(order = 3)
     ) +
     ggplot2::labs(x = NULL, y = NULL, title = title) +
-    theme_tau() +
+    theme_tau(base_size = base_size) +
     ggplot2::theme(
-      axis.text.y = ggplot2::element_text(size = tau_report_axis_size, lineheight = 0.92),
-      panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.25),
-      legend.title = ggplot2::element_text(size = tau_report_base_size),
-      legend.text = ggplot2::element_text(size = tau_report_base_size * 0.8),
+      axis.text.y = ggplot2::element_text(size = axis_y_size, lineheight = 0.92),
+      panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.35),
+      legend.title = ggplot2::element_text(size = base_size),
+      legend.text = ggplot2::element_text(size = base_size * 0.8),
       legend.position = "bottom",
       legend.box = "vertical",
-      legend.spacing.y = grid::unit(0.1, "lines")
+      legend.spacing.y = grid::unit(0.1, "lines"),
+      plot.title = ggplot2::element_text(face = "bold", colour = "#262B2F",
+                                         size = ggplot2::rel(0.9), hjust = 0.5,
+                                         margin = ggplot2::margin(b = 18)),
+      plot.title.position = "plot"
     )
 }
 

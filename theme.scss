@@ -84,7 +84,17 @@ h2.figure-heading {
   line-height: 1.1;
   letter-spacing: 0;
 }
+h2.figure-heading.figure-heading-centered {
+  margin-bottom: 0.42rem;
+  text-align: center;
+}
 h2.figure-heading:first-of-type { margin-top: 0; }
+.figure-wide-inline {
+  width: min(96vw, 60rem);
+  max-width: none;
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
 code, pre, kbd, samp, .sourceCode {
   font-family: $font-family-monospace;
   font-size: 1rem;
