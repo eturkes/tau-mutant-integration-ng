@@ -379,7 +379,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          y_contrast = "nlgf_in_maptki",
                                          x_contrast = "nlgf_in_p301s",
                                          group_gene_sets = NULL,
-                                         offdiag_cutoff = 3,
+                                         offdiag_cutoff = 3.5,
                                          group_min_genes = 1L,
                                          group_max_groups = 10L,
                                          group_min_abs_delta = 0.5) {
