@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 1 genotype-row expansion DONE (ad hoc user review): marker dot plot now
+  computes Homeostatic/DAM/IFN marker summaries by subpopulation x genotype and renders each
+  subpopulation row as four genotype rows.
 - 2026-07-09 Figure 10 right-edge clipping fix DONE (ad hoc user review): padded the
   functional-group x-scale so the maximum-score endpoint no longer sits on the panel boundary.
 - 2026-07-09 Figure 10 point-size expansion DONE (ad hoc user review): kept the
