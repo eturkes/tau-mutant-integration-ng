@@ -766,7 +766,11 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   x <- x[!is.na(x) & x != ""]
   if (!length(x)) return("")
   per_line <- max(as.integer(per_line), ceiling(length(x) / as.integer(max_lines)))
-  line <- ceiling(seq_along(x) / as.integer(per_line))
+  line <- if (as.integer(max_lines) == 2L && length(x) > per_line) {
+    c(rep(1L, floor(length(x) / 2)), rep(2L, ceiling(length(x) / 2)))
+  } else {
+    ceiling(seq_along(x) / as.integer(per_line))
+  }
   paste(vapply(split(x, line), paste, character(1), collapse = ", "),
         collapse = "\n")
 }
