@@ -200,6 +200,9 @@ user before writing the plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-09 Figure 10 label revision DONE (ad hoc user review): replaced disliked compact labels
+  with literal shorter buckets (`Leukocyte Adhesion`, `Matrix`) and split `Chemotaxis / Phagocytosis`
+  into `Phagocytosis` for `Camk1d` and `Chemotaxis` for `Mpp1`.
 - 2026-07-09 Figure 10 label compaction DONE (ad hoc user review): shortened long visible
   GO term-family labels (`Complement / MHC`, `Leukocyte Trafficking`, `ECM / Adhesion`) and
   capped each retained feature list at two lines by increasing items per line when needed.

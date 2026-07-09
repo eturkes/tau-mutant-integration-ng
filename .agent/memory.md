@@ -122,10 +122,10 @@ Modality context:
   range so the dotted cutoff bands have the same visual distance from the identity line; its line
   legend labels the dotted cutoff bands as `threshold: |x-y| >= 3.5 log2FC`. Figure 10
   scores all shared-cutoff selected features and displays priority-ordered GO term-family
-  role/fallback buckets with aggregate `|P301S - MAPTKI| >= 0.5`; complement/antigen is split
-  from chemotaxis/phagocytosis, lipid/endolysosome/synaptic buckets precede broader
-  leukocyte-adhesion/migration, ECM/substrate-adhesion, motility/cytoskeleton, and broad
-  immune/inflammatory residual buckets, predicted/unannotated + other-annotated no-role buckets
+  role/fallback buckets with aggregate `|P301S - MAPTKI| >= 0.5`; complement/MHC, phagocytosis,
+  and chemotaxis are separate buckets, lipid/endolysosome/synaptic buckets precede broader
+  leukocyte-adhesion, matrix, motility/cytoskeleton, and broad immune/inflammatory residual buckets,
+  predicted/unannotated + other-annotated no-role buckets
   are excluded, and each visible category label lists every retained scored feature in that category.
   Current visible Figure 10 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
   categorized group rows under the live shared-cutoff/filter rule.

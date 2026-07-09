@@ -65,9 +65,9 @@ Modality context:
   square coordinate range with a collected line legend for the dotted cutoff bands;
   the functional-category panel scores all same-cutoff selected features and displays categorized rows
   with aggregate `|P301S - MAPTKI| >= 0.5`; role assignment is a priority-ordered GO
-  term-family pass that separates complement/antigen from chemotaxis/phagocytosis before broader
-  adhesion/ECM/motility and immune residual buckets, and each visible category label lists every
-  retained scored feature.
+  term-family pass that separates complement/MHC, phagocytosis, and chemotaxis before broader
+  leukocyte-adhesion/matrix/motility and immune residual buckets, and each visible category label
+  lists every retained scored feature.
   The phosphoproteome native heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
   median-normalized profiles to the first ranked representative without label suffixes, and leaves the
