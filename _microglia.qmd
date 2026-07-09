@@ -61,7 +61,7 @@ ggplot(sm, aes(gene, subpopulation)) +
                   labels = function(x) paste0(round(100 * x), "%")) +
   scale_y_discrete(limits = rev) +
   labs(x = NULL, y = NULL) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
                                    size = tau_report_dense_axis_size,
                                    face = "italic"),
         axis.text.y = element_blank(),
