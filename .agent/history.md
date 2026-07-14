@@ -435,3 +435,44 @@ a new inference chapter.
 Verification (honest): S1-S9 each ran focused target/render checks as implemented, with full lean gate green at S8
 and S9. Close-out adversarial review found no accepted shipped code/prose blocker; final close-out gate re-run green
 on 2026-07-08.
+
+## P6 microglial state composition versus regulation -- closed 2026-07-14 (-> `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`)
+
+Tested whether the mutant-tau amyloid phenotype reflects more canonical DAM nuclei,
+state-conditional molecular change, or both. The fixed Homeostatic+DAM universe covers
+22,363/23,160 retained microglia (96.56%); all 16 genotype-batch units contain both states.
+
+- ROUTE: beta-binomial retained-state occupancy; separate Homeostatic/DAM raw-count
+  pseudobulk plus paired DAM-minus-Homeostatic response; exact five-programme UCell
+  standardization into composition, within-state, and cross channels. Replicate unit =
+  `genotype_batch`; state conditioning is statistical, never causal mediation. Rejected
+  cell-level/counterfactual models, sparse IFN/proliferative state branches, broad discovery,
+  and new dependencies.
+- INFERENCE CONTRACT: occupancy minimum effect = 0.10 absolute fraction. UCell
+  minimum/equivalence margin = 0.25 pooled cell SD with ordinary 9-df OLS; zero,
+  minimum-effect, and TOST BH families are separate per endpoint x contrast across the
+  five fixed programmes. A conditional call requires meaningful within-DAM UCell plus a
+  same-direction raw-count rotation; `DAM-selective` additionally requires the direct
+  paired state contrast. Cell-count weighting is sensitivity only.
+- LIVE OUTCOME: interaction DAM occupancy = +0.174 (95% CI 0.095-0.253), zero-null
+  FDR 1.81e-5, but 0.10-margin FDR 0.081; batch-stratified permutation p = 0.021 is
+  sensitivity. Raw-count rotations support the Homeostatic programme within Homeostatic
+  cells (FDR 0.0055), but no DAM or direct state-difference programme. All five exact
+  score-composition channels are equivalent within +/-0.25 pooled SD; no within-DAM
+  programme clears the concordant meaningful gate, while equivalence across all five
+  within-DAM programmes is also unearned. Fixed classifier = `unresolved`. The pooled
+  two-state/whole-microglia bridge remains high (effect rho 0.982-0.994) but descriptive.
+- REPORT/API: four compact targets end in an 8.3 KB fixed-row Figure 10 leaf. The
+  four-panel plate keeps all programmes/null rows and shows occupancy, three-endpoint
+  raw-count rotations, within-DAM interaction, and signed exact attribution. The report
+  loads only this leaf; Figures 1-9 and the dependency lock remain unchanged. Live DAG =
+  33 targets; report surface = 10 numbered figures with folded code only.
+
+Verification (honest): every execution step had a fresh focused build and full report
+gate. Close-out independently reconstructed the unit identity to 2.78e-16, rederived all
+primary/sensitivity BH families exactly, reproduced the classifier from primitive fields,
+and recomputed S3/S4 identically. Target metadata was current/warning-clean; final
+`scripts/check.sh`, DOM assertions, and Chromium PDF/PNG review were green. One low
+print-layout finding was accepted/fixed: Figures 2-5 headings had been orphaned on
+preceding pages; a print-only heading page break now keeps every heading with its figure.
+No accepted shipped code, model, figure-data, or claim-boundary defect remained.

@@ -1,6 +1,6 @@
 # P6 - microglial state composition versus regulation
 
-Status = ACTIVE. Next = CLOSE-OUT.
+Status = CLOSED 2026-07-14.
 
 ## Question + choice
 
@@ -397,3 +397,16 @@ reset roadmap Active plan; run the final gate; commit the scoped close-out.
   figures and dependency lock remain unchanged.
 - Documentation matches live wiring/results, and one scoped commit closes every
   execution step plus close-out.
+
+## Close-out
+
+Closed 2026-07-14 after adversarial plan/code/model/figure review, independent
+channel/BH/verdict reconstruction, deterministic S3/S4 recomputation, history
+folding, roadmap reset, final report gate, and rendered visual QA. No shipped
+code, model, figure-data, or claim-boundary finding was accepted as a defect.
+One low report-print finding was accepted and fixed: Figures 2-5 headings were
+orphaned on preceding PDF pages, so print-only heading page breaks now keep all
+ten numbered headings with their figures. The strict interaction verdict remains
+`unresolved`: positive occupancy clears the zero-null family but misses the
+predeclared 0.10 minimum-effect family at 5%, and no within-DAM programme clears
+the concordant UCell-plus-rotation gate.

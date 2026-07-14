@@ -31,7 +31,7 @@ combining the proteome PCA and phosphoproteome heatmap; proteome and phosphoprot
 removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
 claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
-P6 state decomposition is active pending close-out and report-integrated through S5. Compact
+P6 state decomposition closed 2026-07-14 and is report-integrated. Compact
 `microglia_state_substrate` contains aligned Homeostatic/DAM raw-count pseudobulks,
 16-unit state/coverage/library metadata, five-programme raw-UCell unit/state means +
 pooled SDs, and exact feature/marker maps. `microglia_state_response` contains only
@@ -106,7 +106,7 @@ Microglia composition:
   `microglia_report_data()` from annotated Seurat metadata and emitted as
   `unit_composition`.
 
-Microglia state decomposition (P6 active):
+Microglia state decomposition (P6 closed):
 - Primary universe = existing cluster labels Homeostatic + DAM; S1 coverage =
   22,363/23,160 cells (96.56%), >=93.93% in every unit; both states have all 16
   units and >=31 cells/unit.

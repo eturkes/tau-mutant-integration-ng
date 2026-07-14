@@ -21,7 +21,9 @@ Durable findings mined from v1 (the headline to rebuild around):
 2. Mutant tau MODULATES the amyloid response (the interaction) - clearest as a
    compositional DAM-cell synergy: amyloid adds more DAM cells on the mutant-tau
    background than additivity predicts. P2 does NOT detect a supported
-   progression-beyond-composition signal along the activation trajectory.
+   progression-beyond-composition signal along the activation trajectory. P6 retains
+   the positive occupancy direction but its 0.10 minimum-effect family is unresolved;
+   no concordant meaningful within-DAM programme shift is supported.
 3. [TORN DOWN 2026-07-06] Mechanism (Myc-linked DAM interaction; NF-kB attenuation discordant/not supported;
    Gsk3b not recovered in 24M bulk phospho) -- chapter + targets + `R/mechanism.R` deleted from report + pipeline;
    science in git history + Ledger.
@@ -41,7 +43,7 @@ snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the moda
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). P6-S5 keeps the live DAG at 33 targets and appends Figure 10 from only
+the live DAG (Ledger 2026-07-08). Closed P6 keeps the live DAG at 33 targets and appends Figure 10 from only
 the compact `state_decomposition_figures` leaf.
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
@@ -50,20 +52,13 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active plan: P6 microglial state composition versus regulation
+## Active plan: none
 
-Plan: `.agent/p6_state_decomposition_plan.md`.
+P6 microglial state composition versus regulation closed 2026-07-14 ->
+`.agent/completed/p6_state_decomposition_plan_2026-07-14.md`.
 
-Question = is the `NLGF_P301S` phenotype more canonical DAM cells, or does mutant
-tau also alter transcription within DAM/Homeostatic states? Chosen route =
-replicate-level beta-binomial occupancy + state-wise raw-count pseudobulk/direct
-paired state contrasts + exact UCell programme standardization into composition,
-within-state, and cross channels. One compact Figure 10 is appended after the
-stable nine-figure report.
-
-Next `$session-prompt` = CLOSE-OUT: adversarially review the full P6 plan, code,
-models, figure, and claim boundaries; fold durable decisions, archive the plan,
-reset Active plan, and run the final gate.
+No active plan. Next `$session-prompt` = PLAN: confirm the next roadmap direction
+with the user before writing a plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -91,12 +86,13 @@ reset Active plan, and run the final gate.
 - P6 Cross-cell-type response specificity [DECLINED 2026-07-14 before execution;
   plan preserved in git `49fd57d`]: proposed six-class `dreamlet` scope audit.
   Replaced at user choice; no dependency, target, analysis, or report change ran.
-- P6 Microglial state composition versus regulation [OPEN 2026-07-14 ->
-  `.agent/p6_state_decomposition_plan.md`]: distinguish more DAM occupancy from
+- P6 Microglial state composition versus regulation [DONE 2026-07-14 ->
+  `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`]: distinguished more DAM occupancy from
   conditional regulation within DAM/Homeostatic cells using replicate-level
   occupancy, paired state pseudobulk, and exact fixed-programme standardization;
-  append one compact Figure 10 without disturbing Figures 1-9. Outcome =
-  unresolved; execution steps complete, close-out open.
+  appended one compact Figure 10 without disturbing Figures 1-9. Outcome =
+  unresolved: positive occupancy interaction, 0.10 minimum-effect family not
+  supported at 5%, and no concordant meaningful within-DAM programme shift.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -224,6 +220,20 @@ reset Active plan, and run the final gate.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-14 P6 state composition versus regulation CLOSED ->
+  `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`. Adversarial review
+  found no accepted shipped code/model/figure-data or claim defect. One low
+  report-print defect was accepted/fixed: Figures 2-5 headings orphaned onto the
+  preceding PDF page; a print-only heading page break now keeps all ten headings
+  with their figures without changing qmd/plot data. Independent compact-parent
+  audit reconstructed unit channels to 2.78e-16, rederived every primary/sensitivity
+  BH family exactly, reproduced the live classifier from primitive evidence, and
+  recomputed S3/S4 identically. Claim boundary remains strict: occupancy interaction
+  = +0.174 fraction (95% CI 0.095-0.253), zero-null FDR 1.81e-5, but 0.10-margin
+  FDR 0.081; all five score-composition channels are equivalent within +/-0.25 pooled
+  SD, no within-DAM programme passes the concordant UCell-plus-rotation gate, and
+  all-five within-DAM equivalence is unearned. Roadmap reset; final gate/DOM/10-page
+  visual QA green.
 - 2026-07-14 P6-S5 report integration + QA DONE -> `_state_decomposition.qmd`
   follows `_modality.qmd`, loads only `state_decomposition_figures`, and appends
   Figure 10 without editing Figures 1-9 sources. `report` explicitly names the
@@ -293,7 +303,8 @@ reset Active plan, and run the final gate.
   path plus reconstructed score means/SDs. Full report gate green; dependency
   lock and report QMD/content unchanged. Next = S2 occupancy + state response.
 - 2026-07-14 P6 state composition versus regulation OPENED ->
-  `.agent/p6_state_decomposition_plan.md`. User rejected the unexecuted
+  plan now archived at `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`.
+  User rejected the unexecuted
   cross-cell-type direction and selected “More DAM, or different DAM?” from four
   alternatives. Planning-time live preflight fixed Homeostatic+DAM as the primary
   96.56% state universe: both states have >=20 cells in all 16 units; IFN is sparse

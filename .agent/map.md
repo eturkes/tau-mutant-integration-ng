@@ -1,8 +1,8 @@
 # Map - live codebase wiring
 
-Current rendered surface (2026-07-14): lean 10-figure report. P6 has compact
-Homeostatic/DAM substrate, response, channel, and Figure 10 payload targets; S5 report
-integration is complete and only active-plan close-out remains.
+Current rendered surface (2026-07-14): lean 10-figure report. Closed P6 has compact
+Homeostatic/DAM substrate, response, channel, and Figure 10 payload targets; report
+integration is complete.
 No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
 retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
@@ -48,7 +48,7 @@ P1 microglia:
 - `microglia_report <- microglia_report_data(microglia_annotated, symbol_map)`
 - `microglia_figures <- microglia_figure_data(microglia_report)`
 
-P6 state decomposition (active; report-integrated through S5):
+P6 state decomposition (closed; report-integrated):
 - `microglia_state_substrate <- build_microglia_state_substrate(microglia_annotated, symbol_map)`
   emits only two aligned raw-count pseudobulks, unit/state counts + libraries,
   unit/state raw-UCell means + pooled SDs, and exact feature/marker maps. Runtime
