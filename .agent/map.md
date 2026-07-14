@@ -1,10 +1,11 @@
 # Map - live codebase wiring
 
-Current surface (2026-07-09): lean 9-figure report DAG only. No committed test suite, Python/uv
-surface, composition/sccomp/CmdStan arm, per-subpopulation pseudobulk target, prose-inventory
+Current rendered surface (2026-07-14): lean 9-figure report. P6 has one compact,
+report-disconnected Homeostatic/DAM substrate target; inference/figure/report wiring remains open.
+No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
+retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
-science lives in git + `roadmap.md` ledger; this file maps only code that contributes to
-the rendered 9-figure final analysis document.
+science lives in git + `roadmap.md` ledger; this file maps live code plus the rendered surface.
 
 ## Bootstrap
 
@@ -22,7 +23,7 @@ R activation:
 ## Targets
 
 `_targets.R` sources `R/*.R`, sets pinned `QUARTO_PATH`, and stores heavy/intermediate
-objects as `format="qs"`. Expected live target count after the lean cut: 29.
+objects as `format="qs"`. Expected live target count after P6-S1: 30.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -45,6 +46,15 @@ P1 microglia:
 - `pb_de_microglia <- run_pb_de_microglia(microglia_annotated)`
 - `microglia_report <- microglia_report_data(microglia_annotated, symbol_map)`
 - `microglia_figures <- microglia_figure_data(microglia_report)`
+
+P6 state decomposition (active; report-disconnected through S1):
+- `microglia_state_substrate <- build_microglia_state_substrate(microglia_annotated, symbol_map)`
+  emits only two aligned raw-count pseudobulks, unit/state counts + libraries,
+  unit/state raw-UCell means + pooled SDs, and exact feature/marker maps. Runtime
+  gates fix the Homeostatic/DAM universe, 16 complete units, >=20 cells/state/unit,
+  >=95% overall / >=90% per-unit coverage, full-rank design, finite variable scores,
+  positive libraries, <=25 MB in-memory + qs-serialized payloads, and no Seurat/S4
+  reachability.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -104,6 +114,11 @@ Report:
 `R/trajectory.R`
 - Activation pseudotime, 16-unit progression/decomposition inference, supportive
   glmmTMB sensitivity, compact trajectory report bundle.
+
+`R/state_decomposition.R`
+- P6 compact Homeostatic/DAM raw-count + UCell substrate extraction, exact
+  feature/marker mapping, coverage/design/library/size gates, and heavy-parent
+  isolation. S2 inference functions are not yet present.
 
 `R/modality_de.R`
 - Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits

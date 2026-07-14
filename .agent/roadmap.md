@@ -57,9 +57,9 @@ paired state contrasts + exact UCell programme standardization into composition,
 within-state, and cross channels. One compact Figure 10 is appended after the
 stable nine-figure report.
 
-Next `$session-prompt` = EXECUTE S1: extract a compact Homeostatic/DAM substrate
-from cached `microglia_annotated`, prove coverage/unit/design/score/library/size
-gates, and keep the 612 MB parent out of serialization before inference.
+Next `$session-prompt` = EXECUTE S2: fit beta-binomial DAM occupancy, separate
+Homeostatic/DAM raw-count responses, the direct paired state difference, fixed
+programme rotations, and the pooled-state bridge from the compact S1 substrate.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -219,6 +219,19 @@ gates, and keep the 612 MB parent out of serialization before inference.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-14 P6-S1 state substrate DONE -> `R/state_decomposition.R` +
+  `microglia_state_substrate`. One sparse membership aggregation keeps the 612 MB
+  cached parent out of the payload and emits two aligned 33,683 x 16 raw-count
+  matrices, 16-unit coverage/occupancy metadata, unit-state means for five raw
+  UCell programmes, pooled score SDs, and exact feature/marker maps. Live hard
+  gates: 22,363/23,160 Homeostatic+DAM cells (96.56%), per-unit coverage
+  93.93%-97.91%, 31-2,151 cells/state/unit, positive libraries, full-rank
+  7-column design/9 residual df, five marker sets fully mapped, parent isolation
+  true. Fresh producer 2.3 s; end-to-end 5.50 s; peak RSS 2,592,592 KiB; target
+  1,431,505 bytes serialized / 19,763,288 in memory; warnings/errors absent.
+  Independent oracle = exact equality to the established two-pass pseudobulk
+  path plus reconstructed score means/SDs. Full report gate green; dependency
+  lock and report QMD/content unchanged. Next = S2 occupancy + state response.
 - 2026-07-14 P6 state composition versus regulation OPENED ->
   `.agent/p6_state_decomposition_plan.md`. User rejected the unexecuted
   cross-cell-type direction and selected “More DAM, or different DAM?” from four

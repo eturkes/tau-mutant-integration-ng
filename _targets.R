@@ -57,6 +57,12 @@ list(
   # -> drop clear contaminant clusters -> calibrated argmax subpopulation labels on the clean population.
   tar_target(microglia_annotated,  annotate_microglia(microglia_processed, symbol_map), format = "qs"),
 
+  # P6-S1: raw Homeostatic/DAM pseudobulks + exact unit/state/UCell/map gates. Reads the
+  # annotated parent once, then stores only a compact base-R payload (no Seurat/S4 reachability).
+  tar_target(microglia_state_substrate,
+             build_microglia_state_substrate(microglia_annotated, symbol_map),
+             format = "qs"),
+
   # Whole-microglia pseudobulk limma-voom DE across the 5 canonical contrasts. The report
   # uses these topTables for the snRNAseq panel in the four-method amyloid-response scatter.
   tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated), format = "qs"),

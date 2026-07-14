@@ -1,6 +1,6 @@
 # P6 - microglial state composition versus regulation
 
-Status = ACTIVE. Next = S1 compact Homeostatic/DAM substrate + hard gates.
+Status = ACTIVE. Next = S2 occupancy + state response.
 
 ## Question + choice
 
@@ -279,13 +279,23 @@ Method basis:
 
 ## Steps
 
-- [ ] **S1 - compact substrate + hard gates.** Implement two-state extraction and
+- [x] **S1 - compact substrate + hard gates.** Implement two-state extraction and
   raw-count aggregation in `R/state_decomposition.R`; add
   `microglia_state_substrate`; force a fresh build. Validate state coverage,
   16-unit alignment, >=20 cells/state/unit, libraries, score variance, gene
   mapping, design rank, timing/RSS, serialization size, and parent-object
   isolation. Acceptance = every heavy data gate passes, substrate <=25 MB, no
   environment or report change.
+  DONE 2026-07-14: one sparse membership multiply emits aligned 33,683 x 16 raw
+  count matrices for each state plus unit/state UCell means, pooled score scales,
+  and exact feature/marker maps. Live gates: 22,363/23,160 primary cells (96.56%),
+  unit coverage >=93.93%, state-unit cells 31-2,151, positive libraries, design
+  rank 7/residual df 9, all five marker sets fully mapped. Fresh target = 2.3 s
+  producer / 5.50 s end-to-end, 2,592,592 KiB peak RSS, 1,431,505 serialized
+  bytes / 19,763,288 in-memory bytes, warning/error clean, parent isolation true.
+  Both matrices equal the established two-pass pseudobulk implementation element
+  for element; all score means/SDs independently reconstruct from the parent.
+  `scripts/check.sh` green; dependency lock and report QMD/content unchanged.
 - [ ] **S2 - occupancy + state response.** Implement beta-binomial occupancy,
   standardized probability contrasts/diagnostics/permutation sensitivity,
   separate Homeostatic/DAM pseudobulk fits, paired state-difference fit, fixed
