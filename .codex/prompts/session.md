@@ -25,6 +25,15 @@ PLAN:
 
 EXECUTE:
 - Orient from prior commit + ledger; restate step/acceptance in one line.
+- Before code, run `.agent/context.sh`; size implementation + gate/review work against the
+  remaining window, including exact-shape reads required by downstream modules and gates. A
+  roadmap step projected to cross the 80% checkpoint -> first confirm a clean seam and replace it
+  with fresh, self-contained open steps. Preserve durable decisions, confirmed facts, and reading
+  pointers; remove only this session's WIP; commit `roadmap (<topic> respec): ...`. Recheck actual
+  headroom after the seam reads and implement the first replacement only on a clear fit; otherwise
+  close at the respec commit with every replacement still open. A non-roadmap `Task` projected to
+  cross that checkpoint instead leaves the active plan unchanged and stops at a reasoned split
+  proposal for the user.
 - Verify heavy/gated preconditions with real tooling before trusting outputs.
 - Implement narrowly; update docs/memory/map as warranted. Add tests only when they directly
   accelerate or protect the report path.
