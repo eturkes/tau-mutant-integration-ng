@@ -2,7 +2,7 @@ project:
   type: default
   output-dir: report
   render:
-    - index.qmd      # the ONE report; _microglia.qmd + _trajectory.qmd pull in via {{< include >}} (leading _ = not rendered standalone)
+    - index.qmd      # the ONE report; underscored qmd fragments pull in via {{< include >}} and never render standalone
 
 lang: en-GB
 

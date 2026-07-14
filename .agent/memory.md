@@ -16,11 +16,11 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-14): 9 visible figures, 3 included qmd fragments, expected 33 targets.
+Live report scope (2026-07-14): 10 visible figures, 4 included qmd fragments, expected 33 targets.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
-`Figure 9`) + figures + per-figure folded code only; no visible document title, TOC,
+`Figure 10`) + figures + per-figure folded code only; no visible document title, TOC,
 captions, body prose, tables, or global code-tools menu. Folded-code summaries and expanded
 code blocks are intentionally compact via `theme.scss`.
 Retired infrastructure remains absent: committed tests, Python/uv files,
@@ -31,7 +31,7 @@ combining the proteome PCA and phosphoproteome heatmap; proteome and phosphoprot
 removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
 claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
-P6 state decomposition is active but report-disconnected through S4. Compact
+P6 state decomposition is active pending close-out and report-integrated through S5. Compact
 `microglia_state_substrate` contains aligned Homeostatic/DAM raw-count pseudobulks,
 16-unit state/coverage/library metadata, five-programme raw-UCell unit/state means +
 pooled SDs, and exact feature/marker maps. `microglia_state_response` contains only
@@ -41,8 +41,8 @@ ordinary/weighted inference, compact S2 evidence, and the fixed classifier.
 `state_decomposition_figures` is the 8.3 KB fixed-row Figure 10 leaf: occupancy,
 three-endpoint raw-count programme response, within-DAM interaction, and exact signed
 channel attribution only; `state_decomposition_figure_plot()` draws the conventional
-four-panel plate. No Seurat/S4 parent or fitted model crosses any boundary. Figures 1-9
-and the report contract remain unchanged until S5.
+four-panel plate. `_state_decomposition.qmd` loads only this leaf after the stable
+Figures 1-9; no Seurat/S4 parent or fitted model crosses the report boundary.
 
 ## Data
 
@@ -178,7 +178,8 @@ Modality context:
   target families stay deleted.
 
 Report:
-- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`; rendered artifact =
+- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`, `_state_decomposition.qmd`;
+  rendered artifact =
   `report/tau-mutant-integration.html`; visible HTML = simple numbered figure headings +
   figures plus per-chunk folded code. Alt text stays in image attributes; captions/TOC/visible
   title stay absent.

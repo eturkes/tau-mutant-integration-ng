@@ -28,10 +28,12 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-09): the rendered report = NINE visible figures with simple numbered
-`Figure 1` ... `Figure 9` headings plus compact per-figure folded code only (no visible document title,
+REPORT SCOPE (current 2026-07-14): the rendered report = TEN visible figures with simple numbered
+`Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
+one appended P6 retained-state decomposition plate (occupancy, raw-count programme
+response, within-DAM interaction, and exact UCell-channel attribution) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
 figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
@@ -39,7 +41,8 @@ snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the moda
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). P6-S4 raises the report-disconnected live DAG to 33 targets.
+the live DAG (Ledger 2026-07-08). P6-S5 keeps the live DAG at 33 targets and appends Figure 10 from only
+the compact `state_decomposition_figures` leaf.
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -58,9 +61,9 @@ paired state contrasts + exact UCell programme standardization into composition,
 within-state, and cross channels. One compact Figure 10 is appended after the
 stable nine-figure report.
 
-Next `$session-prompt` = EXECUTE S5: add `_state_decomposition.qmd` after the stable
-nine figures, wire only the compact S4 payload, then run DOM + Chromium PDF/PNG QA and
-the full report gate.
+Next `$session-prompt` = CLOSE-OUT: adversarially review the full P6 plan, code,
+models, figure, and claim boundaries; fold durable decisions, archive the plan,
+reset Active plan, and run the final gate.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -92,7 +95,8 @@ the full report gate.
   `.agent/p6_state_decomposition_plan.md`]: distinguish more DAM occupancy from
   conditional regulation within DAM/Homeostatic cells using replicate-level
   occupancy, paired state pseudobulk, and exact fixed-programme standardization;
-  append one compact Figure 10 without disturbing Figures 1-9. Outcome open.
+  append one compact Figure 10 without disturbing Figures 1-9. Outcome =
+  unresolved; execution steps complete, close-out open.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -220,6 +224,16 @@ the full report gate.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-14 P6-S5 report integration + QA DONE -> `_state_decomposition.qmd`
+  follows `_modality.qmd`, loads only `state_decomposition_figures`, and appends
+  Figure 10 without editing Figures 1-9 sources. `report` explicitly names the
+  compact leaf; DAG remains 33 targets. Browser DOM = 10 ordered headings/images/
+  nonblank alts/code folds, zero captions/tables/visible prose/global code UI,
+  zero external/local refs, duplicate IDs, or warning/error nodes, and one
+  self-contained report file. Target metadata current/warning-clean. Chromium
+  print = 10 pages; all PNG pages + 220-dpi Figure 10 inspected clean with no
+  clipping, blank page, overflow chrome, or illegible panel. Full report gate
+  green; dependency lock unchanged. Next = CLOSE-OUT.
 - 2026-07-14 P6-S4 compact Figure 10 payload + plate DONE ->
   `state_decomposition_figures`. Fixed data = 16 occupancy units, four standardized
   genotype means, defining interaction; 45 raw-count programme rotation rows over

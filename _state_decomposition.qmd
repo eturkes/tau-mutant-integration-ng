@@ -1,0 +1,29 @@
+```{r}
+#| label: state-decomposition-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(patchwork)
+})
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
+targets::tar_source()                                # plot theme + compact Figure 10 helper
+targets::tar_load(state_decomposition_figures)       # compact fixed-row leaf only
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau())
+
+sdf <- state_decomposition_figures
+```
+
+::: {.figure-wide-inline .figure-print-block}
+
+<h2 class="figure-heading">Figure 10</h2>
+
+```{r}
+#| label: plot-state-decomposition
+#| fig-width: 18.8
+#| fig-height: 13.2
+#| fig-alt: "Four-panel microglial state-decomposition plate: replicate DAM occupancy and the interaction effect; fixed-programme raw-count amyloid-response rotation tests within Homeostatic and DAM states and for their direct difference; within-DAM programme interaction effects against a 0.25 pooled-SD margin; and signed total, composition, within-state, and cross-channel interaction effects for all five predeclared programmes."
+state_decomposition_figure_plot(sdf)
+```
+
+:::

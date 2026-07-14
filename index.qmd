@@ -18,3 +18,5 @@ execute:
 {{< include _trajectory.qmd >}}
 
 {{< include _modality.qmd >}}
+
+{{< include _state_decomposition.qmd >}}

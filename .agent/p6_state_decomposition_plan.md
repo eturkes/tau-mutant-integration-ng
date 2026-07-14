@@ -1,6 +1,6 @@
 # P6 - microglial state composition versus regulation
 
-Status = ACTIVE. Next = S5 report integration + QA.
+Status = ACTIVE. Next = CLOSE-OUT.
 
 ## Question + choice
 
@@ -358,13 +358,23 @@ Method basis:
   A warning-fatal 18.8 x 13.2 inch Cairo draw and direct PNG inspection are clean.
   P6 remains absent from the `report` ancestry; the stable nine-figure report gate
   is green and dependency lock/QMDs are unchanged.
-- [ ] **S5 - report integration + QA.** Add `_state_decomposition.qmd` after
+- [x] **S5 - report integration + QA.** Add `_state_decomposition.qmd` after
   `_modality.qmd`; wire report source dependencies; update map/memory only for
   durable shipped facts. Run `scripts/check.sh`, rendered-DOM assertions, and
   Chromium PDF -> PNG inspection. Acceptance = 10 numbered figures and 10
   nonblank alts; Figures 1-9 source/order unchanged; no visible prose/captions/
   tables; no clipping, external refs, warning/error markers, or stale target
   reads; full gate green.
+  DONE 2026-07-14: `_state_decomposition.qmd` loads only the 8.3 KB
+  `state_decomposition_figures` leaf after `_modality.qmd`; `report` names that
+  leaf explicitly and the live DAG remains 33 targets. Browser-serialized DOM =
+  10 ordered headings / 10 images / 10 nonblank alts / 10 folded-code blocks,
+  with zero captions, tables, visible prose, global code UI, external/local
+  resources, duplicate IDs, or warning/error nodes; only the self-contained HTML
+  remains in `report/`. Figures 1-9 source files are byte-stable and target
+  metadata is current/warning-clean. Chromium print = 10 pages; all page PNGs
+  plus a 220-dpi Figure 10 raster are clean, legible, unclipped, and free of
+  overflow chrome. Full `scripts/check.sh` green; dependency lock unchanged.
 
 After S5 = CLOSE-OUT: adversarially review plan, code, models, figure, and every
 claim boundary; fold durable results into history/memory/map; archive this plan;

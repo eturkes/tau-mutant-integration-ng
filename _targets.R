@@ -162,6 +162,7 @@ list(
   tar_target(
     report_sources,
     c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd",
+      "_state_decomposition.qmd",
       sort(list.files("R", pattern = "\\.R$", full.names = TRUE))),
     format = "file"
   ),
@@ -178,7 +179,8 @@ list(
       microglia_report = microglia_report,
       microglia_figures = microglia_figures,
       trajectory_figures = trajectory_figures,
-      modality_scatter_figures = modality_scatter_figures
+      modality_scatter_figures = modality_scatter_figures,
+      state_decomposition_figures = state_decomposition_figures
     ),
     format = "file"
   )

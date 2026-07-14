@@ -93,10 +93,11 @@ render_report <- function(report_sources,
                           microglia_report,
                           microglia_figures,
                           trajectory_figures,
-                          modality_scatter_figures) {
+                          modality_scatter_figures,
+                          state_decomposition_figures) {
   stopifnot(all(file.exists(c(report_sources, report_extra_files))))
   invisible(list(microglia_report, microglia_figures, trajectory_figures,
-                 modality_scatter_figures))
+                 modality_scatter_figures, state_decomposition_figures))
   html_file <- file.path("report", "tau-mutant-integration.html")
   reset_report_dir(dirname(html_file))
   quarto::quarto_render(

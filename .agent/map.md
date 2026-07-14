@@ -1,8 +1,8 @@
 # Map - live codebase wiring
 
-Current rendered surface (2026-07-14): lean 9-figure report. P6 has compact,
-report-disconnected Homeostatic/DAM substrate, response, channel, and Figure 10 payload
-targets; only report integration remains open.
+Current rendered surface (2026-07-14): lean 10-figure report. P6 has compact
+Homeostatic/DAM substrate, response, channel, and Figure 10 payload targets; S5 report
+integration is complete and only active-plan close-out remains.
 No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
 retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
@@ -24,7 +24,7 @@ R activation:
 ## Targets
 
 `_targets.R` sources `R/*.R`, sets pinned `QUARTO_PATH`, and stores heavy/intermediate
-objects as `format="qs"`. Expected live target count after P6-S4: 33.
+objects as `format="qs"`. Expected live target count after P6-S5: 33.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -48,7 +48,7 @@ P1 microglia:
 - `microglia_report <- microglia_report_data(microglia_annotated, symbol_map)`
 - `microglia_figures <- microglia_figure_data(microglia_report)`
 
-P6 state decomposition (active; report-disconnected through S4):
+P6 state decomposition (active; report-integrated through S5):
 - `microglia_state_substrate <- build_microglia_state_substrate(microglia_annotated, symbol_map)`
   emits only two aligned raw-count pseudobulks, unit/state counts + libraries,
   unit/state raw-UCell means + pooled SDs, and exact feature/marker maps. Runtime
@@ -74,8 +74,8 @@ P6 state decomposition (active; report-disconnected through S4):
   45 three-endpoint raw-count programme responses, five within-DAM interaction rows,
   and 20 total/channel attribution rows. Payload = 59.4 KB in memory / 8.3 KB
   serialized; deterministic, parent-isolated, no significance-based row selection.
-  `state_decomposition_figure_plot()` draws the four-panel publication plate. No report
-  target depends on any P6 target through S4.
+  `state_decomposition_figure_plot()` draws the four-panel publication plate. The report
+  names only this compact leaf as its P6 dependency.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -105,7 +105,7 @@ Modality context:
   median-normalized profiles to the first ranked representative without label suffixes.
 
 Report:
-- `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", R/*.R)`
+- `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", "_state_decomposition.qmd", R/*.R)`
   so helper-only plot/source edits invalidate `report`.
 - `report_extra_files <- c("theme.scss", assets/fonts/*.woff2)`
 - `report <- render_report(...)`
@@ -156,7 +156,7 @@ Report:
 
 `R/plot.R`
 - Shared report theme, scales, modality and rendered descriptive plot helpers including
-  `geomx_sample_heatmap_plot()`, `bulk_modality_context_plot()`, and the report-disconnected
+  `geomx_sample_heatmap_plot()`, `bulk_modality_context_plot()`, and the report-integrated
   `state_decomposition_figure_plot()`.
 
 `R/report.R`
@@ -165,16 +165,18 @@ Report:
 
 ## Report
 
-`index.qmd` includes three qmd fragments. The rendered HTML exposes simple numbered
-`Figure 1` ... `Figure 9` headings, but no title/TOC/captions:
+`index.qmd` includes four qmd fragments. The rendered HTML exposes simple numbered
+`Figure 1` ... `Figure 10` headings, but no title/TOC/captions:
 - `_microglia.qmd`: subpopulation marker dot plot, vertically stacked subpopulation/DAM UMAPs,
   genotype-faceted subpopulation UMAP, replicate-unit subpopulation composition.
 - `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `_modality.qmd`: GeoMx AOI metadata-track diagnostic,
   vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
+- `_state_decomposition.qmd`: four-panel retained-state occupancy, raw-count programme
+  response, within-DAM interaction, and exact UCell-channel attribution plate.
 
-Rendered output = 9 numbered figures plus compact per-figure folded code controls/content in
+Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
 `report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.
 The browser/tab title is `Tau Mutant Integration`.
 Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite values so report
