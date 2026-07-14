@@ -987,3 +987,554 @@ run_microglia_state_response <- function(substrate, pb_de_microglia,
             length(qs2::qs_serialize(out)) <= max_target_bytes)
   out
 }
+
+# ============================================================================================
+# P6-S3: exact UCell composition/within-state/cross attribution + integrated verdict. Inputs are
+# the compact S1/S2 payloads; inference stays at the 16-unit level. Equal-unit OLS is primary,
+# fixed sample-size weights are sensitivity, and no fitted object crosses the target boundary.
+
+state_score_channel_matrices <- function(pi, mu, tol = 1e-10) {
+  states <- c("Homeostatic", "DAM")
+  stopifnot(
+    is.matrix(pi), identical(colnames(pi), states), nrow(pi) == 16L,
+    is.array(mu), length(dim(mu)) == 3L,
+    identical(dim(mu)[1:2], dim(pi)),
+    identical(dimnames(mu)[1:2], dimnames(pi)),
+    !is.null(dimnames(mu)[[3L]]), !anyDuplicated(dimnames(mu)[[3L]]),
+    all(is.finite(pi)), all(pi > 0 & pi < 1),
+    max(abs(rowSums(pi) - 1)) <= tol, all(is.finite(mu)),
+    length(tol) == 1L, is.finite(tol), tol > 0
+  )
+  programs <- dimnames(mu)[[3L]]
+  pi_bar <- colMeans(pi)
+  mu_bar <- apply(mu, c(2L, 3L), mean)
+  dimnames(mu_bar) <- list(states, programs)
+  anchor <- stats::setNames(numeric(length(programs)), programs)
+  endpoints <- c("total", "composition", "within_state", "cross",
+                 "within_Homeostatic", "within_DAM", "DAM_minus_Homeostatic")
+  matrices <- stats::setNames(lapply(endpoints, function(x)
+    matrix(NA_real_, nrow(pi), length(programs),
+           dimnames = list(rownames(pi), programs))), endpoints)
+
+  delta_pi <- sweep(pi, 2L, pi_bar, "-")
+  for (p in programs) {
+    mup <- mu[, , p, drop = TRUE]
+    delta_mu <- sweep(mup, 2L, mu_bar[, p], "-")
+    mu_anchor <- matrix(mu_bar[, p], nrow(pi), length(states), byrow = TRUE)
+    pi_anchor <- matrix(pi_bar, nrow(pi), length(states), byrow = TRUE)
+    anchor[p] <- sum(pi_bar * mu_bar[, p])
+    matrices$total[, p] <- rowSums(pi * mup)
+    matrices$composition[, p] <- rowSums(delta_pi * mu_anchor)
+    matrices$within_state[, p] <- rowSums(pi_anchor * delta_mu)
+    matrices$cross[, p] <- rowSums(delta_pi * delta_mu)
+    matrices$within_Homeostatic[, p] <- mup[, "Homeostatic"]
+    matrices$within_DAM[, p] <- mup[, "DAM"]
+    matrices$DAM_minus_Homeostatic[, p] <-
+      mup[, "DAM"] - mup[, "Homeostatic"]
+  }
+  unit_residual <- matrices$total -
+    matrix(anchor, nrow(pi), length(programs), byrow = TRUE) -
+    matrices$composition - matrices$within_state - matrices$cross
+  residual_max <- max(abs(unit_residual))
+  stopifnot(all(vapply(matrices, function(x) all(is.finite(x)), logical(1))),
+            is.finite(residual_max), residual_max <= tol)
+  list(matrices = matrices, anchor = anchor, pi_bar = pi_bar, mu_bar = mu_bar,
+       unit_reconstruction_residual = residual_max)
+}
+
+state_score_channels <- function(substrate, tol = 1e-10) {
+  states <- c("Homeostatic", "DAM")
+  programs <- names(canonical_microglia_markers)
+  units <- rownames(substrate$unit_meta)
+  stopifnot(
+    is.list(substrate), identical(substrate$schema, "p6_state_substrate_v1"),
+    identical(substrate$states, states), identical(substrate$audit$score_programs, programs),
+    length(units) == 16L, !anyDuplicated(units),
+    identical(substrate$unit_coverage$genotype_batch, units),
+    identical(substrate$score_scale$program, programs),
+    nrow(substrate$score_means) == length(states) * length(units)
+  )
+  d <- substrate$unit_coverage
+  pi <- cbind(Homeostatic = d$n_Homeostatic / d$n_primary,
+              DAM = d$n_DAM / d$n_primary)
+  rownames(pi) <- units
+  mu_raw <- array(NA_real_, c(length(units), length(states), length(programs)),
+                  dimnames = list(units, states, programs))
+  score_state <- as.character(substrate$score_means$state)
+  for (state in states) {
+    hit <- score_state == state
+    i <- match(units, substrate$score_means$genotype_batch[hit])
+    stopifnot(sum(hit) == length(units), !anyNA(i))
+    mu_raw[, state, ] <- as.matrix(substrate$score_means[hit, programs, drop = FALSE])[i, ]
+  }
+  scale <- substrate$score_scale$pooled_sd[match(programs, substrate$score_scale$program)]
+  stopifnot(all(is.finite(scale)), all(scale > 0))
+  mu <- sweep(mu_raw, 3L, scale, "/")
+  channels <- state_score_channel_matrices(pi, mu, tol)
+
+  unit_rows <- do.call(rbind, lapply(programs, function(program) {
+    data.frame(
+      genotype_batch = units,
+      genotype = factor(as.character(substrate$unit_meta$genotype), levels = genotype_levels),
+      batch = substrate$unit_meta$batch,
+      program = program,
+      pi_Homeostatic = pi[, "Homeostatic"], pi_DAM = pi[, "DAM"],
+      n_primary = d$n_primary, n_Homeostatic = d$n_Homeostatic, n_DAM = d$n_DAM,
+      anchor = unname(channels$anchor[program]),
+      total = channels$matrices$total[, program],
+      composition = channels$matrices$composition[, program],
+      within_state = channels$matrices$within_state[, program],
+      cross = channels$matrices$cross[, program],
+      within_Homeostatic = channels$matrices$within_Homeostatic[, program],
+      within_DAM = channels$matrices$within_DAM[, program],
+      DAM_minus_Homeostatic = channels$matrices$DAM_minus_Homeostatic[, program],
+      row.names = NULL, stringsAsFactors = FALSE
+    )
+  }))
+  rownames(unit_rows) <- NULL
+  harmonic_state_n <- 1 / (1 / d$n_Homeostatic + 1 / d$n_DAM)
+  weights <- list(
+    total = d$n_primary, composition = d$n_primary,
+    within_state = d$n_primary, cross = d$n_primary,
+    within_Homeostatic = d$n_Homeostatic, within_DAM = d$n_DAM,
+    DAM_minus_Homeostatic = harmonic_state_n
+  )
+  weights <- lapply(weights, function(x) stats::setNames(as.numeric(x), units))
+  stopifnot(nrow(unit_rows) == 16L * 5L,
+            !anyDuplicated(unit_rows[c("genotype_batch", "program")]),
+            all(vapply(weights, function(x) all(is.finite(x) & x > 0), logical(1))))
+  list(
+    unit = unit_rows, matrices = channels$matrices,
+    anchors = data.frame(program = programs, anchor = unname(channels$anchor),
+                         row.names = NULL, stringsAsFactors = FALSE),
+    reference = list(pi_bar = channels$pi_bar, mu_bar = channels$mu_bar,
+                     pooled_sd = stats::setNames(scale, programs)),
+    sensitivity_weights = weights,
+    unit_reconstruction_residual = channels$unit_reconstruction_residual
+  )
+}
+
+state_score_test_statistics <- function(estimate, se, df, margin = 0.25,
+                                        conf_level = 0.95) {
+  stopifnot(length(estimate) == length(se), length(estimate) >= 1L,
+            all(is.finite(estimate)), all(is.finite(se)), all(se > 0),
+            length(df) == 1L, is.finite(df), df >= 1L,
+            length(margin) == 1L, is.finite(margin), margin > 0,
+            length(conf_level) == 1L, conf_level > 0, conf_level < 1)
+  q95 <- stats::qt(1 - (1 - conf_level) / 2, df)
+  q90 <- stats::qt(0.95, df)
+  t_zero <- estimate / se
+  t_minimum <- (abs(estimate) - margin) / se
+  # H0: |effect| <= margin. Ordinary-TREAT sums the nearer- and opposite-boundary tails.
+  t_minimum_opposite <- (abs(estimate) + margin) / se
+  p_minimum <- stats::pt(t_minimum, df, lower.tail = FALSE) +
+    stats::pt(t_minimum_opposite, df, lower.tail = FALSE)
+  # TOST intersection-union p: reject both effect <= -margin and effect >= +margin.
+  t_lower <- (estimate + margin) / se
+  t_upper <- (estimate - margin) / se
+  p_lower <- stats::pt(t_lower, df, lower.tail = FALSE)
+  p_upper <- stats::pt(t_upper, df, lower.tail = TRUE)
+  p_tost <- pmax(p_lower, p_upper)
+  data.frame(
+    estimate = estimate, se = se, df = df,
+    t_zero = t_zero, p_zero = 2 * stats::pt(-abs(t_zero), df),
+    ci95_l = estimate - q95 * se, ci95_r = estimate + q95 * se,
+    margin = margin, t_minimum = t_minimum,
+    t_minimum_opposite = t_minimum_opposite, p_minimum = p_minimum,
+    t_tost_lower = t_lower, p_tost_lower = p_lower,
+    t_tost_upper = t_upper, p_tost_upper = p_upper, p_tost = p_tost,
+    ci90_l = estimate - q90 * se, ci90_r = estimate + q90 * se,
+    row.names = NULL, stringsAsFactors = FALSE
+  )
+}
+
+fit_state_score_endpoint <- function(response, fd, endpoint, analysis, weights = NULL,
+                                     weight_scheme = "equal unit", margin = 0.25,
+                                     alpha = 0.05) {
+  programs <- names(canonical_microglia_markers)
+  contrasts <- state_contrast_names()
+  stopifnot(
+    is.matrix(response), identical(colnames(response), programs),
+    identical(rownames(response), rownames(fd$design)), all(is.finite(response)),
+    is.matrix(fd$design), is.matrix(fd$contrasts),
+    identical(rownames(fd$contrasts), colnames(fd$design)),
+    identical(colnames(fd$contrasts), contrasts), qr(fd$design)$rank == ncol(fd$design),
+    length(endpoint) == 1L, nzchar(endpoint), length(analysis) == 1L, nzchar(analysis),
+    length(weight_scheme) == 1L, nzchar(weight_scheme), alpha == 0.05
+  )
+  if (is.null(weights)) weights <- stats::setNames(rep(1, nrow(response)), rownames(response))
+  stopifnot(is.numeric(weights), !is.null(names(weights)),
+            all(rownames(response) %in% names(weights)))
+  weights <- weights[rownames(response)]
+  stopifnot(all(is.finite(weights)), all(weights > 0))
+  weights <- weights / mean(weights)
+  root_w <- sqrt(weights)
+  xw <- fd$design * root_w
+  yw <- response * root_w
+  fit <- stats::lm.fit(xw, yw)
+  beta <- fit$coefficients
+  residuals <- fit$residuals
+  if (is.null(dim(beta))) beta <- matrix(beta, ncol = 1L)
+  if (is.null(dim(residuals))) residuals <- matrix(residuals, ncol = 1L)
+  dimnames(beta) <- list(colnames(fd$design), programs)
+  colnames(residuals) <- programs
+  df <- nrow(fd$design) - ncol(fd$design)
+  sigma2 <- colSums(residuals^2) / df
+  xtx_inv <- chol2inv(chol(crossprod(xw)))
+  contrast_v <- diag(crossprod(fd$contrasts, xtx_inv %*% fd$contrasts))
+  estimate <- crossprod(fd$contrasts, beta)
+  se <- sqrt(outer(contrast_v, sigma2))
+  dimnames(estimate) <- dimnames(se) <- list(contrasts, programs)
+  stopifnot(df == 9L, all(is.finite(beta)), all(is.finite(sigma2)), all(sigma2 > 0),
+            all(is.finite(xtx_inv)), all(is.finite(estimate)), all(is.finite(se)), all(se > 0))
+
+  rows <- lapply(contrasts, function(contrast) {
+    stats <- state_score_test_statistics(estimate[contrast, ], se[contrast, ], df, margin)
+    data.frame(
+      analysis = analysis, endpoint = endpoint, contrast = contrast, program = programs,
+      stats,
+      weight_scheme = weight_scheme,
+      family_zero = paste0("ucell_", analysis, "_zero_", endpoint, "_", contrast,
+                           "_programmes"),
+      family_minimum = paste0("ucell_", analysis, "_minimum_", endpoint, "_", contrast,
+                              "_programmes"),
+      family_tost = paste0("ucell_", analysis, "_tost_", endpoint, "_", contrast,
+                           "_programmes"),
+      row.names = NULL, stringsAsFactors = FALSE, check.names = FALSE
+    )
+  })
+  out <- do.call(rbind, rows); rownames(out) <- NULL
+  groups <- split(seq_len(nrow(out)), out$contrast)
+  out$fdr_zero <- out$fdr_minimum <- out$fdr_tost <- NA_real_
+  for (i in groups) {
+    out$fdr_zero[i] <- stats::p.adjust(out$p_zero[i], "BH")
+    out$fdr_minimum[i] <- stats::p.adjust(out$p_minimum[i], "BH")
+    out$fdr_tost[i] <- stats::p.adjust(out$p_tost[i], "BH")
+  }
+  out$evidence_state <- ifelse(
+    out$fdr_minimum <= alpha, "supported_beyond_margin",
+    ifelse(out$fdr_tost <= alpha, "equivalent_within_margin", "unresolved")
+  )
+  out$ci90_within_margin <- out$ci90_l > -out$margin & out$ci90_r < out$margin
+  numeric_cols <- c("estimate", "se", "df", "t_zero", "p_zero", "fdr_zero",
+                    "ci95_l", "ci95_r", "margin", "t_minimum", "t_minimum_opposite",
+                    "p_minimum",
+                    "fdr_minimum", "t_tost_lower", "p_tost_lower", "t_tost_upper",
+                    "p_tost_upper", "p_tost", "fdr_tost", "ci90_l", "ci90_r")
+  stopifnot(nrow(out) == 25L, !anyDuplicated(out[c("endpoint", "contrast", "program")]),
+            all(vapply(out[numeric_cols], function(x) all(is.finite(x)), logical(1))),
+            all(vapply(out[c("p_zero", "fdr_zero", "p_minimum", "fdr_minimum",
+                             "p_tost_lower", "p_tost_upper", "p_tost", "fdr_tost")],
+                       function(x) all(x >= 0 & x <= 1), logical(1))),
+            all(table(out$contrast) == 5L),
+            all(out$evidence_state %in% c("supported_beyond_margin",
+                                          "equivalent_within_margin", "unresolved")),
+            identical(out$p_tost <= alpha, out$ci90_within_margin),
+            all(out$ci90_within_margin[out$evidence_state == "equivalent_within_margin"]),
+            all(abs(out$estimate[out$evidence_state == "supported_beyond_margin"]) > margin),
+            !any(out$fdr_minimum <= alpha & out$fdr_tost <= alpha))
+  out
+}
+
+state_score_contrast_reconstruction <- function(table, tol = 1e-10) {
+  endpoints <- c("total", "composition", "within_state", "cross")
+  stopifnot(is.data.frame(table), all(endpoints %in% table$endpoint),
+            all(c("contrast", "program", "estimate") %in% names(table)))
+  key <- interaction(table$contrast, table$program, drop = TRUE, lex.order = TRUE)
+  get_effect <- function(endpoint) {
+    x <- table[table$endpoint == endpoint, , drop = FALSE]
+    x$estimate[match(levels(key), interaction(x$contrast, x$program,
+                                              drop = TRUE, lex.order = TRUE))]
+  }
+  residual <- get_effect("total") - get_effect("composition") -
+    get_effect("within_state") - get_effect("cross")
+  out <- max(abs(residual))
+  stopifnot(is.finite(out), out <= tol)
+  out
+}
+
+state_score_synthetic_checks <- function(fd, margin = 0.25, alpha = 0.05,
+                                         tol = 1e-10) {
+  programs <- names(canonical_microglia_markers)
+  states <- c("Homeostatic", "DAM")
+  x <- fd$design
+  stopifnot(nrow(x) == 16L, ncol(x) == 7L, nrow(x) - ncol(x) == 9L)
+  tau <- x[, "tau"]; nlgf <- x[, "nlgf"]; interaction <- x[, "tau_nlgf"]
+  pi_dam <- 0.28 + 0.04 * tau + 0.10 * nlgf + 0.12 * interaction
+  pi <- cbind(Homeostatic = 1 - pi_dam, DAM = pi_dam)
+  rownames(pi) <- rownames(x)
+  mu <- array(NA_real_, c(16L, 2L, 5L), dimnames = list(rownames(x), states, programs))
+  batch_wave <- sin(seq_len(nrow(x)) * 0.73)
+  for (p in seq_along(programs)) {
+    mu[, "Homeostatic", p] <- 1 + 0.1 * p + 0.03 * tau + 0.02 * nlgf +
+      0.01 * p * batch_wave
+    mu[, "DAM", p] <- 2 + 0.1 * p + 0.04 * tau + 0.05 * nlgf +
+      0.06 * interaction + 0.012 * p * cos(seq_len(nrow(x)) * 0.61)
+  }
+  channels <- state_score_channel_matrices(pi, mu, tol)
+  primary <- do.call(rbind, lapply(names(channels$matrices), function(endpoint)
+    fit_state_score_endpoint(channels$matrices[[endpoint]], fd, endpoint,
+                             "synthetic", margin = margin, alpha = alpha)))
+  contrast_residual <- state_score_contrast_reconstruction(primary, tol)
+  composition_interaction <- primary$estimate[
+    primary$endpoint == "composition" & primary$contrast == "interaction" &
+      primary$program == programs[1L]]
+  boundary <- state_score_test_statistics(c(0, margin, margin + 1),
+                                          c(0.01, 0.01, 0.01), 9L, margin)
+  boundary_minimum_expected <- 0.5 +
+    stats::pt(2 * margin / 0.01, 9L, lower.tail = FALSE)
+  stopifnot(composition_interaction > 0,
+            boundary$p_tost[1L] < alpha,
+            abs(boundary$p_minimum[2L] - boundary_minimum_expected) < 1e-12,
+            abs(boundary$p_tost[2L] - 0.5) < 1e-12,
+            boundary$p_minimum[3L] < alpha,
+            !(boundary$p_tost[1L] < alpha && boundary$p_minimum[1L] < alpha),
+            !(boundary$p_tost[3L] < alpha && boundary$p_minimum[3L] < alpha))
+  list(
+    unit_reconstruction_residual = channels$unit_reconstruction_residual,
+    contrast_reconstruction_residual = contrast_residual,
+    composition_interaction = unname(composition_interaction),
+    tost_zero_p = boundary$p_tost[1L], boundary_minimum_p = boundary$p_minimum[2L],
+    boundary_tost_p = boundary$p_tost[2L], beyond_minimum_p = boundary$p_minimum[3L]
+  )
+}
+
+classify_state_decomposition <- function(primary, response, contrast = "interaction",
+                                         alpha = 0.05) {
+  programs <- names(canonical_microglia_markers)
+  stopifnot(is.data.frame(primary), is.list(response),
+            identical(response$schema, "p6_state_response_v1"),
+            identical(unique(primary$analysis), "equal_unit_primary"),
+            all(primary$df == 9L), all(primary$margin == 0.25),
+            contrast %in% state_contrast_names(), alpha == 0.05)
+  get_score <- function(endpoint) {
+    x <- primary[primary$endpoint == endpoint & primary$contrast == contrast, , drop = FALSE]
+    x <- x[match(programs, x$program), , drop = FALSE]
+    stopifnot(nrow(x) == 5L, identical(x$program, programs))
+    x
+  }
+  composition <- get_score("composition")
+  within_dam <- get_score("within_DAM")
+  direct <- get_score("DAM_minus_Homeostatic")
+  get_rotation <- function(endpoint) {
+    x <- response$rotations[
+      response$rotations$endpoint == endpoint & response$rotations$contrast == contrast,
+      , drop = FALSE]
+    x <- x[match(programs, x$program), , drop = FALSE]
+    stopifnot(nrow(x) == 5L, identical(x$program, programs))
+    x
+  }
+  dam_rotation <- get_rotation("DAM")
+  direct_rotation <- get_rotation("DAM_minus_Homeostatic")
+  occupancy <- response$occupancy$probability_contrasts
+  occupancy <- occupancy[occupancy$contrast == contrast, , drop = FALSE]
+  stopifnot(nrow(occupancy) == 1L, occupancy$margin == 0.10)
+  occupancy_supported <- occupancy$fdr_minimum <= alpha
+  same_direction <- function(x, y) is.finite(x) & is.finite(y) & x != 0 & y != 0 & sign(x) == sign(y)
+  rotation_direction_match <- function(effect, direction) {
+    is.finite(effect) & effect != 0 & direction %in% c("Up", "Down") &
+      direction == ifelse(effect > 0, "Up", "Down")
+  }
+  dam_rotation_supported <- dam_rotation$testable & dam_rotation$fdr <= alpha &
+    rotation_direction_match(within_dam$estimate, dam_rotation$direction)
+  direct_rotation_supported <- direct_rotation$testable & direct_rotation$fdr <= alpha &
+    rotation_direction_match(direct$estimate, direct_rotation$direction)
+  composition_score_supported <- composition$fdr_minimum <= alpha
+  composition_supported <- occupancy_supported | composition_score_supported
+  conditional_supported <- within_dam$fdr_minimum <= alpha & dam_rotation_supported
+  dam_selective <- conditional_supported & direct$fdr_minimum <= alpha &
+    direct_rotation_supported & same_direction(direct$estimate, within_dam$estimate)
+  class <- ifelse(
+    composition_supported & conditional_supported, "composition + state-conditional",
+    ifelse(composition_supported, "composition-dominant",
+           ifelse(conditional_supported, "state-conditional without composition", "unresolved"))
+  )
+  composition_basis <- vapply(seq_along(programs), function(i) {
+    basis <- c(if (occupancy_supported) "occupancy" else character(),
+               if (composition_score_supported[i]) "score_composition" else character())
+    if (length(basis)) paste(basis, collapse = " + ") else "none"
+  }, character(1))
+  evidence <- data.frame(
+    contrast = contrast, program = programs,
+    occupancy_effect = occupancy$estimate, occupancy_fdr_minimum = occupancy$fdr_minimum,
+    occupancy_supported = occupancy_supported,
+    composition_effect = composition$estimate,
+    composition_fdr_minimum = composition$fdr_minimum,
+    composition_fdr_tost = composition$fdr_tost,
+    composition_evidence_state = composition$evidence_state,
+    composition_score_supported = composition_score_supported,
+    composition_supported = composition_supported, composition_basis = composition_basis,
+    composition_tost_family = composition$family_tost,
+    within_DAM_effect = within_dam$estimate,
+    within_DAM_fdr_minimum = within_dam$fdr_minimum,
+    within_DAM_fdr_tost = within_dam$fdr_tost,
+    within_DAM_evidence_state = within_dam$evidence_state,
+    DAM_rotation_mean_logFC = dam_rotation$mean_logFC,
+    DAM_rotation_direction = dam_rotation$direction,
+    DAM_rotation_fdr = dam_rotation$fdr,
+    DAM_rotation_direction_match = rotation_direction_match(within_dam$estimate,
+                                                             dam_rotation$direction),
+    DAM_rotation_supported = dam_rotation_supported,
+    conditional_supported = conditional_supported,
+    within_DAM_tost_family = within_dam$family_tost,
+    direct_effect = direct$estimate, direct_fdr_minimum = direct$fdr_minimum,
+    direct_fdr_tost = direct$fdr_tost, direct_evidence_state = direct$evidence_state,
+    direct_rotation_mean_logFC = direct_rotation$mean_logFC,
+    direct_rotation_direction = direct_rotation$direction,
+    direct_rotation_fdr = direct_rotation$fdr,
+    direct_rotation_direction_match = rotation_direction_match(direct$estimate,
+                                                                direct_rotation$direction),
+    direct_rotation_supported = direct_rotation_supported,
+    direct_tost_family = direct$family_tost,
+    DAM_selective = dam_selective, outcome_class = class,
+    occupancy_family = occupancy$family_minimum,
+    composition_family = composition$family_minimum,
+    within_DAM_family = within_dam$family_minimum,
+    DAM_rotation_family = dam_rotation$family,
+    direct_family = direct$family_minimum,
+    direct_rotation_family = direct_rotation$family,
+    row.names = NULL, stringsAsFactors = FALSE, check.names = FALSE
+  )
+  all_composition_equivalent <-
+    all(composition$evidence_state == "equivalent_within_margin")
+  all_equivalent <- all(within_dam$evidence_state == "equivalent_within_margin")
+  classes <- unique(class)
+  overall_class <- if (length(classes) == 1L) classes else "mixed programme-specific"
+  collapse_supported <- function(x) {
+    hit <- programs[x]
+    if (length(hit)) paste(hit, collapse = ";") else "none"
+  }
+  conditional_statement <- if (any(conditional_supported)) {
+    paste0("Supported within-DAM programme shift: ",
+           collapse_supported(conditional_supported), ".")
+  } else if (all_equivalent) {
+    "Equivalent across the five tested within-DAM programmes within the 0.25 pooled-SD margin."
+  } else {
+    "No supported within-DAM programme shift; equivalence across all five programmes was not established."
+  }
+  summary <- data.frame(
+    defining_contrast = contrast, outcome_class = overall_class,
+    occupancy_supported = occupancy_supported,
+    composition_programmes = collapse_supported(composition_score_supported),
+    all_composition_programmes_equivalent = all_composition_equivalent,
+    conditional_programmes = collapse_supported(conditional_supported),
+    DAM_selective_programmes = collapse_supported(dam_selective),
+    all_within_DAM_programmes_equivalent = all_equivalent,
+    conditional_statement = conditional_statement,
+    alpha = alpha, row.names = NULL, stringsAsFactors = FALSE
+  )
+  stopifnot(nrow(evidence) == 5L, !anyDuplicated(evidence$program),
+            all(evidence$outcome_class %in% c("composition-dominant",
+                                              "composition + state-conditional",
+                                              "state-conditional without composition", "unresolved")),
+            all(nzchar(unlist(evidence[c("occupancy_family", "composition_family",
+                                         "composition_tost_family", "within_DAM_family",
+                                         "within_DAM_tost_family", "DAM_rotation_family",
+                                         "direct_family", "direct_tost_family",
+                                         "direct_rotation_family")]))),
+            nrow(summary) == 1L, nzchar(summary$conditional_statement))
+  list(programme = evidence, summary = summary)
+}
+
+run_microglia_state_decomposition <- function(substrate, response, score_margin = 0.25,
+                                              alpha = 0.05, tol = 1e-10,
+                                              max_target_bytes = 5 * 1024^2) {
+  endpoints <- c("total", "composition", "within_state", "cross",
+                 "within_Homeostatic", "within_DAM", "DAM_minus_Homeostatic")
+  programs <- names(canonical_microglia_markers)
+  contrasts <- state_contrast_names()
+  stopifnot(
+    is.list(substrate), identical(substrate$schema, "p6_state_substrate_v1"),
+    is.list(response), identical(response$schema, "p6_state_response_v1"),
+    substrate$audit$n_units == 16L, substrate$audit$residual_df == 9L,
+    response$audit$n_units == 16L, response$audit$residual_df == 9L,
+    identical(substrate$audit$score_programs, programs),
+    identical(response$audit$programmes, programs),
+    identical(response$audit$contrast_names, contrasts),
+    score_margin == 0.25, alpha == 0.05, tol == 1e-10, max_target_bytes > 0
+  )
+  fd <- factorial_design(substrate$unit_meta)
+  channels <- state_score_channels(substrate, tol)
+  synthetic <- state_score_synthetic_checks(fd, score_margin, alpha, tol)
+  primary <- do.call(rbind, lapply(endpoints, function(endpoint)
+    fit_state_score_endpoint(
+      channels$matrices[[endpoint]], fd, endpoint, "equal_unit_primary",
+      weight_scheme = "equal unit", margin = score_margin, alpha = alpha
+    )))
+  weighted_scheme <- c(
+    total = "two-state cell count", composition = "two-state cell count",
+    within_state = "two-state cell count", cross = "two-state cell count",
+    within_Homeostatic = "Homeostatic cell count", within_DAM = "DAM cell count",
+    DAM_minus_Homeostatic = "harmonic Homeostatic/DAM cell count"
+  )
+  sensitivity <- do.call(rbind, lapply(endpoints, function(endpoint)
+    fit_state_score_endpoint(
+      channels$matrices[[endpoint]], fd, endpoint, "sample_size_sensitivity",
+      weights = channels$sensitivity_weights[[endpoint]],
+      weight_scheme = weighted_scheme[[endpoint]], margin = score_margin, alpha = alpha
+    )))
+  rownames(primary) <- rownames(sensitivity) <- NULL
+  primary_residual <- state_score_contrast_reconstruction(primary, tol)
+  sensitivity_residual <- state_score_contrast_reconstruction(sensitivity, tol)
+  verdict <- classify_state_decomposition(primary, response, alpha = alpha)
+
+  out <- list(
+    schema = "p6_state_decomposition_v1",
+    unit_scores = channels$unit,
+    anchors = channels$anchors,
+    reference = channels$reference,
+    inference = list(primary = primary, sensitivity = sensitivity),
+    occupancy = response$occupancy[c("unit", "probability_means", "probability_contrasts",
+                                      "empirical_logit", "permutation")],
+    raw_count_programmes = response$rotations,
+    marker_coverage = response$marker_coverage,
+    bridge = response$bridge,
+    verdict = verdict,
+    audit = list(
+      n_units = 16L, residual_df = 9L, programmes = programs,
+      endpoints = endpoints, contrast_names = contrasts,
+      unit_reconstruction_residual = channels$unit_reconstruction_residual,
+      primary_contrast_reconstruction_residual = primary_residual,
+      sensitivity_contrast_reconstruction_residual = sensitivity_residual,
+      synthetic = synthetic,
+      thresholds = list(score_margin = score_margin, alpha = alpha, tolerance = tol,
+                        max_target_bytes = max_target_bytes),
+      sensitivity_weights = lapply(channels$sensitivity_weights, range),
+      parent_isolated = NA, in_memory_bytes = NA_real_
+    )
+  )
+  expected_rows <- length(endpoints) * length(programs) * length(contrasts)
+  family_size <- length(programs)
+  finite_cols <- c("estimate", "se", "df", "p_zero", "fdr_zero", "ci95_l", "ci95_r",
+                   "p_minimum", "fdr_minimum", "p_tost", "fdr_tost", "ci90_l", "ci90_r")
+  stopifnot(
+    nrow(primary) == expected_rows, nrow(sensitivity) == expected_rows,
+    all(table(primary$endpoint, primary$contrast) == length(programs)),
+    all(table(sensitivity$endpoint, sensitivity$contrast) == length(programs)),
+    identical(unique(primary$endpoint), endpoints), identical(unique(primary$contrast), contrasts),
+    identical(unique(primary$program), programs), all(primary$df == 9L),
+    identical(unique(sensitivity$endpoint), endpoints),
+    identical(unique(sensitivity$contrast), contrasts),
+    identical(unique(sensitivity$program), programs), all(sensitivity$df == 9L),
+    all(vapply(primary[finite_cols], function(x) all(is.finite(x)), logical(1))),
+    all(vapply(sensitivity[finite_cols], function(x) all(is.finite(x)), logical(1))),
+    all(vapply(primary[c("family_zero", "family_minimum", "family_tost")],
+               function(x) all(nzchar(x)), logical(1))),
+    all(vapply(sensitivity[c("family_zero", "family_minimum", "family_tost")],
+               function(x) all(nzchar(x)), logical(1))),
+    all(table(primary$family_zero) == family_size),
+    all(table(primary$family_minimum) == family_size),
+    all(table(primary$family_tost) == family_size),
+    all(table(sensitivity$family_zero) == family_size),
+    all(table(sensitivity$family_minimum) == family_size),
+    all(table(sensitivity$family_tost) == family_size),
+    channels$unit_reconstruction_residual <= tol,
+    primary_residual <= tol, sensitivity_residual <= tol,
+    !state_substrate_contains_parent(out)
+  )
+  out$audit$parent_isolated <- TRUE
+  out$audit$in_memory_bytes <- as.numeric(object.size(out))
+  stopifnot(out$audit$in_memory_bytes <= max_target_bytes,
+            length(qs2::qs_serialize(out)) <= max_target_bytes)
+  out
+}

@@ -1,6 +1,6 @@
 # P6 - microglial state composition versus regulation
 
-Status = ACTIVE. Next = S3 exact UCell channel decomposition + verdict.
+Status = ACTIVE. Next = S4 compact Figure 10 payload + publication plate.
 
 ## Question + choice
 
@@ -319,13 +319,27 @@ Method basis:
   contrasts without a pass gate. Fresh target = 10.2 s / 10,407,494 serialized bytes /
   27,221,560 in-memory bytes, warning/error clean, fitted-parent isolation true; full
   report gate green and dependency/report surfaces unchanged.
-- [ ] **S3 - exact channel decomposition + verdict.** Implement equal-unit UCell
+- [x] **S3 - exact channel decomposition + verdict.** Implement equal-unit UCell
   standardization, composition/within-state/cross channels, OLS/TOST/sensitivity,
   and the predeclared evidence classifier; add `microglia_state_decomposition`.
   Acceptance = unit- and contrast-level reconstruction residual <=1e-10; ordinary
   df = 9; all five programmes/endpoints/contrasts present; BH/TOST families
   explicit; every verdict traceable to fixed evidence fields and outcome-open
   wording.
+  DONE 2026-07-14: exact equal-unit standardization fits total, composition,
+  within-state, cross, both state means, and paired DAM-minus-Homeostatic means for
+  five programmes x five contrasts using ordinary 9-df OLS; fixed cell-count /
+  harmonic-count WLS is sensitivity. Zero, ordinary-TREAT 0.25-SD minimum-effect,
+  and TOST equivalence families are explicit per endpoint x contrast. Live unit /
+  primary-contrast / sensitivity-contrast reconstruction residuals = 2.78e-16 /
+  3.33e-16 / 1.24e-15; synthetic TOST boundary + interaction-sign gates pass.
+  Defining interaction verdict = unresolved: +0.174 occupancy misses its 0.10
+  minimum-effect family at 5% (FDR 0.081); every score-composition programme is
+  equivalent within +/-0.25 pooled SD, while no within-DAM programme clears the
+  meaningful UCell margin with a same-direction significant raw-count rotation;
+  equivalence across all five within-DAM programmes is also unearned. Target =
+  54,135 serialized bytes / 207,808 in-memory bytes, warning/error clean and parent
+  isolated; dependency/report surfaces unchanged and full report gate green.
 - [ ] **S4 - compact Figure 10 payload.** Build `state_decomposition_figures` from
   compact estimates only and implement the publication plate grammar. Acceptance
   = fixed panels/programmes represented including null/unresolved rows, no

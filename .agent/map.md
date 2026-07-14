@@ -47,7 +47,7 @@ P1 microglia:
 - `microglia_report <- microglia_report_data(microglia_annotated, symbol_map)`
 - `microglia_figures <- microglia_figure_data(microglia_report)`
 
-P6 state decomposition (active; report-disconnected through S2):
+P6 state decomposition (active; report-disconnected through S3):
 - `microglia_state_substrate <- build_microglia_state_substrate(microglia_annotated, symbol_map)`
   emits only two aligned raw-count pseudobulks, unit/state counts + libraries,
   unit/state raw-UCell means + pooled SDs, and exact feature/marker maps. Runtime
@@ -60,7 +60,15 @@ P6 state decomposition (active; report-disconnected through S2):
   state-wise voom/treat gene tables, harmonic-weight direct state differences + unweighted
   sensitivity, five fixed-programme rotations, and the pooled-two-state/whole-MG bridge.
   Runtime algebra/fit/family/size gates keep fitted objects out; live payload = 27.22 MB
-  in memory / 10.41 MB serialized. No report target depends on P6 through S2.
+  in memory / 10.41 MB serialized.
+- `microglia_state_decomposition <- run_microglia_state_decomposition(microglia_state_substrate, microglia_state_response)`
+  standardizes five raw-UCell programmes by pooled cell SD and emits exact equal-unit
+  total/composition/within-state/cross channels, both state means + paired differences,
+  ordinary OLS zero/minimum/TOST families, fixed cell-count-weighted sensitivity, compact
+  S2 evidence, and the predeclared interaction classifier. Unit/contrast algebra, 9-df,
+  family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
+  live payload = 0.20 MB in memory / 0.054 MB serialized. No report target depends on P6
+  through S3.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -122,10 +130,11 @@ Report:
   glmmTMB sensitivity, compact trajectory report bundle.
 
 `R/state_decomposition.R`
-- P6 compact Homeostatic/DAM substrate extraction + occupancy/state-response
-  inference: exact feature/marker mapping, coverage/design/library/size gates,
-  beta-binomial standardization, state/delta voom+treat, rotations, bridge, and
-  deterministic algebra/model gates. Heavy parents/fits stay out of target payloads.
+- P6 compact Homeostatic/DAM substrate, occupancy/state response, and exact UCell-channel
+  inference: feature/marker mapping, coverage/design/library/size gates, beta-binomial
+  standardization, state/delta voom+treat, rotations, bridge, ordinary OLS/TOST/weighted
+  sensitivity, fixed classifier, and deterministic algebra/model gates. Heavy parents/fits
+  stay out of target payloads.
 
 `R/modality_de.R`
 - Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits

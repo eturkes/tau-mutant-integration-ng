@@ -74,6 +74,14 @@ list(
              run_microglia_state_response(microglia_state_substrate, pb_de_microglia),
              format = "qs"),
 
+  # P6-S3: exact standardized UCell composition/within-state/cross attribution, ordinary
+  # replicate-unit OLS + TOST/minimum-effect inference, weighted sensitivity, and the fixed
+  # S1-S3 evidence classifier. Compact report-disconnected tables only; no fitted objects.
+  tar_target(microglia_state_decomposition,
+             run_microglia_state_decomposition(microglia_state_substrate,
+                                                microglia_state_response),
+             format = "qs"),
+
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + subpopulation +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.

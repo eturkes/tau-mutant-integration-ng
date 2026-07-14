@@ -16,7 +16,7 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-14): 9 visible figures, 3 included qmd fragments, expected 31 targets.
+Live report scope (2026-07-14): 9 visible figures, 3 included qmd fragments, expected 32 targets.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -31,12 +31,14 @@ combining the proteome PCA and phosphoproteome heatmap; proteome and phosphoprot
 removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
 claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
-P6 state decomposition is active but report-disconnected through S2. Compact
+P6 state decomposition is active but report-disconnected through S3. Compact
 `microglia_state_substrate` contains aligned Homeostatic/DAM raw-count pseudobulks,
 16-unit state/coverage/library metadata, five-programme raw-UCell unit/state means +
 pooled SDs, and exact feature/marker maps. `microglia_state_response` contains only
-occupancy/state/delta/rotation/bridge inference tables + diagnostics; no Seurat/S4 parent
-or fitted model crosses either boundary. Figures 1-9 and the report contract remain unchanged.
+occupancy/state/delta/rotation/bridge inference tables + diagnostics.
+`microglia_state_decomposition` contains unit-level standardized score channels,
+ordinary/weighted inference, compact S2 evidence, and the fixed classifier. No Seurat/S4
+parent or fitted model crosses any boundary. Figures 1-9 and the report contract remain unchanged.
 
 ## Data
 
@@ -114,7 +116,13 @@ Microglia state decomposition (P6 active):
   (unresolved at 5%); empirical-logit batch-stratified permutation p = 0.021.
   Fixed raw-count rotations support an interaction Homeostatic programme within
   Homeostatic cells, not a DAM or direct state-difference programme at FDR <=0.05.
-  This is S2 evidence, not the integrated verdict; S3 UCell channels remain open.
+  S3 exact UCell channels reconstruct at <=1.24e-15 and use ordinary 9-df OLS with
+  0.25 pooled-SD minimum/equivalence margins; cell-count/harmonic-count WLS is sensitivity.
+  Integrated interaction verdict = unresolved. All five composition-score channels are
+  equivalent within the margin, but occupancy minimum-effect FDR = 0.081; no within-DAM
+  programme has meaningful UCell + same-direction significant rotation support, and all-five
+  within-DAM equivalence is unearned. `DAM-selective` requires concordant meaningful direct
+  DAM-minus-Homeostatic evidence in both score and raw-count programme representations.
 - Pooled Homeostatic+DAM versus whole-MG effect correlations = 0.982-0.994 across
   contrasts; descriptive exclusion bridge only, with no agreement threshold.
 

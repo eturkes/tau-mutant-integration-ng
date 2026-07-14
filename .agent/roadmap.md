@@ -39,7 +39,7 @@ snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the moda
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). P6-S2 raises the report-disconnected live DAG to 31 targets.
+the live DAG (Ledger 2026-07-08). P6-S3 raises the report-disconnected live DAG to 32 targets.
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -58,9 +58,9 @@ paired state contrasts + exact UCell programme standardization into composition,
 within-state, and cross channels. One compact Figure 10 is appended after the
 stable nine-figure report.
 
-Next `$session-prompt` = EXECUTE S3: decompose the fixed UCell programmes into exact
-composition/within-state/cross channels, fit OLS/minimum-effect/equivalence + weighted
-sensitivity, and derive the predeclared evidence classifier from S1/S2.
+Next `$session-prompt` = EXECUTE S4: build the compact Figure 10 payload + conventional
+publication plate from fixed programmes and compact S1-S3 estimates; retain null/unresolved
+rows and keep the report disconnected until S5.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -220,6 +220,20 @@ sensitivity, and derive the predeclared evidence classifier from S1/S2.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-14 P6-S3 exact UCell decomposition + verdict DONE ->
+  `microglia_state_decomposition`. Equal-unit standardization decomposes five fixed
+  programmes into total/composition/within-state/cross channels and fits both state
+  means + paired differences across all five contrasts with ordinary 9-df OLS;
+  fixed cell-count/harmonic-count WLS is sensitivity. Zero, ordinary-TREAT 0.25-SD
+  minimum-effect, and TOST families are explicit per endpoint x contrast. Live unit /
+  primary / sensitivity reconstruction residuals = 2.78e-16 / 3.33e-16 / 1.24e-15;
+  synthetic interaction-sign + TOST boundary gates pass. Interaction verdict =
+  unresolved: occupancy +0.174 misses its 0.10-margin family at 5% (FDR 0.081), all
+  five score-composition channels are equivalent within +/-0.25 pooled SD, no
+  within-DAM programme earns meaningful UCell + concordant rotation support, and
+  all-five within-DAM equivalence is unearned. Target = 54,135 serialized / 207,808
+  in-memory bytes; warning/error clean, parent isolated. Full report gate green;
+  dependency/report surfaces unchanged. Next = S4 Figure 10 payload + plate.
 - 2026-07-14 P6-S2 occupancy + state response DONE ->
   `microglia_state_response`. Beta-binomial DAM occupancy, equal-batch probability
   standardization, empirical-logit/batch-stratified permutation sensitivity,
