@@ -1,6 +1,6 @@
 # P6 - microglial state composition versus regulation
 
-Status = ACTIVE. Next = S2 occupancy + state response.
+Status = ACTIVE. Next = S3 exact UCell channel decomposition + verdict.
 
 ## Question + choice
 
@@ -296,7 +296,7 @@ Method basis:
   Both matrices equal the established two-pass pseudobulk implementation element
   for element; all score means/SDs independently reconstruct from the parent.
   `scripts/check.sh` green; dependency lock and report QMD/content unchanged.
-- [ ] **S2 - occupancy + state response.** Implement beta-binomial occupancy,
+- [x] **S2 - occupancy + state response.** Implement beta-binomial occupancy,
   standardized probability contrasts/diagnostics/permutation sensitivity,
   separate Homeostatic/DAM pseudobulk fits, paired state-difference fit, fixed
   programme rotations, and pooled-state bridge. Add
@@ -304,6 +304,21 @@ Method basis:
   declared endpoint; synthetic paired-contrast oracle exact; finite effect/CI/
   family tables; model diagnostics green; target <=60 MB; bridge complete without
   a forced agreement threshold.
+  DONE 2026-07-14: `microglia_state_response` carries all five contrasts for
+  beta-binomial/model-scale + batch-standardized probability occupancy, empirical-
+  logit/permutation sensitivity, Homeostatic/DAM voom+treat, harmonic-weight paired
+  DAM-minus-Homeostatic response + unweighted sensitivity, 9,999-rotation fixed
+  programmes, and the pooled-state bridge. Live filtered genes = 13,599 Homeostatic /
+  9,148 DAM / 9,123 paired / 14,474 pooled. Interaction occupancy = +0.174 absolute
+  DAM fraction (95% CI 0.095-0.253): zero-null FDR 1.81e-5, but 0.10-margin FDR
+  0.081 = unresolved at 5%; batch-stratified permutation p = 0.021. Interaction
+  rotation supports the Homeostatic programme within Homeostatic cells (FDR 0.0055),
+  with no DAM-state or direct state-difference programme at FDR <=0.05; S3 remains
+  outcome-open. Synthetic paired reconstruction residual = 8.88e-16; probability
+  gradient residual = 3.60e-11. Pooled-versus-whole effect rho = 0.982-0.994 across
+  contrasts without a pass gate. Fresh target = 10.2 s / 10,407,494 serialized bytes /
+  27,221,560 in-memory bytes, warning/error clean, fitted-parent isolation true; full
+  report gate green and dependency/report surfaces unchanged.
 - [ ] **S3 - exact channel decomposition + verdict.** Implement equal-unit UCell
   standardization, composition/within-state/cross channels, OLS/TOST/sensitivity,
   and the predeclared evidence classifier; add `microglia_state_decomposition`.

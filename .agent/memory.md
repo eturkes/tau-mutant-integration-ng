@@ -16,7 +16,7 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-14): 9 visible figures, 3 included qmd fragments, expected 30 targets.
+Live report scope (2026-07-14): 9 visible figures, 3 included qmd fragments, expected 31 targets.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -31,11 +31,12 @@ combining the proteome PCA and phosphoproteome heatmap; proteome and phosphoprot
 removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
 claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
-P6 state decomposition is active but report-disconnected through S1. Live compact
-target `microglia_state_substrate` contains aligned Homeostatic/DAM raw-count
-pseudobulks, 16-unit state/coverage/library metadata, five-programme raw-UCell
-unit/state means + pooled SDs, and exact feature/marker maps. It contains no
-Seurat/S4 parent or inference result; Figures 1-9 and the report contract remain unchanged.
+P6 state decomposition is active but report-disconnected through S2. Compact
+`microglia_state_substrate` contains aligned Homeostatic/DAM raw-count pseudobulks,
+16-unit state/coverage/library metadata, five-programme raw-UCell unit/state means +
+pooled SDs, and exact feature/marker maps. `microglia_state_response` contains only
+occupancy/state/delta/rotation/bridge inference tables + diagnostics; no Seurat/S4 parent
+or fitted model crosses either boundary. Figures 1-9 and the report contract remain unchanged.
 
 ## Data
 
@@ -105,8 +106,17 @@ Microglia state decomposition (P6 active):
   units and >=31 cells/unit.
 - `microglia_state_substrate` uses raw RNA counts only, keeps both 33,683 x 16
   state matrices column-aligned to `unit_meta`, and records all five fixed marker
-  programmes without collapsing feature rows. S2 occupancy/state-response
-  inference remains open.
+  programmes without collapsing feature rows.
+- `microglia_state_response` uses 16 units/9 residual df throughout. Live genes =
+  13,599 Homeostatic / 9,148 DAM / 9,123 paired; direct response uses harmonic voom
+  precision and carries an unweighted sensitivity. Interaction DAM occupancy = +0.174
+  fraction (95% CI 0.095-0.253): zero-null supported, 0.10 minimum-effect FDR = 0.081
+  (unresolved at 5%); empirical-logit batch-stratified permutation p = 0.021.
+  Fixed raw-count rotations support an interaction Homeostatic programme within
+  Homeostatic cells, not a DAM or direct state-difference programme at FDR <=0.05.
+  This is S2 evidence, not the integrated verdict; S3 UCell channels remain open.
+- Pooled Homeostatic+DAM versus whole-MG effect correlations = 0.982-0.994 across
+  contrasts; descriptive exclusion bridge only, with no agreement threshold.
 
 Microglia DE:
 - Live target = `pb_de_microglia` only.

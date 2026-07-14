@@ -67,6 +67,13 @@ list(
   # uses these topTables for the snRNAseq panel in the four-method amyloid-response scatter.
   tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated), format = "qs"),
 
+  # P6-S2: beta-binomial retained-state occupancy + state-wise raw-count voom/treat,
+  # direct paired DAM-minus-Homeostatic response, fixed-programme rotations, and the pooled
+  # two-state versus whole-microglia bridge. Compact inference tables only; no fitted objects.
+  tar_target(microglia_state_response,
+             run_microglia_state_response(microglia_state_substrate, pb_de_microglia),
+             format = "qs"),
+
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + subpopulation +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.

@@ -39,7 +39,8 @@ snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the moda
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). 29 targets remain. P3/P4/P5 + the figure-expansion passes below stay as
+the live DAG (Ledger 2026-07-08). P6-S2 raises the report-disconnected live DAG to 31 targets.
+P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
@@ -57,9 +58,9 @@ paired state contrasts + exact UCell programme standardization into composition,
 within-state, and cross channels. One compact Figure 10 is appended after the
 stable nine-figure report.
 
-Next `$session-prompt` = EXECUTE S2: fit beta-binomial DAM occupancy, separate
-Homeostatic/DAM raw-count responses, the direct paired state difference, fixed
-programme rotations, and the pooled-state bridge from the compact S1 substrate.
+Next `$session-prompt` = EXECUTE S3: decompose the fixed UCell programmes into exact
+composition/within-state/cross channels, fit OLS/minimum-effect/equivalence + weighted
+sensitivity, and derive the predeclared evidence classifier from S1/S2.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -219,6 +220,23 @@ programme rotations, and the pooled-state bridge from the compact S1 substrate.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-14 P6-S2 occupancy + state response DONE ->
+  `microglia_state_response`. Beta-binomial DAM occupancy, equal-batch probability
+  standardization, empirical-logit/batch-stratified permutation sensitivity,
+  separate Homeostatic/DAM voom+treat fits, harmonic-weight paired direct response
+  + unweighted sensitivity, 9,999-rotation fixed programmes, and pooled-state bridge
+  cover all five canonical contrasts. Live genes = 13,599 Homeostatic / 9,148 DAM /
+  9,123 paired / 14,474 pooled. Interaction occupancy = +0.174 fraction (95% CI
+  0.095-0.253), zero-null FDR 1.81e-5; 0.10-margin FDR 0.081 remains unresolved at
+  5%, while empirical-logit permutation p = 0.021. Interaction rotation supports
+  Homeostatic programme up within Homeostatic cells (FDR 0.0055), with no DAM-state
+  or direct state-difference programme at FDR <=0.05; S3 integrated verdict remains
+  open. Synthetic paired reconstruction = 8.88e-16; analytic-vs-finite-difference
+  probability gradient = 3.60e-11. Pooled/whole-MG effect rho = 0.982-0.994, no
+  forced pass threshold. Fresh target 10.2 s / 10,407,494 serialized bytes /
+  27,221,560 in memory; warnings/errors absent, fitted-parent isolation true. Full
+  report gate green; 9-figure surface + dependency lock unchanged. Next = S3 channels
+  + verdict.
 - 2026-07-14 P6-S1 state substrate DONE -> `R/state_decomposition.R` +
   `microglia_state_substrate`. One sparse membership aggregation keeps the 612 MB
   cached parent out of the payload and emits two aligned 33,683 x 16 raw-count

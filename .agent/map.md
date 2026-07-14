@@ -1,7 +1,7 @@
 # Map - live codebase wiring
 
-Current rendered surface (2026-07-14): lean 9-figure report. P6 has one compact,
-report-disconnected Homeostatic/DAM substrate target; inference/figure/report wiring remains open.
+Current rendered surface (2026-07-14): lean 9-figure report. P6 has compact,
+report-disconnected Homeostatic/DAM substrate + response targets; channel/figure/report wiring remains open.
 No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
 retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
@@ -23,7 +23,7 @@ R activation:
 ## Targets
 
 `_targets.R` sources `R/*.R`, sets pinned `QUARTO_PATH`, and stores heavy/intermediate
-objects as `format="qs"`. Expected live target count after P6-S1: 30.
+objects as `format="qs"`. Expected live target count after P6-S2: 31.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -47,7 +47,7 @@ P1 microglia:
 - `microglia_report <- microglia_report_data(microglia_annotated, symbol_map)`
 - `microglia_figures <- microglia_figure_data(microglia_report)`
 
-P6 state decomposition (active; report-disconnected through S1):
+P6 state decomposition (active; report-disconnected through S2):
 - `microglia_state_substrate <- build_microglia_state_substrate(microglia_annotated, symbol_map)`
   emits only two aligned raw-count pseudobulks, unit/state counts + libraries,
   unit/state raw-UCell means + pooled SDs, and exact feature/marker maps. Runtime
@@ -55,6 +55,12 @@ P6 state decomposition (active; report-disconnected through S1):
   >=95% overall / >=90% per-unit coverage, full-rank design, finite variable scores,
   positive libraries, <=25 MB in-memory + qs-serialized payloads, and no Seurat/S4
   reachability.
+- `microglia_state_response <- run_microglia_state_response(microglia_state_substrate, pb_de_microglia)`
+  emits beta-binomial + standardized occupancy, empirical-logit/permutation sensitivity,
+  state-wise voom/treat gene tables, harmonic-weight direct state differences + unweighted
+  sensitivity, five fixed-programme rotations, and the pooled-two-state/whole-MG bridge.
+  Runtime algebra/fit/family/size gates keep fitted objects out; live payload = 27.22 MB
+  in memory / 10.41 MB serialized. No report target depends on P6 through S2.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -116,9 +122,10 @@ Report:
   glmmTMB sensitivity, compact trajectory report bundle.
 
 `R/state_decomposition.R`
-- P6 compact Homeostatic/DAM raw-count + UCell substrate extraction, exact
-  feature/marker mapping, coverage/design/library/size gates, and heavy-parent
-  isolation. S2 inference functions are not yet present.
+- P6 compact Homeostatic/DAM substrate extraction + occupancy/state-response
+  inference: exact feature/marker mapping, coverage/design/library/size gates,
+  beta-binomial standardization, state/delta voom+treat, rotations, bridge, and
+  deterministic algebra/model gates. Heavy parents/fits stay out of target payloads.
 
 `R/modality_de.R`
 - Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits
