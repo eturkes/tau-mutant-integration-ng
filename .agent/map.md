@@ -1,7 +1,8 @@
 # Map - live codebase wiring
 
 Current rendered surface (2026-07-14): lean 9-figure report. P6 has compact,
-report-disconnected Homeostatic/DAM substrate + response targets; channel/figure/report wiring remains open.
+report-disconnected Homeostatic/DAM substrate, response, channel, and Figure 10 payload
+targets; only report integration remains open.
 No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
 retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
@@ -23,7 +24,7 @@ R activation:
 ## Targets
 
 `_targets.R` sources `R/*.R`, sets pinned `QUARTO_PATH`, and stores heavy/intermediate
-objects as `format="qs"`. Expected live target count after P6-S2: 31.
+objects as `format="qs"`. Expected live target count after P6-S4: 33.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -47,7 +48,7 @@ P1 microglia:
 - `microglia_report <- microglia_report_data(microglia_annotated, symbol_map)`
 - `microglia_figures <- microglia_figure_data(microglia_report)`
 
-P6 state decomposition (active; report-disconnected through S3):
+P6 state decomposition (active; report-disconnected through S4):
 - `microglia_state_substrate <- build_microglia_state_substrate(microglia_annotated, symbol_map)`
   emits only two aligned raw-count pseudobulks, unit/state counts + libraries,
   unit/state raw-UCell means + pooled SDs, and exact feature/marker maps. Runtime
@@ -67,8 +68,14 @@ P6 state decomposition (active; report-disconnected through S3):
   ordinary OLS zero/minimum/TOST families, fixed cell-count-weighted sensitivity, compact
   S2 evidence, and the predeclared interaction classifier. Unit/contrast algebra, 9-df,
   family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
-  live payload = 0.20 MB in memory / 0.054 MB serialized. No report target depends on P6
-  through S3.
+  live payload = 0.20 MB in memory / 0.054 MB serialized.
+- `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_decomposition)`
+  emits the fixed-row Figure 10 contract: 16-unit occupancy + model means/interaction,
+  45 three-endpoint raw-count programme responses, five within-DAM interaction rows,
+  and 20 total/channel attribution rows. Payload = 59.4 KB in memory / 8.3 KB
+  serialized; deterministic, parent-isolated, no significance-based row selection.
+  `state_decomposition_figure_plot()` draws the four-panel publication plate. No report
+  target depends on any P6 target through S4.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -145,11 +152,12 @@ Report:
 `R/figures.R`
 - Compact figure-data builders for rendered slots only:
   `microglia_figure_data()`, `trajectory_figure_data()`,
-  `modality_logfc_scatter_data()`.
+  `modality_logfc_scatter_data()`, `state_decomposition_figure_data()`.
 
 `R/plot.R`
 - Shared report theme, scales, modality and rendered descriptive plot helpers including
-  `geomx_sample_heatmap_plot()` and `bulk_modality_context_plot()`.
+  `geomx_sample_heatmap_plot()`, `bulk_modality_context_plot()`, and the report-disconnected
+  `state_decomposition_figure_plot()`.
 
 `R/report.R`
 - Quarto render wrapper, embedded-lightbox repair, and report-dir pruning so the final HTML is the only

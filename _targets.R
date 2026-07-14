@@ -82,6 +82,12 @@ list(
                                                 microglia_state_response),
              format = "qs"),
 
+  # P6-S4: fixed-row Figure 10 payload + plot contract. This leaf reads only compact S3
+  # estimates and stays disconnected from the report until S5 wires the qmd.
+  tar_target(state_decomposition_figures,
+             state_decomposition_figure_data(microglia_state_decomposition),
+             format = "qs"),
+
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + subpopulation +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
   # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.

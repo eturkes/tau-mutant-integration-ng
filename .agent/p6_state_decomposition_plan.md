@@ -1,6 +1,6 @@
 # P6 - microglial state composition versus regulation
 
-Status = ACTIVE. Next = S4 compact Figure 10 payload + publication plate.
+Status = ACTIVE. Next = S5 report integration + QA.
 
 ## Question + choice
 
@@ -340,11 +340,24 @@ Method basis:
   equivalence across all five within-DAM programmes is also unearned. Target =
   54,135 serialized bytes / 207,808 in-memory bytes, warning/error clean and parent
   isolated; dependency/report surfaces unchanged and full report gate green.
-- [ ] **S4 - compact Figure 10 payload.** Build `state_decomposition_figures` from
+- [x] **S4 - compact Figure 10 payload.** Build `state_decomposition_figures` from
   compact estimates only and implement the publication plate grammar. Acceptance
   = fixed panels/programmes represented including null/unresolved rows, no
   outcome-selected genes, deterministic ordering, bundle <=5 MB, no heavy object
   reachable from the qmd payload, focused plot smoke warning-clean.
+  DONE 2026-07-14: `state_decomposition_figure_data()` emits a fixed-row leaf from
+  `microglia_state_decomposition` only: 16 occupancy units + four standardized
+  means + the interaction; 45 raw-count programme rotations spanning three
+  endpoints x two amyloid arms + interaction; five within-DAM interaction rows;
+  and 20 total/composition/within-state/cross rows. Ordering is fixed before
+  results; null/unresolved rows remain; no gene is selected. The four-panel
+  conventional plate combines occupancy + minimum-effect CI, a rotation bubble
+  matrix, a within-DAM margin forest, and signed channel forests. Independent
+  source-to-payload/determinism/reconstruction checks pass; target = 8,261
+  serialized / 59,416 in-memory bytes, parent-isolated, warning/error clean.
+  A warning-fatal 18.8 x 13.2 inch Cairo draw and direct PNG inspection are clean.
+  P6 remains absent from the `report` ancestry; the stable nine-figure report gate
+  is green and dependency lock/QMDs are unchanged.
 - [ ] **S5 - report integration + QA.** Add `_state_decomposition.qmd` after
   `_modality.qmd`; wire report source dependencies; update map/memory only for
   durable shipped facts. Run `scripts/check.sh`, rendered-DOM assertions, and

@@ -945,3 +945,260 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
     )
   )
 }
+
+# P6 Figure 10 -------------------------------------------------------------------------------
+# Reduce the compact S3 result to one deterministic, qmd-safe plate payload. Fixed rows only:
+# all five predeclared programmes; both within-tau amyloid responses plus their interaction;
+# Homeostatic, DAM, and direct DAM-minus-Homeostatic raw-count rotations; and every exact UCell
+# attribution channel. Significance changes glyph state, never row inclusion or ordering.
+state_decomposition_figure_data <- function(decomposition, alpha = 0.05,
+                                            max_target_bytes = 5 * 1024^2) {
+  stopifnot(
+    is.list(decomposition), identical(decomposition$schema, "p6_state_decomposition_v1"),
+    is.list(decomposition$inference), is.data.frame(decomposition$inference$primary),
+    is.list(decomposition$occupancy), is.data.frame(decomposition$raw_count_programmes),
+    is.list(decomposition$verdict), is.data.frame(decomposition$verdict$summary),
+    length(alpha) == 1L, is.finite(alpha), alpha == 0.05,
+    length(max_target_bytes) == 1L, is.finite(max_target_bytes), max_target_bytes > 0
+  )
+  programs <- names(canonical_microglia_markers)
+  program_labels <- c(
+    Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
+    Proliferative = "Proliferative", MHC_APC = "MHC / APC"
+  )
+  stopifnot(identical(names(program_labels), programs))
+  label_program <- function(x) {
+    out <- unname(program_labels[as.character(x)])
+    stopifnot(!anyNA(out), all(nzchar(out)))
+    factor(out, levels = unname(rev(program_labels)))
+  }
+
+  # A: raw replicate occupancy, beta-binomial standardized means, and the defining interaction.
+  unit <- decomposition$occupancy$unit
+  means <- decomposition$occupancy$probability_means
+  contrasts <- decomposition$occupancy$probability_contrasts
+  .fig_require_cols(unit, c("genotype_batch", "genotype", "batch", "n_Homeostatic",
+                            "n_DAM", "n_primary", "coverage", "DAM_fraction"),
+                    "state decomposition occupancy units")
+  .fig_require_cols(means, c("genotype", "estimate", "se", "ci_l", "ci_r"),
+                    "state decomposition occupancy means")
+  .fig_require_cols(contrasts, c("contrast", "estimate", "se", "ci_l", "ci_r", "margin",
+                                 "p_zero", "fdr_zero", "p_minimum", "fdr_minimum",
+                                 "family_zero", "family_minimum"),
+                    "state decomposition occupancy contrasts")
+  unit <- unit[order(match(as.character(unit$genotype), genotype_levels),
+                     as.character(unit$batch), method = "radix"), , drop = FALSE]
+  means <- means[match(genotype_levels, as.character(means$genotype)), , drop = FALSE]
+  interaction <- contrasts[contrasts$contrast == "interaction", , drop = FALSE]
+  stopifnot(
+    nrow(unit) == 16L, !anyDuplicated(unit$genotype_batch),
+    identical(as.integer(table(factor(as.character(unit$genotype), levels = genotype_levels))),
+              rep.int(4L, length(genotype_levels))),
+    nrow(means) == 4L, identical(as.character(means$genotype), genotype_levels),
+    nrow(interaction) == 1L, interaction$margin == 0.10
+  )
+  unit$genotype <- factor(as.character(unit$genotype), levels = genotype_levels)
+  means$genotype <- factor(as.character(means$genotype), levels = genotype_levels)
+  interaction$evidence_state <- factor(
+    if (interaction$fdr_minimum <= alpha) "supported beyond margin" else "unresolved",
+    levels = c("supported beyond margin", "unresolved")
+  )
+  interaction$status_label <- if (interaction$fdr_minimum <= alpha) {
+    "supported beyond 0.10"
+  } else {
+    "unresolved at 0.10 margin"
+  }
+  .fig_assert_finite(unit, c("n_Homeostatic", "n_DAM", "n_primary", "coverage",
+                             "DAM_fraction"), "state decomposition occupancy units")
+  .fig_assert_finite(means, c("estimate", "se", "ci_l", "ci_r"),
+                     "state decomposition occupancy means")
+  .fig_assert_finite(interaction, c("estimate", "se", "ci_l", "ci_r", "margin",
+                                    "p_zero", "fdr_zero", "p_minimum", "fdr_minimum"),
+                     "state decomposition occupancy interaction")
+  stopifnot(all(unit$DAM_fraction >= 0 & unit$DAM_fraction <= 1),
+            all(means$estimate >= 0 & means$estimate <= 1),
+            all(means$ci_l <= means$estimate & means$estimate <= means$ci_r),
+            interaction$ci_l <= interaction$estimate,
+            interaction$estimate <= interaction$ci_r)
+
+  # B: raw-count programme responses. Untestable sets remain explicit zero-position crosses;
+  # current live data have all 45 cells testable, but the figure contract preserves the state.
+  response_contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s", "interaction")
+  response_contrast_labels <- c(
+    nlgf_in_maptki = "Amyloid | MAPTKI",
+    nlgf_in_p301s = "Amyloid | P301S",
+    interaction = "Interaction"
+  )
+  response_endpoints <- c("Homeostatic", "DAM", "DAM_minus_Homeostatic")
+  response_endpoint_labels <- c(
+    Homeostatic = "Homeostatic",
+    DAM = "DAM",
+    DAM_minus_Homeostatic = "DAM - Homeostatic"
+  )
+  rotations <- decomposition$raw_count_programmes
+  .fig_require_cols(rotations, c("endpoint", "contrast", "program", "n_genes", "testable",
+                                 "mean_logFC", "direction", "p_value", "fdr", "nrot",
+                                 "family"), "state decomposition raw-count programmes")
+  response <- rotations[
+    rotations$endpoint %in% response_endpoints & rotations$contrast %in% response_contrasts,
+    , drop = FALSE
+  ]
+  response <- response[order(match(response$contrast, response_contrasts),
+                             match(response$endpoint, response_endpoints),
+                             match(response$program, programs), method = "radix"), , drop = FALSE]
+  response_key <- paste(response$contrast, response$endpoint, response$program, sep = "\r")
+  stopifnot(nrow(response) == 45L, !anyDuplicated(response_key),
+            all(table(response$contrast, response$endpoint) == length(programs)),
+            all(response$n_genes >= 0L),
+            all(is.finite(response$mean_logFC[response$testable])),
+            all(is.finite(response$fdr[response$testable])),
+            all(is.na(response$mean_logFC[!response$testable])),
+            all(is.na(response$fdr[!response$testable])))
+  response$plot_effect <- ifelse(response$testable, response$mean_logFC, 0)
+  response$neg_log10_fdr <- ifelse(response$testable,
+                                   -log10(pmax(response$fdr, 1 / (response$nrot + 1))), 0)
+  response$direction_mean_match <- !response$testable |
+    response$direction == ifelse(response$plot_effect > 0, "Up",
+                                 ifelse(response$plot_effect < 0, "Down", "Zero"))
+  response$support_state <- factor(
+    ifelse(!response$testable, "not testable",
+           ifelse(response$fdr <= alpha, "FDR <= 0.05", "FDR > 0.05")),
+    levels = c("FDR <= 0.05", "FDR > 0.05", "not testable")
+  )
+  response$program_label <- label_program(response$program)
+  response$endpoint_label <- factor(unname(response_endpoint_labels[response$endpoint]),
+                                    levels = unname(response_endpoint_labels))
+  response$contrast_label <- factor(unname(response_contrast_labels[response$contrast]),
+                                    levels = unname(response_contrast_labels))
+  .fig_assert_finite(response, c("n_genes", "plot_effect", "neg_log10_fdr", "nrot"),
+                     "state decomposition response plot fields")
+  stopifnot(!anyNA(response$program_label), !anyNA(response$endpoint_label),
+            !anyNA(response$contrast_label), !anyNA(response$support_state),
+            all(response$direction_mean_match[response$testable & response$fdr <= alpha]))
+
+  primary <- decomposition$inference$primary
+  .fig_require_cols(primary, c("analysis", "endpoint", "contrast", "program", "estimate", "se",
+                               "df", "ci95_l", "ci95_r", "margin", "fdr_zero",
+                               "fdr_minimum", "fdr_tost", "evidence_state", "family_zero",
+                               "family_minimum", "family_tost"),
+                    "state decomposition primary UCell inference")
+  stopifnot(identical(unique(primary$analysis), "equal_unit_primary"), all(primary$df == 9L))
+
+  # C: every within-DAM programme in the defining interaction, aligned to its raw-count rotation.
+  within_dam <- primary[primary$endpoint == "within_DAM" &
+                          primary$contrast == "interaction", , drop = FALSE]
+  within_dam <- within_dam[match(programs, within_dam$program), , drop = FALSE]
+  dam_rotation <- response[response$endpoint == "DAM" &
+                             response$contrast == "interaction", , drop = FALSE]
+  dam_rotation <- dam_rotation[match(programs, dam_rotation$program), , drop = FALSE]
+  stopifnot(nrow(within_dam) == 5L, nrow(dam_rotation) == 5L,
+            identical(within_dam$program, programs), identical(dam_rotation$program, programs),
+            all(within_dam$margin == 0.25))
+  rotation_direction_match <- dam_rotation$testable & within_dam$estimate != 0 &
+    dam_rotation$direction %in% c("Up", "Down") &
+    dam_rotation$direction == ifelse(within_dam$estimate > 0, "Up", "Down")
+  within_dam$rotation_mean_logFC <- dam_rotation$mean_logFC
+  within_dam$rotation_fdr <- dam_rotation$fdr
+  within_dam$rotation_direction <- dam_rotation$direction
+  within_dam$rotation_testable <- dam_rotation$testable
+  within_dam$rotation_direction_match <- rotation_direction_match
+  within_dam$concordant_rotation_supported <- dam_rotation$testable &
+    dam_rotation$fdr <= alpha & rotation_direction_match
+  within_dam$program_label <- label_program(within_dam$program)
+  within_dam$evidence_label <- factor(
+    within_dam$evidence_state,
+    levels = c("supported_beyond_margin", "equivalent_within_margin", "unresolved"),
+    labels = c("beyond margin", "equivalent", "unresolved")
+  )
+  within_dam$rotation_support_label <- factor(
+    ifelse(!within_dam$rotation_testable, "rotation not testable",
+           ifelse(within_dam$concordant_rotation_supported,
+                  "concordant rotation FDR <= 0.05", "rotation not supported")),
+    levels = c("concordant rotation FDR <= 0.05", "rotation not supported",
+               "rotation not testable")
+  )
+  .fig_assert_finite(within_dam, c("estimate", "se", "df", "ci95_l", "ci95_r", "margin",
+                                   "fdr_zero", "fdr_minimum", "fdr_tost"),
+                     "state decomposition within-DAM panel")
+  stopifnot(!anyNA(within_dam$program_label), !anyNA(within_dam$evidence_label),
+            !anyNA(within_dam$rotation_support_label),
+            all(is.finite(within_dam$rotation_mean_logFC[within_dam$rotation_testable])),
+            all(is.finite(within_dam$rotation_fdr[within_dam$rotation_testable])),
+            all(is.na(within_dam$rotation_mean_logFC[!within_dam$rotation_testable])),
+            all(is.na(within_dam$rotation_fdr[!within_dam$rotation_testable])),
+            all(within_dam$ci95_l <= within_dam$estimate &
+                  within_dam$estimate <= within_dam$ci95_r))
+
+  # D: total plus every signed term in total = composition + within-state + cross.
+  attribution_endpoints <- c("total", "composition", "within_state", "cross")
+  attribution_labels <- c(
+    total = "Total", composition = "Composition",
+    within_state = "Within-state", cross = "Cross"
+  )
+  attribution <- primary[primary$endpoint %in% attribution_endpoints &
+                           primary$contrast == "interaction", , drop = FALSE]
+  attribution <- attribution[order(match(attribution$program, programs),
+                                   match(attribution$endpoint, attribution_endpoints),
+                                   method = "radix"), , drop = FALSE]
+  attribution_key <- paste(attribution$program, attribution$endpoint, sep = "\r")
+  stopifnot(nrow(attribution) == 20L, !anyDuplicated(attribution_key),
+            all(table(attribution$program) == length(attribution_endpoints)))
+  attribution$program_label <- label_program(attribution$program)
+  attribution$channel_label <- factor(unname(attribution_labels[attribution$endpoint]),
+                                      levels = unname(attribution_labels))
+  program_y <- stats::setNames(rev(seq_along(programs)), programs)
+  channel_offset <- stats::setNames(c(-0.27, -0.09, 0.09, 0.27), attribution_endpoints)
+  attribution$program_y <- unname(program_y[attribution$program])
+  attribution$plot_y <- attribution$program_y + unname(channel_offset[attribution$endpoint])
+  .fig_assert_finite(attribution, c("estimate", "se", "df", "ci95_l", "ci95_r", "margin",
+                                    "fdr_zero", "fdr_minimum", "fdr_tost", "program_y", "plot_y"),
+                     "state decomposition attribution panel")
+  attribution_residual <- max(abs(vapply(programs, function(program) {
+    z <- attribution[attribution$program == program, , drop = FALSE]
+    effect <- stats::setNames(z$estimate, z$endpoint)
+    effect[["total"]] - sum(effect[c("composition", "within_state", "cross")])
+  }, numeric(1))))
+  stopifnot(!anyNA(attribution$program_label), !anyNA(attribution$channel_label),
+            is.finite(attribution_residual), attribution_residual <= 1e-10,
+            all(attribution$ci95_l <= attribution$estimate &
+                  attribution$estimate <= attribution$ci95_r))
+
+  out <- list(
+    schema = "p6_state_decomposition_figures_v1",
+    occupancy = list(unit = unit, means = means, interaction = interaction),
+    state_response = response,
+    within_dam = within_dam,
+    attribution = attribution,
+    verdict = decomposition$verdict$summary,
+    provenance = list(
+      source_target = "microglia_state_decomposition",
+      defining_contrast = "interaction",
+      programme_order = programs,
+      response_contrasts = response_contrasts,
+      response_endpoints = response_endpoints,
+      attribution_identity = "total = composition + within_state + cross",
+      selection = "fixed five programmes and fixed endpoints/contrasts; no significance-based row selection",
+      alpha = alpha,
+      occupancy_margin = interaction$margin,
+      score_margin = unique(within_dam$margin)
+    ),
+    audit = list(
+      row_counts = c(occupancy_unit = nrow(unit), occupancy_means = nrow(means),
+                     occupancy_interaction = nrow(interaction), state_response = nrow(response),
+                     within_dam = nrow(within_dam), attribution = nrow(attribution)),
+      all_programmes_represented = TRUE,
+      deterministic_order = TRUE,
+      attribution_reconstruction_residual = attribution_residual,
+      parent_isolated = NA,
+      in_memory_bytes = NA_real_, serialized_bytes = NA_real_,
+      max_target_bytes = max_target_bytes
+    )
+  )
+  stopifnot(!state_substrate_contains_parent(out))
+  out$audit$parent_isolated <- TRUE
+  out$audit$in_memory_bytes <- as.numeric(object.size(out))
+  out$audit$serialized_bytes <- as.numeric(length(qs2::qs_serialize(out)))
+  stopifnot(out$audit$in_memory_bytes <= max_target_bytes,
+            out$audit$serialized_bytes <= max_target_bytes)
+  out
+}

@@ -39,7 +39,7 @@ snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the moda
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). P6-S3 raises the report-disconnected live DAG to 32 targets.
+the live DAG (Ledger 2026-07-08). P6-S4 raises the report-disconnected live DAG to 33 targets.
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -58,9 +58,9 @@ paired state contrasts + exact UCell programme standardization into composition,
 within-state, and cross channels. One compact Figure 10 is appended after the
 stable nine-figure report.
 
-Next `$session-prompt` = EXECUTE S4: build the compact Figure 10 payload + conventional
-publication plate from fixed programmes and compact S1-S3 estimates; retain null/unresolved
-rows and keep the report disconnected until S5.
+Next `$session-prompt` = EXECUTE S5: add `_state_decomposition.qmd` after the stable
+nine figures, wire only the compact S4 payload, then run DOM + Chromium PDF/PNG QA and
+the full report gate.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -220,6 +220,20 @@ rows and keep the report disconnected until S5.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-14 P6-S4 compact Figure 10 payload + plate DONE ->
+  `state_decomposition_figures`. Fixed data = 16 occupancy units, four standardized
+  genotype means, defining interaction; 45 raw-count programme rotation rows over
+  Homeostatic/DAM/direct-state-difference x both amyloid arms + interaction; five
+  within-DAM interaction rows; 20 total/composition/within-state/cross rows. All five
+  predeclared programmes and unresolved/null rows remain; ordering is deterministic
+  and no gene is selected. Four-panel plate = occupancy/minimum-effect forest,
+  raw-count rotation bubble matrix, within-DAM 0.25-SD-margin forest, and signed exact
+  channel forests. Independent exact-shape/source/determinism/reconstruction checks
+  pass; leaf has only `microglia_state_decomposition` upstream and remains outside
+  report ancestry. Target = 8,261 serialized / 59,416 in-memory bytes; fresh producer
+  0.087 s, warning/error clean, parent isolated. Warning-fatal 18.8 x 13.2 inch Cairo
+  smoke + direct PNG inspection clean. Existing 9-figure report gate green; QMDs and
+  dependency lock unchanged. Next = S5 report integration + browser QA.
 - 2026-07-14 P6-S3 exact UCell decomposition + verdict DONE ->
   `microglia_state_decomposition`. Equal-unit standardization decomposes five fixed
   programmes into total/composition/within-state/cross channels and fits both state
