@@ -43,21 +43,23 @@ the live DAG (Ledger 2026-07-08). 29 targets remain. P3/P4/P5 + the figure-expan
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
 corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
-the human-validation layer, the capstone convergence matrix, the heavy prose.
+the human-validation layer, the capstone convergence matrix, the heavy prose,
+and the user-declined cross-cell-type response-specificity expansion.
 
-## Active plan: P6 cross-cell-type response specificity
+## Active plan: P6 microglial state composition versus regulation
 
-Plan: `.agent/p6_celltype_specificity_plan.md`.
+Plan: `.agent/p6_state_decomposition_plan.md`.
 
-Question = does amyloid remain microglia-led across the six broad snRNAseq cell
-classes, and is the tau-dependent amyloid divergence formally microglia-specific?
-Chosen route = all-unit `dreamlet` pseudobulk + direct stacked response contrasts;
-MASH sharing + pathway analysis stay supportive/contextual. One compact Figure 10
-is appended after the stable nine-figure report.
+Question = is the `NLGF_P301S` phenotype more canonical DAM cells, or does mutant
+tau also alter transcription within DAM/Homeostatic states? Chosen route =
+replicate-level beta-binomial occupancy + state-wise raw-count pseudobulk/direct
+paired state contrasts + exact UCell programme standardization into composition,
+within-state, and cross channels. One compact Figure 10 is appended after the
+stable nine-figure report.
 
-Next `$session-prompt` = EXECUTE S1: lock/load-smoke the new method dependency,
-aggregate the 8.95 GB all-cell source directly into a compact six-class x 16-unit
-pseudobulk target, and prove the heavy/design/size preconditions before inference.
+Next `$session-prompt` = EXECUTE S1: extract a compact Homeostatic/DAM substrate
+from cached `microglia_annotated`, prove coverage/unit/design/score/library/size
+gates, and keep the 612 MB parent out of serialization before inference.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -82,11 +84,14 @@ pseudobulk target, and prove the heavy/design/size preconditions before inferenc
 - P5 Synthesis [DONE 2026-07-02 -> `.agent/completed/p5_synthesis_plan_2026-07-02.md`]:
   ONE lean report - cohesive narrative + compact evidence table (no ledger /
   contest machinery).
-- P6 Cross-cell-type response specificity [OPEN 2026-07-14 ->
-  `.agent/p6_celltype_specificity_plan.md`]: re-baseline all six broad snRNAseq
-  classes with replicate-correct precision-weighted pseudobulk; formally compare
-  tau x amyloid responses across classes; keep MASH/pathways supportive; append one
-  compact Figure 10 without disturbing Figures 1-9. Outcome open.
+- P6 Cross-cell-type response specificity [DECLINED 2026-07-14 before execution;
+  plan preserved in git `49fd57d`]: proposed six-class `dreamlet` scope audit.
+  Replaced at user choice; no dependency, target, analysis, or report change ran.
+- P6 Microglial state composition versus regulation [OPEN 2026-07-14 ->
+  `.agent/p6_state_decomposition_plan.md`]: distinguish more DAM occupancy from
+  conditional regulation within DAM/Homeostatic cells using replicate-level
+  occupancy, paired state pseudobulk, and exact fixed-programme standardization;
+  append one compact Figure 10 without disturbing Figures 1-9. Outcome open.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -214,19 +219,20 @@ pseudobulk target, and prove the heavy/design/size preconditions before inferenc
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
-- 2026-07-14 P6 cross-cell-type specificity OPENED ->
-  `.agent/p6_celltype_specificity_plan.md`. User delegated selection of a new
-  analysis phase. Repo/v1/current-method comparison chose the direct scope audit:
-  test whether amyloid remains microglia-led and whether the interaction is
-  formally microglia-specific across Astrocyte/Microglia/Neuronal/
-  Oligodendrocyte/OPC/Vascular. Default = all-cell `dreamlet` pseudobulk + stacked
-  differential-response contrasts; MASH specificity and zenith pathways are
-  supportive only. This supersedes v1 Arc N's single-seed K=289/NEBULA verdict
-  rather than targeting its outcome. Alternatives deferred: missing-source,
-  observationally collinear SEA-AD validation; ambient/ribosomal-confounded
-  gene-level trajectory dynamics. Locked-repo probe found the selected package
-  stack on the pinned 2026-06-22 repos. Five execution steps; next = S1 dependency
-  + compact all-cell pseudobulk preflight.
+- 2026-07-14 P6 state composition versus regulation OPENED ->
+  `.agent/p6_state_decomposition_plan.md`. User rejected the unexecuted
+  cross-cell-type direction and selected “More DAM, or different DAM?” from four
+  alternatives. Planning-time live preflight fixed Homeostatic+DAM as the primary
+  96.56% state universe: both states have >=20 cells in all 16 units; IFN is sparse
+  and no cell is Proliferative-dominant. Default = beta-binomial DAM occupancy +
+  state-wise raw-count pseudobulk/direct paired response + exact five-programme
+  UCell standardization. Statistical state conditioning is explicit, causal
+  mediation excluded, and no new dependency is needed. Five execution steps;
+  next = S1 compact cached-object substrate + hard gates.
+- 2026-07-14 P6 cross-cell-type specificity DECLINED BEFORE EXECUTION. The proposal
+  opened in git `49fd57d`; user requested alternatives before planning further,
+  then chose the state-composition question. No `dreamlet` install, all-cell load,
+  target, inference, or report change occurred; git retains the superseded plan.
 - 2026-07-09 Figure 7 PCA height polish DONE (ad hoc user review): reduced the bulk context
   figure from 15.6x19.6 to 15.6x16, kept the phosphosite heatmap row at 9.8, set the PCA
   row to 6.2, and forced the PCA panel to a square aspect.
