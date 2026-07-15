@@ -30,12 +30,12 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-14): the rendered report = TEN visible figures with simple numbered
+REPORT SCOPE (current 2026-07-15): the rendered report = TEN visible figures with simple numbered
 `Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
-one appended P6 retained-state decomposition plate (occupancy, raw-count programme
-response, within-DAM interaction, and exact UCell-channel attribution) +
+one appended P6 retained-state decomposition plate (DAM occupancy, batch-matched
+within-state programme responses, raw-count state concordance, and exact channel waterfalls) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
 figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
@@ -219,6 +219,16 @@ No active plan. Confirm the next roadmap direction with the user before writing 
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-15 Figure 10 replacement-panel redesign DONE (ad hoc user review) ->
+  retained the accepted raw-unit DAM occupancy chart alone and replaced its interaction
+  mini-forest plus the bubble/forest panels with three new fixed-programme approaches:
+  80 batch-matched NLGF-minus-control score differences with exact model mean/CIs,
+  a five-point raw-count Homeostatic-versus-DAM interaction concordance view, and
+  sequential composition/within-state/cross waterfalls with total CIs. Raw four-batch
+  means reconstruct all 20 displayed score contrasts to 2.64e-16; waterfall endpoints
+  reconstruct totals to 1.80e-16. Leaf = 6,922 serialized / 52,664 in-memory bytes,
+  warning-fatal draw and 10-page Chromium print clean; inferential verdict, Figures 1-9,
+  DAG, and dependency lock unchanged.
 - 2026-07-15 repository layout cleanup DONE -> grouped R modules under
   `R/{core,analysis,report}/`, moved include-only qmds to `sections/`, co-located the
   SCSS with `assets/`, grouped bootstrap installers, and documented every reserved

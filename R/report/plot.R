@@ -2283,36 +2283,51 @@ plate_pair_matrix <- function(pairs, title = NULL, count_name = "supported modal
       legend.position = "bottom")
 }
 
-# P6 Figure 10: retained-state occupancy versus state-conditional programme response. The four
-# fixed panels consume only state_decomposition_figure_data(); no cell frame, count matrix, or fit
-# can reach this layer. Panel geometry stays fixed when evidence changes.
+# P6 Figure 10: retained-state occupancy versus state-conditional programme response. The
+# fixed plate consumes only state_decomposition_figure_data(); no cell frame, count matrix, or
+# fitted model can reach this layer. The raw-unit occupancy chart is retained unchanged; the
+# remaining panels use replicate differences, state concordance, and exact decomposition steps.
 state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
-  stopifnot(is.list(figures),
-            identical(figures$schema, "p6_state_decomposition_figures_v1"),
-            is.list(figures$occupancy), is.data.frame(figures$state_response),
-            is.data.frame(figures$within_dam), is.data.frame(figures$attribution),
-            length(base_size) == 1L, is.finite(base_size), base_size > 0)
+  stopifnot(
+    is.list(figures),
+    identical(figures$schema, "p6_state_decomposition_figures_v2"),
+    is.list(figures$occupancy), is.list(figures$score_response),
+    is.data.frame(figures$raw_count_concordance), is.list(figures$attribution),
+    length(base_size) == 1L, is.finite(base_size), base_size > 0
+  )
   occ_unit <- figures$occupancy$unit
   occ_means <- figures$occupancy$means
-  occ_effect <- figures$occupancy$interaction
-  response <- figures$state_response
-  within_dam <- figures$within_dam
-  attribution <- figures$attribution
-  .fig_require_cols(occ_unit, c("genotype", "batch", "DAM_fraction"), "Figure 10 occupancy units")
+  score_unit <- figures$score_response$unit
+  score_model <- figures$score_response$model
+  concordance <- figures$raw_count_concordance
+  attribution_steps <- figures$attribution$steps
+  attribution_total <- figures$attribution$total
+  .fig_require_cols(occ_unit, c("genotype", "batch", "DAM_fraction"),
+                    "Figure 10 occupancy units")
   .fig_require_cols(occ_means, c("genotype", "estimate", "ci_l", "ci_r"),
                     "Figure 10 occupancy means")
-  .fig_require_cols(occ_effect, c("estimate", "ci_l", "ci_r", "margin", "fdr_minimum",
-                                  "status_label"), "Figure 10 occupancy interaction")
-  .fig_require_cols(response, c("endpoint_label", "contrast_label", "program_label",
-                                "plot_effect", "neg_log10_fdr", "support_state", "testable"),
-                    "Figure 10 state response")
-  .fig_require_cols(within_dam, c("program_label", "estimate", "ci95_l", "ci95_r", "margin",
-                                  "evidence_label", "rotation_support_label"),
-                    "Figure 10 within-DAM")
-  .fig_require_cols(attribution, c("program", "program_y", "plot_y", "channel_label", "estimate",
-                                   "ci95_l", "ci95_r"), "Figure 10 attribution")
-  stopifnot(nrow(occ_unit) == 16L, nrow(occ_means) == 4L, nrow(occ_effect) == 1L,
-            nrow(response) == 45L, nrow(within_dam) == 5L, nrow(attribution) == 20L)
+  .fig_require_cols(score_unit, c("endpoint", "program", "batch", "tau_background",
+                                  "state_label", "program_label", "effect"),
+                    "Figure 10 unit score responses")
+  .fig_require_cols(score_model, c("endpoint", "program", "tau_background", "state_label",
+                                   "program_label", "estimate", "ci95_l", "ci95_r"),
+                    "Figure 10 model score responses")
+  .fig_require_cols(concordance, c("program", "program_label", "homeostatic_effect",
+                                   "dam_effect", "state_pair_testable", "state_support",
+                                   "direct_support"),
+                    "Figure 10 raw-count concordance")
+  .fig_require_cols(attribution_steps, c("program", "program_label", "channel_label",
+                                         "x_start", "x_end"),
+                    "Figure 10 attribution steps")
+  .fig_require_cols(attribution_total, c("program", "program_label", "estimate",
+                                         "ci95_l", "ci95_r"),
+                    "Figure 10 attribution totals")
+  stopifnot(
+    nrow(occ_unit) == 16L, nrow(occ_means) == 4L,
+    nrow(score_unit) == 80L, nrow(score_model) == 20L,
+    nrow(concordance) == 5L, nrow(attribution_steps) == 15L,
+    nrow(attribution_total) == 5L
+  )
 
   compact_genotype_labels <- c(
     MAPTKI = "MAPTKI", P301S = "P301S",
@@ -2328,9 +2343,8 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       plot.margin = ggplot2::margin(7, 8, 7, 8)
     )
 
-  # A: raw 16-unit fractions plus standardized genotype means; the adjacent forest makes the
-  # probability-scale interaction and its 0.10 minimum-effect threshold explicit.
-  p_occ_units <- ggplot2::ggplot(occ_unit, ggplot2::aes(genotype, DAM_fraction)) +
+  # A: preserve the accepted raw 16-unit occupancy chart exactly.
+  p_occ <- ggplot2::ggplot(occ_unit, ggplot2::aes(genotype, DAM_fraction)) +
     ggplot2::geom_point(
       ggplot2::aes(fill = genotype), shape = 21, colour = "white", stroke = 0.35,
       size = 2.6, alpha = 0.92,
@@ -2358,175 +2372,224 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       x = NULL, y = "DAM / (DAM + Homeostatic)"
     ) +
     panel_theme +
-    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
-                   axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.70)))
+    ggplot2::theme(
+      panel.grid.major.x = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.70))
+    )
 
-  occ_xlim <- max(abs(c(occ_effect$ci_l, occ_effect$ci_r, occ_effect$margin))) * 1.22
-  p_occ_effect <- ggplot2::ggplot(occ_effect, ggplot2::aes(estimate, 1)) +
-    ggplot2::annotate(
-      "rect", xmin = -occ_effect$margin, xmax = occ_effect$margin,
-      ymin = -Inf, ymax = Inf, fill = "#E9E5DB", alpha = 0.72
-    ) +
+  # B: raw batch-matched amyloid-response differences plus the exact equal-unit model summaries.
+  program_order <- figures$provenance$programme_order
+  program_y <- stats::setNames(rev(seq_along(program_order)), program_order)
+  tau_offset <- c(MAPTKI = -0.15, P301S = 0.15)
+  score_unit$plot_y <- unname(program_y[score_unit$program]) +
+    unname(tau_offset[as.character(score_unit$tau_background)])
+  score_model$plot_y <- unname(program_y[score_model$program]) +
+    unname(tau_offset[as.character(score_model$tau_background)])
+  stopifnot(all(is.finite(score_unit$plot_y)), all(is.finite(score_model$plot_y)))
+  score_xlim <- max(abs(c(score_unit$effect, score_model$ci95_l, score_model$ci95_r))) * 1.06
+  p_score <- ggplot2::ggplot(score_unit, ggplot2::aes(effect, plot_y)) +
     ggplot2::geom_vline(xintercept = 0, colour = "#777268", linewidth = 0.35) +
-    ggplot2::geom_vline(xintercept = c(-occ_effect$margin, occ_effect$margin),
-                        colour = "#938D81", linetype = "dashed", linewidth = 0.45) +
-    ggplot2::geom_segment(ggplot2::aes(x = ci_l, xend = ci_r, yend = 1),
-                          linewidth = 0.8, colour = "#20242A") +
-    ggplot2::geom_point(shape = 21, fill = "#A63A50", colour = "#20242A",
-                        size = 3.6, stroke = 0.7) +
-    ggplot2::scale_x_continuous(limits = c(-occ_xlim, occ_xlim),
-                                breaks = scales::breaks_pretty(n = 4)) +
-    ggplot2::scale_y_continuous(NULL, breaks = NULL) +
-    ggplot2::labs(
-      title = "Interaction",
-      subtitle = paste0("minimum-effect FDR ", formatC(occ_effect$fdr_minimum,
-                                                         digits = 3, format = "f"),
-                        "\n", occ_effect$status_label),
-      x = "DAM-fraction effect"
+    ggplot2::geom_line(
+      ggplot2::aes(group = interaction(program, batch)),
+      colour = "#BBB5A9", linewidth = 0.45, alpha = 0.62
     ) +
-    panel_theme +
-    ggplot2::theme(panel.grid = ggplot2::element_blank(),
-                   axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.68)))
-  p_occ <- patchwork::wrap_plots(list(p_occ_units, p_occ_effect), nrow = 1,
-                                 widths = c(1.95, 0.95))
-
-  # B: a complete rotation-test matrix. Fill is the mean marker-gene log2FC, ring is the
-  # within-family FDR state, and size is continuous evidence strength; untestable cells are crosses.
-  response_effect_limit <- max(abs(response$plot_effect))
-  response_effect_limit <- if (is.finite(response_effect_limit) && response_effect_limit > 0) {
-    response_effect_limit
-  } else 1
-  response_supported <- response[response$testable, , drop = FALSE]
-  response_untestable <- response[!response$testable, , drop = FALSE]
-  response_ring <- c(`FDR <= 0.05` = "#20242A", `FDR > 0.05` = "#C9C3B7",
-                     `not testable` = "#8C877B")
-  p_response <- ggplot2::ggplot(
-    response_supported,
-    ggplot2::aes(endpoint_label, program_label)
-  ) +
     ggplot2::geom_point(
-      ggplot2::aes(fill = plot_effect, colour = support_state, size = neg_log10_fdr),
-      shape = 21, stroke = 0.7
-    )
-  if (nrow(response_untestable)) {
-    p_response <- p_response + ggplot2::geom_point(
-      data = response_untestable,
-      ggplot2::aes(endpoint_label, program_label, colour = support_state),
-      inherit.aes = FALSE, shape = 4, size = 2.7, stroke = 0.7
-    )
-  }
-  p_response <- p_response +
-    ggplot2::facet_grid(. ~ contrast_label, scales = "free_x", space = "free_x") +
-    scale_fill_rwb(midpoint = 0, limits = c(-response_effect_limit, response_effect_limit),
-                   oob = scales::squish, name = "mean marker-gene\nlog2FC") +
-    ggplot2::scale_colour_manual(values = response_ring, drop = TRUE, name = NULL) +
-    ggplot2::scale_size_continuous(range = c(2.1, 6.5),
-                                   breaks = scales::breaks_pretty(n = 3),
-                                   name = "-log10 rotation FDR") +
+      ggplot2::aes(fill = tau_background), shape = 21, colour = "white",
+      stroke = 0.3, size = 2.35, alpha = 0.88
+    ) +
+    ggplot2::geom_segment(
+      data = score_model,
+      ggplot2::aes(x = ci95_l, xend = ci95_r, y = plot_y, yend = plot_y,
+                   colour = tau_background),
+      inherit.aes = FALSE, linewidth = 0.82
+    ) +
+    ggplot2::geom_point(
+      data = score_model,
+      ggplot2::aes(x = estimate, y = plot_y, fill = tau_background),
+      inherit.aes = FALSE, shape = 23, colour = "#20242A", stroke = 0.72, size = 3.15
+    ) +
+    ggplot2::facet_grid(. ~ state_label) +
+    ggplot2::scale_fill_manual(
+      values = tau_background_colours, limits = names(tau_background_colours),
+      breaks = names(tau_background_colours), drop = FALSE, name = "Tau background"
+    ) +
+    ggplot2::scale_colour_manual(
+      values = tau_background_colours, limits = names(tau_background_colours),
+      breaks = names(tau_background_colours), drop = FALSE, name = "Tau background"
+    ) +
+    ggplot2::scale_x_continuous(
+      limits = c(-score_xlim, score_xlim), breaks = scales::breaks_pretty(n = 5)
+    ) +
+    ggplot2::scale_y_continuous(
+      breaks = unname(program_y),
+      labels = unname(c(
+        Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
+        Proliferative = "Proliferative", MHC_APC = "MHC / APC"
+      )[program_order]),
+      expand = ggplot2::expansion(add = 0.55)
+    ) +
     ggplot2::labs(
-      title = "B | State-specific amyloid response",
-      subtitle = "Raw-count programme rotations; direct column is DAM - Homeostatic",
-      x = NULL, y = NULL
+      title = "B | Within-state amyloid response",
+      subtitle = paste(
+        "Batch-matched NLGF - control score differences; lines join the same batch;",
+        "diamonds = model means (95% CI)"
+      ),
+      x = "standardized programme-score response", y = NULL
     ) +
     ggplot2::guides(
-      fill = ggplot2::guide_colourbar(order = 1, barheight = grid::unit(0.48, "lines"),
-                                      barwidth = grid::unit(4.0, "lines")),
-      colour = ggplot2::guide_legend(order = 2,
-                                     override.aes = list(shape = 21, size = 3.1,
-                                                         fill = "#ECE7DC")),
-      size = ggplot2::guide_legend(order = 3)
+      fill = ggplot2::guide_legend(
+        order = 1, override.aes = list(shape = 21, colour = "#20242A", size = 2.8)
+      ),
+      colour = "none"
     ) +
     panel_theme +
     ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 28, hjust = 1, size = ggplot2::rel(0.63)),
-      axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.67)),
-      panel.grid.major = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.28),
-      legend.position = "bottom", legend.box = "horizontal",
-      legend.box.just = "left", legend.spacing.x = grid::unit(5, "pt"),
-      legend.margin = ggplot2::margin(t = 2)
+      axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.68)),
+      legend.position = "bottom", legend.box.just = "left",
+      panel.grid.major.y = ggplot2::element_line(colour = "#ECE8DF", linewidth = 0.28)
     )
 
-  # C: UCell interaction within annotated DAM. The shaded region is the predeclared equivalence /
-  # minimum-effect margin; point fill gives the three-state evidence call and ring gives raw-count
-  # concordance. Every programme stays present even when unresolved.
-  margin <- unique(within_dam$margin)
-  stopifnot(length(margin) == 1L, is.finite(margin), margin > 0)
-  within_xlim <- max(abs(c(within_dam$ci95_l, within_dam$ci95_r, margin))) * 1.10
-  evidence_fill <- c(`beyond margin` = "#A63A50", equivalent = "#2F78A0",
-                     unresolved = "#D7D1C5")
-  rotation_ring <- c(`concordant rotation FDR <= 0.05` = "#20242A",
-                     `rotation not supported` = "#BFB8AA",
-                     `rotation not testable` = "#8C877B")
-  p_within <- ggplot2::ggplot(within_dam, ggplot2::aes(estimate, program_label)) +
-    ggplot2::annotate("rect", xmin = -margin, xmax = margin, ymin = -Inf, ymax = Inf,
-                      fill = "#E9E5DB", alpha = 0.62) +
-    ggplot2::geom_vline(xintercept = 0, colour = "#777268", linewidth = 0.35) +
-    ggplot2::geom_vline(xintercept = c(-margin, margin), colour = "#938D81",
-                        linetype = "dashed", linewidth = 0.45) +
-    ggplot2::geom_segment(ggplot2::aes(x = ci95_l, xend = ci95_r, yend = program_label),
-                          linewidth = 0.75, colour = "#59564F") +
-    ggplot2::geom_point(
-      ggplot2::aes(fill = evidence_label, colour = rotation_support_label),
-      shape = 21, size = 3.8, stroke = 0.85
+  # C: interaction rotation effects in the two states. Distance from the identity line is the
+  # direct state-response contrast; fixed labels keep every predeclared programme visible.
+  concordance_limit <- max(abs(c(concordance$homeostatic_effect,
+                                 concordance$dam_effect))) * 1.28
+  if (!is.finite(concordance_limit) || concordance_limit <= 0) concordance_limit <- 1
+  concordance_testable <- concordance[concordance$state_pair_testable, , drop = FALSE]
+  concordance_untestable <- concordance[!concordance$state_pair_testable, , drop = FALSE]
+  support_fill <- c(
+    "both states" = "#7D5CB8", "Homeostatic only" = "#2F78A0",
+    "DAM only" = "#A63A50", "neither state" = "#D7D1C5",
+    "not testable" = "#8C877B"
+  )
+  direct_ring <- c(
+    "direct FDR <= 0.05" = "#20242A",
+    "direct FDR > 0.05" = "#A49E92",
+    "direct not testable" = "#8C877B"
+  )
+  p_concordance <- ggplot2::ggplot(
+    concordance,
+    ggplot2::aes(homeostatic_effect, dam_effect)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#D0CBC1", linewidth = 0.3) +
+    ggplot2::geom_vline(xintercept = 0, colour = "#D0CBC1", linewidth = 0.3) +
+    ggplot2::geom_abline(
+      slope = 1, intercept = 0, colour = "#777268", linetype = "dashed", linewidth = 0.55
+    )
+  if (nrow(concordance_testable)) {
+    p_concordance <- p_concordance + ggplot2::geom_point(
+      data = concordance_testable,
+      ggplot2::aes(fill = state_support, colour = direct_support),
+      shape = 21, size = 3.9, stroke = 0.9
+    )
+  }
+  if (nrow(concordance_untestable)) {
+    p_concordance <- p_concordance + ggplot2::geom_point(
+      data = concordance_untestable,
+      shape = 4, size = 3.9, stroke = 0.9, colour = "#8C877B"
+    )
+  }
+  p_concordance <- p_concordance +
+    ggrepel::geom_text_repel(
+      ggplot2::aes(label = as.character(program_label)),
+      seed = 614L, size = 3.25, colour = "#34383C",
+      box.padding = 0.30, point.padding = 0.24, min.segment.length = 0,
+      segment.colour = "#9A9488", segment.size = 0.3, max.overlaps = Inf
     ) +
-    ggplot2::scale_fill_manual(values = evidence_fill, drop = TRUE, name = "UCell evidence") +
-    ggplot2::scale_colour_manual(values = rotation_ring, drop = TRUE,
-                                 name = "raw-count guard") +
-    ggplot2::scale_x_continuous(limits = c(-within_xlim, within_xlim),
-                                breaks = scales::breaks_pretty(n = 5)) +
+    ggplot2::scale_fill_manual(
+      values = support_fill, drop = TRUE, name = "Rotation FDR"
+    ) +
+    ggplot2::scale_colour_manual(
+      values = direct_ring, drop = TRUE, name = "Direct state difference"
+    ) +
+    ggplot2::coord_equal(
+      xlim = c(-concordance_limit, concordance_limit),
+      ylim = c(-concordance_limit, concordance_limit),
+      clip = "off"
+    ) +
     ggplot2::labs(
-      title = "C | Within-DAM programme interaction",
-      subtitle = "Equal-unit UCell effects (95% CI); shaded band = +/-0.25 pooled SD",
-      x = "standardized score effect", y = NULL
+      title = "C | Raw-count state concordance",
+      subtitle = "Interaction mean marker-gene log2FC; diagonal = equal response in both states",
+      x = "Homeostatic-cell response", y = "DAM-cell response"
     ) +
     ggplot2::guides(
-      fill = ggplot2::guide_legend(order = 1, override.aes = list(colour = "#59564F")),
-      colour = ggplot2::guide_legend(order = 2, override.aes = list(fill = "#ECE7DC"))
+      fill = ggplot2::guide_legend(
+        order = 1, override.aes = list(colour = "#6F6A61", size = 3.0)
+      ),
+      colour = ggplot2::guide_legend(
+        order = 2, override.aes = list(fill = "#ECE7DC", size = 3.0)
+      )
     ) +
     panel_theme +
-    ggplot2::theme(axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.72)),
-                   legend.position = "bottom", legend.box = "horizontal",
-                   legend.box.just = "left", legend.spacing.x = grid::unit(6, "pt"))
+    ggplot2::theme(
+      legend.position = "bottom", legend.box = "vertical",
+      legend.box.just = "left", legend.spacing.y = grid::unit(1, "pt")
+    )
 
-  # D: forest of total plus the three exact signed components. Fixed offsets avoid lifecycle-
-  # sensitive horizontal-errorbar positioning and keep every component legible at zero.
-  channel_colours <- c(Total = "#20242A", Composition = "#A63A50",
-                       `Within-state` = "#2F78A0", Cross = "#C8841C")
-  attr_xlim <- max(abs(c(attribution$ci95_l, attribution$ci95_r))) * 1.08
-  program_breaks <- rev(seq_along(figures$provenance$programme_order))
-  program_axis_labels <- c(
-    Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
-    Proliferative = "Proliferative", MHC_APC = "MHC / APC"
-  )[figures$provenance$programme_order]
-  p_attribution <- ggplot2::ggplot(attribution, ggplot2::aes(estimate, plot_y)) +
+  # D: exact estimate waterfall. Each coloured step begins where the prior channel ended;
+  # the final diamond equals their sum and the thin line retains total-effect uncertainty.
+  attribution_steps$plot_y <- unname(program_y[attribution_steps$program])
+  attribution_total$plot_y <- unname(program_y[attribution_total$program])
+  attr_xlim <- max(abs(c(attribution_steps$x_start, attribution_steps$x_end,
+                         attribution_total$ci95_l, attribution_total$ci95_r))) * 1.08
+  channel_colours <- c(
+    Composition = "#A63A50", "Within-state" = "#2F78A0", Cross = "#C8841C"
+  )
+  p_attribution <- ggplot2::ggplot() +
     ggplot2::geom_vline(xintercept = 0, colour = "#777268", linewidth = 0.35) +
     ggplot2::geom_segment(
-      ggplot2::aes(x = ci95_l, xend = ci95_r, yend = plot_y, colour = channel_label),
-      linewidth = 0.65, alpha = 0.88
+      data = attribution_total,
+      ggplot2::aes(x = ci95_l, xend = ci95_r, y = plot_y, yend = plot_y),
+      linewidth = 0.7, colour = "#8F897E"
+    ) +
+    ggplot2::geom_segment(
+      data = attribution_steps,
+      ggplot2::aes(x = x_start, xend = x_end, y = plot_y, yend = plot_y,
+                   colour = channel_label),
+      linewidth = 2.9, lineend = "butt"
     ) +
     ggplot2::geom_point(
-      ggplot2::aes(colour = channel_label, shape = channel_label), size = 2.8, stroke = 0.7
+      data = attribution_steps,
+      ggplot2::aes(x = x_end, y = plot_y, fill = channel_label),
+      shape = 21, colour = "#F8F5ED", stroke = 0.45, size = 2.7
+    ) +
+    ggplot2::geom_point(
+      data = attribution_total,
+      ggplot2::aes(x = estimate, y = plot_y),
+      shape = 23, fill = "#F8F5ED", colour = "#20242A", stroke = 0.85, size = 3.25
     ) +
     ggplot2::scale_colour_manual(values = channel_colours, drop = FALSE, name = NULL) +
-    ggplot2::scale_shape_manual(values = c(Total = 18, Composition = 16,
-                                           `Within-state` = 17, Cross = 15),
-                                drop = FALSE, name = NULL) +
-    ggplot2::scale_x_continuous(limits = c(-attr_xlim, attr_xlim),
-                                breaks = scales::breaks_pretty(n = 5)) +
-    ggplot2::scale_y_continuous(breaks = program_breaks,
-                                labels = unname(program_axis_labels),
-                                expand = ggplot2::expansion(add = 0.55)) +
+    ggplot2::scale_fill_manual(values = channel_colours, drop = FALSE, name = NULL) +
+    ggplot2::scale_x_continuous(
+      limits = c(-attr_xlim, attr_xlim), breaks = scales::breaks_pretty(n = 5)
+    ) +
+    ggplot2::scale_y_continuous(
+      breaks = unname(program_y),
+      labels = unname(c(
+        Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
+        Proliferative = "Proliferative", MHC_APC = "MHC / APC"
+      )[program_order]),
+      expand = ggplot2::expansion(add = 0.55)
+    ) +
     ggplot2::labs(
-      title = "D | Interaction attribution",
-      subtitle = "Total = composition + within-state + cross; points show 95% CI",
-      x = "standardized score effect", y = NULL
+      title = "D | Interaction decomposition",
+      subtitle = "Steps = composition, within-state, cross; diamond + line = total (95% CI)",
+      x = "standardized programme-score effect", y = NULL
+    ) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(
+        order = 1, override.aes = list(linewidth = 2.4, shape = NA)
+      ),
+      fill = "none"
     ) +
     panel_theme +
-    ggplot2::theme(axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.72)),
-                   legend.position = "bottom")
+    ggplot2::theme(
+      axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.72)),
+      legend.position = "bottom", legend.box.just = "left"
+    )
 
-  top <- patchwork::wrap_plots(list(p_occ, p_response), nrow = 1, widths = c(1.04, 1.36))
-  bottom <- patchwork::wrap_plots(list(p_within, p_attribution), nrow = 1,
-                                  widths = c(0.98, 1.20))
-  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = c(1.06, 0.94))
+  top <- patchwork::wrap_plots(list(p_occ, p_score), nrow = 1, widths = c(0.78, 1.62))
+  bottom <- patchwork::wrap_plots(
+    list(p_concordance, p_attribution), nrow = 1, widths = c(0.92, 1.28)
+  )
+  patchwork::wrap_plots(list(top, bottom), ncol = 1, heights = c(1.08, 0.92))
 }

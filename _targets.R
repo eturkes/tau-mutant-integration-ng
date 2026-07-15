@@ -83,8 +83,9 @@ list(
                                                 microglia_state_response),
              format = "qs"),
 
-  # P6-S4: fixed-row Figure 10 payload + plot contract. This leaf reads only compact S3
-  # estimates and stays disconnected from the report until S5 wires the qmd.
+  # P6 Figure 10: compact raw occupancy, batch-matched within-state score responses,
+  # raw-count state concordance, and exact interaction-decomposition steps. Report leaf only;
+  # reads the compact S3 result and carries no fitted object, count matrix, or cell frame.
   tar_target(state_decomposition_figures,
              state_decomposition_figure_data(microglia_state_decomposition),
              format = "qs"),

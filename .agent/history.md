@@ -462,10 +462,11 @@ state-conditional molecular change, or both. The fixed Homeostatic+DAM universe 
   programme clears the concordant meaningful gate, while equivalence across all five
   within-DAM programmes is also unearned. Fixed classifier = `unresolved`. The pooled
   two-state/whole-microglia bridge remains high (effect rho 0.982-0.994) but descriptive.
-- REPORT/API: four compact targets end in an 8.3 KB fixed-row Figure 10 leaf. The
-  four-panel plate keeps all programmes/null rows and shows occupancy, three-endpoint
-  raw-count rotations, within-DAM interaction, and signed exact attribution. The report
-  loads only this leaf; Figures 1-9 and the dependency lock remain unchanged. Live DAG =
+- REPORT/API: four compact targets end in a 6.9 KB fixed-row Figure 10 leaf. The
+  four-panel plate retains raw-unit DAM occupancy, then shows batch-matched programme-score
+  amyloid responses within both states, raw-count state concordance, and exact sequential
+  composition/within-state/cross waterfalls. All five programmes remain regardless of
+  support. The report loads only this leaf; Figures 1-9 and the dependency lock remain unchanged. Live DAG =
   33 targets; report surface = 10 numbered figures with folded code only.
 
 Verification (honest): every execution step had a fresh focused build and full report

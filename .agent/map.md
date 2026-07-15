@@ -71,12 +71,14 @@ P6 state decomposition (closed; report-integrated):
   family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
   live payload = 0.20 MB in memory / 0.054 MB serialized.
 - `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_decomposition)`
-  emits the fixed-row Figure 10 contract: 16-unit occupancy + model means/interaction,
-  45 three-endpoint raw-count programme responses, five within-DAM interaction rows,
-  and 20 total/channel attribution rows. Payload = 59.4 KB in memory / 8.3 KB
-  serialized; deterministic, parent-isolated, no significance-based row selection.
-  `state_decomposition_figure_plot()` draws the four-panel publication plate. The report
-  names only this compact leaf as its P6 dependency.
+  emits the fixed-row Figure 10 contract: 16-unit occupancy + four model means;
+  80 batch-matched within-state score responses + 20 model summaries; five raw-count
+  state-concordance rows; and 15 sequential channel steps + five total effects.
+  Payload = 52.7 KB in memory / 6.9 KB serialized; deterministic, parent-isolated,
+  no significance-based row selection. `state_decomposition_figure_plot()` retains the
+  accepted occupancy chart and draws replicate-difference, concordance, and waterfall
+  replacements for the prior three panels. The report names only this compact leaf as
+  its P6 dependency.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
