@@ -10,18 +10,18 @@
 /.venv/
 # rv-installed R packages (rv/.gitignore also ignores it); rproject.toml + rv.lock + rv/scripts/ stay tracked
 /rv/library/
-# pinned project-local binaries (rv, quarto); regenerate via scripts/install-*.sh
+# pinned project-local binaries (rv, quarto); regenerate via scripts/bootstrap/*.sh
 /tools/
 
-# targets store + Quarto render artefacts (regenerate via tar_make / quarto render)
+# legacy/default targets store (current _targets.yaml routes it to storage/targets)
 /_targets/
+# Quarto render artefacts (regenerate via tar_make / quarto render)
 /report/
 /_freeze/
 /.quarto/
 **/*.quarto_ipynb
 # optional code-graph index; regenerable, never source
 /.tokensave/
-/.agent/qa/
 
 # generic R artefacts
 .Rhistory

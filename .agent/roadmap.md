@@ -220,6 +220,12 @@ with the user before writing a plan.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-15 repository layout cleanup DONE -> grouped R modules under
+  `R/{core,analysis,report}/`, moved include-only qmds to `sections/`, co-located the
+  SCSS with `assets/`, grouped bootstrap installers, and documented every reserved
+  Codex/Quarto/targets path in `README.md`. `_targets.yaml` now routes generated state
+  to `storage/targets/`; QA artefacts live in `storage/qa/`. Historical path records
+  remain unchanged. Recursive-source/33-target manifest checks + full report gate green.
 - 2026-07-14 P6 state composition versus regulation CLOSED ->
   `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`. Adversarial review
   found no accepted shipped code/model/figure-data or claim defect. One low

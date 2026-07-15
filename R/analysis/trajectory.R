@@ -880,7 +880,7 @@ glmmtmb_pt_sensitivity <- function(cell_frame, pt_col = "pt01") {
 
 # ============================================================================================
 # P2-S4: compact report-data extraction for the trajectory chapter (keeps the gate render cheap).
-# Bundle EVERYTHING _trajectory.qmd plots/tabulates from the three trajectory targets into one
+# Bundle EVERYTHING sections/trajectory.qmd plots/tabulates from the three trajectory targets into one
 # small target, so the force-rendered report (hence EVERY scripts/check.sh run) tar_loads a single
 # compact object -- never the 612MB Seurat. All three inputs are ALREADY compact (microglia_trajectory
 # ~3.3MB in memory; the two inference targets are small), so no heavy object is read here. Pure: no
@@ -1003,7 +1003,7 @@ trajectory_report_data <- function(microglia_trajectory, trajectory_progression,
   fin1 <- function(x) is.numeric(x) && length(x) == 1L && is.finite(x)   # finite length-1 numeric
   int1 <- function(x) fin1(x) && x == round(x)            # + integer-VALUED (R %d accepts whole doubles -> no coercion)
   str1 <- function(x) is.character(x) && length(x) == 1L && !is.na(x)    # non-NA length-1 string
-  # every measure _trajectory.qmd indexes via irow() (match into interaction$measure) + every canonical
+  # every measure sections/trajectory.qmd indexes via irow() (match into interaction$measure) + every canonical
   # contrast mp_ctr() pulls from weighted_top -> assert both present + UNIQUE so a dropped/renamed/
   # duplicated measure or contrast fails at the extractor, not as an empty/first-of-dup inline value.
   irow_measures <- c("mean_pt", "comp_cf", "progression_cf", "cross", "within_homeostatic",

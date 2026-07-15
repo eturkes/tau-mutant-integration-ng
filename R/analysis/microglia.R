@@ -442,7 +442,7 @@ subpopulation_marker_panel <- function(seurat_obj, symbol_map, marker_sets,
   out
 }
 
-# Extract ONLY what _microglia.qmd plots from the ~612MB annotated Seurat, so a
+# Extract ONLY what sections/microglia.qmd plots from the ~612MB annotated Seurat, so a
 # report render reads one compact target instead of the full object. The bundle
 # carries the per-cell UMAP/score frame, the unit-composition bars, and the
 # subpopulation marker panel. Pure: no RNG, no I/O.

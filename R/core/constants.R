@@ -1,6 +1,6 @@
 # Project constants: factor levels, contrast definitions, canonical marker
-# lists, contamination markers, and raw-data paths. Sourced first by tar_source();
-# downstream R/ files + targets read these symbols. Values carried byte-exact from v1
+# lists, contamination markers, and raw-data paths. Loaded by tar_source(); downstream
+# R/ files + targets read these symbols. Values carried byte-exact from v1
 # (genotype labels and marker sets are load-bearing -- do not let them drift).
 
 # Canonical genotype order -> factor levels everywhere downstream (MAPTKI = reference).
@@ -8,7 +8,7 @@ genotype_levels <- c("MAPTKI", "P301S", "NLGF_MAPTKI", "NLGF_P301S")
 
 # Pairwise contrasts (numerator, denominator) driving the divergence narrative. The 5th
 # canonical contrast `interaction` = (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI) is a
-# difference-of-differences, not a level pair -> built in R/design.R (S3), keyed by name.
+# difference-of-differences, not a level pair -> built in R/core/design.R (S3), keyed by name.
 contrast_definitions <- list(
   nlgf_in_maptki = c("NLGF_MAPTKI", "MAPTKI"),
   nlgf_in_p301s  = c("NLGF_P301S",  "P301S"),

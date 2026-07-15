@@ -3,7 +3,7 @@ pagetitle: "Tau Mutant Integration"
 output-file: tau-mutant-integration.html
 format:
   html:
-    theme: theme.scss        # deep-blue chrome + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)
+    theme: assets/theme.scss # deep-blue chrome + IBM Plex (Sans body, Serif headings, Mono code; inlined offline)
     embed-resources: true    # inline CSS/JS -> ONE self-contained offline HTML file
     lightbox: auto           # dense figures are clickable in the offline HTML
     toc: false
@@ -13,10 +13,10 @@ execute:
   echo: true                 # show plotting code as folded/togglable blocks; figures remain the default view
 ---
 
-{{< include _microglia.qmd >}}
+{{< include sections/microglia.qmd >}}
 
-{{< include _trajectory.qmd >}}
+{{< include sections/trajectory.qmd >}}
 
-{{< include _modality.qmd >}}
+{{< include sections/modality.qmd >}}
 
-{{< include _state_decomposition.qmd >}}
+{{< include sections/state-decomposition.qmd >}}

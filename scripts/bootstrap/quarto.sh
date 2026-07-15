@@ -9,7 +9,7 @@ QUARTO_SHA256=ea8c897368791ad9f200010c087ea3111b2e556b12a960487dd4e216902aa102
 QUARTO_ASSET="quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
 QUARTO_URL="https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${QUARTO_ASSET}"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEST="${ROOT}/tools/quarto/${QUARTO_VERSION}"
 BIN="${ROOT}/tools/quarto/bin"
 CACHE="${QUARTO_CACHE:-${TMPDIR:-/tmp}}/${QUARTO_ASSET}"   # override dir via QUARTO_CACHE

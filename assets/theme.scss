@@ -1,10 +1,10 @@
 /*-- scss:defaults --*/
 // Report visual identity (Quarto Bootstrap theme; supersedes the dropped _brand.yml). Deep
 // blue drives primary chrome, links use a saturated teal, and inline code stays slate. These
-// chrome colours stay decoupled from plot data colours in R/plot.R. IBM Plex is the typeface -- Sans body, Serif
+// chrome colours stay decoupled from plot data colours in R/report/plot.R. IBM Plex is the typeface -- Sans body, Serif
 // headings, Mono code; the 9 woff2 in assets/fonts/ are base64-inlined
-// by Quarto under embed-resources (each @font-face url() resolves relative to this file at the
-// project root). The ggplot panels keep the device-default font (R/plot.R theme_tau base_family "")
+// by Quarto under embed-resources (Quarto resolves each @font-face url() from the project
+// root). The ggplot panels keep the device-default font (R/report/plot.R theme_tau base_family "")
 // so figures stay decoupled from this HTML chrome and warning-free.
 
 $primary:    #1D3F63;   // deep blue; Bootstrap primary
@@ -22,8 +22,8 @@ $headings-font-family:   "IBM Plex Serif", Georgia, "Times New Roman", serif;
 $font-family-monospace:  "IBM Plex Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
 /*-- scss:rules --*/
-// Local IBM Plex faces (latin subset, fontsource woff2). url() is relative to theme.scss (project
-// root); Quarto base64-inlines each woff2 into the embedded CSS under embed-resources, so the report
+// Local IBM Plex faces (latin subset, fontsource woff2). Quarto resolves url() from the project
+// root, despite the nested SCSS path, then base64-inlines each woff2 so the report
 // stays one offline file. Weights: Sans 400/500/600/700 + 400 italic, Serif 600/700, Mono 400/600 --
 // covering body, emphasis, headings and code.
 @font-face {

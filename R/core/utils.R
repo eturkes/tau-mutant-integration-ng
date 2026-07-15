@@ -1,7 +1,7 @@
 # Small shared utilities. (v1's cache_or_run is dropped -- the targets store owns caching;
 # its 0664 chmod was a shared-rocker artefact, obsolete in the single-user setup.)
 
-# NULL-coalescing infix (rlang-style; kept local to avoid the dep). Used by R/plot.R.
+# NULL-coalescing infix (rlang-style; kept local to avoid the dep). Used by R/report/plot.R.
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 # Shared amyloid-effect-scatter off-diagonal utilities. Production modality plots use

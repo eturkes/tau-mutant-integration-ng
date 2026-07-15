@@ -1,5 +1,5 @@
 # Reproducibility-spine self-check: a pure function recording the pinned stack, loaded by
-# targets via tar_source(). Proves the R/ loader wiring; P1+ adds the analysis modules
+# targets via tar_source(). Proves the recursive R/ loader wiring; P1+ adds the analysis modules
 # (constants, utils, io, design, de_pb, plot ...) alongside it.
 
 spine_versions <- function() {

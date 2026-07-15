@@ -2,7 +2,7 @@ project:
   type: default
   output-dir: report
   render:
-    - index.qmd      # the ONE report; underscored qmd fragments pull in via {{< include >}} and never render standalone
+    - index.qmd      # the ONE report; sections/*.qmd are include-only fragments
 
 lang: en-GB
 

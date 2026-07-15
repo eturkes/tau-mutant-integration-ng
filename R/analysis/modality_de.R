@@ -2,15 +2,15 @@
 # proteome, 24M bulk phosphosite), restored lean from the pre-teardown P4 crossmodality /
 # mechanism modules. SCOPE = the PRIMARY per-contrast topTables only: each producer returns
 # `$top[[contrast]]` (or `$primary$top[[contrast]]` for GeoMx) with a `logFC` column keyed by
-# the 5 canonical contrasts. The amyloid-response logFC scatter (R/figures.R ->
+# the 5 canonical contrasts. The amyloid-response logFC scatter (R/report/figures.R ->
 # modality_logfc_scatter_data) reads `nlgf_in_maptki` (y) vs `nlgf_in_p301s` (x) from these.
 # The torn-down auxiliary arms (GeoMx unblocked / bio-unit-collapsed sensitivities +
 # SpatialDecon abundance fitting; proteome / phospho additive run-index sensitivity) stay
 # absent. The only GeoMx modality-native descriptor in the live report is the compact
 # DAM-gene AOI sample heatmap. Shared machinery reused from HEAD: fit_limma_log /
-# median_normalise / prevalence_filter (R/de_pb.R), factorial_design / make_contrast_matrix
-# (R/design.R), match_intensity_columns / load_geomx / read_spectronaut_tsv /
-# proteomics_sample_meta (R/io.R). All calls namespace-qualified so the file sources cleanly
+# median_normalise / prevalence_filter (R/analysis/de_pb.R), factorial_design / make_contrast_matrix
+# (R/core/design.R), match_intensity_columns / load_geomx / read_spectronaut_tsv /
+# proteomics_sample_meta (R/core/io.R). All calls namespace-qualified so the file sources cleanly
 # into any session.
 
 # --- GeoMx spatial DE (RNA counts; slide fixed effect + bio-unit duplicateCorrelation) -------

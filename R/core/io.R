@@ -1,6 +1,6 @@
 # Data loaders + proteomics sample-key helpers. v1 kept these inline in rmd/01_data.Rmd;
 # factored here into pure, testable functions consumed by the data-load targets. Each
-# loader takes an explicit path (default from data_paths in R/constants.R).
+# loader takes an explicit path (default from data_paths in R/core/constants.R).
 
 # --- snRNAseq ----------------------------------------------------------------
 

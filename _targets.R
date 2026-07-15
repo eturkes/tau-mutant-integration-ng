@@ -9,7 +9,8 @@ library(targets)
 local({
   quarto_bin <- file.path(normalizePath("tools/quarto/bin", mustWork = FALSE), "quarto")
   if (!file.exists(quarto_bin)) {
-    stop("pinned Quarto missing at ", quarto_bin, " -- run scripts/install-quarto.sh", call. = FALSE)
+    stop("pinned Quarto missing at ", quarto_bin,
+         " -- run scripts/bootstrap/quarto.sh", call. = FALSE)
   }
   Sys.setenv(QUARTO_PATH = quarto_bin)
 })
@@ -29,7 +30,7 @@ list(
   # reproducibility-spine self-check: pinned-stack provenance via a tar_source()'d function
   tar_target(spine, spine_versions()),
 
-  # --- raw input files (registered for DAG change-tracking; paths = data_paths, R/constants.R) ---
+  # --- raw input files (registered for DAG change-tracking; paths = data_paths, R/core/constants.R) ---
   tar_target(snrnaseq_file,   data_paths$snrnaseq,   format = "file"),
   tar_target(geomx_file,      data_paths$geomx,      format = "file"),
   tar_target(proteomics_file, data_paths$proteomics, format = "file"),
@@ -90,7 +91,8 @@ list(
 
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + subpopulation +
   # activation z-scores) + the small prune/provenance summaries out of the heavy annotated object
-  # so _microglia.qmd (and every force-rendered gate run) reads a ~0.5MB target, not the 612MB Seurat.
+  # so sections/microglia.qmd (and every force-rendered gate run) reads a ~0.5MB
+  # target, not the 612MB Seurat.
   tar_target(microglia_report, microglia_report_data(microglia_annotated, symbol_map), format = "qs"),
   tar_target(microglia_figures,
              microglia_figure_data(microglia_report),
@@ -119,8 +121,9 @@ list(
 
   # S4: compact report-data extraction. Bundles the per-cell pseudotime frame + the interaction /
   # decomposition tables + the glmmTMB supportive row from the three (already compact) trajectory
-  # targets into one small object, so _trajectory.qmd (and every force-rendered gate run) tar_loads
-  # a single compact target -- no 612MB Seurat, no heavy re-read (all three inputs are compact).
+  # targets into one small object, so sections/trajectory.qmd (and every force-rendered
+  # gate run) tar_loads a single compact target -- no 612MB Seurat, no heavy re-read
+  # (all three inputs are compact).
   tar_target(trajectory_report, trajectory_report_data(microglia_trajectory, trajectory_progression,
                                                        trajectory_glmm_sensitivity), format = "qs"),
   tar_target(trajectory_figures,
@@ -128,7 +131,7 @@ list(
              format = "qs"),
 
   # --- cross-tau amyloid-response (four-method logFC scatter) ---
-  # Primary per-contrast DE for the three non-snRNAseq modalities (R/modality_de.R): GeoMx
+  # Primary per-contrast DE for the three non-snRNAseq modalities (R/analysis/modality_de.R): GeoMx
   # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation plus the one retained
   # compact GeoMx sample-heatmap descriptor. 24M bulk proteome and
   # phosphosite limma-trend on log2 median-normalised, prevalence-filtered intensities (no batch).
@@ -161,14 +164,15 @@ list(
   # PNG hrefs to the already embedded image data URIs, preserving the single offline HTML.
   tar_target(
     report_sources,
-    c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd",
-      "_state_decomposition.qmd",
-      sort(list.files("R", pattern = "\\.R$", full.names = TRUE))),
+    c("_quarto.yml", "index.qmd",
+      sort(list.files("sections", pattern = "\\.qmd$", full.names = TRUE)),
+      sort(list.files("R", pattern = "\\.R$", full.names = TRUE, recursive = TRUE))),
     format = "file"
   ),
   tar_target(
     report_extra_files,
-    c("theme.scss", list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
+    c("assets/theme.scss",
+      list.files("assets/fonts", pattern = "\\.woff2$", full.names = TRUE)),
     format = "file"
   ),
   tar_target(

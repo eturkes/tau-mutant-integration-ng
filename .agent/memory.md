@@ -22,7 +22,7 @@ render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
 `Figure 10`) + figures + per-figure folded code only; no visible document title, TOC,
 captions, body prose, tables, or global code-tools menu. Folded-code summaries and expanded
-code blocks are intentionally compact via `theme.scss`.
+code blocks are intentionally compact via `assets/theme.scss`.
 Retired infrastructure remains absent: committed tests, Python/uv files,
 composition/sccomp/CmdStan target, P1 per-subpopulation DE target, prose inventory,
 stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
@@ -41,7 +41,7 @@ ordinary/weighted inference, compact S2 evidence, and the fixed classifier.
 `state_decomposition_figures` is the 8.3 KB fixed-row Figure 10 leaf: occupancy,
 three-endpoint raw-count programme response, within-DAM interaction, and exact signed
 channel attribution only; `state_decomposition_figure_plot()` draws the conventional
-four-panel plate. `_state_decomposition.qmd` loads only this leaf after the stable
+four-panel plate. `sections/state-decomposition.qmd` loads only this leaf after the stable
 Figures 1-9; no Seurat/S4 parent or fitted model crosses the report boundary.
 
 ## Data
@@ -145,7 +145,7 @@ Trajectory:
   blocking the report.
 
 Modality context:
-- `R/modality_de.R` restores only primary DE needed for report figures:
+- `R/analysis/modality_de.R` restores only primary DE needed for report figures:
   GeoMx voom/TMM with slide fixed effect + duplicateCorrelation plus the retained sample
   heatmap descriptor; proteome/phospho limma-trend on log2 median-normalized 24M intensities.
 - `geomx_de$sample_heatmap` is descriptive only: the retained GeoMx modality-native figure is a compact AOI track
@@ -178,7 +178,7 @@ Modality context:
   target families stay deleted.
 
 Report:
-- `_microglia.qmd`, `_trajectory.qmd`, `_modality.qmd`, `_state_decomposition.qmd`;
+- `sections/{microglia,trajectory,modality,state-decomposition}.qmd`;
   rendered artifact =
   `report/tau-mutant-integration.html`; visible HTML = simple numbered figure headings +
   figures plus per-chunk folded code. Alt text stays in image attributes; captions/TOC/visible
@@ -195,9 +195,9 @@ Live stack = rv-managed R + project-local Quarto + targets. No committed Python/
 surface unless a future report-producing step earns it.
 
 Fresh bootstrap:
-1. `scripts/install-sysdeps.sh`
-2. `scripts/install-rv.sh`
-3. `scripts/install-quarto.sh`
+1. `scripts/bootstrap/sysdeps.sh`
+2. `scripts/bootstrap/rv.sh`
+3. `scripts/bootstrap/quarto.sh`
 4. `rv sync`
 5. `scripts/check.sh`
 
@@ -212,6 +212,11 @@ Run `rv sync` manually after dependency changes; use `scripts/check.sh` for fast
 
 Keep `.gitignore` aligned with generated artefacts. Current deleted infrastructure should
 stay absent unless it directly accelerates or protects the final report path.
+
+Layout contract: `.agent/` = tracked project state; `.agents/skills/` = Codex's
+repo-skill discovery path; `.codex/prompts/` = skill-backed prompts. Report fragments
+live in `sections/`; R code is grouped under `R/{core,analysis,report}/`; generated
+pipeline/QA state lives in `storage/{targets,qa}/`.
 
 When adding a dependency, prefer current project-local R/Quarto path first; update
 `rproject.toml` + `rv.lock` together. Avoid global library/tool leakage.

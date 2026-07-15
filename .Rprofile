@@ -8,7 +8,10 @@ source("rv/scripts/activate.R")
 # still opens for debugging. Re-add if `rv` regenerates .Rprofile.
 local({
   if (!any(grepl("rv/library", .libPaths(), fixed = TRUE))) {
-    msg <- "rv library not active: run scripts/install-rv.sh, put ~/.local/bin on PATH, and match rproject.toml r_version to this R."
+    msg <- paste(
+      "rv library not active: run scripts/bootstrap/rv.sh, put ~/.local/bin on PATH,",
+      "and match rproject.toml r_version to this R."
+    )
     if (interactive()) warning(msg, call. = FALSE) else stop(msg, call. = FALSE)
   }
 })

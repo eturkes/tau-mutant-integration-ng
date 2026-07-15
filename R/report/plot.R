@@ -2,7 +2,7 @@
 # and helpers consumed by the rendered report.
 # All ggplot2/ggrepel/stats calls are namespace-qualified so the file sources cleanly into
 # any session. Plot data colours use a quiet, colourblind-aware journal palette; HTML
-# chrome lives in theme.scss and stays decoupled.
+# chrome lives in assets/theme.scss and stays decoupled.
 
 tau_discrete_colours <- c(
   "#3F5F7F",  # steel blue
@@ -73,7 +73,7 @@ set_tau_plot_defaults <- function() {
 
 # Project base theme. base_family defaults to "" (device default sans) on purpose: a named
 # family (e.g. "IBM Plex Sans") not registered with the graphics device warns at draw time and
-# is non-portable across machines -> the Plex identity is carried by the HTML chrome (theme.scss)
+# is non-portable across machines -> the Plex identity is carried by the HTML chrome (assets/theme.scss)
 # while the figures stay warning-free. Pass base_family explicitly once a phase registers the font.
 theme_tau <- function(base_size = tau_report_base_size, base_family = "") {
   set_tau_plot_defaults()

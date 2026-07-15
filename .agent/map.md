@@ -11,9 +11,9 @@ science lives in git + `roadmap.md` ledger; this file maps live code plus the re
 ## Bootstrap
 
 Fresh clone:
-1. `scripts/install-sysdeps.sh` - apt libs/toolchain for current R stack.
-2. `scripts/install-rv.sh` - project R package manager.
-3. `scripts/install-quarto.sh` - pinned local Quarto CLI.
+1. `scripts/bootstrap/sysdeps.sh` - apt libs/toolchain for current R stack.
+2. `scripts/bootstrap/rv.sh` - project R package manager.
+3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
 5. `scripts/check.sh` - fast force-render of the final HTML target only.
 
@@ -23,8 +23,9 @@ R activation:
 
 ## Targets
 
-`_targets.R` sources `R/*.R`, sets pinned `QUARTO_PATH`, and stores heavy/intermediate
-objects as `format="qs"`. Expected live target count after P6-S5: 33.
+`_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
+heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
+store to `storage/targets/`. Expected live target count after P6-S5: 33.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -105,61 +106,67 @@ Modality context:
   median-normalized profiles to the first ranked representative without label suffixes.
 
 Report:
-- `report_sources <- c("_quarto.yml", "index.qmd", "_microglia.qmd", "_trajectory.qmd", "_modality.qmd", "_state_decomposition.qmd", R/*.R)`
+- `report_sources <- c("_quarto.yml", "index.qmd", sections/*.qmd, R/**/*.R)`
   so helper-only plot/source edits invalidate `report`.
-- `report_extra_files <- c("theme.scss", assets/fonts/*.woff2)`
+- `report_extra_files <- c("assets/theme.scss", assets/fonts/*.woff2)`
 - `report <- render_report(...)`
 
 ## Modules
 
-`R/constants.R`
+`R/core/constants.R`
 - Genotype levels, five canonical contrasts, marker sets, data paths.
 
-`R/io.R`
+`R/core/io.R`
 - Load snRNAseq microglia subset, build symbol map, load GeoMx, parse Spectronaut
   exports, parse 24M sample key, match intensity columns.
 
-`R/design.R`
+`R/core/design.R`
 - Shared 2x2 factorial design and cell-means contrast matrix for canonical contrasts.
 
-`R/de_pb.R`
+`R/core/utils.R`
+- Small shared operators and report-selection helpers.
+
+`R/core/spine.R`
+- Pinned-stack provenance target.
+
+`R/analysis/de_pb.R`
 - Pseudobulk counts, limma voom/log helpers, prevalence/median normalization,
   whole-microglia DE, crossing guard.
 
-`R/microglia.R`
+`R/analysis/microglia.R`
 - Reprocess, annotate, compact report bundle. `microglia_report_data()` is the only
   report path that reads the heavy annotated Seurat object for microglia figures; it
   emits per-cell UMAP/scores, replicate-unit subpopulation composition, marker dot-plot data,
   prune/provenance.
 
-`R/trajectory.R`
+`R/analysis/trajectory.R`
 - Activation pseudotime, 16-unit progression/decomposition inference, supportive
   glmmTMB sensitivity, compact trajectory report bundle.
 
-`R/state_decomposition.R`
+`R/analysis/state_decomposition.R`
 - P6 compact Homeostatic/DAM substrate, occupancy/state response, and exact UCell-channel
   inference: feature/marker mapping, coverage/design/library/size gates, beta-binomial
   standardization, state/delta voom+treat, rotations, bridge, ordinary OLS/TOST/weighted
   sensitivity, fixed classifier, and deterministic algebra/model gates. Heavy parents/fits
   stay out of target payloads.
 
-`R/modality_de.R`
+`R/analysis/modality_de.R`
 - Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits
   compact sample-heatmap fields for first-five-DAM-gene-clustered and mean-DAM-rotated
   AOI layout plus compact design/DAM-gene tracks.
   Auxiliary SpatialDecon beta/abundance, run-index, and sensitivity arms stay deleted.
 
-`R/figures.R`
+`R/report/figures.R`
 - Compact figure-data builders for rendered slots only:
   `microglia_figure_data()`, `trajectory_figure_data()`,
   `modality_logfc_scatter_data()`, `state_decomposition_figure_data()`.
 
-`R/plot.R`
+`R/report/plot.R`
 - Shared report theme, scales, modality and rendered descriptive plot helpers including
   `geomx_sample_heatmap_plot()`, `bulk_modality_context_plot()`, and the report-integrated
   `state_decomposition_figure_plot()`.
 
-`R/report.R`
+`R/report/render.R`
 - Quarto render wrapper, embedded-lightbox repair, and report-dir pruning so the final HTML is the only
   user-facing output.
 
@@ -167,13 +174,13 @@ Report:
 
 `index.qmd` includes four qmd fragments. The rendered HTML exposes simple numbered
 `Figure 1` ... `Figure 10` headings, but no title/TOC/captions:
-- `_microglia.qmd`: subpopulation marker dot plot, vertically stacked subpopulation/DAM UMAPs,
+- `sections/microglia.qmd`: subpopulation marker dot plot, vertically stacked subpopulation/DAM UMAPs,
   genotype-faceted subpopulation UMAP, replicate-unit subpopulation composition.
-- `_trajectory.qmd`: pseudotime density by genotype/subpopulation.
-- `_modality.qmd`: GeoMx AOI metadata-track diagnostic,
+- `sections/trajectory.qmd`: pseudotime density by genotype/subpopulation.
+- `sections/modality.qmd`: GeoMx AOI metadata-track diagnostic,
   vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
-- `_state_decomposition.qmd`: four-panel retained-state occupancy, raw-count programme
+- `sections/state-decomposition.qmd`: four-panel retained-state occupancy, raw-count programme
   response, within-DAM interaction, and exact UCell-channel attribution plate.
 
 Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
@@ -185,12 +192,14 @@ warnings are treated as real failures.
 ## Tracked vs Ignored
 
 Tracked live source/config:
-- `AGENTS.md`, `.codex/prompts/session.md`, `.agents/skills/session-prompt/SKILL.md`
-- `.agent/{memory,map,roadmap,history,archive_digest}.md`
-- `_targets.R`, `R/*.R`, `*.qmd`, `_quarto.yml`, `theme.scss`, `assets/`, `scripts/*.sh`
+- `README.md`, `AGENTS.md`, `.codex/prompts/session.md`,
+  `.agents/skills/session-prompt/`
+- `.agent/{memory,map,roadmap,history,archive_digest}.md` + `.agent/completed/`
+- `_targets.R`, `_targets.yaml`, `_quarto.yml`, `index.qmd`, `sections/`, `R/`,
+  `assets/`, `scripts/`
 - `rproject.toml`, `rv.lock`, `.Rprofile`, `rv/scripts/*.R`
 
 Ignored/generated/heavy:
-- `.git/`, `rv/library/`, `_targets/`, `report/`, `_freeze/`, `.quarto/`
-- `storage/data/`, `storage/cache/`, `storage/logs/`, `.agent/completed/`
+- `.git/`, `rv/library/`, `report/`, `_freeze/`, `.quarto/`
+- `storage/{data,cache,logs,qa,targets}/` and legacy/default `_targets/`
 - project-local env caches and rendered/static artefacts.
