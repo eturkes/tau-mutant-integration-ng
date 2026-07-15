@@ -192,8 +192,7 @@ warnings are treated as real failures.
 ## Tracked vs Ignored
 
 Tracked live source/config:
-- `README.md`, `AGENTS.md`, `.codex/prompts/session.md`,
-  `.agents/skills/session-prompt/`
+- `README.md`, `AGENTS.md`
 - `.agent/{memory,map,roadmap,history,archive_digest}.md` + `.agent/completed/`
 - `_targets.R`, `_targets.yaml`, `_quarto.yml`, `index.qmd`, `sections/`, `R/`,
   `assets/`, `scripts/`

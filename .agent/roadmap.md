@@ -57,8 +57,7 @@ and the user-declined cross-cell-type response-specificity expansion.
 P6 microglial state composition versus regulation closed 2026-07-14 ->
 `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`.
 
-No active plan. Next `$session-prompt` = PLAN: confirm the next roadmap direction
-with the user before writing a plan.
+No active plan. Confirm the next roadmap direction with the user before writing a plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,

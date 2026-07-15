@@ -1,8 +1,7 @@
 # Memory - standing contract
 
-Codex-only repo. Canonical instructions = `AGENTS.md`; session entry = `$session-prompt`
-backed by `.codex/prompts/session.md`; repo skill = `.agents/skills/session-prompt/`.
-Use `roadmap.md` for trajectory/history, `map.md` for live wiring, `history.md` for
+Codex-only repo. Canonical instructions = `AGENTS.md`. Use `roadmap.md` for
+trajectory/history, `map.md` for live wiring, `history.md` for
 decision digests, `archive_digest.md`/branch `archive` for v1 mining.
 
 ## Current Scope
@@ -213,16 +212,14 @@ Run `rv sync` manually after dependency changes; use `scripts/check.sh` for fast
 Keep `.gitignore` aligned with generated artefacts. Current deleted infrastructure should
 stay absent unless it directly accelerates or protects the final report path.
 
-Layout contract: `.agent/` = tracked project state; `.agents/skills/` = Codex's
-repo-skill discovery path; `.codex/prompts/` = skill-backed prompts. Report fragments
-live in `sections/`; R code is grouped under `R/{core,analysis,report}/`; generated
-pipeline/QA state lives in `storage/{targets,qa}/`.
+Layout contract: `.agent/` = tracked project state. Report fragments live in
+`sections/`; R code is grouped under `R/{core,analysis,report}/`; generated pipeline/QA
+state lives in `storage/{targets,qa}/`.
 
 When adding a dependency, prefer current project-local R/Quarto path first; update
 `rproject.toml` + `rv.lock` together. Avoid global library/tool leakage.
 
-Instruction/prompts are active source:
+Project state sources:
 - durable project fact -> `.agent/memory.md`
 - live wiring -> `.agent/map.md`
 - trajectory/ledger -> `.agent/roadmap.md`
-- workflow prompt change -> `.codex/prompts/session.md` and matching skill docs.

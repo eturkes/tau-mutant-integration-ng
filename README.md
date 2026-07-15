@@ -36,11 +36,6 @@ outside Git under `storage/data/`.
 Several leading-dot/underscore names are contracts, not parallel source trees:
 
 - `.agent/` = tracked project memory, roadmap, live map, and decision history.
-- `.agents/skills/` = [Codex's repository skill discovery
-  location](https://developers.openai.com/codex/skills); it exposes
-  `$session-prompt`.
-- `.codex/prompts/` = the prompt backing that skill. The wrapper and prompt are
-  one interface and change together.
 - `_targets.R` = targets pipeline entrypoint; `_targets.yaml` redirects its
   generated store to `storage/targets/`.
 - `_quarto.yml` = Quarto project configuration.
