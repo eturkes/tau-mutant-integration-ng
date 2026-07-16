@@ -947,38 +947,29 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
 }
 
 # P6 Figure 10 -------------------------------------------------------------------------------
-# Reduce the compact S3 result to one deterministic, qmd-safe plate payload. Figure 10 keeps the
-# raw-unit DAM occupancy view and uses three complementary interaction views: batch-matched
-# replicate score responses within each retained state, state concordance of raw-count programme
-# rotations, and an exact sequential score-channel decomposition. All five predeclared programmes
-# remain fixed; evidence changes glyph state, never row inclusion or ordering.
-state_decomposition_figure_data <- function(decomposition, alpha = 0.05,
+# Compact, deterministic leaf for the gene-resolved state plate. The accepted occupancy panel is
+# retained. Every declared marker membership becomes an explicit gene row; a transcriptome-wide
+# joint interaction view supplies context. No programme score, fitted object, or count matrix
+# reaches the report.
+state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 0.05,
+                                            n_interaction_labels = 10L,
                                             max_target_bytes = 5 * 1024^2) {
   stopifnot(
-    is.list(decomposition), identical(decomposition$schema, "p6_state_decomposition_v1"),
-    is.data.frame(decomposition$unit_scores),
-    is.list(decomposition$inference), is.data.frame(decomposition$inference$primary),
-    is.list(decomposition$occupancy), is.data.frame(decomposition$raw_count_programmes),
-    is.list(decomposition$verdict), is.data.frame(decomposition$verdict$summary),
+    is.list(state_response), identical(state_response$schema, "p6_state_response_v1"),
+    is.list(state_response$occupancy),
+    is.list(gene_atlas), identical(gene_atlas$schema, "p6_state_gene_atlas_v1"),
+    is.data.frame(gene_atlas$features), is.list(gene_atlas$effects),
+    is.data.frame(gene_atlas$omnibus), is.data.frame(gene_atlas$markers),
     length(alpha) == 1L, is.finite(alpha), alpha == 0.05,
+    length(n_interaction_labels) == 1L, is.finite(n_interaction_labels),
+    n_interaction_labels >= 1L, n_interaction_labels == round(n_interaction_labels),
     length(max_target_bytes) == 1L, is.finite(max_target_bytes), max_target_bytes > 0
   )
-  programs <- names(canonical_microglia_markers)
-  program_labels <- c(
-    Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
-    Proliferative = "Proliferative", MHC_APC = "MHC / APC"
-  )
-  stopifnot(identical(names(program_labels), programs))
-  label_program <- function(x) {
-    out <- unname(program_labels[as.character(x)])
-    stopifnot(!anyNA(out), all(nzchar(out)))
-    factor(out, levels = unname(rev(program_labels)))
-  }
 
   # A: raw replicate occupancy plus beta-binomial standardized genotype means.
-  unit <- decomposition$occupancy$unit
-  means <- decomposition$occupancy$probability_means
-  contrasts <- decomposition$occupancy$probability_contrasts
+  unit <- state_response$occupancy$unit
+  means <- state_response$occupancy$probability_means
+  contrasts <- state_response$occupancy$probability_contrasts
   .fig_require_cols(unit, c("genotype_batch", "genotype", "batch", "n_Homeostatic",
                             "n_DAM", "n_primary", "coverage", "DAM_fraction"),
                     "state decomposition occupancy units")
@@ -1004,315 +995,198 @@ state_decomposition_figure_data <- function(decomposition, alpha = 0.05,
                              "DAM_fraction"), "state decomposition occupancy units")
   .fig_assert_finite(means, c("estimate", "se", "ci_l", "ci_r"),
                      "state decomposition occupancy means")
-  .fig_assert_finite(occupancy_interaction,
-                     c("estimate", "se", "ci_l", "ci_r", "margin", "p_zero", "fdr_zero",
-                       "p_minimum", "fdr_minimum"),
-                     "state decomposition occupancy interaction")
   stopifnot(all(unit$DAM_fraction >= 0 & unit$DAM_fraction <= 1),
             all(means$estimate >= 0 & means$estimate <= 1),
             all(means$ci_l <= means$estimate & means$estimate <= means$ci_r))
 
-  # B: batch-matched NLGF-minus-control score differences. The raw four-batch differences
-  # reproduce the equal-unit model means exactly; model CIs are retained as the summary overlay.
-  score_endpoints <- c("within_Homeostatic", "within_DAM")
-  score_endpoint_labels <- c(
-    within_Homeostatic = "Homeostatic cells",
-    within_DAM = "DAM cells"
+  # B: all declared marker memberships, one visible gene row each. Four raw-count amyloid effects
+  # and three derived interaction contrasts come from the paired multivariate fit.
+  effect_meta <- data.frame(
+    contrast = c(
+      "homeostatic_maptki", "homeostatic_p301s", "dam_maptki", "dam_p301s",
+      "homeostatic_interaction", "dam_interaction", "dam_minus_homeostatic_interaction"
+    ),
+    effect_group = c(rep("Amyloid effect (NLGF - control)", 4L),
+                     rep("Tau modulation of amyloid effect", 3L)),
+    contrast_label = c(
+      "Homeostatic\nMAPTKI", "Homeostatic\nP301S", "DAM\nMAPTKI", "DAM\nP301S",
+      "Homeostatic", "DAM", "DAM - Homeo"
+    ),
+    stringsAsFactors = FALSE
   )
-  tau_pairs <- list(
-    MAPTKI = c(control = "MAPTKI", amyloid = "NLGF_MAPTKI"),
-    P301S = c(control = "P301S", amyloid = "NLGF_P301S")
+  matrix_names <- c("estimate", "se", "ci95_l", "ci95_r",
+                    "p_value", "fdr", "treat_p", "treat_fdr")
+  stopifnot(
+    all(matrix_names %in% names(gene_atlas$effects)),
+    all(vapply(gene_atlas$effects[matrix_names], is.matrix, logical(1))),
+    identical(colnames(gene_atlas$effects$estimate), effect_meta$contrast),
+    all(vapply(gene_atlas$effects[matrix_names], function(x)
+      identical(dimnames(x), dimnames(gene_atlas$effects$estimate)), logical(1)))
   )
-  score_contrasts <- c(MAPTKI = "nlgf_in_maptki", P301S = "nlgf_in_p301s")
-  scores <- decomposition$unit_scores
+  features <- gene_atlas$features
+  omnibus <- gene_atlas$omnibus
+  .fig_require_cols(features, c("gene", "symbol", "ave_expr"), "state gene atlas features")
   .fig_require_cols(
-    scores,
-    c("genotype_batch", "genotype", "batch", "program", score_endpoints),
-    "state decomposition unit scores"
+    omnibus,
+    c("gene", "response_F", "response_p", "response_fdr",
+      "interaction_F", "interaction_p", "interaction_fdr"),
+    "state gene atlas omnibus inference"
   )
-  stopifnot(nrow(scores) == 16L * length(programs),
-            !anyDuplicated(scores[c("genotype_batch", "program")]),
-            identical(sort(unique(as.character(scores$program)), method = "radix"),
-                      sort(programs, method = "radix")))
-  batches <- sort(unique(as.character(scores$batch)), method = "radix")
-  stopifnot(length(batches) == 4L)
+  genes <- rownames(gene_atlas$effects$estimate)
+  stopifnot(identical(features$gene, genes), identical(omnibus$gene, genes),
+            !anyDuplicated(genes), all(nzchar(genes)))
 
-  response_rows <- list()
-  response_i <- 0L
-  for (endpoint in score_endpoints) {
-    for (program in programs) {
-      z <- scores[scores$program == program, , drop = FALSE]
-      key <- paste(as.character(z$genotype), as.character(z$batch), sep = "\r")
-      stopifnot(nrow(z) == 16L, !anyDuplicated(key))
-      values <- stats::setNames(z[[endpoint]], key)
-      for (tau_background in names(tau_pairs)) {
-        pair <- tau_pairs[[tau_background]]
-        control_key <- paste(pair[["control"]], batches, sep = "\r")
-        amyloid_key <- paste(pair[["amyloid"]], batches, sep = "\r")
-        stopifnot(all(control_key %in% names(values)), all(amyloid_key %in% names(values)))
-        response_i <- response_i + 1L
-        response_rows[[response_i]] <- data.frame(
-          endpoint = endpoint,
-          program = program,
-          batch = batches,
-          tau_background = tau_background,
-          effect = unname(values[amyloid_key] - values[control_key]),
-          row.names = NULL, stringsAsFactors = FALSE
-        )
-      }
-    }
-  }
-  score_units <- do.call(rbind, response_rows)
-  rownames(score_units) <- NULL
-  score_units$state_label <- factor(
-    unname(score_endpoint_labels[score_units$endpoint]),
-    levels = unname(score_endpoint_labels)
+  programs <- names(canonical_microglia_markers)
+  program_labels <- c(
+    Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
+    Proliferative = "Proliferative", MHC_APC = "MHC / APC"
   )
-  score_units$program_label <- label_program(score_units$program)
-  score_units$tau_background <- factor(
-    score_units$tau_background, levels = names(tau_pairs)
+  stopifnot(identical(names(program_labels), programs))
+  markers <- gene_atlas$markers
+  .fig_require_cols(markers, c("program", "symbol", "gene", "present", "detected"),
+                    "state gene atlas markers")
+  declared <- do.call(rbind, lapply(programs, function(program)
+    data.frame(program = program, symbol = canonical_microglia_markers[[program]],
+               stringsAsFactors = FALSE)))
+  rownames(declared) <- NULL
+  stopifnot(
+    nrow(markers) == nrow(declared), nrow(markers) == sum(lengths(canonical_microglia_markers)),
+    identical(markers[c("program", "symbol")], declared),
+    !anyDuplicated(markers[c("program", "symbol")]),
+    all(markers$detected <= markers$present)
   )
-  score_units$batch <- factor(score_units$batch, levels = batches)
-  stopifnot(nrow(score_units) == length(score_endpoints) * length(programs) *
-              length(tau_pairs) * length(batches),
-            !anyDuplicated(score_units[c("endpoint", "program", "tau_background", "batch")]))
-  .fig_assert_finite(score_units, "effect", "state decomposition unit score responses")
+  markers$program_label <- factor(
+    unname(program_labels[markers$program]), levels = unname(program_labels)
+  )
+  markers$gene_key <- paste(markers$symbol, markers$program, sep = "\r")
+  markers$gene_label <- factor(markers$gene_key, levels = rev(markers$gene_key))
+  stopifnot(!anyNA(markers$program_label), !anyNA(markers$gene_label),
+            !anyDuplicated(markers$gene_key))
 
-  primary <- decomposition$inference$primary
-  .fig_require_cols(
-    primary,
-    c("analysis", "endpoint", "contrast", "program", "estimate", "se", "df",
-      "ci95_l", "ci95_r", "margin", "fdr_zero", "fdr_minimum", "fdr_tost",
-      "evidence_state"),
-    "state decomposition primary UCell inference"
-  )
-  stopifnot(identical(unique(primary$analysis), "equal_unit_primary"), all(primary$df == 9L))
-  score_model <- primary[
-    primary$endpoint %in% score_endpoints &
-      primary$contrast %in% unname(score_contrasts),
-    , drop = FALSE
-  ]
-  score_model$tau_background <- names(score_contrasts)[
-    match(score_model$contrast, unname(score_contrasts))
-  ]
-  score_model <- score_model[
-    order(match(score_model$endpoint, score_endpoints),
-          match(score_model$program, programs),
-          match(score_model$tau_background, names(tau_pairs)), method = "radix"),
-    , drop = FALSE
-  ]
-  score_model$state_label <- factor(
-    unname(score_endpoint_labels[score_model$endpoint]),
-    levels = unname(score_endpoint_labels)
-  )
-  score_model$program_label <- label_program(score_model$program)
-  score_model$tau_background <- factor(
-    score_model$tau_background, levels = names(tau_pairs)
-  )
-  score_model_key <- paste(score_model$endpoint, score_model$program,
-                           score_model$tau_background, sep = "\r")
-  score_unit_key <- paste(score_units$endpoint, score_units$program,
-                          score_units$tau_background, sep = "\r")
-  score_unit_means <- stats::aggregate(
-    score_units$effect, list(key = score_unit_key), mean
-  )
-  score_unit_means <- stats::setNames(score_unit_means$x, score_unit_means$key)
-  response_residual <- max(abs(score_model$estimate - score_unit_means[score_model_key]))
-  stopifnot(nrow(score_model) == length(score_endpoints) * length(programs) *
-              length(tau_pairs),
-            !anyDuplicated(score_model_key), all(score_model_key %in% names(score_unit_means)),
-            is.finite(response_residual), response_residual <= 1e-10,
-            all(score_model$ci95_l <= score_model$estimate &
-                  score_model$estimate <= score_model$ci95_r))
-  .fig_assert_finite(
-    score_model,
-    c("estimate", "se", "df", "ci95_l", "ci95_r", "margin",
-      "fdr_zero", "fdr_minimum", "fdr_tost"),
-    "state decomposition score response models"
-  )
-
-  # C: one point per fixed programme compares interaction rotation effects between states.
-  rotations <- decomposition$raw_count_programmes
-  .fig_require_cols(
-    rotations,
-    c("endpoint", "contrast", "program", "n_genes", "testable", "mean_logFC",
-      "direction", "fdr"),
-    "state decomposition raw-count programmes"
-  )
-  rotation_states <- c("Homeostatic", "DAM")
-  rotation_rows <- rotations[
-    rotations$contrast == "interaction" &
-      rotations$endpoint %in% c(rotation_states, "DAM_minus_Homeostatic"),
-    , drop = FALSE
-  ]
-  concordance_rows <- lapply(programs, function(program) {
-    z <- rotation_rows[rotation_rows$program == program, , drop = FALSE]
-    z <- z[match(c(rotation_states, "DAM_minus_Homeostatic"), z$endpoint), , drop = FALSE]
-    stopifnot(nrow(z) == 3L, identical(z$endpoint,
-                                      c(rotation_states, "DAM_minus_Homeostatic")))
+  marker_i <- match(markers$gene, genes)
+  detected <- markers$detected & !is.na(marker_i)
+  marker_rows <- lapply(seq_len(nrow(effect_meta)), function(j) {
+    estimate <- fdr <- treat_fdr <- rep(NA_real_, nrow(markers))
+    estimate[detected] <- gene_atlas$effects$estimate[marker_i[detected], j]
+    fdr[detected] <- gene_atlas$effects$fdr[marker_i[detected], j]
+    treat_fdr[detected] <- gene_atlas$effects$treat_fdr[marker_i[detected], j]
     data.frame(
-      program = program,
-      homeostatic_effect = if (z$testable[1L]) z$mean_logFC[1L] else 0,
-      dam_effect = if (z$testable[2L]) z$mean_logFC[2L] else 0,
-      homeostatic_fdr = z$fdr[1L],
-      dam_fdr = z$fdr[2L],
-      direct_fdr = z$fdr[3L],
-      homeostatic_testable = z$testable[1L],
-      dam_testable = z$testable[2L],
-      direct_testable = z$testable[3L],
-      homeostatic_n_genes = z$n_genes[1L],
-      dam_n_genes = z$n_genes[2L],
+      markers[c("program", "program_label", "symbol", "gene", "gene_key", "gene_label")],
+      detected = detected,
+      contrast = effect_meta$contrast[[j]],
+      effect_group = effect_meta$effect_group[[j]],
+      contrast_label = effect_meta$contrast_label[[j]],
+      estimate = estimate, fdr = fdr, treat_fdr = treat_fdr,
       row.names = NULL, stringsAsFactors = FALSE
     )
   })
-  raw_count_concordance <- do.call(rbind, concordance_rows)
-  rownames(raw_count_concordance) <- NULL
-  raw_count_concordance$state_pair_testable <-
-    raw_count_concordance$homeostatic_testable & raw_count_concordance$dam_testable
-  home_supported <- raw_count_concordance$homeostatic_testable &
-    !is.na(raw_count_concordance$homeostatic_fdr) &
-    raw_count_concordance$homeostatic_fdr <= alpha
-  dam_supported <- raw_count_concordance$dam_testable &
-    !is.na(raw_count_concordance$dam_fdr) & raw_count_concordance$dam_fdr <= alpha
-  raw_count_concordance$state_support <- factor(
-    ifelse(!raw_count_concordance$state_pair_testable, "not testable",
-           ifelse(home_supported & dam_supported, "both states",
-           ifelse(home_supported, "Homeostatic only",
-                  ifelse(dam_supported, "DAM only", "neither state")))),
-    levels = c("both states", "Homeostatic only", "DAM only", "neither state",
-               "not testable")
+  marker_effects <- do.call(rbind, marker_rows)
+  rownames(marker_effects) <- NULL
+  marker_effects$program_label <- factor(
+    as.character(marker_effects$program_label), levels = unname(program_labels)
   )
-  raw_count_concordance$direct_support <- factor(
-    ifelse(!raw_count_concordance$direct_testable, "direct not testable",
-           ifelse(raw_count_concordance$direct_fdr <= alpha,
-                  "direct FDR <= 0.05", "direct FDR > 0.05")),
-    levels = c("direct FDR <= 0.05", "direct FDR > 0.05", "direct not testable")
+  marker_effects$gene_label <- factor(
+    as.character(marker_effects$gene_label), levels = rev(markers$gene_key)
   )
-  raw_count_concordance$program_label <- label_program(raw_count_concordance$program)
-  .fig_assert_finite(
-    raw_count_concordance,
-    c("homeostatic_effect", "dam_effect", "homeostatic_n_genes", "dam_n_genes"),
-    "state decomposition raw-count concordance"
+  marker_effects$effect_group <- factor(
+    marker_effects$effect_group, levels = unique(effect_meta$effect_group)
   )
-  stopifnot(nrow(raw_count_concordance) == length(programs),
-            identical(raw_count_concordance$program, programs),
-            all(is.finite(raw_count_concordance$homeostatic_fdr[
-              raw_count_concordance$homeostatic_testable])),
-            all(is.na(raw_count_concordance$homeostatic_fdr[
-              !raw_count_concordance$homeostatic_testable])),
-            all(is.finite(raw_count_concordance$dam_fdr[
-              raw_count_concordance$dam_testable])),
-            all(is.na(raw_count_concordance$dam_fdr[
-              !raw_count_concordance$dam_testable])),
-            all(is.finite(raw_count_concordance$direct_fdr[
-              raw_count_concordance$direct_testable])),
-            all(is.na(raw_count_concordance$direct_fdr[
-              !raw_count_concordance$direct_testable])),
-            !anyNA(raw_count_concordance$state_support),
-            !anyNA(raw_count_concordance$direct_support))
+  marker_effects$contrast_label <- factor(
+    marker_effects$contrast_label, levels = effect_meta$contrast_label
+  )
+  marker_effects$support <- factor(
+    ifelse(!marker_effects$detected, "below count filter",
+           ifelse(marker_effects$treat_fdr <= alpha, "minimum-effect FDR <= 0.05",
+                  ifelse(marker_effects$fdr <= alpha, "nonzero FDR <= 0.05",
+                         "not supported"))),
+    levels = c("minimum-effect FDR <= 0.05", "nonzero FDR <= 0.05",
+               "not supported", "below count filter")
+  )
+  detected_effects <- marker_effects[marker_effects$detected, , drop = FALSE]
+  .fig_assert_finite(detected_effects, c("estimate", "fdr", "treat_fdr"),
+                     "state gene atlas detected marker effects")
+  stopifnot(
+    nrow(marker_effects) == nrow(markers) * nrow(effect_meta),
+    all(is.na(marker_effects$estimate[!marker_effects$detected])),
+    all(is.na(marker_effects$fdr[!marker_effects$detected])),
+    all(is.na(marker_effects$treat_fdr[!marker_effects$detected])),
+    !anyNA(marker_effects$support)
+  )
 
-  # D: sequential exact decomposition of each total interaction estimate. The three coloured
-  # steps end exactly at the total; the total model CI remains available as the uncertainty layer.
-  attribution_endpoints <- c("total", "composition", "within_state", "cross")
-  attribution_channels <- c("composition", "within_state", "cross")
-  attribution_labels <- c(
-    composition = "Composition", within_state = "Within-state", cross = "Cross"
+  # C: all filter-passing genes in the two-state interaction plane. Label selection is a
+  # deterministic descriptive layer; the joint two-df BH result remains explicit for every point.
+  marker_programs <- tapply(
+    markers$program[markers$detected], markers$gene[markers$detected],
+    function(x) paste(unique(x), collapse = " + ")
   )
-  attribution <- primary[
-    primary$endpoint %in% attribution_endpoints &
-      primary$contrast == "interaction",
-    , drop = FALSE
-  ]
-  attribution_steps <- list()
-  attribution_totals <- list()
-  reconstruction <- numeric(length(programs))
-  for (i in seq_along(programs)) {
-    program <- programs[[i]]
-    z <- attribution[attribution$program == program, , drop = FALSE]
-    z <- z[match(attribution_endpoints, z$endpoint), , drop = FALSE]
-    stopifnot(nrow(z) == length(attribution_endpoints),
-              identical(z$endpoint, attribution_endpoints))
-    effects <- stats::setNames(z$estimate, z$endpoint)
-    cumulative <- cumsum(effects[attribution_channels])
-    starts <- c(0, utils::head(cumulative, -1L))
-    reconstruction[[i]] <- unname(effects[["total"]] - cumulative[[length(cumulative)]])
-    attribution_steps[[i]] <- data.frame(
-      program = program,
-      channel = attribution_channels,
-      channel_label = unname(attribution_labels[attribution_channels]),
-      x_start = unname(starts),
-      x_end = unname(cumulative),
-      row.names = NULL, stringsAsFactors = FALSE
-    )
-    attribution_totals[[i]] <- data.frame(
-      program = program,
-      estimate = effects[["total"]],
-      ci95_l = z$ci95_l[z$endpoint == "total"],
-      ci95_r = z$ci95_r[z$endpoint == "total"],
-      row.names = NULL, stringsAsFactors = FALSE
-    )
-  }
-  attribution_steps <- do.call(rbind, attribution_steps)
-  attribution_total <- do.call(rbind, attribution_totals)
-  rownames(attribution_steps) <- rownames(attribution_total) <- NULL
-  attribution_steps$program_label <- label_program(attribution_steps$program)
-  attribution_steps$channel_label <- factor(
-    attribution_steps$channel_label, levels = unname(attribution_labels)
+  scatter <- data.frame(
+    gene = genes, symbol = features$symbol,
+    homeostatic_effect = gene_atlas$effects$estimate[, "homeostatic_interaction"],
+    dam_effect = gene_atlas$effects$estimate[, "dam_interaction"],
+    response_fdr = omnibus$response_fdr,
+    interaction_p = omnibus$interaction_p,
+    interaction_fdr = omnibus$interaction_fdr,
+    row.names = NULL, stringsAsFactors = FALSE
   )
-  attribution_total$program_label <- label_program(attribution_total$program)
-  attribution_residual <- max(abs(reconstruction))
-  .fig_assert_finite(attribution_steps, c("x_start", "x_end"),
-                     "state decomposition attribution steps")
-  .fig_assert_finite(attribution_total, c("estimate", "ci95_l", "ci95_r"),
-                     "state decomposition attribution totals")
-  stopifnot(nrow(attribution_steps) == length(programs) * length(attribution_channels),
-            nrow(attribution_total) == length(programs),
-            is.finite(attribution_residual), attribution_residual <= 1e-10,
-            all(attribution_total$ci95_l <= attribution_total$estimate &
-                  attribution_total$estimate <= attribution_total$ci95_r))
+  scatter$marker_programs <- unname(marker_programs[scatter$gene])
+  scatter$marker_programs[is.na(scatter$marker_programs)] <- ""
+  scatter$is_declared_marker <- nzchar(scatter$marker_programs)
+  scatter$interaction_supported <- scatter$interaction_fdr <= alpha
+  label_order <- order(
+    scatter$interaction_p,
+    -pmax(abs(scatter$homeostatic_effect), abs(scatter$dam_effect)),
+    scatter$symbol, scatter$gene, method = "radix"
+  )
+  label_i <- utils::head(label_order, min(as.integer(n_interaction_labels), nrow(scatter)))
+  scatter$label <- ""
+  scatter$label[label_i] <- scatter$symbol[label_i]
+  .fig_assert_finite(
+    scatter,
+    c("homeostatic_effect", "dam_effect", "response_fdr",
+      "interaction_p", "interaction_fdr"),
+    "state gene interaction geometry"
+  )
+  stopifnot(!anyNA(scatter$symbol), all(nzchar(scatter$symbol)),
+            sum(nzchar(scatter$label)) == length(label_i))
 
   out <- list(
-    schema = "p6_state_decomposition_figures_v2",
+    schema = "p6_state_decomposition_figures_v3",
     occupancy = list(unit = unit, means = means),
-    score_response = list(unit = score_units, model = score_model),
-    raw_count_concordance = raw_count_concordance,
-    attribution = list(steps = attribution_steps, total = attribution_total),
-    verdict = decomposition$verdict$summary,
+    gene_atlas = list(marker_effects = marker_effects, interaction_scatter = scatter),
     provenance = list(
-      source_target = "microglia_state_decomposition",
+      source_targets = c("microglia_state_response", "microglia_state_gene_atlas"),
       defining_contrast = "interaction",
-      programme_order = programs,
-      score_endpoints = score_endpoints,
-      score_contrasts = unname(score_contrasts),
-      attribution_identity = "total = composition + within_state + cross",
+      method = gene_atlas$audit$method,
+      marker_program_order = programs,
+      contrast_order = effect_meta$contrast,
       selection = paste(
-        "fixed five programmes; raw four-batch NLGF-minus-control score responses in both",
-        "retained states; interaction-only raw-count state concordance and score attribution"
+        "all declared marker memberships are fixed rows; no marker row is outcome-selected;",
+        n_interaction_labels, "scatter labels are the lowest joint-interaction p-values"
       ),
       alpha = alpha,
-      occupancy_margin = occupancy_interaction$margin,
-      score_margin = unique(score_model$margin)
+      gene_lfc = gene_atlas$audit$thresholds$gene_lfc,
+      occupancy_margin = occupancy_interaction$margin
     ),
     audit = list(
       row_counts = c(
         occupancy_unit = nrow(unit), occupancy_means = nrow(means),
-        score_response_unit = nrow(score_units), score_response_model = nrow(score_model),
-        raw_count_concordance = nrow(raw_count_concordance),
-        attribution_steps = nrow(attribution_steps),
-        attribution_total = nrow(attribution_total)
+        marker_effects = nrow(marker_effects), interaction_scatter = nrow(scatter)
       ),
-      all_programmes_represented = TRUE,
+      n_marker_memberships = nrow(markers),
+      n_marker_genes = length(unique(markers$gene[markers$present])),
+      n_marker_genes_detected = length(unique(markers$gene[markers$detected])),
+      n_response_fdr_supported = sum(scatter$response_fdr <= alpha),
+      n_interaction_fdr_supported = sum(scatter$interaction_supported),
+      n_interaction_labels = length(label_i),
+      all_declared_markers_represented = TRUE,
+      fixed_marker_rows = TRUE,
       deterministic_order = TRUE,
-      response_reconstruction_residual = response_residual,
-      attribution_reconstruction_residual = attribution_residual,
       parent_isolated = NA,
       in_memory_bytes = NA_real_, serialized_bytes = NA_real_,
       max_target_bytes = max_target_bytes
     )
   )
-  stopifnot(length(out$provenance$score_margin) == 1L,
-            is.finite(out$provenance$score_margin), out$provenance$score_margin == 0.25,
-            !state_substrate_contains_parent(out))
+  stopifnot(!state_substrate_contains_parent(out))
   out$audit$parent_isolated <- TRUE
   out$audit$in_memory_bytes <- as.numeric(object.size(out))
   out$audit$serialized_bytes <- as.numeric(length(qs2::qs_serialize(out)))

@@ -988,6 +988,237 @@ run_microglia_state_response <- function(substrate, pb_de_microglia,
   out
 }
 
+# Paired multivariate gene atlas for Figure 10. The two state pseudobulks from each biological
+# unit are fitted together: voomLmFit estimates sample quality weights + the within-unit
+# correlation while protecting residual df for state-specific zero counts. Seven prespecified
+# contrasts expose the four state/background amyloid responses, both state interactions, and their
+# direct difference. Only compact matrices cross the target boundary; all fitted objects stay local.
+state_gene_atlas_contrasts <- function(fd, states = c("Homeostatic", "DAM")) {
+  stopifnot(
+    is.list(fd), is.matrix(fd$design), is.matrix(fd$contrasts),
+    identical(states, c("Homeostatic", "DAM")),
+    identical(rownames(fd$contrasts), colnames(fd$design)),
+    identical(colnames(fd$contrasts), state_contrast_names())
+  )
+  contrast_names <- c(
+    "homeostatic_maptki", "homeostatic_p301s",
+    "dam_maptki", "dam_p301s",
+    "homeostatic_interaction", "dam_interaction", "dam_minus_homeostatic_interaction"
+  )
+  design_names <- unlist(lapply(states, function(state)
+    paste(state, colnames(fd$design), sep = "::")), use.names = FALSE)
+  out <- matrix(0, nrow = length(design_names), ncol = length(contrast_names),
+                dimnames = list(design_names, contrast_names))
+  short <- c(Homeostatic = "homeostatic", DAM = "dam")
+  for (state in states) {
+    rows <- paste(state, rownames(fd$contrasts), sep = "::")
+    prefix <- unname(short[[state]])
+    out[rows, paste0(prefix, "_maptki")] <- fd$contrasts[, "nlgf_in_maptki"]
+    out[rows, paste0(prefix, "_p301s")] <- fd$contrasts[, "nlgf_in_p301s"]
+    out[rows, paste0(prefix, "_interaction")] <- fd$contrasts[, "interaction"]
+  }
+  out[, "dam_minus_homeostatic_interaction"] <-
+    out[, "dam_interaction"] - out[, "homeostatic_interaction"]
+  tol <- 1e-12
+  stopifnot(
+    max(abs(out[, "homeostatic_interaction"] -
+              (out[, "homeostatic_p301s"] - out[, "homeostatic_maptki"]))) <= tol,
+    max(abs(out[, "dam_interaction"] -
+              (out[, "dam_p301s"] - out[, "dam_maptki"]))) <= tol,
+    qr(out)$rank == 4L
+  )
+  out
+}
+
+state_gene_atlas_omnibus <- function(efit, coef, family) {
+  stopifnot(inherits(efit, "MArrayLM"), all(coef %in% colnames(efit$coefficients)),
+            length(coef) >= 2L, length(family) == 1L, nzchar(family))
+  tab <- limma::topTable(efit, coef = coef, number = Inf, sort.by = "none")
+  stopifnot(identical(rownames(tab), rownames(efit$coefficients)),
+            all(c("F", "P.Value") %in% names(tab)),
+            all(is.finite(tab$F)), all(is.finite(tab$P.Value)),
+            all(tab$P.Value >= 0 & tab$P.Value <= 1))
+  data.frame(
+    gene = rownames(tab), F = tab$F, p_value = tab$P.Value,
+    fdr = stats::p.adjust(tab$P.Value, "BH"), family = family,
+    row.names = NULL, stringsAsFactors = FALSE
+  )
+}
+
+run_microglia_state_gene_atlas <- function(substrate, min_count = 5, gene_lfc = 0.5,
+                                           alpha = 0.05,
+                                           max_target_bytes = 25 * 1024^2) {
+  states <- c("Homeostatic", "DAM")
+  stopifnot(
+    is.list(substrate), identical(substrate$schema, "p6_state_substrate_v1"),
+    identical(substrate$states, states), identical(names(substrate$counts), states),
+    substrate$audit$n_units == 16L, substrate$audit$residual_df == 9L,
+    all(vapply(substrate$counts, is.matrix, logical(1))),
+    all(vapply(substrate$counts, function(x)
+      identical(colnames(x), rownames(substrate$unit_meta)), logical(1))),
+    identical(rownames(substrate$counts[[1L]]), rownames(substrate$counts[[2L]])),
+    length(min_count) == 1L, is.finite(min_count), min_count >= 1,
+    length(gene_lfc) == 1L, is.finite(gene_lfc), gene_lfc > 0,
+    length(alpha) == 1L, is.finite(alpha), alpha == 0.05,
+    length(max_target_bytes) == 1L, is.finite(max_target_bytes), max_target_bytes > 0
+  )
+  units <- rownames(substrate$unit_meta)
+  fd <- factorial_design(substrate$unit_meta)
+  design <- as.matrix(Matrix::bdiag(lapply(states, function(x) fd$design)))
+  colnames(design) <- unlist(lapply(states, function(state)
+    paste(state, colnames(fd$design), sep = "::")), use.names = FALSE)
+  sample_ids <- unlist(lapply(states, function(state)
+    paste(state, units, sep = "::")), use.names = FALSE)
+  rownames(design) <- sample_ids
+  block <- factor(rep(units, times = length(states)), levels = units)
+  counts <- do.call(cbind, substrate$counts)
+  colnames(counts) <- sample_ids
+  stopifnot(
+    identical(colnames(counts), rownames(design)), length(block) == ncol(counts),
+    all(table(block) == length(states)), qr(design)$rank == ncol(design),
+    nrow(design) - qr(design)$rank == 18L,
+    all(is.finite(counts)), all(counts >= 0)
+  )
+
+  dge <- edgeR::DGEList(counts = counts)
+  keep <- edgeR::filterByExpr(dge, design = design, min.count = min_count)
+  stopifnot(is.logical(keep), length(keep) == nrow(counts), sum(keep) >= 1000L)
+  dge <- edgeR::normLibSizes(dge[keep, , keep.lib.sizes = FALSE])
+  fit_cap <- state_capture_clean(
+    edgeR::voomLmFit(
+      dge, design = design, block = block, sample.weights = TRUE,
+      plot = FALSE, keep.EList = FALSE
+    ),
+    "paired multivariate state gene atlas voomLmFit"
+  )
+  fit <- fit_cap$value
+  stopifnot(
+    inherits(fit, "MArrayLM"), identical(rownames(fit$coefficients), rownames(dge)),
+    identical(colnames(fit$coefficients), colnames(design)),
+    all(is.finite(fit$coefficients)), all(is.finite(fit$sigma)), all(fit$sigma > 0),
+    all(is.finite(fit$df.residual)), all(fit$df.residual > 0),
+    length(fit$correlation) == 1L, is.finite(fit$correlation),
+    fit$correlation > -1, fit$correlation < 1,
+    "sample.weight" %in% names(fit$targets),
+    all(is.finite(fit$targets$sample.weight)), all(fit$targets$sample.weight > 0)
+  )
+
+  contrast_matrix <- state_gene_atlas_contrasts(fd, states)
+  stopifnot(identical(rownames(contrast_matrix), colnames(fit$coefficients)))
+  inference_cap <- state_capture_clean({
+    contrast_fit <- limma::contrasts.fit(fit, contrast_matrix)
+    list(
+      efit = limma::eBayes(contrast_fit, robust = TRUE),
+      tfit = limma::treat(contrast_fit, lfc = gene_lfc, robust = TRUE)
+    )
+  }, "paired multivariate state gene atlas inference")
+  efit <- inference_cap$value$efit
+  tfit <- inference_cap$value$tfit
+  contrast_names <- colnames(contrast_matrix)
+  genes <- rownames(efit$coefficients)
+  stopifnot(identical(genes, rownames(tfit$coefficients)),
+            identical(colnames(efit$coefficients), contrast_names),
+            identical(colnames(tfit$coefficients), contrast_names))
+
+  estimate <- unclass(efit$coefficients)
+  se <- unclass(efit$stdev.unscaled * sqrt(efit$s2.post))
+  p_value <- unclass(efit$p.value)
+  treat_p <- unclass(tfit$p.value)
+  fdr <- apply(p_value, 2L, stats::p.adjust, method = "BH")
+  treat_fdr <- apply(treat_p, 2L, stats::p.adjust, method = "BH")
+  dimnames(fdr) <- dimnames(treat_fdr) <- dimnames(estimate)
+  q <- stats::qt(0.975, efit$df.total)
+  ci95_l <- estimate - se * q
+  ci95_r <- estimate + se * q
+  matrices <- list(
+    estimate = estimate, se = se, ci95_l = ci95_l, ci95_r = ci95_r,
+    p_value = p_value, fdr = fdr, treat_p = treat_p, treat_fdr = treat_fdr
+  )
+  stopifnot(
+    all(vapply(matrices, is.matrix, logical(1))),
+    all(vapply(matrices, function(x) identical(dimnames(x), dimnames(estimate)), logical(1))),
+    all(vapply(matrices, function(x) all(is.finite(x)), logical(1))),
+    all(ci95_l <= estimate & estimate <= ci95_r),
+    all(p_value >= 0 & p_value <= 1), all(fdr >= 0 & fdr <= 1),
+    all(treat_p >= 0 & treat_p <= 1), all(treat_fdr >= 0 & treat_fdr <= 1)
+  )
+
+  response_coef <- c("homeostatic_maptki", "homeostatic_p301s",
+                     "dam_maptki", "dam_p301s")
+  interaction_coef <- c("homeostatic_interaction", "dam_interaction")
+  response_omnibus <- state_gene_atlas_omnibus(
+    efit, response_coef, "gene_joint_four_amyloid_responses"
+  )
+  interaction_omnibus <- state_gene_atlas_omnibus(
+    efit, interaction_coef, "gene_joint_two_state_interactions"
+  )
+  stopifnot(identical(response_omnibus$gene, genes),
+            identical(interaction_omnibus$gene, genes))
+  omnibus <- data.frame(
+    gene = genes,
+    response_F = response_omnibus$F,
+    response_p = response_omnibus$p_value,
+    response_fdr = response_omnibus$fdr,
+    interaction_F = interaction_omnibus$F,
+    interaction_p = interaction_omnibus$p_value,
+    interaction_fdr = interaction_omnibus$fdr,
+    row.names = NULL, stringsAsFactors = FALSE
+  )
+  feature_i <- match(genes, substrate$feature_map$ensembl)
+  stopifnot(!anyNA(feature_i))
+  features <- data.frame(
+    gene = genes, symbol = substrate$feature_map$symbol[feature_i],
+    ave_expr = unname(efit$Amean), row.names = NULL, stringsAsFactors = FALSE
+  )
+  stopifnot(!anyNA(features$symbol), !anyDuplicated(features$gene),
+            all(nzchar(features$symbol)), all(is.finite(features$ave_expr)))
+
+  markers <- substrate$marker_map
+  marker_cols <- c("program", "symbol", "ensembl", "present")
+  stopifnot(all(marker_cols %in% names(markers)))
+  markers <- markers[marker_cols]
+  names(markers)[names(markers) == "ensembl"] <- "gene"
+  markers$detected <- markers$present & !is.na(markers$gene) & markers$gene %in% genes
+  stopifnot(nrow(markers) == sum(lengths(canonical_microglia_markers)),
+            !anyDuplicated(markers[c("program", "symbol")]),
+            identical(unique(markers$program), names(canonical_microglia_markers)))
+
+  messages <- unique(c(fit_cap$messages, inference_cap$messages))
+  out <- list(
+    schema = "p6_state_gene_atlas_v1",
+    features = features,
+    effects = matrices,
+    omnibus = omnibus,
+    markers = markers,
+    contrast_matrix = contrast_matrix,
+    audit = list(
+      n_units = length(units), n_state_samples = ncol(counts),
+      n_input_genes = nrow(counts), n_genes = length(genes),
+      n_marker_memberships = nrow(markers),
+      n_marker_genes = length(unique(markers$gene[markers$present])),
+      n_marker_genes_detected = length(unique(markers$gene[markers$detected])),
+      design_rank = qr(design)$rank, nominal_residual_df = nrow(design) - qr(design)$rank,
+      residual_df_range = range(fit$df.residual),
+      block_correlation = unname(fit$correlation),
+      sample_weight_range = range(fit$targets$sample.weight),
+      response_fdr_supported = sum(omnibus$response_fdr <= alpha),
+      interaction_fdr_supported = sum(omnibus$interaction_fdr <= alpha),
+      messages = messages,
+      thresholds = list(min_count = min_count, gene_lfc = gene_lfc, alpha = alpha,
+                        max_target_bytes = max_target_bytes),
+      method = "edgeR::voomLmFit(block=unit, sample.weights=TRUE) + limma robust eBayes/treat",
+      parent_isolated = NA, in_memory_bytes = NA_real_, serialized_bytes = NA_real_
+    )
+  )
+  stopifnot(!state_substrate_contains_parent(out))
+  out$audit$parent_isolated <- TRUE
+  out$audit$in_memory_bytes <- as.numeric(object.size(out))
+  out$audit$serialized_bytes <- as.numeric(length(qs2::qs_serialize(out)))
+  stopifnot(out$audit$in_memory_bytes <= max_target_bytes,
+            out$audit$serialized_bytes <= max_target_bytes)
+  out
+}
+
 # ============================================================================================
 # P6-S3: exact UCell composition/within-state/cross attribution + integrated verdict. Inputs are
 # the compact S1/S2 payloads; inference stays at the 16-unit level. Equal-unit OLS is primary,

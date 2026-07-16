@@ -30,12 +30,12 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-15): the rendered report = TEN visible figures with simple numbered
+REPORT SCOPE (current 2026-07-16): the rendered report = TEN visible figures with simple numbered
 `Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
-one appended P6 retained-state decomposition plate (DAM occupancy, batch-matched
-within-state programme responses, raw-count state concordance, and exact channel waterfalls) +
+one appended P6 retained-state response plate (DAM occupancy, explicit 52-gene
+state/background response atlas, and 14,438-gene two-state interaction geometry) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
 figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
@@ -43,7 +43,7 @@ snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the moda
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). Closed P6 keeps the live DAG at 33 targets and appends Figure 10 from only
+the live DAG (Ledger 2026-07-08). Closed P6 keeps the live DAG at 34 targets and appends Figure 10 from only
 the compact `state_decomposition_figures` leaf.
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
@@ -219,6 +219,19 @@ No active plan. Confirm the next roadmap direction with the user before writing 
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-16 Figure 10 gene-resolved redesign DONE (ad hoc user review) ->
+  replaced every programme-score panel with a paired multivariate raw-count gene atlas.
+  `microglia_state_gene_atlas` jointly fits 32 Homeostatic/DAM pseudobulks from 16
+  replicate units via blocked, sample-weighted `edgeR::voomLmFit` + robust limma
+  eBayes/treat: 14,438 genes, within-unit correlation 0.183, weights 0.526-1.431,
+  1,120 joint four-response FDR hits, and zero joint two-state interaction FDR hits.
+  Figure 10 retains accepted DAM occupancy, names all 52 declared marker genes across
+  seven explicit contrasts (four filter failures remain as crossed cells), and places all
+  14,438 genes in the Homeostatic-versus-DAM interaction plane; ten lowest-joint-p labels
+  are explicitly descriptive. Score aggregates are report-disconnected. Gene/figure
+  targets = 5,774,234/545,659 serialized and 20,946,784/3,201,376 in-memory bytes;
+  warning-fatal full render, semantic 10-heading/image/alt/fold audit, and 10-page
+  Chromium print inspection green. DAG = 34; Figures 1-9 and dependency lock unchanged.
 - 2026-07-15 Figure 10 replacement-panel redesign DONE (ad hoc user review) ->
   retained the accepted raw-unit DAM occupancy chart alone and replaced its interaction
   mini-forest plus the bubble/forest panels with three new fixed-programme approaches:

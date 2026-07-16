@@ -75,6 +75,13 @@ list(
              run_microglia_state_response(microglia_state_substrate, pb_de_microglia),
              format = "qs"),
 
+  # Figure 10 gene layer: paired Homeostatic/DAM voomLmFit with replicate blocking,
+  # sample-quality weights, robust empirical Bayes, four-response + two-interaction joint tests,
+  # and all declared marker memberships. Compact matrices only; no fitted object crosses target.
+  tar_target(microglia_state_gene_atlas,
+             run_microglia_state_gene_atlas(microglia_state_substrate),
+             format = "qs"),
+
   # P6-S3: exact standardized UCell composition/within-state/cross attribution, ordinary
   # replicate-unit OLS + TOST/minimum-effect inference, weighted sensitivity, and the fixed
   # S1-S3 evidence classifier. Compact report-disconnected tables only; no fitted objects.
@@ -83,11 +90,12 @@ list(
                                                 microglia_state_response),
              format = "qs"),
 
-  # P6 Figure 10: compact raw occupancy, batch-matched within-state score responses,
-  # raw-count state concordance, and exact interaction-decomposition steps. Report leaf only;
-  # reads the compact S3 result and carries no fitted object, count matrix, or cell frame.
+  # P6 Figure 10: accepted raw occupancy + gene-resolved response atlas + transcriptome-wide
+  # interaction geometry. The report leaf reads compact S2 occupancy and the paired gene target;
+  # it carries no score aggregate, fitted object, count matrix, or cell frame.
   tar_target(state_decomposition_figures,
-             state_decomposition_figure_data(microglia_state_decomposition),
+             state_decomposition_figure_data(microglia_state_response,
+                                             microglia_state_gene_atlas),
              format = "qs"),
 
   # S5: compact report-data extraction. Pulls the per-cell plotting frame (UMAP + subpopulation +

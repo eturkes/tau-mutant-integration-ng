@@ -1,8 +1,8 @@
 # Map - live codebase wiring
 
-Current rendered surface (2026-07-14): lean 10-figure report. Closed P6 has compact
-Homeostatic/DAM substrate, response, channel, and Figure 10 payload targets; report
-integration is complete.
+Current rendered surface (2026-07-16): lean 10-figure report. Closed P6 has compact
+Homeostatic/DAM substrate, response, channel, paired gene-atlas, and Figure 10 payload
+targets; report integration is complete.
 No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
 retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count after P6-S5: 33.
+store to `storage/targets/`. Expected live target count: 34.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -63,6 +63,13 @@ P6 state decomposition (closed; report-integrated):
   sensitivity, five fixed-programme rotations, and the pooled-two-state/whole-MG bridge.
   Runtime algebra/fit/family/size gates keep fitted objects out; live payload = 27.22 MB
   in memory / 10.41 MB serialized.
+- `microglia_state_gene_atlas <- run_microglia_state_gene_atlas(microglia_state_substrate)`
+  jointly fits the 32 Homeostatic/DAM pseudobulks with `edgeR::voomLmFit`: unit block
+  correlation, sample-quality weights, zero-aware residual df, robust limma eBayes/treat,
+  four state/background amyloid effects, two state interactions, their direct difference,
+  and joint 4-/2-df moderated-F families. Live = 14,438 genes, 16 paired units,
+  correlation 0.183, 1,120 joint-response / zero joint-interaction genes at FDR <=0.05,
+  48/52 declared markers count-filter passing; 20.95 MB in memory / 5.77 MB serialized.
 - `microglia_state_decomposition <- run_microglia_state_decomposition(microglia_state_substrate, microglia_state_response)`
   standardizes five raw-UCell programmes by pooled cell SD and emits exact equal-unit
   total/composition/within-state/cross channels, both state means + paired differences,
@@ -70,15 +77,14 @@ P6 state decomposition (closed; report-integrated):
   S2 evidence, and the predeclared interaction classifier. Unit/contrast algebra, 9-df,
   family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
   live payload = 0.20 MB in memory / 0.054 MB serialized.
-- `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_decomposition)`
-  emits the fixed-row Figure 10 contract: 16-unit occupancy + four model means;
-  80 batch-matched within-state score responses + 20 model summaries; five raw-count
-  state-concordance rows; and 15 sequential channel steps + five total effects.
-  Payload = 52.7 KB in memory / 6.9 KB serialized; deterministic, parent-isolated,
-  no significance-based row selection. `state_decomposition_figure_plot()` retains the
-  accepted occupancy chart and draws replicate-difference, concordance, and waterfall
-  replacements for the prior three panels. The report names only this compact leaf as
-  its P6 dependency.
+- `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_response, microglia_state_gene_atlas)`
+  emits the Figure 10 contract: accepted 16-unit occupancy; 371 fixed atlas cells = all
+  53 declared memberships/52 unique marker genes x seven gene contrasts; and 14,438
+  transcriptome-wide two-state interaction points with ten deterministic descriptive
+  labels. All markers remain visible (four count-filter failures = crossed cells); no
+  marker row is outcome-selected. Payload = 3.20 MB in memory / 0.546 MB serialized,
+  deterministic + parent-isolated. `state_decomposition_figure_plot()` draws occupancy,
+  gene atlas, and interaction geometry. The report names only this compact leaf.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -146,11 +152,12 @@ Report:
   glmmTMB sensitivity, compact trajectory report bundle.
 
 `R/analysis/state_decomposition.R`
-- P6 compact Homeostatic/DAM substrate, occupancy/state response, and exact UCell-channel
-  inference: feature/marker mapping, coverage/design/library/size gates, beta-binomial
-  standardization, state/delta voom+treat, rotations, bridge, ordinary OLS/TOST/weighted
-  sensitivity, fixed classifier, and deterministic algebra/model gates. Heavy parents/fits
-  stay out of target payloads.
+- P6 compact Homeostatic/DAM substrate, occupancy/state response, paired multivariate gene
+  atlas, and exact UCell-channel inference: feature/marker mapping,
+  coverage/design/library/size gates, beta-binomial standardization, state/delta voom+treat,
+  paired blocked voomLmFit + joint moderated F, rotations, bridge, ordinary
+  OLS/TOST/weighted sensitivity, fixed classifier, and deterministic algebra/model gates.
+  Heavy parents/fits stay out of target payloads.
 
 `R/analysis/modality_de.R`
 - Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits
@@ -182,8 +189,8 @@ Report:
 - `sections/modality.qmd`: GeoMx AOI metadata-track diagnostic,
   vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
-- `sections/state-decomposition.qmd`: four-panel retained-state occupancy, raw-count programme
-  response, within-DAM interaction, and exact UCell-channel attribution plate.
+- `sections/state-decomposition.qmd`: three-panel retained-state occupancy, explicit 52-gene
+  response atlas, and transcriptome-wide two-state interaction-geometry plate.
 
 Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
 `report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.

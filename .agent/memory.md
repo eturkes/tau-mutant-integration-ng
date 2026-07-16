@@ -15,7 +15,7 @@ Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome ac
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
 
-Live report scope (2026-07-15): 10 visible figures, 4 included qmd fragments, expected 33 targets.
+Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, expected 34 targets.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -36,11 +36,16 @@ P6 state decomposition closed 2026-07-14 and is report-integrated. Compact
 pooled SDs, and exact feature/marker maps. `microglia_state_response` contains only
 occupancy/state/delta/rotation/bridge inference tables + diagnostics.
 `microglia_state_decomposition` contains unit-level standardized score channels,
-ordinary/weighted inference, compact S2 evidence, and the fixed classifier.
-`state_decomposition_figures` is the 6.9 KB fixed-row Figure 10 leaf: accepted raw-unit
-DAM occupancy, 80 batch-matched within-state score responses plus 20 model summaries,
-five raw-count state-concordance rows, and exact three-step interaction waterfalls.
-`state_decomposition_figure_plot()` draws the four-panel plate.
+ordinary/weighted inference, compact S2 evidence, and the fixed classifier; it is now fully
+report-disconnected, and no score aggregate reaches Figure 10.
+`microglia_state_gene_atlas` jointly fits 32 state pseudobulks with paired-unit
+`edgeR::voomLmFit`, sample-quality weights, robust limma eBayes/treat, seven explicit gene
+contrasts, and joint four-response/two-interaction moderated-F families.
+`state_decomposition_figures` is the 0.546 MB Figure 10 leaf: accepted raw-unit DAM
+occupancy, all 53 declared memberships/52 unique genes x seven raw-count contrasts, and
+14,438-gene two-state interaction geometry. Four marker genes below the count filter stay
+visible as crossed cells; marker rows are fixed, while ten scatter labels use lowest joint p.
+`state_decomposition_figure_plot()` draws the three-panel gene-resolved plate.
 `sections/state-decomposition.qmd` loads only this leaf after the stable Figures 1-9;
 no Seurat/S4 parent or fitted model crosses the report boundary.
 
@@ -129,6 +134,12 @@ Microglia state decomposition (P6 closed):
   DAM-minus-Homeostatic evidence in both score and raw-count programme representations.
 - Pooled Homeostatic+DAM versus whole-MG effect correlations = 0.982-0.994 across
   contrasts; descriptive exclusion bridge only, with no agreement threshold.
+- Paired multivariate gene atlas = 14,438 filter-passing genes, within-unit state
+  correlation 0.183, sample weights 0.526-1.431, and residual df 2-18 after zero-aware
+  adjustment. Joint four-response moderated F supports 1,120 genes at BH 5%; joint
+  Homeostatic/DAM interaction F supports zero. The combined-model interaction effects agree
+  with established separate-state fits (Pearson 0.992/0.993; median absolute delta
+  0.037/0.044 log2FC for Homeostatic/DAM).
 
 Microglia DE:
 - Live target = `pb_de_microglia` only.

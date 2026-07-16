@@ -21,8 +21,8 @@ sdf <- state_decomposition_figures
 ```{r}
 #| label: plot-state-decomposition
 #| fig-width: 18.8
-#| fig-height: 13.2
-#| fig-alt: "Four-panel microglial state-decomposition plate: replicate DAM occupancy; batch-matched programme-score amyloid responses within Homeostatic and DAM cells; raw-count interaction concordance between the two states; and sequential composition, within-state, and cross-channel decomposition of each total programme interaction."
+#| fig-height: 18
+#| fig-alt: "Three-panel microglial state-response plate: replicate DAM occupancy; a gene-labelled heatmap showing all 52 declared marker genes across four state-by-tau amyloid effects and three interaction contrasts; and a transcriptome-wide scatter comparing gene-level interaction effects in Homeostatic and DAM cells."
 state_decomposition_figure_plot(sdf)
 ```
 
