@@ -66,10 +66,12 @@ P6 state decomposition (closed; report-integrated):
 - `microglia_state_gene_atlas <- run_microglia_state_gene_atlas(microglia_state_substrate)`
   jointly fits the 32 Homeostatic/DAM pseudobulks with `edgeR::voomLmFit`: unit block
   correlation, sample-quality weights, zero-aware residual df, robust limma eBayes/treat,
-  four state/background amyloid effects, two state interactions, their direct difference,
-  and joint 4-/2-df moderated-F families. Live = 14,438 genes, 16 paired units,
-  correlation 0.183, 1,120 joint-response / zero joint-interaction genes at FDR <=0.05,
-  48/52 declared markers count-filter passing; 20.95 MB in memory / 5.77 MB serialized.
+  four state/background amyloid effects, two paired DAM-minus-Homeostatic response
+  differences, two state interactions, their direct difference, and joint 4-/2-df
+  moderated-F families. Live = 14,438 genes, 16 paired units, correlation 0.183,
+  1,120 joint-response / zero joint-interaction genes at FDR <=0.05; direct state
+  differences yield 122/70 nonzero and 11/7 minimum-effect hits in MAPTKI/P301S;
+  48/52 declared markers count-filter passing; 22.80 MB in memory / 7.20 MB serialized.
 - `microglia_state_decomposition <- run_microglia_state_decomposition(microglia_state_substrate, microglia_state_response)`
   standardizes five raw-UCell programmes by pooled cell SD and emits exact equal-unit
   total/composition/within-state/cross channels, both state means + paired differences,
@@ -78,15 +80,15 @@ P6 state decomposition (closed; report-integrated):
   family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
   live payload = 0.20 MB in memory / 0.054 MB serialized.
 - `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_response, microglia_state_gene_atlas)`
-  emits the Figure 10 contract: accepted 16-unit occupancy; 371 fixed effect rows = all
-  53 declared memberships/52 unique marker genes x seven gene contrasts; and 14,438
-  transcriptome-wide two-state interaction points with ten deterministic descriptive
-  labels. All markers remain represented and the marker membership set stays fixed
-  independently of outcomes. Payload = 3.20 MB in memory / 0.546 MB serialized,
+  emits the Figure 10 contract: accepted 16-unit occupancy; 208 fixed response rows =
+  52 unique declared genes x four state/background amyloid effects, including 95% CI;
+  and 28,876 transcriptome-wide paired state-difference rows = 14,438 genes x two tau
+  backgrounds. All declared genes remain represented independently of outcomes; B2m's
+  duplicate membership is collapsed. Payload = 4.45 MB in memory / 1.19 MB serialized,
   deterministic + parent-isolated. `state_decomposition_figure_plot()` draws occupancy,
-  interaction geometry, and two ungrouped parallel-coordinate fields for 48 detected unique
-  genes; B2m's duplicate membership is display-collapsed, nine minimum-effect genes are
-  direct-labelled, and four filter failures are listed. The report names only this compact leaf.
+  two direct DAM-minus-Homeostatic response maps, and 48 shared-scale per-gene factorial
+  small multiples; six direct minimum-effect marker/background rows carry labels + CI,
+  and four count-filter failures are listed. The report names only this compact leaf.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`

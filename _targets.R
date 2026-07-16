@@ -76,8 +76,9 @@ list(
              format = "qs"),
 
   # Figure 10 gene layer: paired Homeostatic/DAM voomLmFit with replicate blocking,
-  # sample-quality weights, robust empirical Bayes, four-response + two-interaction joint tests,
-  # and all declared marker memberships. Compact matrices only; no fitted object crosses target.
+  # sample-quality weights, robust empirical Bayes, four responses + two direct paired state
+  # differences + interaction contrasts/joint tests, and all declared marker memberships.
+  # Compact matrices only; no fitted object crosses target.
   tar_target(microglia_state_gene_atlas,
              run_microglia_state_gene_atlas(microglia_state_substrate),
              format = "qs"),
@@ -90,9 +91,9 @@ list(
                                                 microglia_state_response),
              format = "qs"),
 
-  # P6 Figure 10: accepted raw occupancy + gene-resolved response atlas + transcriptome-wide
-  # interaction geometry. The report leaf reads compact S2 occupancy and the paired gene target;
-  # it carries no score aggregate, fitted object, count matrix, or cell frame.
+  # P6 Figure 10: accepted raw occupancy + transcriptome-wide paired state-difference maps +
+  # declared-marker factorial response plots. The report leaf reads compact S2 occupancy and the
+  # paired gene target; it carries no score aggregate, fitted object, count matrix, or cell frame.
   tar_target(state_decomposition_figures,
              state_decomposition_figure_data(microglia_state_response,
                                              microglia_state_gene_atlas),

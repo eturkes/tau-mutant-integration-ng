@@ -948,21 +948,18 @@ modality_offdiag_group_score_data <- function(modality_scatter_figures,
 
 # P6 Figure 10 -------------------------------------------------------------------------------
 # Compact, deterministic leaf for the gene-resolved state plate. The accepted occupancy panel is
-# retained. Every declared marker membership becomes an explicit gene row; a transcriptome-wide
-# joint interaction view supplies context. No programme score, fitted object, or count matrix
+# retained; the other panels expose direct paired state differences and conventional factorial
+# response plots. No programme score, fitted object, count matrix, or outcome-selected gene set
 # reaches the report.
 state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 0.05,
-                                            n_interaction_labels = 10L,
-                                            max_target_bytes = 5 * 1024^2) {
+                                            max_target_bytes = 6 * 1024^2) {
   stopifnot(
     is.list(state_response), identical(state_response$schema, "p6_state_response_v1"),
     is.list(state_response$occupancy),
-    is.list(gene_atlas), identical(gene_atlas$schema, "p6_state_gene_atlas_v1"),
+    is.list(gene_atlas), identical(gene_atlas$schema, "p6_state_gene_atlas_v2"),
     is.data.frame(gene_atlas$features), is.list(gene_atlas$effects),
     is.data.frame(gene_atlas$omnibus), is.data.frame(gene_atlas$markers),
     length(alpha) == 1L, is.finite(alpha), alpha == 0.05,
-    length(n_interaction_labels) == 1L, is.finite(n_interaction_labels),
-    n_interaction_labels >= 1L, n_interaction_labels == round(n_interaction_labels),
     length(max_target_bytes) == 1L, is.finite(max_target_bytes), max_target_bytes > 0
   )
 
@@ -999,27 +996,34 @@ state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 
             all(means$estimate >= 0 & means$estimate <= 1),
             all(means$ci_l <= means$estimate & means$estimate <= means$ci_r))
 
-  # B: all declared marker memberships, one visible gene row each. Four raw-count amyloid effects
-  # and three derived interaction contrasts come from the paired multivariate fit.
-  effect_meta <- data.frame(
-    contrast = c(
-      "homeostatic_maptki", "homeostatic_p301s", "dam_maptki", "dam_p301s",
-      "homeostatic_interaction", "dam_interaction", "dam_minus_homeostatic_interaction"
-    ),
-    effect_group = c(rep("Amyloid effect (NLGF - control)", 4L),
-                     rep("Tau modulation of amyloid effect", 3L)),
-    contrast_label = c(
-      "Homeostatic\nMAPTKI", "Homeostatic\nP301S", "DAM\nMAPTKI", "DAM\nP301S",
-      "Homeostatic", "DAM", "DAM - Homeo"
-    ),
+  # B/C share the paired atlas. C consumes the four state/background amyloid responses; B uses
+  # their two direct DAM-minus-Homeostatic contrasts, including paired-model CI and BH inference.
+  response_meta <- data.frame(
+    contrast = c("homeostatic_maptki", "dam_maptki",
+                 "homeostatic_p301s", "dam_p301s"),
+    background = c("MAPTKI", "MAPTKI", "P301S", "P301S"),
+    state = c("Homeostatic", "DAM", "Homeostatic", "DAM"),
     stringsAsFactors = FALSE
+  )
+  difference_meta <- data.frame(
+    background = c("MAPTKI", "P301S"),
+    homeostatic = c("homeostatic_maptki", "homeostatic_p301s"),
+    dam = c("dam_maptki", "dam_p301s"),
+    difference = c("dam_minus_homeostatic_maptki",
+                   "dam_minus_homeostatic_p301s"),
+    stringsAsFactors = FALSE
+  )
+  contrast_order <- c(
+    "homeostatic_maptki", "homeostatic_p301s", "dam_maptki", "dam_p301s",
+    "dam_minus_homeostatic_maptki", "dam_minus_homeostatic_p301s",
+    "homeostatic_interaction", "dam_interaction", "dam_minus_homeostatic_interaction"
   )
   matrix_names <- c("estimate", "se", "ci95_l", "ci95_r",
                     "p_value", "fdr", "treat_p", "treat_fdr")
   stopifnot(
     all(matrix_names %in% names(gene_atlas$effects)),
     all(vapply(gene_atlas$effects[matrix_names], is.matrix, logical(1))),
-    identical(colnames(gene_atlas$effects$estimate), effect_meta$contrast),
+    identical(colnames(gene_atlas$effects$estimate), contrast_order),
     all(vapply(gene_atlas$effects[matrix_names], function(x)
       identical(dimnames(x), dimnames(gene_atlas$effects$estimate)), logical(1)))
   )
@@ -1037,11 +1041,6 @@ state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 
             !anyDuplicated(genes), all(nzchar(genes)))
 
   programs <- names(canonical_microglia_markers)
-  program_labels <- c(
-    Homeostatic = "Homeostatic", DAM = "DAM", IFN = "IFN",
-    Proliferative = "Proliferative", MHC_APC = "MHC / APC"
-  )
-  stopifnot(identical(names(program_labels), programs))
   markers <- gene_atlas$markers
   .fig_require_cols(markers, c("program", "symbol", "gene", "present", "detected"),
                     "state gene atlas markers")
@@ -1055,44 +1054,39 @@ state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 
     !anyDuplicated(markers[c("program", "symbol")]),
     all(markers$detected <= markers$present)
   )
-  markers$program_label <- factor(
-    unname(program_labels[markers$program]), levels = unname(program_labels)
-  )
-  markers$gene_key <- paste(markers$symbol, markers$program, sep = "\r")
-  markers$gene_label <- factor(markers$gene_key, levels = rev(markers$gene_key))
-  stopifnot(!anyNA(markers$program_label), !anyNA(markers$gene_label),
-            !anyDuplicated(markers$gene_key))
-
-  marker_i <- match(markers$gene, genes)
-  detected <- markers$detected & !is.na(marker_i)
-  marker_rows <- lapply(seq_len(nrow(effect_meta)), function(j) {
-    estimate <- fdr <- treat_fdr <- rep(NA_real_, nrow(markers))
-    estimate[detected] <- gene_atlas$effects$estimate[marker_i[detected], j]
-    fdr[detected] <- gene_atlas$effects$fdr[marker_i[detected], j]
-    treat_fdr[detected] <- gene_atlas$effects$treat_fdr[marker_i[detected], j]
+  marker_genes <- unique(markers[c("symbol", "gene", "present", "detected")])
+  stopifnot(nrow(marker_genes) == length(unique(markers$gene)),
+            all(marker_genes$present), !anyNA(marker_genes$gene),
+            !anyDuplicated(marker_genes$gene), !anyDuplicated(marker_genes$symbol))
+  marker_i <- match(marker_genes$gene, genes)
+  detected <- marker_genes$detected & !is.na(marker_i)
+  stopifnot(identical(detected, marker_genes$detected))
+  marker_rows <- lapply(seq_len(nrow(response_meta)), function(j) {
+    contrast <- response_meta$contrast[[j]]
+    estimate <- ci_l <- ci_r <- fdr <- treat_fdr <- rep(NA_real_, nrow(marker_genes))
+    estimate[detected] <- gene_atlas$effects$estimate[marker_i[detected], contrast]
+    ci_l[detected] <- gene_atlas$effects$ci95_l[marker_i[detected], contrast]
+    ci_r[detected] <- gene_atlas$effects$ci95_r[marker_i[detected], contrast]
+    fdr[detected] <- gene_atlas$effects$fdr[marker_i[detected], contrast]
+    treat_fdr[detected] <- gene_atlas$effects$treat_fdr[marker_i[detected], contrast]
     data.frame(
-      markers[c("program", "program_label", "symbol", "gene", "gene_key", "gene_label")],
+      marker_genes[c("symbol", "gene")],
       detected = detected,
-      contrast = effect_meta$contrast[[j]],
-      effect_group = effect_meta$effect_group[[j]],
-      contrast_label = effect_meta$contrast_label[[j]],
-      estimate = estimate, fdr = fdr, treat_fdr = treat_fdr,
+      contrast = contrast,
+      background = response_meta$background[[j]],
+      state = response_meta$state[[j]],
+      estimate = estimate, ci_l = ci_l, ci_r = ci_r,
+      fdr = fdr, treat_fdr = treat_fdr,
       row.names = NULL, stringsAsFactors = FALSE
     )
   })
   marker_effects <- do.call(rbind, marker_rows)
   rownames(marker_effects) <- NULL
-  marker_effects$program_label <- factor(
-    as.character(marker_effects$program_label), levels = unname(program_labels)
+  marker_effects$background <- factor(
+    marker_effects$background, levels = difference_meta$background
   )
-  marker_effects$gene_label <- factor(
-    as.character(marker_effects$gene_label), levels = rev(markers$gene_key)
-  )
-  marker_effects$effect_group <- factor(
-    marker_effects$effect_group, levels = unique(effect_meta$effect_group)
-  )
-  marker_effects$contrast_label <- factor(
-    marker_effects$contrast_label, levels = effect_meta$contrast_label
+  marker_effects$state <- factor(
+    marker_effects$state, levels = c("Homeostatic", "DAM")
   )
   marker_effects$support <- factor(
     ifelse(!marker_effects$detected, "below count filter",
@@ -1103,66 +1097,125 @@ state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 
                "not supported", "below count filter")
   )
   detected_effects <- marker_effects[marker_effects$detected, , drop = FALSE]
-  .fig_assert_finite(detected_effects, c("estimate", "fdr", "treat_fdr"),
+  .fig_assert_finite(detected_effects, c("estimate", "ci_l", "ci_r", "fdr", "treat_fdr"),
                      "state gene atlas detected marker effects")
   stopifnot(
-    nrow(marker_effects) == nrow(markers) * nrow(effect_meta),
+    nrow(marker_effects) == nrow(marker_genes) * nrow(response_meta),
+    all(detected_effects$ci_l <= detected_effects$estimate &
+          detected_effects$estimate <= detected_effects$ci_r),
     all(is.na(marker_effects$estimate[!marker_effects$detected])),
+    all(is.na(marker_effects$ci_l[!marker_effects$detected])),
+    all(is.na(marker_effects$ci_r[!marker_effects$detected])),
     all(is.na(marker_effects$fdr[!marker_effects$detected])),
     all(is.na(marker_effects$treat_fdr[!marker_effects$detected])),
     !anyNA(marker_effects$support)
   )
 
-  # C: all filter-passing genes in the two-state interaction plane. Label selection is a
-  # deterministic descriptive layer; the joint two-df BH result remains explicit for every point.
-  marker_programs <- tapply(
-    markers$program[markers$detected], markers$gene[markers$detected],
-    function(x) paste(unique(x), collapse = " + ")
+  # Evidence-first ordering changes facet position only; all 52 declared unique genes remain fixed.
+  gene_summary <- do.call(rbind, lapply(
+    split(detected_effects, detected_effects$gene),
+    function(x) {
+      state_difference <- vapply(difference_meta$background, function(background) {
+        z <- x[as.character(x$background) == background, , drop = FALSE]
+        stopifnot(nrow(z) == 2L, identical(as.character(z$state), c("Homeostatic", "DAM")))
+        z$estimate[[2L]] - z$estimate[[1L]]
+      }, numeric(1))
+      data.frame(
+        gene = x$gene[[1L]], symbol = x$symbol[[1L]],
+        any_minimum = any(x$treat_fdr <= alpha), any_nonzero = any(x$fdr <= alpha),
+        max_state_difference = max(abs(state_difference)),
+        max_abs_effect = max(abs(x$estimate)),
+        row.names = NULL, stringsAsFactors = FALSE
+      )
+    }
+  ))
+  gene_summary <- gene_summary[order(
+    !gene_summary$any_minimum, !gene_summary$any_nonzero,
+    -gene_summary$max_state_difference, -gene_summary$max_abs_effect,
+    gene_summary$symbol, gene_summary$gene, method = "radix"
+  ), , drop = FALSE]
+  marker_effects$gene_label <- factor(marker_effects$symbol, levels = gene_summary$symbol)
+  stopifnot(nrow(gene_summary) == sum(marker_genes$detected),
+            !anyDuplicated(gene_summary$gene), !anyDuplicated(gene_summary$symbol),
+            !anyNA(marker_effects$gene_label[marker_effects$detected]))
+
+  # Every filter-passing gene appears once per tau background. The ordinate and CI are direct
+  # paired contrasts; point labels are restricted to predeclared markers clearing treat BH.
+  marker_gene_ids <- marker_genes$gene[marker_genes$detected]
+  state_difference <- do.call(rbind, lapply(seq_len(nrow(difference_meta)), function(j) {
+    meta <- difference_meta[j, , drop = FALSE]
+    homeostatic_effect <- gene_atlas$effects$estimate[, meta$homeostatic]
+    dam_effect <- gene_atlas$effects$estimate[, meta$dam]
+    difference_effect <- gene_atlas$effects$estimate[, meta$difference]
+    stopifnot(max(abs(difference_effect - (dam_effect - homeostatic_effect))) <= 1e-10)
+    data.frame(
+      gene = genes, symbol = features$symbol,
+      background = meta$background,
+      mean_effect = (homeostatic_effect + dam_effect) / 2,
+      state_difference = difference_effect,
+      ci_l = gene_atlas$effects$ci95_l[, meta$difference],
+      ci_r = gene_atlas$effects$ci95_r[, meta$difference],
+      fdr = gene_atlas$effects$fdr[, meta$difference],
+      treat_fdr = gene_atlas$effects$treat_fdr[, meta$difference],
+      is_declared_marker = genes %in% marker_gene_ids,
+      row.names = NULL, stringsAsFactors = FALSE
+    )
+  }))
+  state_difference$background <- factor(
+    state_difference$background, levels = difference_meta$background
   )
-  scatter <- data.frame(
-    gene = genes, symbol = features$symbol,
-    homeostatic_effect = gene_atlas$effects$estimate[, "homeostatic_interaction"],
-    dam_effect = gene_atlas$effects$estimate[, "dam_interaction"],
-    response_fdr = omnibus$response_fdr,
-    interaction_p = omnibus$interaction_p,
-    interaction_fdr = omnibus$interaction_fdr,
-    row.names = NULL, stringsAsFactors = FALSE
+  state_difference$support <- factor(
+    ifelse(state_difference$treat_fdr <= alpha, "minimum-effect FDR <= 0.05",
+           ifelse(state_difference$fdr <= alpha, "nonzero FDR <= 0.05",
+                  "not supported")),
+    levels = c("minimum-effect FDR <= 0.05", "nonzero FDR <= 0.05", "not supported")
   )
-  scatter$marker_programs <- unname(marker_programs[scatter$gene])
-  scatter$marker_programs[is.na(scatter$marker_programs)] <- ""
-  scatter$is_declared_marker <- nzchar(scatter$marker_programs)
-  scatter$interaction_supported <- scatter$interaction_fdr <= alpha
-  label_order <- order(
-    scatter$interaction_p,
-    -pmax(abs(scatter$homeostatic_effect), abs(scatter$dam_effect)),
-    scatter$symbol, scatter$gene, method = "radix"
+  state_difference$label <- ifelse(
+    state_difference$is_declared_marker & state_difference$treat_fdr <= alpha,
+    state_difference$symbol, ""
   )
-  label_i <- utils::head(label_order, min(as.integer(n_interaction_labels), nrow(scatter)))
-  scatter$label <- ""
-  scatter$label[label_i] <- scatter$symbol[label_i]
   .fig_assert_finite(
-    scatter,
-    c("homeostatic_effect", "dam_effect", "response_fdr",
-      "interaction_p", "interaction_fdr"),
-    "state gene interaction geometry"
+    state_difference,
+    c("mean_effect", "state_difference", "ci_l", "ci_r", "fdr", "treat_fdr"),
+    "state gene direct-difference map"
   )
-  stopifnot(!anyNA(scatter$symbol), all(nzchar(scatter$symbol)),
-            sum(nzchar(scatter$label)) == length(label_i))
+  stopifnot(
+    nrow(state_difference) == length(genes) * nrow(difference_meta),
+    all(state_difference$ci_l <= state_difference$state_difference &
+          state_difference$state_difference <= state_difference$ci_r),
+    !anyNA(state_difference$symbol), all(nzchar(state_difference$symbol)),
+    !anyNA(state_difference$support)
+  )
+
+  difference_fdr_counts <- tapply(
+    state_difference$fdr <= alpha, state_difference$background, sum
+  )
+  difference_minimum_counts <- tapply(
+    state_difference$treat_fdr <= alpha, state_difference$background, sum
+  )
+  stopifnot(
+    identical(as.integer(difference_fdr_counts),
+              as.integer(gene_atlas$audit$state_difference_fdr_supported)),
+    identical(as.integer(difference_minimum_counts),
+              as.integer(gene_atlas$audit$state_difference_minimum_supported))
+  )
 
   out <- list(
-    schema = "p6_state_decomposition_figures_v3",
+    schema = "p6_state_decomposition_figures_v4",
     occupancy = list(unit = unit, means = means),
-    gene_atlas = list(marker_effects = marker_effects, interaction_scatter = scatter),
+    gene_atlas = list(marker_effects = marker_effects, state_difference = state_difference),
     provenance = list(
       source_targets = c("microglia_state_response", "microglia_state_gene_atlas"),
-      defining_contrast = "interaction",
+      defining_contrasts = difference_meta$difference,
       method = gene_atlas$audit$method,
       marker_program_order = programs,
-      contrast_order = effect_meta$contrast,
+      response_contrast_order = response_meta$contrast,
       selection = paste(
-        "all declared marker memberships are fixed rows; no marker row is outcome-selected;",
-        n_interaction_labels, "scatter labels are the lowest joint-interaction p-values"
+        "all 52 declared unique marker genes are fixed before outcomes;",
+        "B contains every filter-passing gene in both backgrounds;",
+        "labels require declared-marker status plus direct minimum-effect BH support"
       ),
+      marker_ordering = "minimum-effect, then nonzero evidence, state difference, magnitude, symbol",
       alpha = alpha,
       gene_lfc = gene_atlas$audit$thresholds$gene_lfc,
       occupancy_margin = occupancy_interaction$margin
@@ -1170,14 +1223,19 @@ state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 
     audit = list(
       row_counts = c(
         occupancy_unit = nrow(unit), occupancy_means = nrow(means),
-        marker_effects = nrow(marker_effects), interaction_scatter = nrow(scatter)
+        marker_effects = nrow(marker_effects), state_difference = nrow(state_difference)
       ),
       n_marker_memberships = nrow(markers),
-      n_marker_genes = length(unique(markers$gene[markers$present])),
-      n_marker_genes_detected = length(unique(markers$gene[markers$detected])),
-      n_response_fdr_supported = sum(scatter$response_fdr <= alpha),
-      n_interaction_fdr_supported = sum(scatter$interaction_supported),
-      n_interaction_labels = length(label_i),
+      n_marker_genes = nrow(marker_genes),
+      n_marker_genes_detected = sum(marker_genes$detected),
+      n_marker_response_minimum_genes = length(unique(
+        detected_effects$gene[detected_effects$treat_fdr <= alpha]
+      )),
+      n_state_difference_fdr_supported = difference_fdr_counts,
+      n_state_difference_minimum_supported = difference_minimum_counts,
+      n_marker_state_difference_minimum_rows = sum(nzchar(state_difference$label)),
+      n_interaction_fdr_supported = sum(omnibus$interaction_fdr <= alpha),
+      below_filter_symbols = marker_genes$symbol[!marker_genes$detected],
       all_declared_markers_represented = TRUE,
       fixed_marker_rows = TRUE,
       deterministic_order = TRUE,

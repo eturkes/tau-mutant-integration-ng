@@ -990,9 +990,10 @@ run_microglia_state_response <- function(substrate, pb_de_microglia,
 
 # Paired multivariate gene atlas for Figure 10. The two state pseudobulks from each biological
 # unit are fitted together: voomLmFit estimates sample quality weights + the within-unit
-# correlation while protecting residual df for state-specific zero counts. Seven prespecified
-# contrasts expose the four state/background amyloid responses, both state interactions, and their
-# direct difference. Only compact matrices cross the target boundary; all fitted objects stay local.
+# correlation while protecting residual df for state-specific zero counts. Nine prespecified
+# contrasts expose the four state/background amyloid responses, their two paired state differences,
+# both state interactions, and the interaction difference. Only compact matrices cross the target
+# boundary; all fitted objects stay local.
 state_gene_atlas_contrasts <- function(fd, states = c("Homeostatic", "DAM")) {
   stopifnot(
     is.list(fd), is.matrix(fd$design), is.matrix(fd$contrasts),
@@ -1003,6 +1004,7 @@ state_gene_atlas_contrasts <- function(fd, states = c("Homeostatic", "DAM")) {
   contrast_names <- c(
     "homeostatic_maptki", "homeostatic_p301s",
     "dam_maptki", "dam_p301s",
+    "dam_minus_homeostatic_maptki", "dam_minus_homeostatic_p301s",
     "homeostatic_interaction", "dam_interaction", "dam_minus_homeostatic_interaction"
   )
   design_names <- unlist(lapply(states, function(state)
@@ -1017,6 +1019,10 @@ state_gene_atlas_contrasts <- function(fd, states = c("Homeostatic", "DAM")) {
     out[rows, paste0(prefix, "_p301s")] <- fd$contrasts[, "nlgf_in_p301s"]
     out[rows, paste0(prefix, "_interaction")] <- fd$contrasts[, "interaction"]
   }
+  out[, "dam_minus_homeostatic_maptki"] <-
+    out[, "dam_maptki"] - out[, "homeostatic_maptki"]
+  out[, "dam_minus_homeostatic_p301s"] <-
+    out[, "dam_p301s"] - out[, "homeostatic_p301s"]
   out[, "dam_minus_homeostatic_interaction"] <-
     out[, "dam_interaction"] - out[, "homeostatic_interaction"]
   tol <- 1e-12
@@ -1025,6 +1031,9 @@ state_gene_atlas_contrasts <- function(fd, states = c("Homeostatic", "DAM")) {
               (out[, "homeostatic_p301s"] - out[, "homeostatic_maptki"]))) <= tol,
     max(abs(out[, "dam_interaction"] -
               (out[, "dam_p301s"] - out[, "dam_maptki"]))) <= tol,
+    max(abs(out[, "dam_minus_homeostatic_interaction"] -
+              (out[, "dam_minus_homeostatic_p301s"] -
+                 out[, "dam_minus_homeostatic_maptki"]))) <= tol,
     qr(out)$rank == 4L
   )
   out
@@ -1142,6 +1151,18 @@ run_microglia_state_gene_atlas <- function(substrate, min_count = 5, gene_lfc = 
     all(p_value >= 0 & p_value <= 1), all(fdr >= 0 & fdr <= 1),
     all(treat_p >= 0 & treat_p <= 1), all(treat_fdr >= 0 & treat_fdr <= 1)
   )
+  algebra_tol <- 1e-10
+  stopifnot(
+    max(abs(estimate[, "dam_minus_homeostatic_maptki"] -
+              (estimate[, "dam_maptki"] - estimate[, "homeostatic_maptki"]))) <=
+      algebra_tol,
+    max(abs(estimate[, "dam_minus_homeostatic_p301s"] -
+              (estimate[, "dam_p301s"] - estimate[, "homeostatic_p301s"]))) <=
+      algebra_tol,
+    max(abs(estimate[, "dam_minus_homeostatic_interaction"] -
+              (estimate[, "dam_interaction"] -
+                 estimate[, "homeostatic_interaction"]))) <= algebra_tol
+  )
 
   response_coef <- c("homeostatic_maptki", "homeostatic_p301s",
                      "dam_maptki", "dam_p301s")
@@ -1185,7 +1206,7 @@ run_microglia_state_gene_atlas <- function(substrate, min_count = 5, gene_lfc = 
 
   messages <- unique(c(fit_cap$messages, inference_cap$messages))
   out <- list(
-    schema = "p6_state_gene_atlas_v1",
+    schema = "p6_state_gene_atlas_v2",
     features = features,
     effects = matrices,
     omnibus = omnibus,
@@ -1203,6 +1224,16 @@ run_microglia_state_gene_atlas <- function(substrate, min_count = 5, gene_lfc = 
       sample_weight_range = range(fit$targets$sample.weight),
       response_fdr_supported = sum(omnibus$response_fdr <= alpha),
       interaction_fdr_supported = sum(omnibus$interaction_fdr <= alpha),
+      state_difference_fdr_supported = stats::setNames(
+        colSums(fdr[, c("dam_minus_homeostatic_maptki",
+                       "dam_minus_homeostatic_p301s"), drop = FALSE] <= alpha),
+        c("MAPTKI", "P301S")
+      ),
+      state_difference_minimum_supported = stats::setNames(
+        colSums(treat_fdr[, c("dam_minus_homeostatic_maptki",
+                             "dam_minus_homeostatic_p301s"), drop = FALSE] <= alpha),
+        c("MAPTKI", "P301S")
+      ),
       messages = messages,
       thresholds = list(min_count = min_count, gene_lfc = gene_lfc, alpha = alpha,
                         max_target_bytes = max_target_bytes),

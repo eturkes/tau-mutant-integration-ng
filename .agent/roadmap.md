@@ -219,6 +219,17 @@ No active plan. Confirm the next roadmap direction with the user before writing 
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-16 Figure 10 factorial-estimation redesign DONE (web-researched user review) ->
+  replaced the null-heavy interaction plane and overplotted parallel profiles with two
+  paired state-difference maps and 48 shared-scale per-gene factorial small multiples.
+  Extended the paired atlas from seven to nine contrasts so MAPTKI/P301S each carry a
+  direct DAM-minus-Homeostatic estimate, 95% CI, BH FDR, and treat-BH FDR. Across 14,438
+  genes these yield 122/70 nonzero and 11/7 minimum-effect hits; six declared-marker/
+  background rows are directly supported and labelled, while the joint two-interaction
+  family remains zero. Fixed 52-gene selection, accepted occupancy, four filter failures,
+  Figures 1-9, 34-target DAG, and dependency lock retained. Atlas/figure leaves =
+  7,200,788/1,186,516 serialized and 22,798,000/4,452,584 in-memory bytes; warning-fatal
+  render green, semantic alt/fold audit green, and 10-page Chromium print + 220-dpi page 10 clean.
 - 2026-07-16 Figure 10 programme-free profile pass DONE (ad hoc user review) ->
   removed marker-programme categories from the response display. B2m's duplicate
   membership is collapsed for plotting; the two estimand-family fields overlay 48 unique

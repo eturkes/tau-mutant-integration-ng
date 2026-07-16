@@ -21,8 +21,8 @@ sdf <- state_decomposition_figures
 ```{r}
 #| label: plot-state-decomposition
 #| fig-width: 18.8
-#| fig-height: 9.8
-#| fig-alt: "Three-panel microglial state-response plate: replicate DAM occupancy; a transcriptome-wide scatter comparing gene-level interaction effects in Homeostatic and DAM cells; and two ungrouped parallel-coordinate fields showing 48 filter-passing declared genes across four state-by-tau amyloid effects and three interaction contrasts, with minimum-effect genes labelled and four below-filter genes listed."
+#| fig-height: 12.2
+#| fig-alt: "Three-panel microglial state-response plate: replicate DAM occupancy; two transcriptome-wide state-difference maps plotting paired DAM-minus-Homeostatic amyloid-response effects against mean response in MAPTKI and P301S backgrounds, with direct 95% confidence intervals for supported declared markers; and 48 gene-level factorial small multiples connecting Homeostatic and DAM amyloid-response estimates across the two tau backgrounds with 95% confidence intervals."
 state_decomposition_figure_plot(sdf)
 ```
 

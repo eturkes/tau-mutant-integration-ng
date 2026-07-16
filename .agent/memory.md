@@ -39,15 +39,15 @@ occupancy/state/delta/rotation/bridge inference tables + diagnostics.
 ordinary/weighted inference, compact S2 evidence, and the fixed classifier; it is now fully
 report-disconnected, and no score aggregate reaches Figure 10.
 `microglia_state_gene_atlas` jointly fits 32 state pseudobulks with paired-unit
-`edgeR::voomLmFit`, sample-quality weights, robust limma eBayes/treat, seven explicit gene
-contrasts, and joint four-response/two-interaction moderated-F families.
-`state_decomposition_figures` is the 0.546 MB Figure 10 leaf: accepted raw-unit DAM
-occupancy, all 53 declared memberships/52 unique genes x seven raw-count contrasts, and
-14,438-gene two-state interaction geometry. Figure 10 collapses B2m's duplicate membership
-for display and renders 48 detected genes in two ungrouped parallel-coordinate fields; nine
-minimum-effect genes are direct-labelled and four below-filter genes are listed. Ten scatter
-labels use lowest joint p. The two-tier plate is 18.8 x 9.8 inches; marker-response encoding
-uses gene-level lines without programme categories.
+`edgeR::voomLmFit`, sample-quality weights, robust limma eBayes/treat, nine explicit gene
+contrasts (four responses, two paired state differences, three interactions), and joint
+four-response/two-interaction moderated-F families. `state_decomposition_figures` is the
+1.19 MB Figure 10 leaf: accepted raw-unit DAM occupancy, 52 unique declared genes x four
+response effects with 95% CI, and 14,438 genes x two paired state-difference backgrounds.
+Figure 10 renders direct DAM-minus-Homeostatic response maps plus 48 shared-scale gene-level
+factorial small multiples; six direct minimum-effect marker/background rows carry labels +
+CI, B2m is display-collapsed, and four below-filter genes are listed. The two-tier plate is
+18.8 x 12.2 inches; marker selection remains fixed and programme-free.
 `sections/state-decomposition.qmd` loads only this leaf after the stable Figures 1-9;
 no Seurat/S4 parent or fitted model crosses the report boundary.
 
