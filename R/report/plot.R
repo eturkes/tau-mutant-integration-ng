@@ -2370,81 +2370,7 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.68))
     )
 
-  # B: every declared marker membership is visible. Fill is the paired-model gene effect; glyphs
-  # distinguish ordinary nonzero evidence from the predeclared |log2FC| >= 0.5 treat test.
-  detected_effects <- marker_effects[marker_effects$detected, , drop = FALSE]
-  supported_effects <- marker_effects[
-    marker_effects$support %in% c("minimum-effect FDR <= 0.05", "nonzero FDR <= 0.05"),
-    , drop = FALSE
-  ]
-  filtered_effects <- marker_effects[!marker_effects$detected, , drop = FALSE]
-  effect_limit <- max(abs(detected_effects$estimate))
-  if (!is.finite(effect_limit) || effect_limit <= 0) effect_limit <- 1
-  p_atlas <- ggplot2::ggplot(
-    marker_effects, ggplot2::aes(contrast_label, gene_label)
-  ) +
-    ggplot2::geom_tile(
-      ggplot2::aes(fill = estimate), colour = "#F8F5ED", linewidth = 0.22
-    ) +
-    ggplot2::geom_point(
-      data = supported_effects,
-      mapping = ggplot2::aes(x = contrast_label, y = gene_label, shape = support),
-      inherit.aes = FALSE,
-      size = 1.65, stroke = 0.52, fill = "#FCFAF5", colour = "#20242A"
-    ) +
-    ggplot2::geom_point(
-      data = filtered_effects,
-      ggplot2::aes(contrast_label, gene_label),
-      inherit.aes = FALSE, shape = 4, size = 1.45, stroke = 0.48, colour = "#7F7A70"
-    ) +
-    ggplot2::facet_grid(
-      rows = ggplot2::vars(program_label), cols = ggplot2::vars(effect_group),
-      scales = "free", space = "free", switch = "y"
-    ) +
-    scale_fill_rwb(
-      midpoint = 0, limits = c(-effect_limit, effect_limit), oob = scales::squish,
-      na.value = "#E7E2D8", name = "gene log2FC"
-    ) +
-    ggplot2::scale_shape_manual(
-      values = c("minimum-effect FDR <= 0.05" = 23, "nonzero FDR <= 0.05" = 21),
-      breaks = c("minimum-effect FDR <= 0.05", "nonzero FDR <= 0.05"),
-      drop = TRUE, name = "gene evidence"
-    ) +
-    ggplot2::scale_x_discrete(drop = TRUE) +
-    ggplot2::scale_y_discrete(labels = function(x) sub("\r.*$", "", x)) +
-    ggplot2::labs(
-      title = "B | Gene-resolved amyloid response atlas",
-      subtitle = paste(
-        "Paired multivariate voom; all 52 declared genes shown",
-        "(B2m has two memberships); x = below count filter"
-      ),
-      x = NULL, y = NULL
-    ) +
-    ggplot2::guides(
-      fill = ggplot2::guide_colourbar(
-        order = 1, barheight = grid::unit(0.48, "lines"),
-        barwidth = grid::unit(4.3, "lines")
-      ),
-      shape = ggplot2::guide_legend(order = 2, override.aes = list(size = 2.2))
-    ) +
-    panel_theme +
-    ggplot2::theme(
-      panel.grid = ggplot2::element_blank(),
-      panel.spacing.x = grid::unit(5, "pt"),
-      panel.spacing.y = grid::unit(1.2, "pt"),
-      strip.placement = "outside",
-      strip.text.y.left = ggplot2::element_text(
-        angle = 0, hjust = 0.5, size = ggplot2::rel(0.57)
-      ),
-      strip.text.x = ggplot2::element_text(size = ggplot2::rel(0.61)),
-      axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.58)),
-      axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.57), lineheight = 0.92),
-      legend.position = "bottom", legend.box = "horizontal",
-      legend.box.just = "left", legend.spacing.x = grid::unit(5, "pt"),
-      legend.margin = ggplot2::margin(t = 1)
-    )
-
-  # C: the two state-specific interaction coefficients for every filter-passing gene. The
+  # B: the two state-specific interaction coefficients for every filter-passing gene. The
   # identity line is equal tau modulation in both states; distance from it is the direct state
   # difference. Labels are descriptive and never substitute for the joint two-df BH result.
   highlighted <- scatter[nzchar(scatter$label), , drop = FALSE]
@@ -2490,7 +2416,7 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       ylim = c(-geometry_limit, geometry_limit), clip = "off"
     ) +
     ggplot2::labs(
-      title = "C | Gene-level interaction geometry",
+      title = "B | Gene-level interaction geometry",
       subtitle = paste0(
         format(nrow(scatter), big.mark = ","), " genes | joint 2-df FDR <= 0.05: ",
         figures$audit$n_interaction_fdr_supported,
@@ -2505,7 +2431,174 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       axis.text = ggplot2::element_text(size = ggplot2::rel(0.66))
     )
 
-  left <- patchwork::wrap_plots(list(p_occ, p_geometry), ncol = 1,
-                                heights = c(0.78, 1.22))
-  patchwork::wrap_plots(list(left, p_atlas), nrow = 1, widths = c(0.76, 1.64))
+  # C: compact parallel-coordinate profiles replace the fixed-row matrix. Each detected marker
+  # membership is one line in each estimand family; line styling records the strongest evidence
+  # attained anywhere along that profile. Direct labels are restricted to minimum-effect genes.
+  profile_effects <- marker_effects[marker_effects$detected, , drop = FALSE]
+  filtered_effects <- unique(marker_effects[
+    !marker_effects$detected, c("program_label", "symbol"), drop = FALSE
+  ])
+  effect_levels <- levels(marker_effects$contrast_label)
+  stopifnot(length(effect_levels) == 7L, nrow(profile_effects) > 0L)
+  profile_effects$effect_index <- match(
+    as.character(profile_effects$contrast_label), effect_levels
+  )
+  profile_effects$profile_panel <- factor(
+    ifelse(
+      as.character(profile_effects$effect_group) ==
+        "Amyloid effect (NLGF - control)",
+      "Amyloid effect\n(NLGF - control)",
+      "Tau modulation\nof amyloid effect"
+    ),
+    levels = c("Amyloid effect\n(NLGF - control)",
+               "Tau modulation\nof amyloid effect")
+  )
+  profile_effects$profile_key <- interaction(
+    profile_effects$program, profile_effects$gene_label,
+    profile_effects$profile_panel, drop = TRUE
+  )
+  evidence_rank <- c(
+    "not supported" = 1L,
+    "nonzero FDR <= 0.05" = 2L,
+    "minimum-effect FDR <= 0.05" = 3L
+  )
+  profile_rank <- tapply(
+    unname(evidence_rank[as.character(profile_effects$support)]),
+    profile_effects$profile_key, max
+  )
+  stopifnot(!anyNA(profile_rank), all(profile_rank %in% seq_along(evidence_rank)))
+  profile_effects$profile_support <- factor(
+    names(evidence_rank)[profile_rank[as.character(profile_effects$profile_key)]],
+    levels = names(evidence_rank)
+  )
+  minimum_effects <- profile_effects[
+    profile_effects$support == "minimum-effect FDR <= 0.05", , drop = FALSE
+  ]
+  if (nrow(minimum_effects)) {
+    minimum_effects <- do.call(rbind, lapply(
+      split(minimum_effects, as.character(minimum_effects$profile_key)),
+      function(x) x[which.min(x$treat_fdr), , drop = FALSE]
+    ))
+    rownames(minimum_effects) <- NULL
+  }
+  effect_limit <- max(abs(profile_effects$estimate))
+  if (!is.finite(effect_limit) || effect_limit <= 0) effect_limit <- 1
+
+  filter_notes <- data.frame()
+  if (nrow(filtered_effects)) {
+    filter_notes <- stats::aggregate(
+      as.character(filtered_effects$symbol),
+      list(program_label = filtered_effects$program_label),
+      function(x) paste(unique(x), collapse = ", ")
+    )
+    names(filter_notes)[[2L]] <- "symbols"
+    filter_notes$profile_panel <- factor(
+      "Amyloid effect\n(NLGF - control)", levels = levels(profile_effects$profile_panel)
+    )
+    filter_notes$effect_index <- 2.5
+    filter_notes$estimate <- -0.90 * effect_limit
+    filter_notes$label <- paste0("below filter: ", filter_notes$symbols)
+  }
+
+  effect_axis_labels <- c(
+    "Homeo\nMAPTKI", "Homeo\nP301S", "DAM\nMAPTKI", "DAM\nP301S",
+    "Homeo", "DAM", "DAM - Homeo"
+  )
+  p_profiles <- ggplot2::ggplot(
+    profile_effects,
+    ggplot2::aes(effect_index, estimate, group = profile_key)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#BDB7AC", linewidth = 0.32) +
+    ggplot2::geom_line(
+      ggplot2::aes(
+        colour = profile_support, linewidth = profile_support,
+        alpha = profile_support
+      ),
+      lineend = "round", linejoin = "round"
+    ) +
+    ggrepel::geom_text_repel(
+      data = minimum_effects,
+      ggplot2::aes(label = symbol),
+      seed = 614L, size = 2.45, colour = "#6F2437",
+      box.padding = 0.18, point.padding = 0.10, min.segment.length = 0,
+      segment.colour = "#A9818B", segment.size = 0.24,
+      max.overlaps = Inf, show.legend = FALSE
+    ) +
+    ggplot2::geom_text(
+      data = filter_notes,
+      ggplot2::aes(effect_index, estimate, label = label),
+      inherit.aes = FALSE, hjust = 0.5, vjust = 1,
+      colour = "#716D65", fontface = "italic", size = 2.25,
+      show.legend = FALSE
+    ) +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(program_label), cols = ggplot2::vars(profile_panel),
+      scales = "free_x", space = "free_x", switch = "y"
+    ) +
+    ggplot2::scale_x_continuous(
+      breaks = seq_along(effect_axis_labels), labels = effect_axis_labels,
+      expand = ggplot2::expansion(mult = c(0.08, 0.13))
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(-effect_limit, effect_limit),
+      breaks = scales::breaks_pretty(n = 3),
+      expand = ggplot2::expansion(mult = c(0.02, 0.02))
+    ) +
+    ggplot2::scale_colour_manual(
+      values = c(
+        "not supported" = "#AAA59C",
+        "nonzero FDR <= 0.05" = "#2F78A0",
+        "minimum-effect FDR <= 0.05" = "#A63A50"
+      ),
+      breaks = rev(names(evidence_rank)), name = "strongest profile evidence"
+    ) +
+    ggplot2::scale_linewidth_manual(
+      values = c(
+        "not supported" = 0.34,
+        "nonzero FDR <= 0.05" = 0.62,
+        "minimum-effect FDR <= 0.05" = 0.88
+      ),
+      guide = "none"
+    ) +
+    ggplot2::scale_alpha_manual(
+      values = c(
+        "not supported" = 0.42,
+        "nonzero FDR <= 0.05" = 0.78,
+        "minimum-effect FDR <= 0.05" = 0.96
+      ),
+      guide = "none"
+    ) +
+    ggplot2::labs(
+      title = "C | Marker-gene effect profiles",
+      subtitle = paste(
+        "53 programme memberships (52 genes); lines = paired-model effects;",
+        "direct labels = minimum-effect FDR <= 0.05"
+      ),
+      x = NULL, y = "gene log2FC"
+    ) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(
+        order = 1, override.aes = list(linewidth = c(0.88, 0.62, 0.50), alpha = 1)
+      )
+    ) +
+    panel_theme +
+    ggplot2::theme(
+      panel.grid.major.x = ggplot2::element_line(colour = "#E8E3DA", linewidth = 0.22),
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.spacing.x = grid::unit(8, "pt"),
+      panel.spacing.y = grid::unit(2.2, "pt"),
+      strip.placement = "outside",
+      strip.text.y.left = ggplot2::element_text(
+        angle = 0, hjust = 0.5, size = ggplot2::rel(0.58)
+      ),
+      strip.text.x = ggplot2::element_text(size = ggplot2::rel(0.64)),
+      axis.text = ggplot2::element_text(size = ggplot2::rel(0.55)),
+      axis.text.x = ggplot2::element_text(lineheight = 0.90),
+      legend.position = "bottom", legend.justification = "left",
+      legend.margin = ggplot2::margin(t = 1)
+    )
+
+  top <- patchwork::wrap_plots(list(p_occ, p_geometry), nrow = 1,
+                               widths = c(0.68, 1.32))
+  patchwork::wrap_plots(list(top, p_profiles), ncol = 1, heights = c(0.92, 1.08))
 }

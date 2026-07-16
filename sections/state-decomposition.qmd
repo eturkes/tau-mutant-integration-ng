@@ -7,7 +7,7 @@ suppressPackageStartupMessages({
 })
 options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 targets::tar_source()                                # plot theme + compact Figure 10 helper
-targets::tar_load(state_decomposition_figures)       # compact fixed-row leaf only
+targets::tar_load(state_decomposition_figures)       # compact gene-effect leaf only
 knitr::opts_chunk$set(message = FALSE)
 theme_set(theme_tau())
 
@@ -21,8 +21,8 @@ sdf <- state_decomposition_figures
 ```{r}
 #| label: plot-state-decomposition
 #| fig-width: 18.8
-#| fig-height: 18
-#| fig-alt: "Three-panel microglial state-response plate: replicate DAM occupancy; a gene-labelled heatmap showing all 52 declared marker genes across four state-by-tau amyloid effects and three interaction contrasts; and a transcriptome-wide scatter comparing gene-level interaction effects in Homeostatic and DAM cells."
+#| fig-height: 12.2
+#| fig-alt: "Three-panel microglial state-response plate: replicate DAM occupancy; a transcriptome-wide scatter comparing gene-level interaction effects in Homeostatic and DAM cells; and compact parallel-coordinate profiles showing all filter-passing declared marker memberships across four state-by-tau amyloid effects and three interaction contrasts, with minimum-effect genes labelled and four below-filter genes listed."
 state_decomposition_figure_plot(sdf)
 ```
 

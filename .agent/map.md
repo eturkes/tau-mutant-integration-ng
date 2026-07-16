@@ -78,13 +78,15 @@ P6 state decomposition (closed; report-integrated):
   family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
   live payload = 0.20 MB in memory / 0.054 MB serialized.
 - `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_response, microglia_state_gene_atlas)`
-  emits the Figure 10 contract: accepted 16-unit occupancy; 371 fixed atlas cells = all
+  emits the Figure 10 contract: accepted 16-unit occupancy; 371 fixed effect rows = all
   53 declared memberships/52 unique marker genes x seven gene contrasts; and 14,438
   transcriptome-wide two-state interaction points with ten deterministic descriptive
-  labels. All markers remain visible (four count-filter failures = crossed cells); no
-  marker row is outcome-selected. Payload = 3.20 MB in memory / 0.546 MB serialized,
+  labels. All markers remain represented and the marker membership set stays fixed
+  independently of outcomes. Payload = 3.20 MB in memory / 0.546 MB serialized,
   deterministic + parent-isolated. `state_decomposition_figure_plot()` draws occupancy,
-  gene atlas, and interaction geometry. The report names only this compact leaf.
+  interaction geometry, and programme-faceted parallel-coordinate profiles for 49 detected
+  memberships; nine minimum-effect genes are direct-labelled and four filter failures are
+  listed. The report names only this compact leaf.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -189,8 +191,9 @@ Report:
 - `sections/modality.qmd`: GeoMx AOI metadata-track diagnostic,
   vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
-- `sections/state-decomposition.qmd`: three-panel retained-state occupancy, explicit 52-gene
-  response atlas, and transcriptome-wide two-state interaction-geometry plate.
+- `sections/state-decomposition.qmd`: compact two-tier plate with retained-state occupancy,
+  transcriptome-wide two-state interaction geometry, and line-profile fans spanning all
+  declared marker memberships.
 
 Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
 `report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.

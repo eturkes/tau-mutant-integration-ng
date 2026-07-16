@@ -43,9 +43,10 @@ report-disconnected, and no score aggregate reaches Figure 10.
 contrasts, and joint four-response/two-interaction moderated-F families.
 `state_decomposition_figures` is the 0.546 MB Figure 10 leaf: accepted raw-unit DAM
 occupancy, all 53 declared memberships/52 unique genes x seven raw-count contrasts, and
-14,438-gene two-state interaction geometry. Four marker genes below the count filter stay
-visible as crossed cells; marker rows are fixed, while ten scatter labels use lowest joint p.
-`state_decomposition_figure_plot()` draws the three-panel gene-resolved plate.
+14,438-gene two-state interaction geometry. Figure 10 renders the 49 detected memberships
+as programme-faceted parallel-coordinate effect profiles; nine minimum-effect genes are
+direct-labelled and four below-filter genes are listed. Ten scatter labels use lowest joint p.
+The two-tier plate is 18.8 x 12.2 inches; marker-response encoding uses lines only.
 `sections/state-decomposition.qmd` loads only this leaf after the stable Figures 1-9;
 no Seurat/S4 parent or fitted model crosses the report boundary.
 

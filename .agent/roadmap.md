@@ -34,8 +34,8 @@ REPORT SCOPE (current 2026-07-16): the rendered report = TEN visible figures wit
 `Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
-one appended P6 retained-state response plate (DAM occupancy, explicit 52-gene
-state/background response atlas, and 14,438-gene two-state interaction geometry) +
+one appended P6 retained-state response plate (DAM occupancy, 53-membership/52-gene
+state/background profile fan, and 14,438-gene two-state interaction geometry) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
 figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
@@ -219,6 +219,14 @@ No active plan. Confirm the next roadmap direction with the user before writing 
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-16 Figure 10 profile-fan compaction DONE (ad hoc user review) ->
+  replaced the 53-membership x seven-effect tile/glyph matrix with programme-faceted
+  parallel-coordinate lines. Forty-nine detected memberships retain their paired-model
+  effects; line colour/weight encodes the strongest evidence within each estimand family,
+  nine minimum-effect genes are direct-labelled, and the four filter failures are listed.
+  Reordered interaction geometry to panel B, placed profiles across panel C, and reduced
+  the two-tier plate from 18.8 x 18 to 18.8 x 12.2 inches. Data/model/schema retained;
+  warning-fatal report render green.
 - 2026-07-16 Figure 10 gene-resolved redesign DONE (ad hoc user review) ->
   replaced every programme-score panel with a paired multivariate raw-count gene atlas.
   `microglia_state_gene_atlas` jointly fits 32 Homeostatic/DAM pseudobulks from 16
