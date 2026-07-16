@@ -84,9 +84,9 @@ P6 state decomposition (closed; report-integrated):
   labels. All markers remain represented and the marker membership set stays fixed
   independently of outcomes. Payload = 3.20 MB in memory / 0.546 MB serialized,
   deterministic + parent-isolated. `state_decomposition_figure_plot()` draws occupancy,
-  interaction geometry, and programme-faceted parallel-coordinate profiles for 49 detected
-  memberships; nine minimum-effect genes are direct-labelled and four filter failures are
-  listed. The report names only this compact leaf.
+  interaction geometry, and two ungrouped parallel-coordinate fields for 48 detected unique
+  genes; B2m's duplicate membership is display-collapsed, nine minimum-effect genes are
+  direct-labelled, and four filter failures are listed. The report names only this compact leaf.
 
 P2 trajectory:
 - `microglia_trajectory <- build_activation_trajectory(microglia_annotated)`
@@ -192,8 +192,8 @@ Report:
   vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
 - `sections/state-decomposition.qmd`: compact two-tier plate with retained-state occupancy,
-  transcriptome-wide two-state interaction geometry, and line-profile fans spanning all
-  declared marker memberships.
+  transcriptome-wide two-state interaction geometry, and ungrouped line-profile fields
+  spanning all declared marker genes.
 
 Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
 `report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.

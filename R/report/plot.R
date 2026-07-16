@@ -2431,12 +2431,17 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       axis.text = ggplot2::element_text(size = ggplot2::rel(0.66))
     )
 
-  # C: compact parallel-coordinate profiles replace the fixed-row matrix. Each detected marker
-  # membership is one line in each estimand family; line styling records the strongest evidence
-  # attained anywhere along that profile. Direct labels are restricted to minimum-effect genes.
-  profile_effects <- marker_effects[marker_effects$detected, , drop = FALSE]
-  filtered_effects <- unique(marker_effects[
-    !marker_effects$detected, c("program_label", "symbol"), drop = FALSE
+  # C: programme-free parallel coordinates. Collapse the one duplicate membership (B2m) so each
+  # declared gene is represented once; line styling records the strongest evidence attained
+  # anywhere within its estimand family. Direct labels are restricted to minimum-effect genes.
+  gene_effects <- unique(marker_effects[c(
+    "gene", "symbol", "detected", "effect_group", "contrast_label",
+    "estimate", "fdr", "treat_fdr", "support"
+  )])
+  stopifnot(nrow(gene_effects) == figures$audit$n_marker_genes * 7L)
+  profile_effects <- gene_effects[gene_effects$detected, , drop = FALSE]
+  filtered_effects <- unique(gene_effects[
+    !gene_effects$detected, "symbol", drop = FALSE
   ])
   effect_levels <- levels(marker_effects$contrast_label)
   stopifnot(length(effect_levels) == 7L, nrow(profile_effects) > 0L)
@@ -2454,8 +2459,7 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
                "Tau modulation\nof amyloid effect")
   )
   profile_effects$profile_key <- interaction(
-    profile_effects$program, profile_effects$gene_label,
-    profile_effects$profile_panel, drop = TRUE
+    profile_effects$gene, profile_effects$profile_panel, drop = TRUE
   )
   evidence_rank <- c(
     "not supported" = 1L,
@@ -2486,12 +2490,10 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
 
   filter_notes <- data.frame()
   if (nrow(filtered_effects)) {
-    filter_notes <- stats::aggregate(
-      as.character(filtered_effects$symbol),
-      list(program_label = filtered_effects$program_label),
-      function(x) paste(unique(x), collapse = ", ")
+    filter_notes <- data.frame(
+      symbols = paste(unique(filtered_effects$symbol), collapse = ", "),
+      stringsAsFactors = FALSE
     )
-    names(filter_notes)[[2L]] <- "symbols"
     filter_notes$profile_panel <- factor(
       "Amyloid effect\n(NLGF - control)", levels = levels(profile_effects$profile_panel)
     )
@@ -2532,8 +2534,7 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       show.legend = FALSE
     ) +
     ggplot2::facet_grid(
-      rows = ggplot2::vars(program_label), cols = ggplot2::vars(profile_panel),
-      scales = "free_x", space = "free_x", switch = "y"
+      cols = ggplot2::vars(profile_panel), scales = "free_x", space = "free_x"
     ) +
     ggplot2::scale_x_continuous(
       breaks = seq_along(effect_axis_labels), labels = effect_axis_labels,
@@ -2571,7 +2572,7 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
     ggplot2::labs(
       title = "C | Marker-gene effect profiles",
       subtitle = paste(
-        "53 programme memberships (52 genes); lines = paired-model effects;",
+        "52 declared genes; lines = paired-model effects;",
         "direct labels = minimum-effect FDR <= 0.05"
       ),
       x = NULL, y = "gene log2FC"
@@ -2586,13 +2587,8 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
       panel.grid.major.x = ggplot2::element_line(colour = "#E8E3DA", linewidth = 0.22),
       panel.grid.minor = ggplot2::element_blank(),
       panel.spacing.x = grid::unit(8, "pt"),
-      panel.spacing.y = grid::unit(2.2, "pt"),
-      strip.placement = "outside",
-      strip.text.y.left = ggplot2::element_text(
-        angle = 0, hjust = 0.5, size = ggplot2::rel(0.58)
-      ),
-      strip.text.x = ggplot2::element_text(size = ggplot2::rel(0.64)),
-      axis.text = ggplot2::element_text(size = ggplot2::rel(0.55)),
+      strip.text.x = ggplot2::element_text(size = ggplot2::rel(0.70)),
+      axis.text = ggplot2::element_text(size = ggplot2::rel(0.62)),
       axis.text.x = ggplot2::element_text(lineheight = 0.90),
       legend.position = "bottom", legend.justification = "left",
       legend.margin = ggplot2::margin(t = 1)
@@ -2600,5 +2596,5 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
 
   top <- patchwork::wrap_plots(list(p_occ, p_geometry), nrow = 1,
                                widths = c(0.68, 1.32))
-  patchwork::wrap_plots(list(top, p_profiles), ncol = 1, heights = c(0.92, 1.08))
+  patchwork::wrap_plots(list(top, p_profiles), ncol = 1, heights = c(1.10, 0.90))
 }

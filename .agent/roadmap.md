@@ -34,8 +34,8 @@ REPORT SCOPE (current 2026-07-16): the rendered report = TEN visible figures wit
 `Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
-one appended P6 retained-state response plate (DAM occupancy, 53-membership/52-gene
-state/background profile fan, and 14,438-gene two-state interaction geometry) +
+one appended P6 retained-state response plate (DAM occupancy, ungrouped 52-gene
+state/background profile fields, and 14,438-gene two-state interaction geometry) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
 figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
@@ -219,6 +219,12 @@ No active plan. Confirm the next roadmap direction with the user before writing 
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-16 Figure 10 programme-free profile pass DONE (ad hoc user review) ->
+  removed marker-programme categories from the response display. B2m's duplicate
+  membership is collapsed for plotting; the two estimand-family fields overlay 48 unique
+  filter-passing gene profiles, direct-label nine minimum-effect genes, and list the four
+  filter failures. Reduced the plate from 18.8 x 12.2 to 18.8 x 9.8 inches. Figure payload,
+  models, inference, and Figures 1-9 retained; warning-fatal report render green.
 - 2026-07-16 Figure 10 profile-fan compaction DONE (ad hoc user review) ->
   replaced the 53-membership x seven-effect tile/glyph matrix with programme-faceted
   parallel-coordinate lines. Forty-nine detected memberships retain their paired-model
