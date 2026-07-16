@@ -205,6 +205,10 @@ Report:
 Live stack = rv-managed R + project-local Quarto + targets. No committed Python/uv
 surface unless a future report-producing step earns it.
 
+Iteration mode = rapid + failure-tolerant. User owns figure inspection. Codex skips
+Chromium/PDF/PNG visual QA and optional test/check gates; run only the minimum command
+needed to produce a requested artifact or diagnose a concrete failure.
+
 Fresh bootstrap:
 1. `scripts/bootstrap/sysdeps.sh`
 2. `scripts/bootstrap/rv.sh`
