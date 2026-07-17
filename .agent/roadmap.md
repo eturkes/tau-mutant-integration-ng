@@ -52,12 +52,13 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active plan: none
+## Active milestone: none
 
 P6 microglial state composition versus regulation closed 2026-07-14 ->
 `.agent/completed/p6_state_decomposition_plan_2026-07-14.md`.
 
-No active plan. Confirm the next roadmap direction with the user before writing a plan.
+No active milestone. `/session-prompt` enters its PLANNING direction gate and confirms
+the next roadmap direction with the user before changing repository state.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -1312,6 +1313,12 @@ No active plan. Confirm the next roadmap direction with the user before writing 
   plot guide stack, shifted the inner plot title right to align with it, enlarged the title,
   and added vertical title padding; the special centered Figure 10 heading also gets slightly
   larger padded spacing.
+
+- 2026-07-18 infra Claude workflow restore: restored `CLAUDE.md`, `/session-prompt`,
+  shared `.claude/settings.json`, committed `.serena/`, and Claude-transcript headroom;
+  retired the Codex-only `AGENTS.md` surface and synchronized live memory/map/README.
+  Based on the prior Claude restore (`f946306`) and its removal (`ec39639`), updated for
+  the current 272K coordinator/Agent workflow and explicit no-active-milestone gate.
 
 ## Context ledger (per work-unit session)
 Retro-recorded from session transcripts (this metric was meant to be logged per unit at the time, but

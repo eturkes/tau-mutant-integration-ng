@@ -1,61 +1,16 @@
 #!/bin/sh
-# Codex context gauge -> "N% used/window" from newest Codex JSONL session for this cwd.
-# Override: CODEX_SESSION_FILE=/path/session.jsonl CODEX_CONTEXT_WINDOW=200000 .agent/context.sh
-root="${CODEX_HOME:-$HOME/.codex}/sessions"
-cwd=$(pwd -P)
-f="${CODEX_SESSION_FILE:-}"
-
-if [ -z "$f" ] && [ -d "$root" ]; then
-  f=$(
-    find "$root" -type f -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null |
-      sort -rn |
-      while IFS= read -r row; do
-        p=${row#* }
-        first=$(sed -n '1p' "$p" 2>/dev/null)
-        pcwd=$(printf '%s\n' "$first" | jq -r '(.payload.cwd // .cwd // empty)' 2>/dev/null)
-        [ "$pcwd" = "$cwd" ] && { printf '%s\n' "$p"; break; }
-      done
-  )
-fi
-
-u=""
-cw=""
-if [ -n "$f" ] && [ -r "$f" ]; then
-  u=$(
-    jq -s '
-      [ .[] |
-        select(.type == "event_msg" and .payload.type == "token_count") |
-        .payload.info |
-        (.last_token_usage.input_tokens // .total_token_usage.input_tokens // empty)
-      ] | last // empty
-    ' "$f" 2>/dev/null
-  )
-  cw=$(
-    jq -s '
-      [ .[] |
-        select(.type == "event_msg" and .payload.type == "token_count") |
-        (.payload.info.model_context_window // empty)
-      ] | last // empty
-    ' "$f" 2>/dev/null
-  )
-
-  if [ -z "$u" ]; then
-    u=$(
-      jq -s '
-        def usage:
-          .message.usage? // .payload.message.usage? // .payload.usage? //
-          .response.usage? // .payload.response.usage? // .usage?;
-        def total:
-          (.input_tokens // .prompt_tokens // 0) +
-          (.cache_creation_input_tokens // 0) +
-          (.cache_read_input_tokens // 0);
-        [ .[] | usage | select(type == "object") | total ] | last // empty
-      ' "$f" 2>/dev/null
-    )
-  fi
-fi
-
-w="${CODEX_CONTEXT_WINDOW:-${cw:-200000}}"
+# Context gauge → "N% used/window" (tokens) from the live Claude Code transcript = headroom. Window = 272K; auto-compaction triggers at 90% (~245K).
+# Sums the last assistant turn's real API tokens (input+cache_creation+cache_read+output) = that request's
+# occupancy floor for the NEXT turn — the dominant, authoritative headroom signal. It far exceeds the visible
+# conversation: sys-prompt/tools/CLAUDE.md + injected reminders + prior-turn redacted extended-thinking ride in
+# the cached input, none shown in the .jsonl. A high reading is REAL occupancy, not inflated accounting.
+transcript_root="$HOME/.claude/projects"
+f=$(find "$transcript_root" -mindepth 2 -maxdepth 2 -type f -name "$CLAUDE_CODE_SESSION_ID.jsonl" -print -quit 2>/dev/null)
+# fallback (no session id): newest transcript in THIS project's dir only, never another project's
+project_transcripts="$transcript_root/$(pwd -P | tr '/.' '-')"
+[ -n "$f" ] || f=$(find "$project_transcripts" -maxdepth 1 -type f -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null | sort -nr | cut -d ' ' -f 2- | head -1)
+u=$(jq -n 'last(inputs|select(.type=="assistant" and .isSidechain!=true and .message.model!="<synthetic>" and (.message.usage|type)=="object")|.message.usage|.input_tokens+.cache_creation_input_tokens+.cache_read_input_tokens+.output_tokens)//empty' "$f" 2>/dev/null)
+w=272000
 awk -v u="$u" -v w="$w" '
 function h(n){ if(n>=1000000){s=sprintf("%.1fM",n/1000000);sub(/\.0M$/,"M",s);return s}
               return sprintf("%dK",int(n/1000+0.5)) }

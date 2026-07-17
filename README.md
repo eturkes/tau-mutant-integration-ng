@@ -36,10 +36,12 @@ outside Git under `storage/data/`.
 Several leading-dot/underscore names are contracts, not parallel source trees:
 
 - `.agent/` = tracked project memory, roadmap, live map, and decision history.
+- `.claude/` = shared Claude Code settings and `/session-prompt` command.
+- `.serena/` = project language-server configuration and read exclusions.
 - `_targets.R` = targets pipeline entrypoint; `_targets.yaml` redirects its
   generated store to `storage/targets/`.
 - `_quarto.yml` = Quarto project configuration.
 
-Project conventions and live wiring are in `AGENTS.md`, `.agent/memory.md`, and
+Project conventions and live wiring are in `CLAUDE.md`, `.agent/memory.md`, and
 `.agent/map.md`. Historical plans and paths remain historical records rather
 than current layout documentation.

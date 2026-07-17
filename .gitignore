@@ -34,3 +34,8 @@ Rplots.pdf
 # generic Python artefacts
 __pycache__/
 *.py[cod]
+
+# Claude Code state: track shared settings + commands; ignore local/runtime files.
+/.claude/*
+!/.claude/settings.json
+!/.claude/commands/

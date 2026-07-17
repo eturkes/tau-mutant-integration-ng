@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.git/**)",
+      "Read(./.venv/**)",
+      "Read(./rv/library/**)",
+      "Read(./tools/**)",
+      "Read(./_targets/**)",
+      "Read(./report/**)",
+      "Read(./_freeze/**)",
+      "Read(./.quarto/**)",
+      "Read(./.serena/cache/**)",
+      "Read(./.tokensave/**)",
+      "Read(./storage/data/**)",
+      "Read(./storage/cache/**)",
+      "Read(./storage/logs/**)",
+      "Read(./storage/qa/**)",
+      "Read(./storage/targets/**)",
+      "Read(./.agent/completed/**)",
+      "Read(./assets/fonts/**)",
+      "Read(./*.html)",
+      "Read(**/*.woff2)"
+    ]
+  }
+}

@@ -206,8 +206,11 @@ warnings are treated as real failures.
 ## Tracked vs Ignored
 
 Tracked live source/config:
-- `README.md`, `AGENTS.md`
-- `.agent/{memory,map,roadmap,history,archive_digest}.md` + `.agent/completed/`
+- `README.md`, `CLAUDE.md`
+- `.claude/settings.json`, `.claude/commands/session-prompt.md`
+- `.serena/.gitignore`, `.serena/project.yml`
+- `.agent/{memory.md,map.md,roadmap.md,history.md,archive_digest.md,context.sh}` +
+  `.agent/completed/`
 - `_targets.R`, `_targets.yaml`, `_quarto.yml`, `index.qmd`, `sections/`, `R/`,
   `assets/`, `scripts/`
 - `rproject.toml`, `rv.lock`, `.Rprofile`, `rv/scripts/*.R`
@@ -215,4 +218,4 @@ Tracked live source/config:
 Ignored/generated/heavy:
 - `.git/`, `rv/library/`, `report/`, `_freeze/`, `.quarto/`
 - `storage/{data,cache,logs,qa,targets}/` and legacy/default `_targets/`
-- project-local env caches and rendered/static artefacts.
+- project-local env caches, Claude local/runtime state, and rendered/static artefacts.
