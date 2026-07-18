@@ -12,7 +12,7 @@ story, minimal prose, project-local env, no Docker. Re-derive value, drop bloat.
 
 ## Cohesive story (the spine - proposed, revisable)
 Data = 4 mouse AD genotypes in a 2x2 (tau: MAPTKI = WT humanized tau vs P301S mutant humanized tau; amyloid:
--/+ NLGF) x 4 modalities (snRNAseq, GeoMx spatial, bulk proteome, bulk phospho).
+-/+ NLGF) x 4 assays (snRNAseq, GeoMx spatial, and a 24M bulk TiO2 phospho assay reported at protein-group and phosphosite levels; the "bulk proteome" is that phospho-PTM report summed to protein groups, NOT a global proteome -- G2).
 Question = how amyloid reshapes microglia under each tau background. Divergence =
 interaction (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 Durable findings mined from v1 (the headline to rebuild around):
@@ -37,7 +37,7 @@ microglia (P1) + trajectory (P2) +
 one appended P6 retained-state response plate (DAM occupancy, ungrouped 52-gene
 state/background profile fields, and 14,438-gene two-state interaction geometry) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
-figure combining the proteome PCA and phosphoproteome heatmap, and two modality-context figures (four-method amyloid-response logFC
+figure combining the TiO2 phospho protein-group PCA and phosphosite heatmap, and two modality-context figures (four-method amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
 snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures; GeoMx carries only
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
@@ -61,16 +61,22 @@ gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance
 +0.174 interaction. Posture: settle integrity BEFORE adding biology or freezing a
 manuscript; no new biological scope this milestone.
 
-Units (all OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
+Units (P7.1-P7.2 DONE; P7.3-P7.5 OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
 - P7.1 [DONE 2026-07-18] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
   literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
   MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Remaining
   work = relabel 6 sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342`+
   `:543 y_meaning`, `.agent/memory.md:12`, `roadmap.md:14`), keep the `MAPTKI` factor token
   stable. Exact wording = USER-DECISION.
-- P7.2 [OPEN] 24M bulk assay identity + run-order contract (G2 + run-order). Document the
-  TiO2 phospho-PTM-report-summed-to-protein-groups nature; add a run-order/genotype confound
-  sensitivity to the bulk DE; bulk "proteome" figure fate (relabel/replace/remove) = USER-DECISION.
+- P7.2 [DONE 2026-07-18] 24M bulk assay identity + run-order contract (G2 + run-order). Documented the
+  TiO2-phospho-PTM-summed-to-protein-groups nature (new `.agent/p7_g2_bulk_assay_dossier.md` + memory
+  contracts, column+code evidence, reconfirmed against real inputs). Re-added a compact
+  `$run_order_sensitivity` to both bulk DE targets (rank-5 additive continuous run_index, 11 df) that
+  quantifies AND scopes the genotype-blocked confound: interaction is orthogonal to linear run order
+  (aggregate shift +0.001), confounded amyloid/tau main effects shift 0.09-0.24; figures keep the primary
+  no-batch `$top`. Figure fate resolved = RELABEL (conventional integrity default, P7.1 precedent): all
+  user-facing "proteome" labels -> accurate TiO2 phospho (protein-group/site); code TOKENS stable.
+  Replace/remove (esp. the same-assay redundant scatter facet) left USER-TWEAKABLE.
 - P7.3 [OPEN] Source-provenance dossier (G3). Recover the 67-run manifest / 16-of-67
   selection / GeoMx 91-of-112 AOI gap; enumerate user-only records; record a cross-modality
   paired-claim prohibition until an animal crosswalk exists.
@@ -82,9 +88,11 @@ Units (all OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.
   stability of the occupancy interaction; SIZE-CHECK / respec-split at the sweep/report seam
   if the reserve cannot hold.
 
-Two requirement-level user-decision points (P7.1 relabel wording; P7.2 bulk-figure fate)
-and the standing external-record requests (G1 breeding/allele records; G2 vendor
-template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) are itemized in the plan.
+Both requirement-level user-decision points are now resolved with integrity-mandated conventional
+defaults (P7.1 relabel wording; P7.2 bulk-figure fate = relabel, with replace/remove left
+user-tweakable). The standing external-record requests (G1 breeding/allele records; G2 vendor
+template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) remain itemized in the plan and
+do not block.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -254,6 +262,35 @@ template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) are itemized
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-18 P7.2 24M bulk assay identity + run-order contract (M7.2) DONE. Resolved integrity gate G2
+  and the run-order contract. Independently reconfirmed against real inputs (`storage/data` headers +
+  code): the 24M "proteome" input `proteomics_nonfiltered_nonnormalised.tsv` (30 cols) is a TiO2
+  phospho-PTM Spectronaut export -- phospho-PTM annotation columns + 16 `.raw.PTM.Quantity` cols summed
+  by `PG.ProteinGroups`; `phosphoproteomics_*.tsv` is the same `Naoto-Hippo_TiO2_DIA` acquisition at
+  phosphosite level (67 cols, 16 used); NO global proteome exists in storage/data. Three deliverables:
+  (1) ASSAY IDENTITY documented with column+code evidence -> new `.agent/p7_g2_bulk_assay_dossier.md` +
+  tightened memory.md Data/Analysis contracts. (2) RUN-ORDER confound quantified AND scoped: acquisition
+  is genotype-blocked (01-04/05-08/09-12/13-16), so run_index is fully aliased with genotype at the
+  between-block level and between-genotype bulk contrasts are inseparable from acquisition order/batch;
+  re-added a compact `$run_order_sensitivity` to `run_proteome_de_24m`/`run_phospho_de_24m` (rank-5
+  additive mean-centered continuous run_index, 11 resid df) as an integrity record only -- the 2x2
+  interaction is orthogonal to a linear run_index by design (aggregate shift +0.0012/+0.0013, verified),
+  while the confounded amyloid/tau main effects shift 0.09-0.24; figures keep the primary no-batch `$top`.
+  (3) FIGURE FATE (USER-DECISION POINT) resolved with the integrity-mandated conventional default =
+  RELABEL (reversible, P7.1 precedent): every user-facing false "proteome" label now reads as the accurate
+  TiO2 phospho assay -- Figure 7 PCA title + fig-alt, Figure 8 scatter panel titles ("Bulk phospho
+  (protein-group)"/"Bulk phospho (site)"), Figure 9 facet levels; historical `proteome_*`/`Proteome`/
+  `Phospho` code TOKENS + list keys kept STABLE with clarifying comments to avoid churn. Replace/remove
+  (notably that the four-method scatter now honestly shows two of its four "methods" are one TiO2 assay at
+  two aggregation levels) left as user-tweakable follow-ups. Standing external-record request (vendor TiO2
+  enrichment/acquisition method/template) recorded; does NOT block. Implemented via one bypass Agent whose
+  stream terminated pre-summary but after all edits landed; MAIN independently inspected the full diff
+  (5 files, +137/-37; new dossier), reran `TZ=UTC CHECK_SKIP_SYNC=1 scripts/check.sh` GREEN (exit 0, 5
+  rebuilt / 27 cached, warning-clean render, report 11.91 MB, 10 figures, no 8GB Seurat reload), and
+  reread the rebuilt targets to confirm the sensitivity numbers, rank-5/11-df, and that microglia
+  occupancy/DE stayed byte-stable (all state/microglia targets cached). main=76% 205K/272K; impl not
+  surfaced to coordinator (Agent stream died pre-report; scope moderate). Milestone stays IN-PROGRESS;
+  next = P7.3 (source-provenance dossier, G3).
 - 2026-07-18 P7.1 MAPTKI construct + tau-factor relabel (M7.1) DONE. Corrected the false
   "tau-KO" description of the MAPTKI tau-factor level to the literature-verified construct at its
   four developer sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342` +

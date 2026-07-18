@@ -257,6 +257,7 @@ trajectory_figure_data <- function(trajectory_report) {
   }, character(1))
 }
 
+# Historical helper token retained; it produces feature labels only and never an assay-name label.
 .fig_proteome_labels <- function(tt) {
   .fig_first_nonblank(if ("gene_first" %in% names(tt)) tt$gene_first else "",
                       if ("gene_symbols" %in% names(tt)) tt$gene_symbols else "",
@@ -269,16 +270,19 @@ trajectory_figure_data <- function(trajectory_report) {
                       tt$feature)
 }
 
+# Historical `proteome` symbols/keys stay stable, but this descriptor is the TiO2 phospho-PTM
+# report summed to protein groups rather than an independent global-proteome assay.
 proteome_modality_descriptor <- function(proteome_de_24m) {
   stopifnot(is.list(proteome_de_24m),
             is.matrix(proteome_de_24m$matrix), is.data.frame(proteome_de_24m$meta))
   list(
+    # `proteome` is an internal diagnostic tag retained for compatibility, not rendered text.
     pca = .fig_bulk_pca_data(proteome_de_24m$matrix, proteome_de_24m$meta,
                              label = "proteome"),
     provenance = list(
       n_features = nrow(proteome_de_24m$matrix),
       n_samples = ncol(proteome_de_24m$matrix),
-      display = "sample PCA of median-normalised protein-group intensities"
+      display = "sample PCA of median-normalised TiO2 phospho-PTM protein-group-sum intensities"
     )
   )
 }
@@ -344,9 +348,9 @@ phospho_modality_descriptor <- function(phospho_de_24m,
 # topTables come from ONE fit per modality (identical feature rows), aligned by the modality's
 # feature key. Compact per-modality frames {feature, label, gene_symbols, x, y, interaction}
 # -> the qmd reads this small target, never a heavy DE object. Feature keys / display labels
-# differ by assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, proteome =
-# protein group (gene_first label, all group symbols for group scoring), phospho =
-# parent-protein mean of phosphosite rows (best-fit gene label for display + scoring).
+# differ by assay: snRNAseq = Ensembl gene (mapped to symbol), GeoMx = gene symbol, the
+# historical Proteome key = TiO2 phospho-PTM protein-group sum (gene_first label, all group
+# symbols for scoring), and Phospho = parent-protein mean of TiO2 phosphosite rows.
 modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m,
                                          y_contrast = "nlgf_in_maptki",
@@ -483,12 +487,13 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       data  = pair(geomx_de$primary$top, "symbol",
                    function(tt) as.character(tt$symbol),
                    function(tt) as.character(tt$symbol), "GeoMx")),
+    # Historical list keys stay stable; displayed titles distinguish two levels of one TiO2 assay.
     Proteome = list(
-      title = "Bulk proteomics",
+      title = "Bulk phospho (protein-group)",
       data  = pair(proteome_de_24m$top, "feature", gene_first_label,
                    protein_group_genes, "proteome")),
     Phospho = list(
-      title = "Bulk phosphoproteomics",
+      title = "Bulk phospho (site)",
       data  = collapse_phospho_by_protein(pair(phospho_de_24m$top, "feature", site_id_label,
                                                phospho_gene, "phospho")))
   )
@@ -523,6 +528,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
   )
   descriptive <- list(
     GeoMx = list(sample_heatmap = geomx_de$sample_heatmap),
+    # Historical payload key retained; this is the TiO2 protein-group-sum view.
     Proteome = proteome_modality_descriptor(proteome_de_24m),
     Phospho = phospho_modality_descriptor(phospho_de_24m)
   )
@@ -553,11 +559,11 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
       phospho_parent_proteins = nrow(panels$Phospho$data),
       phospho_scatter = "phosphosite rows collapsed to best-fit parent proteins; x/y are arithmetic means across finite sites per protein",
       feature_key = c(snRNAseq = "Ensembl gene (symbol label)", GeoMx = "gene symbol",
-                      Proteome = "protein group (gene_first label)",
-                      Phospho = "parent protein mean of phosphosite rows (best-fit gene label)"),
+                      Proteome = "TiO2 phospho-PTM protein-group sum (gene_first label)",
+                      Phospho = "TiO2 parent-protein mean of phosphosite rows (best-fit gene label)"),
       source_targets = c("pb_de_microglia", "symbol_map", "geomx_de",
                          "proteome_de_24m", "phospho_de_24m"),
-      contract = "compact per-modality amyloid-response logFC pairs + shared-cutoff off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, proteome PCA, phosphoproteome heatmap; no heavy DE object"
+      contract = "compact per-modality amyloid-response logFC pairs + shared-cutoff off-diagonal functional-category aggregate scores + modality-native descriptive figure data: GeoMx sample heatmap, TiO2 phospho protein-group PCA, TiO2 phosphosite heatmap; no heavy DE object"
     )
   )
 }

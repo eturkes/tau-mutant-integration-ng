@@ -7,8 +7,9 @@ digests, `archive_digest.md`/branch `archive` for v1 mining.
 
 ## Current Scope
 
-Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome across
-4 AD mouse genotypes. Design = 2x2 tau x amyloid:
+Goal: integrate snRNAseq + GeoMx spatial + the 24M TiO2 phospho assay at
+protein-group-sum and phosphosite reporting levels across 4 AD mouse genotypes.
+Design = 2x2 tau x amyloid:
 - MAPTKI = wild-type humanized tau (human MAPT knock-in; NOT tau-KO)
 - P301S = mutant humanized tau (base-edited MAPT^P301S;Int10+3)
 - NLGF_MAPTKI = amyloid (App^NL-G-F) + WT humanized tau
@@ -45,8 +46,8 @@ Retired infrastructure remains absent: committed tests, Python/uv files,
 composition/sccomp/CmdStan target, P1 per-subpopulation DE target, prose inventory,
 stageR layer, mechanism/crossmodality/qc/story chapters and modules. Retained
 non-snRNAseq modality-native set = GeoMx sample heatmap (former Figure 10) + one bulk context plate
-combining the proteome PCA and phosphoproteome heatmap; proteome and phosphoproteome volcano plots are
-removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
+combining the TiO2 phospho protein-group-sum PCA and phosphosite heatmap; the historical Proteome/Phospho
+volcano plots are removed from the live report. The other GeoMx exploratory/native panels are historical only. Historical
 claims remain in git + `roadmap.md`; do not treat them as live pipeline contracts.
 
 P6 state decomposition closed 2026-07-14 and is report-integrated. Compact
@@ -87,8 +88,14 @@ Raw data facts:
   absent at source (`MAPT KI 1-1..1-7` missing, with slide-1 `P301SKI 1-1..1-5` also
   missing). Current loaders/descriptors exclude no AOIs; the gap predates this repo's
   live GeoMx model/report path.
-- Proteome/phospho TSVs: Spectronaut PTM exports. Current report uses the 24M 16-run
-  subset from `proteomics_sample_key.csv`.
+- The `proteomics_*.tsv` input is itself a TiO2 phospho-PTM Spectronaut export: it
+  carries phospho-PTM annotation columns plus 16 `.raw.PTM.Quantity` columns and is
+  summed by `PG.ProteinGroups` for the historical `proteome_*` layer. Both that
+  protein-group-sum layer and the phosphosite `phosphoproteomics_*.tsv` layer come
+  from the same TiO2 `Naoto-Hippo_TiO2_DIA` acquisition; the report uses the 24M
+  16-run subset from `proteomics_sample_key.csv`. NO global-proteome file exists in
+  `storage/data/`; `proteome_*` code tokens are historical stable names, not a claim
+  of an independent global-proteome assay.
 
 ## Scientific Spine
 
@@ -179,7 +186,17 @@ Trajectory:
 Modality context:
 - `R/analysis/modality_de.R` restores only primary DE needed for report figures:
   GeoMx voom/TMM with slide fixed effect + duplicateCorrelation plus the retained sample
-  heatmap descriptor; proteome/phospho limma-trend on log2 median-normalized 24M intensities.
+  heatmap descriptor; the historical `proteome` layer is the TiO2 phospho-PTM report
+  summed to `PG.ProteinGroups`, while `phospho` is the phosphosite view of the same
+  `Naoto-Hippo_TiO2_DIA` acquisition. Both use limma-trend on log2 median-normalized
+  24M intensities; no independent global-proteome assay exists.
+- The 24M run order is genotype-blocked (01-04 MAPTKI, 05-08 P301S, 09-12
+  NLGF_MAPTKI, 13-16 NLGF_P301S), so between-genotype effects cannot be separated
+  from acquisition order/batch. Primary bulk figures continue to use the no-batch
+  `$top` fits. Each bulk target also stores compact `$run_order_sensitivity` from a
+  rank-5 design with mean-centered continuous `run_index` (11 residual df); it captures
+  only within-acquisition linear drift, does not fix the alias, and keeps the interaction
+  aggregate shift approximately zero by design. The bulk layers are context-only.
 - `geomx_de$sample_heatmap` is descriptive only: the retained GeoMx modality-native figure is a compact AOI track
   atlas with AOI columns average-linkage clustered by the displayed first five DAM genes from the prior full-row order,
   then dendrogram-rotated by mean displayed DAM z-score
@@ -197,17 +214,19 @@ Modality context:
   cell-cell-adhesion, extracellular-matrix, motility/cytoskeleton, and broad immune/inflammatory residual buckets,
   predicted/unannotated + other-annotated no-role buckets
   are excluded, and each visible category label lists every retained scored feature in that category.
-  Current visible Figure 9 facets = snRNAseq + proteome + phosphoproteome inline; GeoMx has no retained
-  categorized group rows under the live shared-cutoff/filter rule.
-- Bulk context plate combines the proteome sample PCA with the phosphoproteome native heatmap. The
-  heatmap keeps 20 top mutant-tau amyloid phosphosite rows after excluding
+  Current visible Figure 9 facets = snRNAseq + bulk phospho (protein-group) + bulk phospho (site);
+  GeoMx has no retained categorized group rows under the live shared-cutoff/filter rule.
+- Bulk context plate combines the TiO2 phospho protein-group-sum sample PCA (historical
+  `Proteome` payload key) with the same assay's phosphosite heatmap. The heatmap keeps
+  20 top mutant-tau amyloid phosphosite rows after excluding
   parent genes `Plcb1` and `Arhgef7`, keeping the same effect direction as the top-ranked candidate,
   and silently collapsing exact duplicate log2 median-normalized profiles to the first ranked
   representative.
 - Retired GeoMx QC/normalization/ordination/gene-detection/spatial-program/contrast/ROI/decon
   figures are ledger history, not live report/path contracts.
-- Auxiliary SpatialDecon beta/abundance, run-index sensitivity, and broad mechanism/cross-modality
-  target families stay deleted.
+- Auxiliary SpatialDecon beta/abundance and broad mechanism/cross-modality target families
+  stay deleted. Bulk run-order sensitivity is now a compact field inside the two primary DE
+  targets only; it is not a target family and is not wired into any figure.
 
 Report:
 - `sections/{microglia,trajectory,modality,state-decomposition}.qmd`;

@@ -103,7 +103,8 @@ Modality context:
 - `phospho_de_24m <- run_phospho_de_24m(phospho, sample_key)`
 - `modality_scatter_figures <- modality_logfc_scatter_data(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
   carries the first-five-DAM-gene-clustered AOI design/DAM-gene track atlas through
-  `descriptive$GeoMx$sample_heatmap`, plus the proteome PCA and phosphoproteome heatmap payloads.
+  `descriptive$GeoMx$sample_heatmap`, plus the TiO2 phospho protein-group PCA and phosphosite heatmap
+  payloads (historical `Proteome`/`Phospho` keys; same TiO2 assay at two reporting levels).
   The amyloid-response scatter uses one shared off-diagonal feature cutoff: `|x-y| >= 3.5`.
   Figure 8 labels all points past the cutoff and draws all facets on one shared
   square coordinate range with a collected line legend for the dotted cutoff bands;
@@ -112,7 +113,7 @@ Modality context:
   term-family pass that separates complement/MHC, phagocytosis, and chemotaxis before broader
   cell-cell-adhesion/extracellular-matrix/motility and immune residual buckets, and each visible category label
   lists every retained scored feature.
-  The bulk context plate combines the proteome sample PCA with the phosphoproteome native heatmap.
+  The bulk context plate combines the TiO2 phospho protein-group-sum sample PCA with the same assay's phosphosite native heatmap.
   The heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
   median-normalized profiles to the first ranked representative without label suffixes.
@@ -164,10 +165,14 @@ Report:
   Heavy parents/fits stay out of target payloads.
 
 `R/analysis/modality_de.R`
-- Lean primary DE for GeoMx, 24M proteome, and 24M phosphosite data. GeoMx also emits
-  compact sample-heatmap fields for first-five-DAM-gene-clustered and mean-DAM-rotated
-  AOI layout plus compact design/DAM-gene tracks.
-  Auxiliary SpatialDecon beta/abundance, run-index, and sensitivity arms stay deleted.
+- Lean primary DE for GeoMx and the 24M TiO2 phospho assay: the historical `proteome_*` tokens
+  are protein-group sums of TiO2 phospho-PTM rows (`PG.ProteinGroups`), `phospho_*` is the
+  phosphosite view of the same acquisition. GeoMx also emits compact sample-heatmap fields for
+  first-five-DAM-gene-clustered and mean-DAM-rotated AOI layout plus compact design/DAM-gene tracks.
+  Both bulk DE producers carry a compact `$run_order_sensitivity` (rank-5 additive mean-centered
+  `run_index`, 11 residual df) as an integrity record only; the genotype-blocked acquisition means
+  run order is aliased with genotype, so figures keep the primary no-batch `$top`. Auxiliary
+  SpatialDecon beta/abundance and broad-family sensitivity arms stay deleted.
 
 `R/report/figures.R`
 - Compact figure-data builders for rendered slots only:
@@ -191,7 +196,7 @@ Report:
   genotype-faceted subpopulation UMAP, replicate-unit subpopulation composition.
 - `sections/trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `sections/modality.qmd`: GeoMx AOI metadata-track diagnostic,
-  vertically stacked proteome PCA / phosphoproteome heatmap descriptive figure,
+  vertically stacked TiO2 phospho protein-group PCA / phosphosite heatmap descriptive figure,
   four-method amyloid response scatter, functional-category score panel.
 - `sections/state-decomposition.qmd`: compact two-tier plate with retained-state occupancy,
   transcriptome-wide two-state interaction geometry, and ungrouped line-profile fields

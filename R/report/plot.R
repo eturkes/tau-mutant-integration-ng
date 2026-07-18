@@ -271,6 +271,8 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
   if (is.null(modality_levels)) modality_levels <- unique(as.character(x$modality))
   modality_plot_levels <- modality_levels
   modality_plot_levels[modality_plot_levels == "snRNAseq"] <- "snRNA"
+  modality_plot_levels[modality_plot_levels == "Proteome"] <- "Bulk phospho (protein-group)"
+  modality_plot_levels[modality_plot_levels == "Phospho"] <- "Bulk phospho (site)"
   x$modality_plot <- factor(
     modality_plot_levels[match(as.character(x$modality), modality_levels)],
     levels = modality_plot_levels
@@ -364,7 +366,7 @@ functional_group_score_plot <- function(group_summary, title = NULL) {
 
 # Modality-native descriptive plates -------------------------------------------------------
 # Live report uses the GeoMx DAM-gene AOI heatmap plus one bulk context plate:
-# proteome PCA beside the phosphoproteome abundance heatmap.
+# TiO2 phospho protein-group PCA beside the same assay's phosphosite abundance heatmap.
 
 geomx_qc_atlas_plot <- function(qc, title = "GeoMx AOI QC atlas") {
   stopifnot(is.list(qc), is.data.frame(qc$metrics), is.data.frame(qc$flag_counts))
@@ -2089,7 +2091,9 @@ geomx_spatial_modality_plot <- function(spatial, title = "GeoMx spatial AOIs") {
                         heights = c(1.12, 0.88))
 }
 
-proteome_pca_plot <- function(proteome, title = "Bulk proteome PCA") {
+# Historical function/argument names stay stable; data are TiO2 phospho-PTM rows summed to
+# protein groups, not an independent global-proteome assay.
+proteome_pca_plot <- function(proteome, title = "Bulk phospho (protein-group) PCA") {
   stopifnot(is.list(proteome), is.data.frame(proteome$pca))
   pca <- proteome$pca
   need <- c("pc1", "pc2", "pc1_var", "pc2_var", "genotype", "run_index")
@@ -2154,7 +2158,7 @@ phospho_site_heatmap_plot <- function(heatmap, title = "Top phosphosite abundanc
 }
 
 bulk_modality_context_plot <- function(proteome, phospho,
-                                       proteome_title = "Bulk proteome PCA",
+                                       proteome_title = "Bulk phospho (protein-group) PCA",
                                        phospho_title = "Top phosphosite z-score") {
   stopifnot(is.list(proteome), is.data.frame(proteome$pca),
             is.list(phospho), is.data.frame(phospho$heatmap))

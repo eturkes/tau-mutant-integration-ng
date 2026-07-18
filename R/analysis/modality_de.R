@@ -1,13 +1,14 @@
-# Differential expression for the three non-snRNAseq modalities (GeoMx spatial, 24M bulk
-# proteome, 24M bulk phosphosite), restored lean from the pre-teardown P4 crossmodality /
-# mechanism modules. SCOPE = the PRIMARY per-contrast topTables only: each producer returns
-# `$top[[contrast]]` (or `$primary$top[[contrast]]` for GeoMx) with a `logFC` column keyed by
-# the 5 canonical contrasts. The amyloid-response logFC scatter (R/report/figures.R ->
-# modality_logfc_scatter_data) reads `nlgf_in_maptki` (y) vs `nlgf_in_p301s` (x) from these.
-# The torn-down auxiliary arms (GeoMx unblocked / bio-unit-collapsed sensitivities +
-# SpatialDecon abundance fitting; proteome / phospho additive run-index sensitivity) stay
-# absent. The only GeoMx modality-native descriptor in the live report is the compact
-# DAM-gene AOI sample heatmap. Shared machinery reused from HEAD: fit_limma_log /
+# Differential expression for three non-snRNAseq report layers (GeoMx spatial, 24M TiO2
+# phospho-PTM protein-group sums, 24M phosphosites), restored lean from the pre-teardown P4
+# crossmodality / mechanism modules. SCOPE = PRIMARY per-contrast topTables for figures plus
+# a compact bulk run-order integrity record: each producer returns `$top[[contrast]]` (or
+# `$primary$top[[contrast]]` for GeoMx) with a `logFC` column keyed by the 5 canonical contrasts.
+# The amyloid-response logFC scatter (R/report/figures.R -> modality_logfc_scatter_data) reads
+# `nlgf_in_maptki` (y) vs `nlgf_in_p301s` (x) from these. The torn-down GeoMx unblocked /
+# bio-unit-collapsed and SpatialDecon abundance arms stay absent; bulk run-order sensitivity
+# is compact and never replaces the primary figure inputs. The only GeoMx modality-native
+# descriptor in the live report is the DAM-gene AOI sample heatmap. Shared machinery reused:
+# fit_limma_log /
 # median_normalise / prevalence_filter (R/analysis/de_pb.R), factorial_design / make_contrast_matrix
 # (R/core/design.R), match_intensity_columns / load_geomx / read_spectronaut_tsv /
 # proteomics_sample_meta (R/core/io.R). All calls namespace-qualified so the file sources cleanly
@@ -2135,7 +2136,7 @@ match_24m_bulk_columns <- function(tbl, sample_key, n_keep = 16L, modality = "bu
        matched = hits, n_expected = n_keep, n_matched = nrow(hits))
 }
 
-# --- 24M bulk proteome DE (protein-group-summed, log2 median-normalised, no batch) ----------
+# --- 24M TiO2 phospho-PTM protein-group-sum DE (historical "proteome" token; no batch) ------
 
 .split_gene_symbols <- function(x) {
   x <- trimws(as.character(x))
@@ -2273,12 +2274,79 @@ annotate_proteome_top_tables <- function(top, features) {
                                 residual_df = nrow(fd$design) - qr(fd$design)$rank))
 }
 
+.bulk_run_order_sensitivity <- function(mat, meta, primary_fit) {
+  stopifnot(is.matrix(mat), is.data.frame(meta), "run_index" %in% names(meta),
+            identical(colnames(mat), rownames(meta)),
+            !is.null(primary_fit$fit$coefficients))
+  fd <- factorial_design(meta, add_batch = FALSE)
+  run_index <- as.numeric(meta$run_index)
+  expected_run_index <- as.numeric(seq_len(nrow(meta)))
+  if (nrow(meta) != 16L || anyNA(run_index) ||
+      !identical(run_index, expected_run_index)) {
+    stop("bulk run_index must be the ordered 1:16 acquisition sequence", call. = FALSE)
+  }
+  run_index_centered <- run_index - mean(run_index)
+  names(run_index_centered) <- rownames(meta)
+  sensitivity_design <- cbind(fd$design, run_index = run_index_centered)
+  design_rank <- qr(sensitivity_design)$rank
+  if (ncol(sensitivity_design) != 5L || design_rank != 5L) {
+    stop("bulk additive run_index sensitivity design must have rank 5", call. = FALSE)
+  }
+  sensitivity_contrasts <- rbind(
+    fd$contrasts,
+    run_index = stats::setNames(rep(0, ncol(fd$contrasts)), colnames(fd$contrasts))
+  )
+  stopifnot(identical(rownames(sensitivity_contrasts), colnames(sensitivity_design)),
+            identical(colnames(sensitivity_contrasts), colnames(fd$contrasts)))
+  adjusted_fit <- fit_limma_log(mat, sensitivity_design, sensitivity_contrasts)
+  contrast_names <- colnames(fd$contrasts)
+  primary_coef <- primary_fit$fit$coefficients[, contrast_names, drop = FALSE]
+  adjusted_coef <- adjusted_fit$fit$coefficients[, contrast_names, drop = FALSE]
+  if (!identical(dim(primary_coef), dim(adjusted_coef)) ||
+      !identical(dimnames(primary_coef), dimnames(adjusted_coef))) {
+    stop("bulk run-order sensitivity coefficients do not align with the primary fit",
+         call. = FALSE)
+  }
+  finite <- is.finite(primary_coef) & is.finite(adjusted_coef)
+  if (any(colSums(finite) == 0L)) {
+    stop("bulk run-order sensitivity has no finite coefficient pairs", call. = FALSE)
+  }
+  # Signed feature means plus the worst feature-level shift; adjusted topTables are discarded.
+  primary_logFC <- stats::setNames(vapply(seq_along(contrast_names), function(j) {
+    mean(primary_coef[finite[, j], j])
+  }, numeric(1)), contrast_names)
+  adjusted_logFC <- stats::setNames(vapply(seq_along(contrast_names), function(j) {
+    mean(adjusted_coef[finite[, j], j])
+  }, numeric(1)), contrast_names)
+  max_abs_logfc_shift <- stats::setNames(vapply(seq_along(contrast_names), function(j) {
+    max(abs(adjusted_coef[finite[, j], j] - primary_coef[finite[, j], j]))
+  }, numeric(1)), contrast_names)
+  list(
+    run_index = run_index_centered,
+    primary_logFC = primary_logFC,
+    adjusted_logFC = adjusted_logFC,
+    max_abs_logfc_shift = max_abs_logfc_shift,
+    residual_df = nrow(sensitivity_design) - design_rank,
+    caveat = paste(
+      "Run order is a deterministic function of genotype in blocked acquisition",
+      "01-04/05-08/09-12/13-16 and is fully aliased with genotype at the between-block level;",
+      "between-genotype contrasts cannot be separated from acquisition order/batch.",
+      "The continuous run_index term captures only within-acquisition linear drift and does not fix the confound.",
+      "For complete 16-run feature profiles, the 2x2 interaction contrast is orthogonal to linear run_index by design (expect approximately zero aggregate shift); feature-specific missingness can yield non-zero per-feature maxima.",
+      "This bulk modality is context-only."
+    )
+  )
+}
+
+# Historical function name retained for target/key stability: input is a TiO2 phospho-PTM
+# report summed to protein groups, not an independent global-proteome assay.
 run_proteome_de_24m <- function(proteomics_tbl, sample_key,
                                 min_present = 2L, min_groups = 4L) {
   prep <- prepare_proteome_24m_matrix(proteomics_tbl, sample_key,
                                       min_present = min_present, min_groups = min_groups)
   de <- .limma_log_de_from_matrix(prep$matrix, prep$meta)
   top <- annotate_proteome_top_tables(de$fit$top, prep$features)
+  run_order_sensitivity <- .bulk_run_order_sensitivity(prep$matrix, prep$meta, de$fit)
   list(
     n_samples = ncol(prep$matrix),
     n_features = nrow(prep$matrix),
@@ -2287,6 +2355,7 @@ run_proteome_de_24m <- function(proteomics_tbl, sample_key,
     features = prep$features,
     top = top,
     design = de$design,
+    run_order_sensitivity = run_order_sensitivity,
     filters = prep$counts,
     provenance = list(
       feature_id = "PG.ProteinGroups",
@@ -2423,6 +2492,7 @@ run_phospho_de_24m <- function(phospho_tbl, sample_key,
   fd <- factorial_design(prep$meta, add_batch = FALSE)
   fit <- fit_limma_log(prep$matrix, fd$design, fd$contrasts)
   top <- annotate_phospho_top_tables(fit$top, prep$features)
+  run_order_sensitivity <- .bulk_run_order_sensitivity(prep$matrix, prep$meta, fit)
   list(
     n_samples = ncol(prep$matrix),
     n_features = nrow(prep$matrix),
@@ -2433,6 +2503,7 @@ run_phospho_de_24m <- function(phospho_tbl, sample_key,
     design = list(add_batch = FALSE, design_cols = colnames(fd$design),
                   contrast_names = colnames(fd$contrasts),
                   residual_df = nrow(fd$design) - qr(fd$design)$rank),
+    run_order_sensitivity = run_order_sensitivity,
     filters = prep$counts,
     provenance = list(
       transform = "log2 positive intensities; nonpositive values set to NA",
