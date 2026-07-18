@@ -83,11 +83,11 @@ Raw data facts:
   QC metrics, doublets.
 - `geomx.rds`: GeoMx WTA Seurat, 19963 genes x 91 AOIs; genotype canonical; spatial
   design cols include bio_rep/tech_rep/slide_rep/roi/segment/SampleID.
-- GeoMx source gap: ideal class grid 4 genotypes x 4 bio_rep x 7 tech_rep = 112 AOIs,
-  but `geomx.rds` contains 91. `bio_rep == slide_rep`; MAPTKI bio_rep 1 is wholly
-  absent at source (`MAPT KI 1-1..1-7` missing, with slide-1 `P301SKI 1-1..1-5` also
-  missing). Current loaders/descriptors exclude no AOIs; the gap predates this repo's
-  live GeoMx model/report path.
+- GeoMx source gap: 91 of ideal 112 AOIs → 21 missing across 7
+  (`genotype`, `bio_rep`) cells; only `NLGF_MAPTKI` is complete (28/28), while
+  `MAPTKI` `bio_rep = 1` is wholly absent. `bio_rep == slide_rep`; one segment.
+  Current loaders/descriptors exclude no AOIs; the gap predates this repo's live GeoMx
+  model/report path. Full per-cell accounting → `.agent/p7_g3_provenance_dossier.md`.
 - The `proteomics_*.tsv` input is itself a TiO2 phospho-PTM Spectronaut export: it
   carries phospho-PTM annotation columns plus 16 `.raw.PTM.Quantity` columns and is
   summed by `PG.ProteinGroups` for the historical `proteome_*` layer. Both that
@@ -96,6 +96,13 @@ Raw data facts:
   16-run subset from `proteomics_sample_key.csv`. NO global-proteome file exists in
   `storage/data/`; `proteome_*` code tokens are historical stable names, not a claim
   of an independent global-proteome assay.
+- Bulk provenance contract: report bulk = 16/67 manifest runs, exactly the balanced
+  Naoto 24M 2x2; Naoto 30M + all Set6 arms are unused. Full manifest/disposition →
+  `.agent/p7_g3_provenance_dossier.md`.
+- Cross-modality gate: no in-repo animal/aliquot crosswalk. Paired/animal-level claims
+  (`DIABLO`, `MOFA`, mediation, within-animal correlation) are PROHIBITED until the user
+  supplies a validated cross-assay crosswalk; gene-symbol harmonization/meta-comparison
+  remains allowed. Current report is compliant.
 
 ## Scientific Spine
 
