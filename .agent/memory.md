@@ -176,6 +176,14 @@ Microglia state decomposition (P6 closed):
   with established separate-state fits (Pearson 0.992/0.993; median absolute delta
   0.037/0.044 log2FC for Homeostatic/DAM).
 
+DAM-occupancy robustness (P7.4 frozen):
+- `R/analysis/occupancy_harness.R` maps membership to the occupancy family: E1 beta-binomial
+  probability standardization (primary), E2 empirical-logit OLS/permutation, E3 raw-proportion OLS.
+- Frozen preregistration = `.agent/p7_dam_occupancy_prereg.md`; STANDING no-peeking rule:
+  no real labeling variant or real-data omission occupancy is generated/evaluated before P7.5.
+- `occupancy_harness_check` reproduces the established +0.174 current-label family exactly and
+  exercises reduced designs only with fabricated counts. Report-feeding code/numbers stay untouched/byte-stable.
+
 Microglia DE:
 - Live target = `pb_de_microglia` only.
 - Raw RNA pseudobulk by genotype_batch, limma voom with quality weights, topTables for

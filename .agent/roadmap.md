@@ -61,7 +61,7 @@ gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance
 +0.174 interaction. Posture: settle integrity BEFORE adding biology or freezing a
 manuscript; no new biological scope this milestone.
 
-Units (P7.1-P7.3 DONE; P7.4-P7.5 OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
+Units (P7.1-P7.4 DONE; P7.5 OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
 - P7.1 [DONE 2026-07-18] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
   literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
   MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Remaining
@@ -87,9 +87,9 @@ Units (P7.1-P7.3 DONE; P7.4-P7.5 OPEN / gate-independent; sequence P7.1 -> P7.2 
   absent). snRNAseq 16 units verified-by-contract. Recorded a STANDING cross-modality paired-claim gate
   in memory (DIABLO/MOFA/mediation/within-animal correlation PROHIBITED until a user crosswalk exists;
   symbol-level allowed; current report compliant) + itemized user-only records. Docs-only.
-- P7.4 [OPEN] DAM-occupancy robustness PREREGISTRATION + harness (pre-results). Freeze the
-  protocol (resolution grid, prune/annotation sensitivities, LOU x16 / LOBO x4, estimators,
-  +0.174 endpoint, tipping-point rules) before viewing any variant; build a harness validated
+- P7.4 [DONE 2026-07-19] DAM-occupancy robustness PREREGISTRATION + harness (pre-results). Froze the
+  protocol (resolution grid, prune/annotation sensitivities, LOU x16 / LOBO x4, 3 estimators,
+  +0.174 endpoint, tipping-point rules) before viewing any variant; built a harness validated
   only against the current labeling.
 - P7.5 [OPEN, after P7.4] Execute robustness sweep + tipping-point verdict. Sign/margin
   stability of the occupancy interaction; SIZE-CHECK / respec-split at the sweep/report seam
@@ -269,6 +269,32 @@ do not block.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-19 P7.4 DAM-occupancy robustness prereg + harness (M7.4) DONE. Froze the robustness protocol
+  BEFORE viewing any variant (`.agent/p7_dam_occupancy_prereg.md`): primary estimand = the equal-batch
+  probability-standardized DAM-fraction interaction (+0.1741141, 95% CI [0.0954125, 0.2528158], zero-null
+  FDR 1.81e-5, 0.10-margin FDR 0.0812); 3 estimators (E1 beta-binomial primary / E2 empirical-logit OLS +
+  batch-stratified Freedman-Lane / E3 raw-proportion OLS); one-at-a-time axes (resolution {0.2..0.8};
+  id_floor {0.10/0.15/0.20}; mglike_floor {0.20/0.30/0.40} + no-prune; tol/amb_floor {0.05/0.10/0.15};
+  LOU x16 -> 15 units; LOBO x4 -> 12 units/3 batches; ~34 non-ref labelings x 3); reduced-design +
+  estimator_failed degrade-record rules; outcome-independent tipping/verdict (ROBUST-POSITIVE iff E1
+  interaction>0 AND fdr_zero<=0.05 across ALL variants, else FRAGILE with tipping set + [min,max] range),
+  reported regardless of direction. Built additive harness `R/analysis/occupancy_harness.R`
+  (membership_to_unit_coverage -> occupancy_family -> occupancy_from_membership; E1/E2 = behavior-preserving
+  generalization of `fit_state_occupancy` reusing state_probability_standardization / state_wald_contrasts /
+  state_genotype_contrasts / freedman_lane_stratified_interaction / fit_trajectory_contrasts /
+  factorial_design, hard-16 dropped + batch droplevels + degrade-record; E3 new) + non-report leaf target
+  `occupancy_harness_check` off compact `microglia_state_substrate` / `microglia_state_response` (no
+  612MB/8GB load). NO PEEKING: only the current labeling + fabricated reduced-design counts evaluated; zero
+  variant generated. MAIN independently reran gates: fresh invalidate+rebuild of occupancy_harness_check
+  re-ran the all.equal(1e-8) reproduction + Layer-A count round-trip + 15-/12-unit smoke -> E1 family
+  reproduced bit-exactly (max_abs_diff=0 across probability_contrasts/means/vcov/log_odds/empirical_logit/
+  permutation), E2 coef 0.934 / perm_p 0.021, E3 +0.1733368 / fdr 0.0185, smoke ok; `TZ=UTC scripts/check.sh`
+  GREEN (report re-rendered from the new R-source glob, 31 report-ancestry targets cached,
+  report/tau-mutant-integration.html byte-stable). Diff = 5 paths (new prereg + harness; _targets.R +1
+  target; memory.md + map.md); report-feeding code (`fit_state_occupancy` / `run_microglia_state_response` /
+  `build_microglia_state_substrate` / qmd) untouched. Live target count 34 -> 35. main=33% 90K/272K;
+  impl=44% 119K/272K. Milestone stays IN-PROGRESS; next = P7.5 (execute the frozen sweep + tipping-point
+  verdict).
 - 2026-07-18 P7.3 source-provenance dossier (M7.3) DONE. Resolved integrity gate G3 by compiling the
   recoverable provenance into new `.agent/p7_g3_provenance_dossier.md` + a corrected/tightened memory.md
   contract. MAIN independently established all ground truth FIRST (read `R/core/io.R`; probed the 67-run

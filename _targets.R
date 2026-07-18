@@ -91,6 +91,11 @@ list(
                                                 microglia_state_response),
              format = "qs"),
 
+  # P7.4 non-report validation leaf: current-label reproduction + fabricated reduced designs only.
+  tar_target(occupancy_harness_check,
+             check_occupancy_harness(microglia_state_substrate, microglia_state_response),
+             format = "qs"),
+
   # P6 Figure 10: accepted raw occupancy + transcriptome-wide paired state-difference maps +
   # declared-marker factorial response plots. The report leaf reads compact S2 occupancy and the
   # paired gene target; it carries no score aggregate, fitted object, count matrix, or cell frame.

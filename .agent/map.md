@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 34.
+store to `storage/targets/`. Expected live target count: 35.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -79,6 +79,9 @@ P6 state decomposition (closed; report-integrated):
   S2 evidence, and the predeclared interaction classifier. Unit/contrast algebra, 9-df,
   family completeness, TOST boundary, size, and parent-isolation gates are runtime-fatal;
   live payload = 0.20 MB in memory / 0.054 MB serialized.
+- `occupancy_harness_check <- check_occupancy_harness(microglia_state_substrate, microglia_state_response)`
+  is the P7.4 non-report validation leaf: exact current-label E1/E2 reproduction, E3 baseline,
+  aggregation round-trip, and fabricated 15-/12-unit reduced-design smoke only.
 - `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_response, microglia_state_gene_atlas)`
   emits the Figure 10 contract: accepted 16-unit occupancy; 208 fixed response rows =
   52 unique declared genes x four state/background amyloid effects, including 95% CI;
@@ -163,6 +166,12 @@ Report:
   paired blocked voomLmFit + joint moderated F, rotations, bridge, ordinary
   OLS/TOST/weighted sensitivity, fixed classifier, and deterministic algebra/model gates.
   Heavy parents/fits stay out of target payloads.
+
+`R/analysis/occupancy_harness.R`
+- `membership_to_unit_coverage()` -> `occupancy_family()` -> `occupancy_from_membership()`;
+  `check_occupancy_harness()` validates generalized E1 beta-binomial/E2 empirical-logit/E3
+  simple-proportion inference, exact current-label reproduction, and fabricated reduced-design smoke.
+  Variant labeling generation/execution remains deferred to P7.5.
 
 `R/analysis/modality_de.R`
 - Lean primary DE for GeoMx and the 24M TiO2 phospho assay: the historical `proteome_*` tokens
