@@ -10,10 +10,10 @@ cd "$ROOT"
 
 trap 'echo "check.sh: GATE FAILED -> ${BASH_COMMAND}" >&2' ERR
 
-echo "== render report/tau-mutant-integration.html =="
-if ! Rscript -e 'targets::tar_invalidate("report"); targets::tar_make(names = "report")'; then
-  echo "check.sh: tar_make / report render failed (see output above)" >&2
+echo "== render report/tau-mutant-integration.html + validate occupancy_harness_check =="
+if ! Rscript -e 'targets::tar_invalidate(tidyselect::any_of(c("report", "occupancy_harness_check"))); targets::tar_make(names = c("report", "occupancy_harness_check"))'; then
+  echo "check.sh: tar_make / report render or occupancy harness check failed (see output above)" >&2
   exit 1
 fi
 
-echo "PASS - report/tau-mutant-integration.html"
+echo "PASS - report/tau-mutant-integration.html + occupancy_harness_check"

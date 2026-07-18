@@ -15,7 +15,7 @@ Fresh clone:
 2. `scripts/bootstrap/rv.sh` - project R package manager.
 3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - fast force-render of the final HTML target only.
+5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness guardrail.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -81,7 +81,9 @@ P6 state decomposition (closed; report-integrated):
   live payload = 0.20 MB in memory / 0.054 MB serialized.
 - `occupancy_harness_check <- check_occupancy_harness(microglia_state_substrate, microglia_state_response)`
   is the P7.4 non-report validation leaf: exact current-label E1/E2 reproduction, E3 baseline,
-  aggregation round-trip, and fabricated 15-/12-unit reduced-design smoke only.
+  complete aggregation round-trip including retained-denominator filler/coverage, strict E2/E3
+  output schemas and finiteness, fabricated estimable 15-/12-unit smoke, and a separate fabricated
+  all-estimator-failure fixture. `scripts/check.sh` invalidates and rebuilds it on every report gate.
 - `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_response, microglia_state_gene_atlas)`
   emits the Figure 10 contract: accepted 16-unit occupancy; 208 fixed response rows =
   52 unique declared genes x four state/background amyloid effects, including 95% CI;

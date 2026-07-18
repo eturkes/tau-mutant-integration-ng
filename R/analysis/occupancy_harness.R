@@ -435,22 +435,26 @@ occupancy_family <- function(
       rownames(ols) <- NULL
       ols$fdr <- stats::p.adjust(ols$p_value, "BH")
       ols$family <- "occupancy_empirical_logit_zero_all_contrasts"
+      occupancy_harness_assert_trajectory_table(
+        ols, measure = "empirical_logit",
+        family = "occupancy_empirical_logit_zero_all_contrasts"
+      )
       fl <- freedman_lane_stratified_interaction(
         empirical_logit, fd$design, d$batch, n_perm = n_perm, seed = seed
       )
       if (abs(fl$t_obs - ols$t[ols$contrast == "interaction"]) >= 1e-8) {
         stop("empirical-logit OLS and permutation t statistics disagree", call. = FALSE)
       }
-      list(
-        table = ols,
-        permutation = data.frame(
-          contrast = "interaction", t_obs = fl$t_obs, n_perm = fl$n_perm,
-          perm_p = fl$perm_p, seed = fl$seed,
-          family = "occupancy_empirical_logit_interaction_permutation",
-          row.names = NULL, stringsAsFactors = FALSE
-        ),
-        messages = ols_cap$messages
+      permutation <- data.frame(
+        contrast = "interaction", t_obs = fl$t_obs, n_perm = fl$n_perm,
+        perm_p = fl$perm_p, seed = fl$seed,
+        family = "occupancy_empirical_logit_interaction_permutation",
+        row.names = NULL, stringsAsFactors = FALSE
       )
+      occupancy_harness_assert_permutation_table(
+        permutation, n_perm = n_perm, seed = seed
+      )
+      list(table = ols, permutation = permutation, messages = ols_cap$messages)
     })
     if (empirical_result$ok) {
       out$empirical_logit <- empirical_result$value$table
@@ -479,6 +483,10 @@ occupancy_family <- function(
       rownames(ols) <- NULL
       ols$fdr <- stats::p.adjust(ols$p_value, "BH")
       ols$family <- "occupancy_simple_proportion_zero_all_contrasts"
+      occupancy_harness_assert_trajectory_table(
+        ols, measure = "simple_proportion",
+        family = "occupancy_simple_proportion_zero_all_contrasts"
+      )
       list(table = ols, messages = ols_cap$messages)
     })
     if (simple_result$ok) {
@@ -570,13 +578,76 @@ occupancy_harness_fabricated_unit_data <- function(batches, drop_unit = NULL) {
   list(unit_coverage = unit_coverage, unit_meta = unit_meta)
 }
 
-occupancy_harness_finite_table <- function(x) {
-  if (!is.data.frame(x) || nrow(x) == 0L) return(FALSE)
+occupancy_harness_fabricated_nonestimable_data <- function() {
+  # Deliberately non-estimable fixture: every count is fabricated and unrelated to project data.
+  out <- occupancy_harness_fabricated_unit_data(as.character(seq_len(4L)))
+  failed_row <- 1L
+  out$unit_coverage$n_DAM[failed_row] <- 0L
+  out$unit_coverage$n_primary[failed_row] <-
+    out$unit_coverage$n_Homeostatic[failed_row]
+  out$unit_coverage$n_retained[failed_row] <-
+    out$unit_coverage$n_primary[failed_row] + 1L
+  out$unit_coverage$coverage[failed_row] <-
+    out$unit_coverage$n_primary[failed_row] / out$unit_coverage$n_retained[failed_row]
+  out$unit_coverage$DAM_fraction[failed_row] <- 0
+  out
+}
+
+occupancy_harness_finite_table <- function(x, expected_columns) {
+  if (!is.data.frame(x) || nrow(x) == 0L ||
+      !identical(names(x), expected_columns)) return(FALSE)
   numeric_columns <- vapply(x, is.numeric, logical(1))
   any(numeric_columns) && all(is.finite(as.matrix(x[numeric_columns])))
 }
 
-occupancy_harness_assert_smoke <- function(x, n_units, n_batches) {
+occupancy_harness_assert_trajectory_table <- function(x, measure, family) {
+  expected_columns <- c(
+    "measure", "contrast", "coef", "se", "t", "df", "p_value", "ci_l", "ci_r",
+    "fdr", "family"
+  )
+  if (!occupancy_harness_finite_table(x, expected_columns)) {
+    stop(measure, " output has invalid schema or non-finite statistics", call. = FALSE)
+  }
+  stopifnot(
+    nrow(x) == length(state_contrast_names()),
+    identical(as.character(x$measure), rep(measure, length(state_contrast_names()))),
+    identical(as.character(x$contrast), state_contrast_names()),
+    identical(as.character(x$family), rep(family, length(state_contrast_names()))),
+    all(x$se > 0), all(x$df > 0)
+  )
+  invisible(TRUE)
+}
+
+occupancy_harness_assert_permutation_table <- function(x, n_perm, seed) {
+  expected_columns <- c("contrast", "t_obs", "n_perm", "perm_p", "seed", "family")
+  if (!occupancy_harness_finite_table(x, expected_columns)) {
+    stop("empirical-logit permutation output has invalid schema or non-finite statistics",
+         call. = FALSE)
+  }
+  stopifnot(
+    nrow(x) == 1L,
+    identical(as.character(x$contrast), "interaction"),
+    identical(
+      as.character(x$family), "occupancy_empirical_logit_interaction_permutation"
+    ),
+    x$perm_p >= 0, x$perm_p <= 1,
+    x$n_perm >= 1, x$n_perm == round(x$n_perm), x$n_perm == n_perm,
+    x$seed == round(x$seed), x$seed == seed
+  )
+  invisible(TRUE)
+}
+
+occupancy_harness_assert_estimator_failed <- function(x, estimator) {
+  status <- x$diagnostics$estimators[[estimator]]
+  stopifnot(
+    is.list(status), identical(status$status, "estimator_failed"),
+    length(status$reason) == 1L, !is.na(status$reason), nzchar(status$reason)
+  )
+  invisible(TRUE)
+}
+
+occupancy_harness_assert_smoke <- function(
+    x, n_units, n_batches, n_perm = 99L, seed = 614L) {
   stopifnot(
     is.list(x), is.data.frame(x$unit), nrow(x$unit) == n_units,
     x$diagnostics$n_units == n_units,
@@ -584,45 +655,65 @@ occupancy_harness_assert_smoke <- function(x, n_units, n_batches) {
     x$diagnostics$residual_df == n_units - x$diagnostics$design_columns,
     length(unique(as.character(x$unit$batch))) == n_batches
   )
-  check_failed <- function(estimator) {
-    status <- x$diagnostics$estimators[[estimator]]
-    stopifnot(
-      identical(status$status, "estimator_failed"),
-      length(status$reason) == 1L, !is.na(status$reason), nzchar(status$reason)
-    )
-  }
 
   if (identical(x$diagnostics$estimators$beta_binomial$status, "ok")) {
+    probability_columns <- c(
+      "contrast", "estimate", "se", "ci_l", "ci_r", "z_zero", "p_zero",
+      "fdr_zero", "margin", "z_minimum", "p_minimum", "fdr_minimum",
+      "family_zero", "family_minimum"
+    )
+    mean_columns <- c("genotype", "estimate", "se", "ci_l", "ci_r")
+    log_odds_columns <- c(
+      "contrast", "estimate", "se", "z", "p_value", "fdr", "ci_l", "ci_r",
+      "family"
+    )
     stopifnot(
-      nrow(x$probability_contrasts) == 5L,
+      occupancy_harness_finite_table(x$probability_contrasts, probability_columns),
+      nrow(x$probability_contrasts) == length(state_contrast_names()),
+      identical(as.character(x$probability_contrasts$contrast), state_contrast_names()),
+      identical(
+        as.character(x$probability_contrasts$family_zero),
+        rep("occupancy_probability_zero_all_contrasts", length(state_contrast_names()))
+      ),
+      identical(
+        as.character(x$probability_contrasts$family_minimum),
+        rep("occupancy_probability_minimum_all_contrasts", length(state_contrast_names()))
+      ),
+      all(x$probability_contrasts$se > 0),
+      occupancy_harness_finite_table(x$probability_means, mean_columns),
       nrow(x$probability_means) == length(genotype_levels),
+      identical(as.character(x$probability_means$genotype), genotype_levels),
+      all(x$probability_means$se > 0),
       identical(dim(x$probability_vcov), c(length(genotype_levels), length(genotype_levels))),
-      nrow(x$log_odds) == 5L,
-      occupancy_harness_finite_table(x$probability_contrasts),
-      occupancy_harness_finite_table(x$probability_means),
       all(is.finite(x$probability_vcov)),
-      occupancy_harness_finite_table(x$log_odds)
+      occupancy_harness_finite_table(x$log_odds, log_odds_columns),
+      nrow(x$log_odds) == length(state_contrast_names()),
+      identical(as.character(x$log_odds$contrast), state_contrast_names()),
+      identical(
+        as.character(x$log_odds$family),
+        rep("occupancy_logodds_zero_all_contrasts", length(state_contrast_names()))
+      ),
+      all(x$log_odds$se > 0)
     )
   } else {
-    check_failed("beta_binomial")
+    occupancy_harness_assert_estimator_failed(x, "beta_binomial")
   }
-  if (identical(x$diagnostics$estimators$empirical_logit$status, "ok")) {
-    stopifnot(
-      nrow(x$empirical_logit) == 5L, nrow(x$permutation) == 1L,
-      occupancy_harness_finite_table(x$empirical_logit),
-      occupancy_harness_finite_table(x$permutation)
-    )
-  } else {
-    check_failed("empirical_logit")
-  }
-  if (identical(x$diagnostics$estimators$simple_proportion$status, "ok")) {
-    stopifnot(
-      nrow(x$simple_proportion) == 5L,
-      occupancy_harness_finite_table(x$simple_proportion)
-    )
-  } else {
-    check_failed("simple_proportion")
-  }
+
+  stopifnot(
+    identical(x$diagnostics$estimators$empirical_logit$status, "ok"),
+    identical(x$diagnostics$estimators$simple_proportion$status, "ok")
+  )
+  occupancy_harness_assert_trajectory_table(
+    x$empirical_logit, measure = "empirical_logit",
+    family = "occupancy_empirical_logit_zero_all_contrasts"
+  )
+  occupancy_harness_assert_permutation_table(
+    x$permutation, n_perm = n_perm, seed = seed
+  )
+  occupancy_harness_assert_trajectory_table(
+    x$simple_proportion, measure = "simple_proportion",
+    family = "occupancy_simple_proportion_zero_all_contrasts"
+  )
   invisible(TRUE)
 }
 
@@ -634,14 +725,34 @@ occupancy_harness_reduced_design_smoke <- function() {
   lou_fit <- occupancy_family(
     lou$unit_coverage, lou$unit_meta, n_perm = 99L, seed = 614L
   )
-  occupancy_harness_assert_smoke(lou_fit, n_units = 15L, n_batches = 4L)
+  occupancy_harness_assert_smoke(
+    lou_fit, n_units = 15L, n_batches = 4L, n_perm = 99L, seed = 614L
+  )
 
   # LOBO-shaped: a separate fabricated complete 4x3 layout; no project batch is removed.
   lobo <- occupancy_harness_fabricated_unit_data(batches = as.character(seq_len(3L)))
   lobo_fit <- occupancy_family(
     lobo$unit_coverage, lobo$unit_meta, n_perm = 99L, seed = 614L
   )
-  occupancy_harness_assert_smoke(lobo_fit, n_units = 12L, n_batches = 3L)
+  occupancy_harness_assert_smoke(
+    lobo_fit, n_units = 12L, n_batches = 3L, n_perm = 99L, seed = 614L
+  )
+
+  # Separate fabricated failure path: a zero DAM count makes every estimator structurally
+  # non-estimable. No count, omission, unit, or label in this fixture is project-derived.
+  failed <- occupancy_harness_fabricated_nonestimable_data()
+  failed_fit <- occupancy_family(
+    failed$unit_coverage, failed$unit_meta, n_perm = 99L, seed = 614L
+  )
+  stopifnot(
+    identical(failed_fit$diagnostics$status, "estimator_failed"),
+    length(failed_fit$diagnostics$structural_reason) == 1L,
+    !is.na(failed_fit$diagnostics$structural_reason),
+    nzchar(failed_fit$diagnostics$structural_reason)
+  )
+  for (estimator in c("beta_binomial", "empirical_logit", "simple_proportion")) {
+    occupancy_harness_assert_estimator_failed(failed_fit, estimator)
+  }
   "ok"
 }
 
@@ -683,12 +794,14 @@ check_occupancy_harness <- function(substrate, response) {
   )
 
   # Layer A: expand only the established aggregate counts into arithmetic membership rows. This
-  # reconstructs no cell identity and creates no alternate labeling.
+  # reconstructs no cell identity and creates no alternate labeling. The arbitrary non-primary
+  # filler label routes through match(state, states) as NA, so it contributes only to n_retained.
   d <- substrate$unit_coverage
   expanded <- do.call(rbind, lapply(seq_len(nrow(d)), function(i) {
     state <- c(
       rep("Homeostatic", as.integer(d$n_Homeostatic[i])),
-      rep("DAM", as.integer(d$n_DAM[i]))
+      rep("DAM", as.integer(d$n_DAM[i])),
+      rep("NonPrimaryMicroglia", as.integer(d$n_retained[i] - d$n_primary[i]))
     )
     data.frame(
       membership = state,
@@ -702,14 +815,27 @@ check_occupancy_harness <- function(substrate, response) {
     expanded$membership,
     expanded[c("genotype_batch", "genotype", "batch")]
   )
-  ai <- match(d$genotype_batch, aggregation$unit_coverage$genotype_batch)
-  stopifnot(!anyNA(ai), identical(aggregation$diagnostics$status, "estimable"))
-  actual <- aggregation$unit_coverage[ai, , drop = FALSE]
+  stopifnot(identical(aggregation$diagnostics$status, "estimable"))
+  actual <- aggregation$unit_coverage
+  canonical_columns <- c(
+    "genotype_batch", "genotype", "batch", "n_retained", "n_primary", "coverage",
+    "n_Homeostatic", "n_DAM", "DAM_fraction"
+  )
+  numeric_columns <- c(
+    "n_retained", "n_primary", "coverage", "n_Homeostatic", "n_DAM", "DAM_fraction"
+  )
   stopifnot(
-    identical(as.integer(actual$n_Homeostatic), as.integer(d$n_Homeostatic)),
-    identical(as.integer(actual$n_DAM), as.integer(d$n_DAM)),
-    isTRUE(all.equal(actual$n_primary, d$n_primary, tolerance = 0)),
-    isTRUE(all.equal(actual$DAM_fraction, d$DAM_fraction, tolerance = 0))
+    identical(names(actual), canonical_columns),
+    all(canonical_columns %in% names(d)),
+    identical(as.character(actual$genotype_batch), as.character(d$genotype_batch)),
+    identical(rownames(aggregation$unit_meta), as.character(d$genotype_batch)),
+    identical(as.character(actual$genotype), as.character(d$genotype)),
+    identical(as.character(actual$batch), as.character(d$batch)),
+    identical(as.character(aggregation$unit_meta$genotype), as.character(d$genotype)),
+    identical(as.character(aggregation$unit_meta$batch), as.character(d$batch)),
+    all(vapply(numeric_columns, function(column) {
+      isTRUE(all.equal(actual[[column]], d[[column]], tolerance = 0))
+    }, logical(1)))
   )
 
   reduced_design_smoke <- occupancy_harness_reduced_design_smoke()

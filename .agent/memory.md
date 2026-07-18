@@ -182,7 +182,12 @@ DAM-occupancy robustness (P7.4 frozen):
 - Frozen preregistration = `.agent/p7_dam_occupancy_prereg.md`; STANDING no-peeking rule:
   no real labeling variant or real-data omission occupancy is generated/evaluated before P7.5.
 - `occupancy_harness_check` reproduces the established +0.174 current-label family exactly and
-  exercises reduced designs only with fabricated counts. Report-feeding code/numbers stay untouched/byte-stable.
+  exercises reduced designs only with fabricated counts. Its Layer-A round-trip includes non-primary
+  filler rows so `n_retained` and coverage reproduce exactly; E2/E3 success now requires exact schemas
+  and finite inferential output, and reduced-design smoke requires E2/E3 `ok` plus a separate fabricated
+  non-estimable fixture with all three failures recorded, conforming to frozen preregistration §5.
+  Report-feeding code/numbers stay untouched/byte-stable; `scripts/check.sh` invalidates and rebuilds
+  this guardrail on every report gate.
 
 Microglia DE:
 - Live target = `pb_de_microglia` only.
@@ -272,9 +277,9 @@ Fresh bootstrap:
 5. `scripts/check.sh`
 
 `scripts/check.sh`:
-- invalidates and rebuilds only the `report` target
+- invalidates and rebuilds both `report` and the non-report `occupancy_harness_check` guardrail
 - does not sync the environment or scan all target metadata/logs
-- relies on qmd `options(warn=2)`, target failures, and `render_report()`'s self-contained/pruned HTML assertion
+- relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
 
 Run `rv sync` manually after dependency changes; use `scripts/check.sh` for fast local report iteration.
 

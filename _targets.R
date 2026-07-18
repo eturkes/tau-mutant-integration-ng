@@ -92,6 +92,7 @@ list(
              format = "qs"),
 
   # P7.4 non-report validation leaf: current-label reproduction + fabricated reduced designs only.
+  # scripts/check.sh invalidates and rebuilds this guardrail on every report gate.
   tar_target(occupancy_harness_check,
              check_occupancy_harness(microglia_state_substrate, microglia_state_response),
              format = "qs"),
