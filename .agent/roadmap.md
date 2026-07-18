@@ -52,13 +52,39 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: none
+## Active milestone: P7 - integrity-first audit [IN-PROGRESS, opened 2026-07-18]
 
-P6 microglial state composition versus regulation closed 2026-07-14 ->
-`.agent/completed/p6_state_decomposition_plan_2026-07-14.md`.
+Direction G (integrity-first) selected by the user. Full plan + confirmed evidence:
+`.agent/p7_integrity_audit_plan.md`. Scope = resolve the three stop-the-line integrity
+gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance) plus the
+24M run-order contract, then run a preregistered DAM-occupancy robustness audit of the
++0.174 interaction. Posture: settle integrity BEFORE adding biology or freezing a
+manuscript; no new biological scope this milestone.
 
-No active milestone. `/session-prompt` enters its PLANNING direction gate and confirms
-the next roadmap direction with the user before changing repository state.
+Units (all OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
+- P7.1 [OPEN] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
+  literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
+  MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Remaining
+  work = relabel 6 sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342`+
+  `:543 y_meaning`, `.agent/memory.md:12`, `roadmap.md:14`), keep the `MAPTKI` factor token
+  stable. Exact wording = USER-DECISION.
+- P7.2 [OPEN] 24M bulk assay identity + run-order contract (G2 + run-order). Document the
+  TiO2 phospho-PTM-report-summed-to-protein-groups nature; add a run-order/genotype confound
+  sensitivity to the bulk DE; bulk "proteome" figure fate (relabel/replace/remove) = USER-DECISION.
+- P7.3 [OPEN] Source-provenance dossier (G3). Recover the 67-run manifest / 16-of-67
+  selection / GeoMx 91-of-112 AOI gap; enumerate user-only records; record a cross-modality
+  paired-claim prohibition until an animal crosswalk exists.
+- P7.4 [OPEN] DAM-occupancy robustness PREREGISTRATION + harness (pre-results). Freeze the
+  protocol (resolution grid, prune/annotation sensitivities, LOU x16 / LOBO x4, estimators,
+  +0.174 endpoint, tipping-point rules) before viewing any variant; build a harness validated
+  only against the current labeling.
+- P7.5 [OPEN, after P7.4] Execute robustness sweep + tipping-point verdict. Sign/margin
+  stability of the occupancy interaction; SIZE-CHECK / respec-split at the sweep/report seam
+  if the reserve cannot hold.
+
+Two requirement-level user-decision points (P7.1 relabel wording; P7.2 bulk-figure fate)
+and the standing external-record requests (G1 breeding/allele records; G2 vendor
+template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) are itemized in the plan.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -93,6 +119,14 @@ the next roadmap direction with the user before changing repository state.
   appended one compact Figure 10 without disturbing Figures 1-9. Outcome =
   unresolved: positive occupancy interaction, 0.10 minimum-effect family not
   supported at 5%, and no concordant meaningful within-DAM programme shift.
+- P7 Integrity-first audit [IN-PROGRESS 2026-07-18 -> `.agent/p7_integrity_audit_plan.md`]:
+  resolve the three stop-the-line integrity gates (G1 tau-factor construct = humanized-WT
+  MAPT knock-in vs mutant tau, NOT "tau-KO"; G2 24M "proteome" = TiO2 phospho-PTM report
+  summed to protein groups, no global proteome in storage/data; G3 provenance = 16-of-67-run
+  manifest + cross-assay crosswalk gap) plus the genotype-blocked 24M run-order contract,
+  then run a preregistered DAM-occupancy robustness audit of the +0.174 interaction. 5 units
+  P7.1-P7.5, all gate-independent OPEN; two requirement-level user decisions (P7.1 relabel
+  wording, P7.2 bulk-figure fate) deferred to execution.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -220,6 +254,22 @@ the next roadmap direction with the user before changing repository state.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-18 P7 integrity-first audit OPENED (direction G, user-selected) ->
+  `.agent/p7_integrity_audit_plan.md`. Milestone plans resolution of three stop-the-line
+  integrity gates + the 24M run-order contract + a preregistered DAM-occupancy robustness
+  audit, as 5 gate-independent units (P7.1 construct/tau relabel, P7.2 bulk assay identity +
+  run-order, P7.3 provenance dossier, P7.4 robustness prereg + harness, P7.5 sweep + tipping-
+  point verdict). Confirmed this session against permitted real inputs: G2 (the 24M "proteome"
+  is a TiO2-enriched phospho PTM report summed by PG.ProteinGroups -- `aggregate_proteome_raw`,
+  16 `.raw.PTM.Quantity` cols; no global proteome exists in storage/data) and the genotype-
+  blocked 24M acquisition (runs 01-04/05-08/09-12/13-16 by genotype -> run order fully
+  confounded with genotype, no batch term in bulk DE); G3 partially recovered (67-run manifest,
+  16 used, 30M + Set6 arms unused, GeoMx 91/112 AOI gap); G1 LITERATURE-CONFIRMED (5 sources
+  incl. Saito 2019 / Watamura 2025 -- MAPTKI = Saito humanized WT MAPT knock-in, P301S =
+  base-edited MAPT^P301S;Int10+3; four groups = clean 2x2, no tau-null arm), so "tau-KO" is
+  wrong and the P7.1 relabel is unblocked. Two requirement-level user
+  decisions deferred to execution (P7.1 relabel wording; P7.2 bulk-figure fate). Repo left
+  otherwise unchanged; no unit executed -- planning only.
 - 2026-07-16 Figure 10 factorial-estimation redesign DONE (web-researched user review) ->
   replaced the null-heavy interaction plane and overplotted parallel profiles with two
   paired state-difference maps and 48 shared-scale per-gene factorial small multiples.
