@@ -170,7 +170,7 @@ scale_colour_rwb <- function(..., midpoint = NULL, colours = rwb_colours) {
 scale_color_rwb <- scale_colour_rwb
 
 # Amyloid-response interaction scatter (ONE modality panel) --------------------------------
-# Per-feature amyloid effect on the tau-KO background (y = logFC NLGF_MAPTKI vs MAPTKI)
+# Per-feature amyloid effect on the WT-humanized-tau (MAPTKI) background (y = logFC NLGF_MAPTKI vs MAPTKI)
 # against the mutant-tau background (x = logFC NLGF_P301S vs P301S). The dashed y=x identity
 # line is the null of a tau-INDEPENDENT amyloid response; signed distance from it (y - x) is
 # exactly the -interaction contrast, so features far off the diagonal are where mutant tau

@@ -9,12 +9,30 @@ digests, `archive_digest.md`/branch `archive` for v1 mining.
 
 Goal: integrate snRNAseq + GeoMx spatial + 24M proteome + 24M phosphoproteome across
 4 AD mouse genotypes. Design = 2x2 tau x amyloid:
-- MAPTKI = tau-KO baseline
-- P301S = mutant tau
-- NLGF_MAPTKI = amyloid alone
-- NLGF_P301S = amyloid + mutant tau
+- MAPTKI = wild-type humanized tau (human MAPT knock-in; NOT tau-KO)
+- P301S = mutant humanized tau (base-edited MAPT^P301S;Int10+3)
+- NLGF_MAPTKI = amyloid (App^NL-G-F) + WT humanized tau
+- NLGF_P301S = amyloid (App^NL-G-F) + mutant humanized tau
 
 Canonical interaction = `(NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI)`.
+
+Construct provenance (P7.1; G1 literature-verified 2026-07-18) — the `MAPTKI`/`P301S` factor
+TOKENS are stable identifiers kept unchanged across code; only the described MEANING was
+corrected from the earlier wrong "tau-KO baseline":
+- MAPTKI = Saito humanized wild-type MAPT knock-in: endogenous murine Mapt replaced with WT
+  human genomic MAPT, so mice express all six 3R/4R human tau isoforms under native regulation
+  and lack MOUSE tau but are NOT tau-null (a true Mapt-KO tau-negative genotype is not in this study).
+- P301S = Watamura base-edited MAPT^P301S;Int10+3G>A allele ("+3" = the Int10+3 splice mutation,
+  NOT an age label; 24M/30M are separate age tokens); also a humanized-MAPT knock-in.
+- Four groups form a clean 2x2 with NO tau-null arm; the tau factor compares WT humanized tau
+  vs mutant (P301S;Int10+3) humanized tau, optionally stratified by App^NL-G-F amyloid.
+- Sources: Saito 2014 (App^NL-G-F KI); Saito 2019 (WT humanized MAPT-KI, App/MAPT-KI double KI);
+  Watamura 2025 (seven base-edited human-MAPT alleles; MAPT-KI is not Mapt-KO); Benzow 2024
+  (separate H1/H2 MAPT-GR series, distinct from the Saito MAPT-KI); Morito 2025 (P301S;Int10+3
+  with App^NL-G-F).
+- STANDING external-record request (user-supplied; not in-repo): breeding/allele records and
+  per-animal provenance (MAPTKI/P301S animal IDs, promoter/locus, genotyping confirmation) to
+  confirm the literature-inferred construct at the animal level.
 
 Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, expected 34 targets.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each

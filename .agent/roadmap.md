@@ -11,7 +11,7 @@ branch `archive`. `main` rebuilds from scratch: leaner pipeline, ONE cohesive
 story, minimal prose, project-local env, no Docker. Re-derive value, drop bloat.
 
 ## Cohesive story (the spine - proposed, revisable)
-Data = 4 mouse AD genotypes in a 2x2 (tau: MAPTKI ~ tau-KO vs P301S mutant; amyloid:
+Data = 4 mouse AD genotypes in a 2x2 (tau: MAPTKI = WT humanized tau vs P301S mutant humanized tau; amyloid:
 -/+ NLGF) x 4 modalities (snRNAseq, GeoMx spatial, bulk proteome, bulk phospho).
 Question = how amyloid reshapes microglia under each tau background. Divergence =
 interaction (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
@@ -62,7 +62,7 @@ gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance
 manuscript; no new biological scope this milestone.
 
 Units (all OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
-- P7.1 [OPEN] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
+- P7.1 [DONE 2026-07-18] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
   literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
   MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Remaining
   work = relabel 6 sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342`+
@@ -254,6 +254,24 @@ template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) are itemized
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-18 P7.1 MAPTKI construct + tau-factor relabel (M7.1) DONE. Corrected the false
+  "tau-KO" description of the MAPTKI tau-factor level to the literature-verified construct at its
+  four developer sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342` +
+  `:543 y_meaning`) plus the `memory.md` 2x2 block, keeping the `MAPTKI` factor TOKEN and every
+  occupancy/DE number byte-stable. Key finding: "tau-KO" never surfaced in the rendered report --
+  the visible scatter axis uses neutral factor tokens (`log2FC NLGF_MAPTKI vs MAPTKI`) and
+  `y_meaning` has no reader, so the error lived only in code comments, one dead data field, and the
+  .agent docs. Banked in memory.md as durable construct provenance: MAPTKI = Saito humanized WT MAPT
+  knock-in (human WT tau; NOT tau-null), P301S = Watamura base-edited MAPT^P301S;Int10+3, clean 2x2
+  with no tau-null arm, five citations (Saito 2014/2019, Watamura 2025, Benzow 2024, Morito 2025),
+  and a STANDING external-record request for user breeding/allele + per-animal provenance (does NOT
+  block; P7.1 was literature-unblocked). Exact relabel wording resolved as the literature-mandated
+  phrasing (a conventional default) rather than blocking the autonomous session -- user may tweak.
+  Implemented via one bypass Agent (literal swaps); MAIN independently inspected the diff (4 files,
+  surgical) and reran `TZ=UTC CHECK_SKIP_SYNC=1 scripts/check.sh` GREEN (exit 0,
+  report/tau-mutant-integration.html 11.87 MB, 29 chunks, render-log clean). main=64% 175K/272K;
+  impl not surfaced to coordinator (trivial scope: 5 literal edits + gate). Milestone stays
+  IN-PROGRESS; next = P7.2.
 - 2026-07-18 P7 integrity-first audit OPENED (direction G, user-selected) ->
   `.agent/p7_integrity_audit_plan.md`. Milestone plans resolution of three stop-the-line
   integrity gates + the 24M run-order contract + a preregistered DAM-occupancy robustness

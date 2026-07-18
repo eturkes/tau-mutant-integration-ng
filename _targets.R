@@ -150,7 +150,7 @@ list(
   tar_target(proteome_de_24m, run_proteome_de_24m(proteomics, sample_key), format = "qs"),
   tar_target(phospho_de_24m,  run_phospho_de_24m(phospho, sample_key),   format = "qs"),
 
-  # Compact per-modality amyloid-response logFC pairs: y = nlgf_in_maptki (amyloid on the tau-KO
+  # Compact per-modality amyloid-response logFC pairs: y = nlgf_in_maptki (amyloid on the WT-humanized-tau (MAPTKI)
   # background), x = nlgf_in_p301s (amyloid on the mutant-tau background). The interaction contrast is
   # x - y (nlgf_in_p301s - nlgf_in_maptki), so off-diagonal distance ranks its magnitude. Also carries
   # Functional-category scores over off-diagonal genes/proteins from the

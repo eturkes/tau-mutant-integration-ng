@@ -339,7 +339,7 @@ phospho_modality_descriptor <- function(phospho_de_24m,
 
 # Per-modality amyloid-response logFC pairs for fig-modality-amyloid-effect (one scatter per
 # method), plus compact functional-category scores for shared-cutoff off-diagonal features. y = logFC of
-# `nlgf_in_maptki` (amyloid effect on the tau-KO / MAPTKI background), x = logFC of
+# `nlgf_in_maptki` (amyloid effect on the WT-humanized-tau (MAPTKI) background), x = logFC of
 # `nlgf_in_p301s` (amyloid effect on the mutant-tau / P301S background). Both per-contrast
 # topTables come from ONE fit per modality (identical feature rows), aligned by the modality's
 # feature key. Compact per-modality frames {feature, label, gene_symbols, x, y, interaction}
@@ -540,7 +540,7 @@ modality_logfc_scatter_data <- function(pb_de_microglia, symbol_map, geomx_de,
     provenance = list(
       y_contrast = y_contrast,
       x_contrast = x_contrast,
-      y_meaning = "amyloid effect on the tau-KO (MAPTKI) background",
+      y_meaning = "amyloid effect on the WT-humanized-tau (MAPTKI) background",
       x_meaning = "amyloid effect on the mutant-tau (P301S) background",
       interaction = "x - y is the tau-by-amyloid interaction contrast per feature; |x - y| ranks off-diagonal distance",
       offdiag_cutoff = offdiag_cutoff_by_modality,
