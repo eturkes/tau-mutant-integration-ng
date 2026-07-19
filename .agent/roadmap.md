@@ -299,7 +299,18 @@ do not block.
   non-blocking: (a) ratify the G1 relabel wording + G2 bulk-figure fate (both settled by reversible
   integrity-mandated conventional default); (b) the ggrepel `max.time=3` report byte-nonreproducibility
   (report-VISIBLE + PRE-EXISTING, out of P7-review scope; `R/report/plot.R:240,246` comment overstates
-  determinism) as an authorized report-code follow-up. Review spanned one auto-compaction (budget-exempt).
+  determinism) as an authorized report-code follow-up. (c) two FROZEN-path sweep-efficiency refactors deferred
+  (need authorization + oracle revalidation, both invalidate `occupancy_robustness`): pre-score UCell
+  once vs 15x redundant re-score; project a compact reference into `microglia_state_substrate` to drop
+  the 612MB `microglia_annotated` direct dependency (`_targets.R:101-104`). (d) LOW harness
+  self-validation gap: reduced-design smoke (`occupancy_harness.R:659-699`) never exercises a
+  SUCCESSFUL reduced-design E1 path (fabricated counts legitimately fail beta-binomial; real 20/20
+  reduced variants E1 ok -> verdict UNAFFECTED) -> optional positive-path fixture. POST-CLOSE lens
+  finals -> LOW/NIT DOC-only follow-ups (no code defect): f8b0267/2d0bdb8 residual G2 assay
+  terminology (`_targets.R`/README/`de_pb.R`/`map.md` four-panel + TiO2 phospho) + g3 dossier MAPT-GR
+  mechanism (targeted gene-replacement, not transgenic); 71cf6e9 memory payload-size precision
+  (`audit$serialized_bytes` pre-write self-estimate; `tar_meta(bytes)` authoritative).
+  Review spanned one auto-compaction (budget-exempt).
   main=64% 173K/272K (post-compaction resume); no impl= (MAIN-applied doc batch).
 - 2026-07-19 P7.5 execute robustness sweep + tipping-point verdict (M7.5) DONE -> milestone P7
   IMPLEMENTED. Executed the FROZEN prereg (7755c9f) via new `R/analysis/occupancy_sweep.R` +
