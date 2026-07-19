@@ -56,7 +56,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; units P8.1-P8.4 all OPEN]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1 DONE, P8.2-P8.4 OPEN]
 
 Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
 to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
@@ -90,13 +90,13 @@ concordance (common 3,109-universe primary, descriptive - no gene-permutation p)
 (intentional). No new heavy dep (MOFA2 / RGCCA / mixOmics / omicade4 / concatenated PCA / py_jive all
 rejected with recorded rationale; lean reimplement per CLAUDE.md).
 
-Units (P8.1-P8.4 all OPEN 2026-07-19; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all gate-independent):
-- P8.1 [OPEN] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
-  core + oracle test. Per-modality [5 contrasts x genes] logFC + moderated-t matrices, robust-z
-  standardization (raw + standardized stored), complete-case (3,109) + >=2-modality (12,427) index
-  sets + per-pair overlaps, phosphosite parent alternate, provenance. Accept: exact reconstruction
-  from raw DE targets (tol 0); shared-set counts reproduce; bulk single-modality; compact +
-  parent-isolated; gate green.
+Units (P8.1 DONE 2026-07-19, P8.2-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all gate-independent):
+- P8.1 [DONE 2026-07-19] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
+  core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [symbol x 5-contrast] logFC +
+  moderated-t matrices, robust-z standardization (raw + invertible standardized stored), complete-case (3,109) +
+  >=2-modality (12,427) index sets + per-pair overlaps (12,324/3,132/3,189), phosphosite parent alternate (3,019,
+  not a modality), provenance. Reconstruction tol 0, counts reproduce, invertibility <1e-9, bulk single-modality,
+  compact (6.78 MB) + parent-isolated, gate green -- MAIN-verified against cached DE targets.
 - P8.2 [OPEN] Joint-vs-individual decomposition -> `integration_decomposition` + AJIVE reimplement +
   oracle tests + r.jive cross-check. Joint/individual/residual variance per block, joint gene scores,
   per-block joint contrast-loadings, ranks + diagnostics. Accept: X_k = J_k + A_k + E_k to <1e-8;
@@ -294,6 +294,26 @@ Units (P8.1-P8.4 all OPEN 2026-07-19; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-19 P8.1 harmonized effect-size substrate (M8.1) DONE. New `R/analysis/integration.R`
+  (`build_integration_substrate` + reusable `robust_z`) + compact parent-isolated NON-report leaf
+  `integration_substrate` over the 5 cached DE targets. Harmonizes the 3 integration modalities to gene
+  symbols (snRNAseq ENSMUSG->symbol via symbol_map 1:1; GeoMx symbol direct; bulk proteome protein-group ->
+  gene_first, max-AveExpr representative + radix-min tie); stores per-modality [symbol x 5-contrast] RAW +
+  invertible robust-z (median/mad) logFC + moderated-t matrices, the index sets (complete-case 3,109 /
+  >=2-mod 12,427 / union 22,241; pairwise 12,324/3,132/3,189 + per-symbol membership), and the phosphosite
+  parent-gene alternate (3,019 single non-blank gene; NOT a 4th modality). Bulk = ONE modality. Oracle =
+  in-builder stopifnot (no committed test file -- lean posture): tol-0 reconstruction vs raw DE, independent
+  representative re-derivation, invertibility <1e-9, hardcoded 23-count guard (identical), recursive
+  parent-isolation, <25 MiB. Wired into `scripts/check.sh` (invalidate+build alongside report +
+  occupancy_harness_check). MAIN independently verified against permitted real inputs (cached DE targets):
+  GeoMx/snRNAseq raw reconstruction identical (tol 0); ALL 52 bulk collapsed-symbol representatives
+  reconstruct identically; invertibility max|diff| 3.55e-15; complete-case == independent intersect(3 sets);
+  >=2-mod == independent union of pairwise intersects; phospho parents 3,019 == independent single-gene set;
+  modalities = {snRNAseq,GeoMx,bulk}, phospho separate; `TZ=UTC scripts/check.sh` GREEN (report re-renders
+  warn-clean, 10 figures undisturbed, + occupancy_harness_check + integration_substrate). Payload = 6.78 MB
+  serialized / 23.16 MB in-memory. Live target count 36 -> 37 (integration_substrate stays a non-report leaf
+  until P8.4). Docs = new module/target in memory + map (Agent). main=83% 226K/272K; impl=57% 154K/272K.
+  Milestone stays IN-PROGRESS; next = P8.2 (joint-vs-individual decomposition; MAIN SIZE-CHECK before dispatch).
 - 2026-07-19 P8 cross-modality symbol/effect-size integration OPENED (direction "cross-modality paired
   integration", user-selected at the direction gate; the VALID substitute the user confirmed = symbol-
   level effect-size joint integration WITHOUT a crosswalk) -> `.agent/p8_crossmodality_integration_plan.md`.

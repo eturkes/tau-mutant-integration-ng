@@ -36,8 +36,8 @@ corrected from the earlier wrong "tau-KO baseline":
   confirm the literature-inferred construct at the animal level.
 
 Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, 34 report-ancestry
-targets (36 live: + `occupancy_harness_check` + `occupancy_robustness` guardrail leaves, outside
-report ancestry).
+targets (37 live: + `occupancy_harness_check`, `occupancy_robustness`, and `integration_substrate`
+non-report leaves, outside report ancestry).
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -142,6 +142,18 @@ Five canonical contrasts everywhere:
 - `tau_in_nlgf`
 - `interaction`
 
+Cross-modality integration (P8):
+- `integration_substrate` is the symbol x five-contrast effect-size substrate over exactly three
+  modalities: snRNAseq, GeoMx, and bulk protein-group. It stores raw `logFC`/moderated-`t` plus
+  invertible per-modality/per-contrast median-MAD robust-z matrices.
+- Symbol coverage is complete-case 3,109 / >=2-modality 12,427 / union 22,241; pairwise overlaps
+  are snRNAseq-GeoMx 12,324, snRNAseq-bulk 3,132, and GeoMx-bulk 3,189.
+- The 3,019-symbol phosphosite parent-gene collapse is a within-assay alternate of the SAME TiO2
+  assay, NOT a modality; bulk remains one modality and no per-animal pairing is attempted.
+- `integration_substrate` is a compact, parent-isolated, self-validating non-report leaf rebuilt by
+  `scripts/check.sh`; exact source reconstruction, invertibility, deterministic representatives,
+  fixed counts, and the <25 MiB size ceiling are runtime-fatal.
+
 Microglia reprocess:
 - SCT-v2/glmGamPoi on RNA counts, regress percent_mt + percent_contam.
 - Harmony integrates batch only; genotype/amyloid are biology, not correction terms.
@@ -214,7 +226,8 @@ DAM-occupancy robustness (P7.5 executed):
   filler rows so `n_retained` and coverage reproduce exactly; E2/E3 success requires exact schemas
   and finite inferential output, and reduced-design smoke requires E2/E3 `ok` plus a separate fabricated
   non-estimable fixture with all three failures recorded. `scripts/check.sh` invalidates and rebuilds
-  this guardrail; `occupancy_robustness` stays an explicitly built non-report leaf.
+  this guardrail together with `integration_substrate`; `occupancy_robustness` stays an explicitly
+  built non-report leaf.
 
 Microglia DE:
 - Live target = `pb_de_microglia` only.
@@ -304,7 +317,8 @@ Fresh bootstrap:
 5. `scripts/check.sh`
 
 `scripts/check.sh`:
-- invalidates and rebuilds both `report` and the non-report `occupancy_harness_check` guardrail
+- invalidates and rebuilds `report` plus the non-report `occupancy_harness_check` and
+  `integration_substrate` validation leaves
 - does not sync the environment or scan all target metadata/logs
 - relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
 - functional green does not currently imply byte stability: repeated renders vary only in Figure 8

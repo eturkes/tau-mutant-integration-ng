@@ -179,6 +179,12 @@ list(
                                          proteome_de_24m, phospho_de_24m),
              format = "qs"),
 
+  # P8.1 non-report leaf: harmonized symbol x five-contrast raw/robust-z effects.
+  tar_target(integration_substrate,
+             build_integration_substrate(pb_de_microglia, symbol_map, geomx_de,
+                                         proteome_de_24m, phospho_de_24m),
+             format = "qs"),
+
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # figure/code-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc

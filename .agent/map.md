@@ -15,7 +15,7 @@ Fresh clone:
 2. `scripts/bootstrap/rv.sh` - project R package manager.
 3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness guardrail.
+5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness and integration-substrate guardrails.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 36.
+store to `storage/targets/`. Expected live target count: 37.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -127,6 +127,13 @@ Modality context:
   The heatmap selects 20 rows, excludes parent genes `Plcb1` and `Arhgef7`,
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
   median-normalized profiles to the first ranked representative without label suffixes.
+- `integration_substrate <- build_integration_substrate(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
+  is the P8.1 compact, parent-isolated NON-report leaf over exactly three modalities
+  (`snRNAseq`, `GeoMx`, bulk protein-group). It stores raw and invertible robust-z `logFC`/moderated-`t`
+  matrices on the five canonical contrasts; indexes 3,109 complete-case, 12,427 >=2-modality, and
+  22,241 union symbols (pairwise 12,324/3,132/3,189); and keeps the 3,019 phosphosite parent-gene
+  collapse as a same-TiO2-assay alternate, never a fourth modality. `scripts/check.sh` invalidates
+  and rebuilds this self-validating leaf on every gate.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", sections/*.qmd, R/**/*.R)`
@@ -194,6 +201,13 @@ Report:
   `run_index`, 11 residual df) as an integrity record only; the genotype-blocked acquisition means
   run order is aliased with genotype, so figures keep the primary no-batch `$top`. Auxiliary
   SpatialDecon beta/abundance and broad-family sensitivity arms stay deleted.
+
+`R/analysis/integration.R`
+- `build_integration_substrate()` harmonizes snRNAseq, GeoMx, and bulk protein-group effects by
+  gene symbol across the five canonical contrasts. `robust_z()` stores invertible per-modality,
+  per-statistic, per-contrast median/MAD scaling; deterministic max-`AveExpr` representatives,
+  exact source reconstruction, overlap counts, compactness, and parent isolation are runtime-fatal
+  guards. The phosphosite parent-gene payload is explicitly a within-assay alternate.
 
 `R/report/figures.R`
 - Compact figure-data builders for rendered slots only:
