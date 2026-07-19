@@ -35,7 +35,9 @@ corrected from the earlier wrong "tau-KO baseline":
   per-animal provenance (MAPTKI/P301S animal IDs, promoter/locus, genotyping confirmation) to
   confirm the literature-inferred construct at the animal level.
 
-Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, expected 34 targets.
+Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, 34 report-ancestry
+targets (36 live: + `occupancy_harness_check` + `occupancy_robustness` guardrail leaves, outside
+report ancestry).
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -104,12 +106,24 @@ Raw data facts:
   supplies a validated cross-assay crosswalk; gene-symbol harmonization/meta-comparison
   remains allowed. Current report is compliant.
 
+## Standing external-record requests (user-only; do not block)
+
+Items the report cannot self-supply; itemized in the G-dossiers, banked here so they survive
+plan archival:
+- G1: breeding/allele confirmation records for the humanized-tau lines.
+- G2: vendor TiO2 enrichment template + phospho acquisition method.
+- G3: animal/aliquot cross-assay crosswalk; per-animal survival/attrition, litter, cage, sex,
+  batch; GeoMx raw files (DCC/PKC), neg-probe/scan/mask metadata, and the missing-AOI disposition.
+
 ## Scientific Spine
 
 Durable headline:
 - Amyloid drives microglia homeostatic -> DAM activation.
 - Mutant tau modulates amyloid response mostly through DAM-cell composition, not a
-  supported progression-beyond-composition shift along the activation trajectory.
+  supported progression-beyond-composition shift along the activation trajectory. The
+  DAM-composition interaction (+0.174) is directionally robust (positive in all 35 P7.5
+  variants) but its zero-null significance is resolution-fragile (P7.5 verdict = FRAGILE):
+  read this as a robust-sign, significance-caveated claim.
 - Non-snRNAseq modalities provide context figures, not resurrected mechanism or
   cross-modality chapters.
 
@@ -203,7 +217,7 @@ DAM-occupancy robustness (P7.5 executed):
 Microglia DE:
 - Live target = `pb_de_microglia` only.
 - Raw RNA pseudobulk by genotype_batch, limma voom with quality weights, topTables for
-  the four-method amyloid-response scatter.
+  the four-panel amyloid-response scatter.
 - No stageR, per-subpopulation DE, MDE, or DAM-direction helper in the live DAG.
 
 Trajectory:
@@ -235,7 +249,7 @@ Modality context:
   with genotype/tau/amyloid context above and top legends for genotype plus shared tau/amyloid no-versus-yes colors.
   Spatial/QC, bio/slide replicate, tech-replicate, ROI, signature, and non-DAM marker tracks are omitted; ROI exactly encodes
   genotype block + tech_rep. It excludes no AOIs and changes no DE model.
-- Four-method amyloid-response scatter uses one shared off-diagonal feature cutoff:
+- Four-panel amyloid-response scatter uses one shared off-diagonal feature cutoff:
   `|x-y| >= 3.5`. Figure 8 labels all points past the cutoff and draws all four facets on one shared square coordinate
   range so the dotted cutoff bands have the same visual distance from the identity line; its line
   legend labels the dotted cutoff bands as `threshold: |x-y| >= 3.5 log2FC`. Figure 9

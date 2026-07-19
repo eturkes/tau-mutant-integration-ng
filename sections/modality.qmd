@@ -50,7 +50,7 @@ bulk_modality_context_plot(msf$descriptive$Proteome, msf$descriptive$Phospho)
 #| label: plot-modality-amyloid-effect
 #| fig-width: 13.9
 #| fig-height: 16.8
-#| fig-alt: "Four scatter plots, one per method, each comparing the amyloid log fold change between the two tau backgrounds on a shared square coordinate scale; a large text note labels the dotted threshold bands as absolute off-diagonal distance |x-y| greater than or equal to 3.5 log2FC, all threshold-passing points are labelled, GeoMx has no threshold-passing labels, and phosphoproteomics is collapsed to parent proteins."
+#| fig-alt: "Four scatter plots, one per panel (snRNAseq, GeoMx, and one bulk TiO2 phospho assay at protein-group and phosphosite levels), each comparing the amyloid log fold change between the two tau backgrounds on a shared square coordinate scale; a large text note labels the dotted threshold bands as absolute off-diagonal distance |x-y| greater than or equal to 3.5 log2FC, all threshold-passing points are labelled, GeoMx has no threshold-passing labels, and phosphoproteomics is collapsed to parent proteins."
 scatter_lim <- max(vapply(msf$order, function(m) {
   d <- msf$panels[[m]]$data
   max(abs(c(d$x[is.finite(d$x)], d$y[is.finite(d$y)])), na.rm = TRUE)

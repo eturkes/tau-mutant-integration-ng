@@ -12,7 +12,7 @@ story, minimal prose, project-local env, no Docker. Re-derive value, drop bloat.
 
 ## Cohesive story (the spine - proposed, revisable)
 Data = 4 mouse AD genotypes in a 2x2 (tau: MAPTKI = WT humanized tau vs P301S mutant humanized tau; amyloid:
--/+ NLGF) x 4 assays (snRNAseq, GeoMx spatial, and a 24M bulk TiO2 phospho assay reported at protein-group and phosphosite levels; the "bulk proteome" is that phospho-PTM report summed to protein groups, NOT a global proteome -- G2).
+-/+ NLGF) x 3 assay sources (snRNAseq, GeoMx spatial, and a 24M bulk TiO2 phospho assay reported at protein-group and phosphosite levels; the "bulk proteome" is that phospho-PTM report summed to protein groups, NOT a global proteome -- G2).
 Question = how amyloid reshapes microglia under each tau background. Divergence =
 interaction (NLGF_P301S - P301S) - (NLGF_MAPTKI - MAPTKI).
 Durable findings mined from v1 (the headline to rebuild around):
@@ -40,14 +40,15 @@ microglia (P1) + trajectory (P2) +
 one appended P6 retained-state response plate (DAM occupancy, ungrouped 52-gene
 state/background profile fields, and 14,438-gene two-state interaction geometry) +
 one GeoMx modality-native figure (the former Figure 10 sample heatmap), one retained bulk modality-native
-figure combining the TiO2 phospho protein-group PCA and phosphosite heatmap, and two modality-context figures (four-method amyloid-response logFC
+figure combining the TiO2 phospho protein-group PCA and phosphosite heatmap, and two modality-context figures (four-panel amyloid-response logFC
 scatter; functional-group aggregate scores over the scatter's off-diagonal genes/proteins). The pipeline loads
 snRNAseq plus lean GeoMx/proteome/phospho primary-DE targets solely for the modality figures; GeoMx carries only
 the retained sample-heatmap descriptor as native report payload. The dedicated mechanism/cross-modality/qc/story
 chapters, targets, R modules, tests, Python/uv surface, composition/sccomp target, per-subpopulation pseudobulk,
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
-the live DAG (Ledger 2026-07-08). Closed P6 keeps the live DAG at 34 targets and appends Figure 10 from only
-the compact `state_decomposition_figures` leaf.
+the live DAG (Ledger 2026-07-08). Closed P6 kept the live DAG at 34 report-ancestry targets and appends Figure 10 from only
+the compact `state_decomposition_figures` leaf; P7 adds two non-report guardrail leaves
+(`occupancy_harness_check`, `occupancy_robustness`) => 36 live targets (see map.md).
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -55,22 +56,23 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P7 - integrity-first audit [IMPLEMENTED 2026-07-19; units P7.1-P7.5 DONE; awaiting MILESTONE-REVIEW]
+## Active milestone: P7 - integrity-first audit [REVIEWED 2026-07-19; units P7.1-P7.5 DONE; MILESTONE-REVIEW closed 2026-07-19]
 
 Direction G (integrity-first) selected by the user. Full plan + confirmed evidence:
-`.agent/p7_integrity_audit_plan.md`. Scope = resolve the three stop-the-line integrity
+`.agent/completed/p7_integrity_audit_plan_2026-07-19.md`. Scope = resolve the three stop-the-line integrity
 gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance) plus the
 24M run-order contract, then run a preregistered DAM-occupancy robustness audit of the
 +0.174 interaction. Posture: settle integrity BEFORE adding biology or freezing a
 manuscript; no new biological scope this milestone.
 
-Units (P7.1-P7.5 all DONE 2026-07-19; milestone IMPLEMENTED, awaiting review; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
+Units (P7.1-P7.5 all DONE 2026-07-19; milestone REVIEWED 2026-07-19; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
 - P7.1 [DONE 2026-07-18] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
   literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
-  MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Remaining
-  work = relabel 6 sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342`+
-  `:543 y_meaning`, `.agent/memory.md:12`, `roadmap.md:14`), keep the `MAPTKI` factor token
-  stable. Exact wording = USER-DECISION.
+  MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Relabeled the 6
+  sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342`+`:543 y_meaning`,
+  `.agent/memory.md:12`, `roadmap.md:14`), keeping the `MAPTKI` factor token stable. Wording =
+  integrity-mandated conventional default (user-ratifiable, reversible); only optional external
+  breeding/allele records remain outstanding.
 - P7.2 [DONE 2026-07-18] 24M bulk assay identity + run-order contract (G2 + run-order). Documented the
   TiO2-phospho-PTM-summed-to-protein-groups nature (new `.agent/p7_g2_bulk_assay_dossier.md` + memory
   contracts, column+code evidence, reconfirmed against real inputs). Re-added a compact
@@ -100,13 +102,13 @@ Units (P7.1-P7.5 all DONE 2026-07-19; milestone IMPLEMENTED, awaiting review; se
   but zero-null significance is resolution-fragile - `resolution_0.5` (fdr_zero 0.089) and
   `resolution_0.6` (0.079) cross >0.05, so the pre-committed ROBUST-POSITIVE rule (E1>0 AND
   fdr_zero<=0.05 for ALL variants) is not met. E1 range [0.1090994, 0.2306348]. No report figure
-  added (optional clause declined; report stays byte-identical). Sweep-only fit one Agent window
+  added (optional clause declined; report source unchanged, though renders are not byte-reproducible per memory.md). Sweep-only fit one Agent window
   -> no respec.
 
 Both requirement-level user-decision points are now resolved with integrity-mandated conventional
 defaults (P7.1 relabel wording; P7.2 bulk-figure fate = relabel, with replace/remove left
 user-tweakable). The standing external-record requests (G1 breeding/allele records; G2 vendor
-template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) remain itemized in the plan and
+template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) are now banked in `memory.md` and
 do not block.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
@@ -142,14 +144,14 @@ do not block.
   appended one compact Figure 10 without disturbing Figures 1-9. Outcome =
   unresolved: positive occupancy interaction, 0.10 minimum-effect family not
   supported at 5%, and no concordant meaningful within-DAM programme shift.
-- P7 Integrity-first audit [IMPLEMENTED 2026-07-19 -> `.agent/p7_integrity_audit_plan.md`]:
+- P7 Integrity-first audit [REVIEWED 2026-07-19 -> `.agent/completed/p7_integrity_audit_plan_2026-07-19.md`]:
   resolve the three stop-the-line integrity gates (G1 tau-factor construct = humanized-WT
   MAPT knock-in vs mutant tau, NOT "tau-KO"; G2 24M "proteome" = TiO2 phospho-PTM report
   summed to protein groups, no global proteome in storage/data; G3 provenance = 16-of-67-run
   manifest + cross-assay crosswalk gap) plus the genotype-blocked 24M run-order contract,
   then run a preregistered DAM-occupancy robustness audit of the +0.174 interaction. 5 units
   P7.1-P7.5 all DONE 2026-07-19 (verdict FRAGILE: +0.174 occupancy sign robust across 34
-  variants, zero-null significance resolution-fragile at res 0.5-0.6); awaiting MILESTONE-REVIEW.
+  variants, zero-null significance resolution-fragile at res 0.5-0.6); MILESTONE-REVIEW closed 2026-07-19.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -277,6 +279,28 @@ do not block.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-19 P7 MILESTONE-REVIEW closed (M7 review) -> milestone REVIEWED. Reviewed all 7 P7 commits
+  (05cf860^..HEAD) via four analysis-only lenses (correctness/spec, cross-unit integration,
+  instruction/memory conformance, token-efficiency/obsolescence) + independent MAIN verification against
+  permitted real inputs. CODE-INTEGRITY CORE CLEAN, no code defect: E1/E2/E3 estimators REUSE the
+  P7-UNTOUCHED shared `state_decomposition.R` primitives (freedman_lane_stratified_interaction /
+  state_wald_contrasts / state_probability_standardization / fit_trajectory_contrasts) and assert equality
+  to the report DAG @1e-8 (no divergent reimplementation); frozen 35-variant grid self-guarded; verdict
+  conjunction faithfully yields FRAGILE; reference oracle +0.1741141 @1e-8 + exact re-annotation; gate
+  guardrail Layer-A tol-0 + Layer-B 1e-8; the 2 guardrail leaves confirmed outside report ancestry (36
+  live = 34 report-ancestry + 2); G2 dossier reconfirmed vs the real phospho file (81 cols / 67
+  .PTM.Quantity / TiO2-DIA). Decisive gate GREEN. ALL findings were DOCUMENTATION/prose, applied by MAIN
+  (no Agent needed): memory Scientific-Spine gained the FRAGILE robustness caveat; roadmap P7.1 bullet
+  terminalized; roadmap "4 assays"->"3 assay sources"; "report byte-identical"->"source unchanged (renders
+  not byte-reproducible)"; "live DAG 34 targets"->36; README modality framing (3 assay sources) +
+  `scripts/check.sh` gate doc (report + occupancy_harness_check); standing external-record requests banked
+  in memory before the opening-state plan was archived to completed/; sole report-VISIBLE relabel gap fixed
+  = Figure 8 alt-text (`sections/modality.qmd:53`, "one per method"->panel enumeration). SURFACED to user,
+  non-blocking: (a) ratify the G1 relabel wording + G2 bulk-figure fate (both settled by reversible
+  integrity-mandated conventional default); (b) the ggrepel `max.time=3` report byte-nonreproducibility
+  (report-VISIBLE + PRE-EXISTING, out of P7-review scope; `R/report/plot.R:240,246` comment overstates
+  determinism) as an authorized report-code follow-up. Review spanned one auto-compaction (budget-exempt).
+  main=64% 173K/272K (post-compaction resume); no impl= (MAIN-applied doc batch).
 - 2026-07-19 P7.5 execute robustness sweep + tipping-point verdict (M7.5) DONE -> milestone P7
   IMPLEMENTED. Executed the FROZEN prereg (7755c9f) via new `R/analysis/occupancy_sweep.R` +
   compact non-report leaf `occupancy_robustness` (35 rows = reference + 34 one-at-a-time variants
@@ -406,7 +430,7 @@ do not block.
   impl not surfaced to coordinator (trivial scope: 5 literal edits + gate). Milestone stays
   IN-PROGRESS; next = P7.2.
 - 2026-07-18 P7 integrity-first audit OPENED (direction G, user-selected) ->
-  `.agent/p7_integrity_audit_plan.md`. Milestone plans resolution of three stop-the-line
+  `.agent/completed/p7_integrity_audit_plan_2026-07-19.md`. Milestone plans resolution of three stop-the-line
   integrity gates + the 24M run-order contract + a preregistered DAM-occupancy robustness
   audit, as 5 gate-independent units (P7.1 construct/tau relabel, P7.2 bulk assay identity +
   run-order, P7.3 provenance dossier, P7.4 robustness prereg + harness, P7.5 sweep + tipping-

@@ -1,4 +1,13 @@
-# P7 - Integrity-first audit (active plan)
+# P7 - Integrity-first audit (COMPLETED 2026-07-19; opening-state plan, historical)
+
+> STATUS: P7 units P7.1-P7.5 all DONE 2026-07-19; milestone IMPLEMENTED then REVIEWED.
+> This file is the OPENING-STATE plan, preserved as a historical record. Its gate statuses
+> (all OPEN), the "repo hardcodes tau-KO" premise, and the "must confirm/resolve" language
+> describe the milestone AT PLAN OPENING, not the current repo -- do not read its tenses as
+> current state. For OUTCOMES see `roadmap.md` (P7.1-P7.5 detail + Ledger),
+> `p7_g2_bulk_assay_dossier.md`, `p7_g3_provenance_dossier.md`,
+> `p7_dam_occupancy_prereg.md` (FROZEN), and `p7_dam_occupancy_robustness_results.md`
+> (verdict = FRAGILE). Standing external-record requests are now banked in `memory.md`.
 
 Companions: `roadmap.md` (trajectory), `memory.md` (contract), `map.md` (wiring),
 `history.md` (digests), `archive_digest.md` / branch `archive` (v1 mining).

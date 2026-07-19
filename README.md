@@ -1,8 +1,9 @@
 # Tau mutant integration
 
-Reproducible R/Quarto integration of snRNA-seq, GeoMx, proteome, and
-phosphoproteome evidence across the MAPTKI/P301S x amyloid design. The one
-user-facing artefact is `report/tau-mutant-integration.html`.
+Reproducible R/Quarto integration of snRNA-seq, GeoMx, and bulk TiO2
+phosphoproteomics (protein-group and phosphosite level) evidence across the
+MAPTKI/P301S x amyloid design. The one user-facing artefact is
+`report/tau-mutant-integration.html`.
 
 ## Run
 
@@ -16,8 +17,10 @@ rv sync
 scripts/check.sh
 ```
 
-`scripts/check.sh` rebuilds and validates the report target. Raw inputs live
-outside Git under `storage/data/`.
+`scripts/check.sh` rebuilds and validates the `report` target plus the
+`occupancy_harness_check` reproduction guardrail (`occupancy_robustness` is an
+explicit non-report leaf, not in the routine gate). Raw inputs live outside Git
+under `storage/data/`.
 
 ## Layout
 
