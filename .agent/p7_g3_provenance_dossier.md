@@ -62,7 +62,9 @@ This attribution follows the P7.1 construct literature work; it is an inference 
 label nomenclature and published model series, not animal-level provenance encoded by
 the manifest.
 
-- Benzow/Koob H1 `MAPT-GR` series — distinct human-tau transgenic, H1 haplotype:
+- Benzow/Koob H1 `MAPT-GR` series — distinct human-tau targeted gene-replacement
+  line (human MAPT genomic region replaces the mouse locus, not a random-insertion
+  transgenic), H1 haplotype:
   `MAPT-wt-H1-haplotype` (matched WT control), `MAPT-10+16`, `MAPT-N279K`.
 - Saito humanized base-edited MAPT-KI series — same platform as the report's
   MAPTKI/P301S groups: `MAPT-10+3`, `MAPT-P301S-10+3`,

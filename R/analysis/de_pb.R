@@ -1,7 +1,8 @@
 # Pseudobulk + bulk DE machinery used by the rendered report. snRNAseq uses
-# limma-voom topTables for the four-method amyloid-response scatter; bulk
-# proteome/phospho use limma-trend on log-intensities. Designs + contrasts come
-# from R/core/design.R. All non-base calls are namespace-qualified.
+# limma-voom topTables for the four-panel amyloid-response scatter; bulk TiO2
+# phospho (protein-group/phosphosite levels) use limma-trend on log-intensities.
+# Designs + contrasts come from R/core/design.R. All non-base calls are
+# namespace-qualified.
 
 # Aggregate single-cell counts into per-sample pseudobulk: sum raw counts across the cells of
 # each group_col level. Returns a features x samples numeric matrix, columns in sorted level

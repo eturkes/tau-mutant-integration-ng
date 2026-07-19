@@ -218,7 +218,7 @@ Report:
 - `sections/trajectory.qmd`: pseudotime density by genotype/subpopulation.
 - `sections/modality.qmd`: GeoMx AOI metadata-track diagnostic,
   vertically stacked TiO2 phospho protein-group PCA / phosphosite heatmap descriptive figure,
-  four-method amyloid response scatter, functional-category score panel.
+  four-panel amyloid response scatter, functional-category score panel.
 - `sections/state-decomposition.qmd`: compact two-tier plate with retained-state occupancy,
   transcriptome-wide two-state interaction geometry, and ungrouped line-profile fields
   spanning all declared marker genes.
