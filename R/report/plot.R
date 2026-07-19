@@ -237,7 +237,8 @@ modality_interaction_scatter <- function(df, title = NULL, n_label = NULL,
     ggplot2::geom_point(data = top, ggplot2::aes(x, y),
                         size = if (label_n >= 80L) 0.85 else 1.1,
                         colour = label_colour) +
-    # max.overlaps = Inf + fixed seed -> deterministic layout, no "unlabeled points" warning (warn=2)
+    # max.overlaps = Inf -> no "unlabeled points" warning (warn=2); seed = 42L aims at reproducibility
+    # but max.time below is a wall-clock bound, so the label layout is NOT byte-stable across renders.
     ggrepel::geom_text_repel(data = top, ggplot2::aes(x, y, label = .data[[label_col]]),
                              size = label_size, colour = "#20242A", max.overlaps = Inf,
                              box.padding = label_box_padding,

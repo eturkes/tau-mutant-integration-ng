@@ -297,9 +297,10 @@ do not block.
   in memory before the opening-state plan was archived to completed/; sole report-VISIBLE relabel gap fixed
   = Figure 8 alt-text (`sections/modality.qmd:53`, "one per method"->panel enumeration). SURFACED to user,
   non-blocking: (a) ratify the G1 relabel wording + G2 bulk-figure fate (both settled by reversible
-  integrity-mandated conventional default); (b) the ggrepel `max.time=3` report byte-nonreproducibility
-  (report-VISIBLE + PRE-EXISTING, out of P7-review scope; `R/report/plot.R:240,246` comment overstates
-  determinism) as an authorized report-code follow-up. (c) two FROZEN-path sweep-efficiency refactors deferred
+  integrity-mandated conventional default); (b) the ggrepel `max.time=3` report byte-nonreproducibility (report-VISIBLE + PRE-EXISTING;
+  `R/report/plot.R:246` wall-clock bound) needs an authorized report-code follow-up to REMOVE; the
+  misleading `:240` "deterministic layout" comment is corrected in-review (comment-only, no
+  target-hash/output impact). (c) two FROZEN-path sweep-efficiency refactors deferred
   (need authorization + oracle revalidation, both invalidate `occupancy_robustness`): pre-score UCell
   once vs 15x redundant re-score; project a compact reference into `microglia_state_substrate` to drop
   the 612MB `microglia_annotated` direct dependency (`_targets.R:101-104`). (d) LOW harness
