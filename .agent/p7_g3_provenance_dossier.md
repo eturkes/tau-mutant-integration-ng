@@ -9,7 +9,7 @@ cross-modality integration is therefore **PROHIBITED** until the user supplies a
 validates that crosswalk.
 
 Current report = compliant: cross-assay harmonization occurs only by gene symbol in the
-four-method amyloid-response logFC scatter (Figure 8); retained bulk/GeoMx figures are
+four-panel amyloid-response logFC scatter (Figure 8); retained bulk/GeoMx figures are
 modality-native context. No within-animal or paired cross-modality claim is made.
 
 ## 24M bulk — 67-run manifest
