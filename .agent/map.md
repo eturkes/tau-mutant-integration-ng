@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 35.
+store to `storage/targets/`. Expected live target count: 36.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -84,6 +84,11 @@ P6 state decomposition (closed; report-integrated):
   complete aggregation round-trip including retained-denominator filler/coverage, strict E2/E3
   output schemas and finiteness, fabricated estimable 15-/12-unit smoke, and a separate fabricated
   all-estimator-failure fixture. `scripts/check.sh` invalidates and rebuilds it on every report gate.
+- `occupancy_robustness <- run_occupancy_robustness(microglia_processed, microglia_annotated,
+  microglia_state_substrate, symbol_map)` is the P7.5 non-report leaf: frozen 35-variant/105-estimator
+  sweep, exact reference anchors, wide interaction table, E1 range/tipping/margin summaries,
+  failure inventory, cross-estimator sign concordance, and outcome-independent verdict. Compact
+  base-R payload only; explicitly built, absent from report ancestry and `scripts/check.sh`.
 - `state_decomposition_figures <- state_decomposition_figure_data(microglia_state_response, microglia_state_gene_atlas)`
   emits the Figure 10 contract: accepted 16-unit occupancy; 208 fixed response rows =
   52 unique declared genes x four state/background amyloid effects, including 95% CI;
@@ -173,7 +178,12 @@ Report:
 - `membership_to_unit_coverage()` -> `occupancy_family()` -> `occupancy_from_membership()`;
   `check_occupancy_harness()` validates generalized E1 beta-binomial/E2 empirical-logit/E3
   simple-proportion inference, exact current-label reproduction, and fabricated reduced-design smoke.
-  Variant labeling generation/execution remains deferred to P7.5.
+
+`R/analysis/occupancy_sweep.R`
+- `run_occupancy_robustness()` executes the frozen P7.5 reference + 34 one-at-a-time resolution,
+  pruning, annotation, LOU, and LOBO variants from cached objects; records all three estimator
+  interactions/failures, exact reference determinism, tipping/margin sets, sign concordance, and the
+  all-variant E1 verdict. Returned target is compact and parent-isolated; Seurat objects/fits stay out.
 
 `R/analysis/modality_de.R`
 - Lean primary DE for GeoMx and the 24M TiO2 phospho assay: the historical `proteome_*` tokens

@@ -23,7 +23,10 @@ Durable findings mined from v1 (the headline to rebuild around):
    background than additivity predicts. P2 does NOT detect a supported
    progression-beyond-composition signal along the activation trajectory. P6 retains
    the positive occupancy direction but its 0.10 minimum-effect family is unresolved;
-   no concordant meaningful within-DAM programme shift is supported.
+   no concordant meaningful within-DAM programme shift is supported. P7.5 robustness audit (34
+   one-at-a-time variants) confirms the +0.174 occupancy interaction's POSITIVE SIGN is robust
+   (all 34 positive; E2/E3 concordant 35/35) but its zero-null significance is FRAGILE to
+   clustering resolution (fdr_zero crosses >0.05 at resolutions 0.5-0.6); E1 range [0.109, 0.231].
 3. [TORN DOWN 2026-07-06] Mechanism (Myc-linked DAM interaction; NF-kB attenuation discordant/not supported;
    Gsk3b not recovered in 24M bulk phospho) -- chapter + targets + `R/mechanism.R` deleted from report + pipeline;
    science in git history + Ledger.
@@ -52,7 +55,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P7 - integrity-first audit [IN-PROGRESS, opened 2026-07-18]
+## Active milestone: P7 - integrity-first audit [IMPLEMENTED 2026-07-19; units P7.1-P7.5 DONE; awaiting MILESTONE-REVIEW]
 
 Direction G (integrity-first) selected by the user. Full plan + confirmed evidence:
 `.agent/p7_integrity_audit_plan.md`. Scope = resolve the three stop-the-line integrity
@@ -61,7 +64,7 @@ gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance
 +0.174 interaction. Posture: settle integrity BEFORE adding biology or freezing a
 manuscript; no new biological scope this milestone.
 
-Units (P7.1-P7.4 DONE; P7.5 OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
+Units (P7.1-P7.5 all DONE 2026-07-19; milestone IMPLEMENTED, awaiting review; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
 - P7.1 [DONE 2026-07-18] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
   literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
   MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Remaining
@@ -91,9 +94,14 @@ Units (P7.1-P7.4 DONE; P7.5 OPEN / gate-independent; sequence P7.1 -> P7.2 -> P7
   protocol (resolution grid, prune/annotation sensitivities, LOU x16 / LOBO x4, 3 estimators,
   +0.174 endpoint, tipping-point rules) before viewing any variant; built a harness validated
   only against the current labeling.
-- P7.5 [OPEN, after P7.4] Execute robustness sweep + tipping-point verdict. Sign/margin
-  stability of the occupancy interaction; SIZE-CHECK / respec-split at the sweep/report seam
-  if the reserve cannot hold.
+- P7.5 [DONE 2026-07-19] Executed the frozen sweep (reference + 34 one-at-a-time variants x 3
+  estimators) via `occupancy_robustness` off cached objects. VERDICT = FRAGILE: E1 interaction
+  stays POSITIVE in all 35 variants (E2/E3 signs concordant 35/35; 0/105 estimator failures),
+  but zero-null significance is resolution-fragile - `resolution_0.5` (fdr_zero 0.089) and
+  `resolution_0.6` (0.079) cross >0.05, so the pre-committed ROBUST-POSITIVE rule (E1>0 AND
+  fdr_zero<=0.05 for ALL variants) is not met. E1 range [0.1090994, 0.2306348]. No report figure
+  added (optional clause declined; report stays byte-identical). Sweep-only fit one Agent window
+  -> no respec.
 
 Both requirement-level user-decision points are now resolved with integrity-mandated conventional
 defaults (P7.1 relabel wording; P7.2 bulk-figure fate = relabel, with replace/remove left
@@ -134,14 +142,14 @@ do not block.
   appended one compact Figure 10 without disturbing Figures 1-9. Outcome =
   unresolved: positive occupancy interaction, 0.10 minimum-effect family not
   supported at 5%, and no concordant meaningful within-DAM programme shift.
-- P7 Integrity-first audit [IN-PROGRESS 2026-07-18 -> `.agent/p7_integrity_audit_plan.md`]:
+- P7 Integrity-first audit [IMPLEMENTED 2026-07-19 -> `.agent/p7_integrity_audit_plan.md`]:
   resolve the three stop-the-line integrity gates (G1 tau-factor construct = humanized-WT
   MAPT knock-in vs mutant tau, NOT "tau-KO"; G2 24M "proteome" = TiO2 phospho-PTM report
   summed to protein groups, no global proteome in storage/data; G3 provenance = 16-of-67-run
   manifest + cross-assay crosswalk gap) plus the genotype-blocked 24M run-order contract,
   then run a preregistered DAM-occupancy robustness audit of the +0.174 interaction. 5 units
-  P7.1-P7.5, all gate-independent OPEN; two requirement-level user decisions (P7.1 relabel
-  wording, P7.2 bulk-figure fate) deferred to execution.
+  P7.1-P7.5 all DONE 2026-07-19 (verdict FRAGILE: +0.174 occupancy sign robust across 34
+  variants, zero-null significance resolution-fragile at res 0.5-0.6); awaiting MILESTONE-REVIEW.
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -269,6 +277,35 @@ do not block.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-19 P7.5 execute robustness sweep + tipping-point verdict (M7.5) DONE -> milestone P7
+  IMPLEMENTED. Executed the FROZEN prereg (7755c9f) via new `R/analysis/occupancy_sweep.R` +
+  compact non-report leaf `occupancy_robustness` (35 rows = reference + 34 one-at-a-time variants
+  x 3 estimators = 105 attempts; parent-isolated, size-guarded). Variant generation DETERMINISTIC
+  off CACHED objects (no 8GB reload): A resolution via FindClusters@{0.2,0.3,0.5,0.6,0.8} on the
+  cached SNN graph + re-annotate; B prune / C annotation via perturbed annotate_microglia knobs at
+  res 0.4 (no-prune = zero floors); D leave-one-unit-out x16 / E leave-one-batch-out x4 by
+  subsetting unit_coverage. Reference re-annotation reproduces microglia_annotated labels EXACTLY
+  (annotate has no RNG) -> reference reproduces +0.1741141 to 1e-8. PRE-COMMITTED VERDICT = FRAGILE:
+  E1 interaction POSITIVE in all 35 variants (range [0.1090994, 0.2306348]; E2/E3 concordant 35/35;
+  0 estimator failures), but zero-null significance is resolution-fragile -- resolution_0.5
+  (fdr_zero 0.0894) + resolution_0.6 (0.0791) cross >0.05, so ROBUST-POSITIVE (E1>0 AND
+  fdr_zero<=0.05 for ALL variants) is NOT met. 0.10-margin family unresolved at the reference
+  (0.081), resolves in 4 variants; no variant has |estimate|<=0.10. OPTIONAL robustness figure
+  DECLINED (report byte-identical; sweep-only unit fit one Agent window -> no respec). Prereg
+  reconciled 3 points (ALL-variant rule / tipping = estimate<=0 / margin lists fdr_minimum<=0.05 +
+  |E1|<=0.10) -- none changed the observed verdict. MAIN independently verified: reference anchor
+  exact (max_abs_diff 0); LOU(MAPTKI_batch01) reproduced (0.1634760); verdict re-derived FRAGILE;
+  verdict-driving resolution_0.5 REPRODUCED BIT-FOR-BIT in a separate session (E1 0.1090994 /
+  fdr_zero 0.0894 / 23154 cells / 8 clusters); `TZ=UTC scripts/check.sh` GREEN
+  (occupancy_harness_check status=reproduced, max_abs_diff 0; occupancy_robustness error/warnings
+  NA). Live target count 35 -> 36. Docs = new dossier `.agent/p7_dam_occupancy_robustness_results.md`
+  + memory/map (Agent); report-feeding code UNTOUCHED. DEFERRED HYGIENE (out of P7.5 + the
+  integrity-first milestone): the clean multi-render exposed a PRE-EXISTING report-render
+  nondeterminism -- Figure 8 `modality_interaction_scatter()` (R/report/plot.R) sets ggrepel
+  `max.time=3` (wall-clock-bounded label solver) so its PNG jitters across renders; corrects the
+  stale "report byte-stable" claim in earlier ledger entries; documented in memory.md, fix left for
+  an authorized report-code follow-up / MILESTONE-REVIEW finding. main=85% 232K/272K; impl=71%
+  193K/272K (peak). Next mode = MILESTONE-REVIEW (all P7 units DONE).
 - 2026-07-19 P7.4 harness HARDENING (M7.4, post-audit follow-up). Peer read-only audit (harness-auditor) surfaced 4 self-validation gaps; MAIN independently reproduced + fixed; reproduction values unchanged. (1) Layer-A round-trip expanded only Homeostatic/DAM -> reconstructed n_retained collapsed to n_primary (silently wrong on ALL 16 units, real coverage 0.939-0.979, n_retained-n_primary in [5,111]; never asserted) -> now appends a non-primary filler for n_retained-n_primary + asserts the full 9-col canonical table (n_retained/coverage/both counts/DAM_fraction/factors) at tol 0. (2) E2/E3 marked "ok" without validating OLS output -> constant DAM_fraction returned status "ok" with NaN t/p/fdr (prereg-§5 violation: fit_trajectory_contrasts guards only its input) -> E2/E3 captures now enforce exact schema + contrast order + family + finite coef/se/t/df/p/ci/fdr, se>0, df>0, + E2 permutation-row guard; degenerate -> estimator_failed. (3) reduced-design smoke accepted all-estimator-failure vacuously -> now requires E2/E3 "ok" on the estimable fabricated 15-/12-unit fixtures (E1 valid-or-recorded: arbitrary fabricated counts legitimately fail beta-binomial) + a separate fabricated non-estimable fixture asserts all-three estimator_failed. (4) occupancy_harness_check never ran in the gate (check.sh built report only) -> check.sh now invalidates+builds it alongside report via idempotent tidyselect::any_of. MAIN verified after concurrent multi-agent edits: source structurally coherent (16 defs, no dupes, no conflict markers, parse clean); fresh occupancy_harness_check max_abs_diff=0 across all 6 tables, E1 +0.1741141 / E2 0.9340592 perm .021 / E3 +0.1733368 fdr .0185, smoke ok; own 9/9 negative-path regression suite (each guard fires); prereg + report-feeding code untouched; report/ gitignored (not committed). SEPARATE observation, OUT OF SCOPE + UNCONFIRMED: a concurrent audit reported report HTML byte differences localized to the Figure 9 functional-score PNG. Cause UNDETERMINED: R/report/plot.R ggrepel + position_jitter layers are all explicitly seeded (seed=42L/614L) so simple unseeded label placement is RULED OUT -> either device-level raster nondeterminism OR (more likely) an artifact of the chaotic concurrent multi-agent renders (report/ was observed momentarily empty). report/ is gitignored (no committed file affected). Confirming real-vs-artifact needs a clean quiescent single-process double-render; not done here. main=54% 146K/272K; impl=66% 178K/272K (hardening subagent).
 - 2026-07-19 P7.4 DAM-occupancy robustness prereg + harness (M7.4) DONE. Froze the robustness protocol
   BEFORE viewing any variant (`.agent/p7_dam_occupancy_prereg.md`): primary estimand = the equal-batch

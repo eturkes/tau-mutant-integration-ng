@@ -97,6 +97,12 @@ list(
              check_occupancy_harness(microglia_state_substrate, microglia_state_response),
              format = "qs"),
 
+  # P7.5 non-report leaf: frozen 35-variant DAM-occupancy robustness sweep.
+  tar_target(occupancy_robustness,
+             run_occupancy_robustness(microglia_processed, microglia_annotated,
+                                      microglia_state_substrate, symbol_map),
+             format = "qs"),
+
   # P6 Figure 10: accepted raw occupancy + transcriptome-wide paired state-difference maps +
   # declared-marker factorial response plots. The report leaf reads compact S2 occupancy and the
   # paired gene target; it carries no score aggregate, fitted object, count matrix, or cell frame.

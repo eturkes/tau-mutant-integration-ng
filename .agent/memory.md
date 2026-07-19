@@ -176,18 +176,29 @@ Microglia state decomposition (P6 closed):
   with established separate-state fits (Pearson 0.992/0.993; median absolute delta
   0.037/0.044 log2FC for Homeostatic/DAM).
 
-DAM-occupancy robustness (P7.4 frozen):
+DAM-occupancy robustness (P7.5 executed):
 - `R/analysis/occupancy_harness.R` maps membership to the occupancy family: E1 beta-binomial
   probability standardization (primary), E2 empirical-logit OLS/permutation, E3 raw-proportion OLS.
-- Frozen preregistration = `.agent/p7_dam_occupancy_prereg.md`; STANDING no-peeking rule:
-  no real labeling variant or real-data omission occupancy is generated/evaluated before P7.5.
+- Frozen preregistration = `.agent/p7_dam_occupancy_prereg.md`; execution dossier =
+  `.agent/p7_dam_occupancy_robustness_results.md`.
+- `occupancy_robustness <- run_occupancy_robustness(microglia_processed, microglia_annotated,
+  microglia_state_substrate, symbol_map)` is the compact, parent-isolated non-report leaf: exact
+  reference substrate/membership/re-annotation anchors; 35-row reference + 34 one-at-a-time variant
+  table; 105 E1/E2/E3 attempts; E1 range/tipping/margin summaries; failure inventory; sign concordance;
+  frozen verdict. Live payload = 42,640 in-memory / 5,769 serialized bytes.
+- Pre-committed verdict = **FRAGILE**: all E1 estimates remain positive, but resolutions 0.5 and 0.6
+  cross to `fdr_zero > 0.05`; E1 empirical range = [0.1090994, 0.2306348]. No estimator failed;
+  E2/E3 signs track E1 in 35/35 variants. E1 `fdr_minimum` spans [7.369534e-05, 1.0], resolves in
+  four variants, and no variant has `abs(estimate) <= 0.10`.
+- Frozen-rule details: every variant, including an E1 failure, must pass for ROBUST-POSITIVE;
+  direction tipping is `estimate <= 0`; margin reporting includes both `fdr_minimum <= 0.05` and
+  `abs(estimate) <= 0.10`. Optional UCell re-scoring was not run (declared optional secondary).
 - `occupancy_harness_check` reproduces the established +0.174 current-label family exactly and
   exercises reduced designs only with fabricated counts. Its Layer-A round-trip includes non-primary
-  filler rows so `n_retained` and coverage reproduce exactly; E2/E3 success now requires exact schemas
+  filler rows so `n_retained` and coverage reproduce exactly; E2/E3 success requires exact schemas
   and finite inferential output, and reduced-design smoke requires E2/E3 `ok` plus a separate fabricated
-  non-estimable fixture with all three failures recorded, conforming to frozen preregistration §5.
-  Report-feeding code/numbers stay untouched/byte-stable; `scripts/check.sh` invalidates and rebuilds
-  this guardrail on every report gate.
+  non-estimable fixture with all three failures recorded. `scripts/check.sh` invalidates and rebuilds
+  this guardrail; `occupancy_robustness` stays an explicitly built non-report leaf.
 
 Microglia DE:
 - Live target = `pb_de_microglia` only.
@@ -280,6 +291,11 @@ Fresh bootstrap:
 - invalidates and rebuilds both `report` and the non-report `occupancy_harness_check` guardrail
 - does not sync the environment or scan all target metadata/logs
 - relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
+- functional green does not currently imply byte stability: repeated renders vary only in Figure 8
+  `plot-modality-amyloid-effect`; `modality_interaction_scatter()` fixes ggrepel seed 42 but also sets
+  wall-clock `max.time=3`, so the time-bounded label layout changes PNG pixels across runs. P7.5
+  observed 10 figures throughout but distinct hashes/sizes on consecutive clean renders; fixing this
+  requires a separately authorized `R/report/plot.R` edit (P7.5 explicitly leaves report code untouched).
 
 Run `rv sync` manually after dependency changes; use `scripts/check.sh` for fast local report iteration.
 
