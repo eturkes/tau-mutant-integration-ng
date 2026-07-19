@@ -56,60 +56,65 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P7 - integrity-first audit [REVIEWED 2026-07-19; units P7.1-P7.5 DONE; MILESTONE-REVIEW closed 2026-07-19]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; units P8.1-P8.4 all OPEN]
 
-Direction G (integrity-first) selected by the user. Full plan + confirmed evidence:
-`.agent/completed/p7_integrity_audit_plan_2026-07-19.md`. Scope = resolve the three stop-the-line integrity
-gates (G1 tau-factor construct, G2 24M bulk assay identity, G3 source provenance) plus the
-24M run-order contract, then run a preregistered DAM-occupancy robustness audit of the
-+0.174 interaction. Posture: settle integrity BEFORE adding biology or freezing a
-manuscript; no new biological scope this milestone.
+Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
+to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
+crosswalk. Full plan + confirmed real-input evidence + rejected-method survey:
+`.agent/p8_crossmodality_integration_plan.md`. Per-animal paired methods (DIABLO / MOFA-on-matched-
+samples / mediation / within-animal correlation) are INFEASIBLE (only `genotype` is shared across the
+3 assays; no animal/aliquot crosswalk) and stay P7.3-PROHIBITED. Integration works ONLY on the shared
+gene-symbol x 5-contrast effect-size space (P7.3-compliant). Answer = how the amyloid x tau response
+divides into SHARED vs MODALITY-SPECIFIC across snRNAseq / GeoMx / bulk-TiO2, at gene + pathway
+resolution, honestly (signal modest by construction: complete-case Spearman 0.04-0.19, strongest on
+amyloid contrasts, ~0 on interaction). Bulk = ONE modality (protein-group primary; phosphosite = a
+within-assay alternate, no double-count). logFC is the primary statistic (moderated-t a secondary
+evidence view); all three layers are DESCRIPTIVE - no design-valid calibrated cross-modality p comes
+from cached topTables (cross-gene permutation is anti-conservative; genes are not exchangeable), and
+only an optional per-modality unit-resample + DE-refit bootstrap on rho calibrates.
 
-Units (P7.1-P7.5 all DONE 2026-07-19; milestone REVIEWED 2026-07-19; sequence P7.1 -> P7.2 -> P7.3 -> P7.4 -> P7.5):
-- P7.1 [DONE 2026-07-18] MAPTKI construct verification + tau-factor relabel (G1). Construct verified by
-  literature (2026-07-18): MAPTKI = Saito humanized WT MAPT knock-in, P301S = base-edited
-  MAPT^P301S;Int10+3, four groups = 2x2 WT-vs-mutant humanized tau, no tau-null arm. Relabeled the 6
-  sites (`_targets.R:153`, `R/report/plot.R:173`, `R/report/figures.R:342`+`:543 y_meaning`,
-  `.agent/memory.md:12`, `roadmap.md:14`), keeping the `MAPTKI` factor token stable. Wording =
-  integrity-mandated conventional default (user-ratifiable, reversible); only optional external
-  breeding/allele records remain outstanding.
-- P7.2 [DONE 2026-07-18] 24M bulk assay identity + run-order contract (G2 + run-order). Documented the
-  TiO2-phospho-PTM-summed-to-protein-groups nature (new `.agent/p7_g2_bulk_assay_dossier.md` + memory
-  contracts, column+code evidence, reconfirmed against real inputs). Re-added a compact
-  `$run_order_sensitivity` to both bulk DE targets (rank-5 additive continuous run_index, 11 df) that
-  quantifies AND scopes the genotype-blocked confound: interaction is orthogonal to linear run order
-  (aggregate shift +0.001), confounded amyloid/tau main-effect mean shifts span ~0.04-0.24 (amyloid ~0.08-0.24, per the G2 dossier table); figures keep the primary
-  no-batch `$top`. Figure fate resolved = RELABEL (conventional integrity default, P7.1 precedent): all
-  user-facing "proteome" labels -> accurate TiO2 phospho (protein-group/site); code TOKENS stable.
-  Replace/remove (esp. the same-assay redundant scatter facet) left USER-TWEAKABLE.
-- P7.3 [DONE 2026-07-18] Source-provenance dossier (G3). Compiled recoverable provenance into new
-  `.agent/p7_g3_provenance_dossier.md` + tightened memory.md, independently verified against real inputs
-  (67-run sample key + geomx.rds meta via runtime-indirection probes; io.R contracts). 24M bulk = 16/67
-  runs (Naoto 24M 2x2 via io.R `slice_head(16)`+stopifnot; Naoto 30M unused + UNBALANCED [MAPT-KI x4 vs
-  P301S+3 x6, no NLGF 30M]; Set6 41 unused, series attribution literature-inferred with a HARD
-  do-not-conflate-WT-labels caution). CORRECTED the GeoMx gap from memory's incomplete ~12 to the EXACT
-  21 AOIs across 7 (genotype,bio_rep) cells (only NLGF_MAPTKI complete 28/28; MAPTKI bio_rep1 wholly
-  absent). snRNAseq 16 units verified-by-contract. Recorded a STANDING cross-modality paired-claim gate
-  in memory (DIABLO/MOFA/mediation/within-animal correlation PROHIBITED until a user crosswalk exists;
-  symbol-level allowed; current report compliant) + itemized user-only records. Docs-only.
-- P7.4 [DONE 2026-07-19] DAM-occupancy robustness PREREGISTRATION + harness (pre-results). Froze the
-  protocol (resolution grid, prune/annotation sensitivities, LOU x16 / LOBO x4, 3 estimators,
-  +0.174 endpoint, tipping-point rules) before viewing any variant; built a harness validated
-  only against the current labeling.
-- P7.5 [DONE 2026-07-19] Executed the frozen sweep (reference + 34 one-at-a-time variants x 3
-  estimators) via `occupancy_robustness` off cached objects. VERDICT = FRAGILE: E1 interaction
-  stays POSITIVE in all 35 variants (E2/E3 signs concordant 35/35; 0/105 estimator failures),
-  but zero-null significance is resolution-fragile - `resolution_0.5` (fdr_zero 0.089) and
-  `resolution_0.6` (0.079) cross >0.05, so the pre-committed ROBUST-POSITIVE rule (E1>0 AND
-  fdr_zero<=0.05 for ALL variants) is not met. E1 range [0.1090994, 0.2306348]. No report figure
-  added (optional clause declined; report source unchanged, though renders are not byte-reproducible per memory.md). Sweep-only fit one Agent window
-  -> no respec.
+Precondition MET (this planning session, permitted real inputs): the 4 cached DE targets emit 5
+per-contrast topTables with logFC + moderated-t + symbol columns; shared symbols complete-case 3,109 /
+>=2-modality 12,427 / distinct 22,241; bulk logFC sd ~2-4x RNA (standardization mandatory); a
+joint-SVD preview shows real but sign-conflicting structure -> concatenated PCA insufficient,
+joint-vs-individual decomposition indicated. No gated external input (symbol-level route) -> all 4
+units OPEN.
 
-Both requirement-level user-decision points are now resolved with integrity-mandated conventional
-defaults (P7.1 relabel wording; P7.2 bulk-figure fate = relabel, with replace/remove left
-user-tweakable). The standing external-record requests (G1 breeding/allele records; G2 vendor
-template/TiO2 method; G3 animal crosswalk/survival/GeoMx raw files) are now banked in `memory.md` and
-do not block.
+Method (locked, multi-agent research + web sweep, reconciled; rejected alternatives in the plan):
+reimplemented pure-R AJIVE joint/individual/residual decomposition (complete-case standardized
+5-contrast x gene blocks; p=5 -> r_init<=2 and >=1 residual dim; r.jive 2.4 [CRAN-current, no-compile]
+as the packaged cross-check reference, NOT a dep) + pairwise logFC-Spearman / RRHO-style directional
+concordance (common 3,109-universe primary, descriptive - no gene-permutation p) + msigdbr GO-BP
+>=2-modality directional consensus. NEW module `R/analysis/integration.R`, target prefix `integration_`, fragment
+`sections/integration.qmd` appended after `sections/modality.qmd`; report grows 10 -> ~12-13 figures
+(intentional). No new heavy dep (MOFA2 / RGCCA / mixOmics / omicade4 / concatenated PCA / py_jive all
+rejected with recorded rationale; lean reimplement per CLAUDE.md).
+
+Units (P8.1-P8.4 all OPEN 2026-07-19; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all gate-independent):
+- P8.1 [OPEN] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
+  core + oracle test. Per-modality [5 contrasts x genes] logFC + moderated-t matrices, robust-z
+  standardization (raw + standardized stored), complete-case (3,109) + >=2-modality (12,427) index
+  sets + per-pair overlaps, phosphosite parent alternate, provenance. Accept: exact reconstruction
+  from raw DE targets (tol 0); shared-set counts reproduce; bulk single-modality; compact +
+  parent-isolated; gate green.
+- P8.2 [OPEN] Joint-vs-individual decomposition -> `integration_decomposition` + AJIVE reimplement +
+  oracle tests + r.jive cross-check. Joint/individual/residual variance per block, joint gene scores,
+  per-block joint contrast-loadings, ranks + diagnostics. Accept: X_k = J_k + A_k + E_k to <1e-8;
+  joint orthogonal to individual row-spaces; deterministic ranks; planted-rank fixture recovers;
+  r.jive agreement within a documented tolerance; gate green. MAIN SIZE-CHECK before dispatch.
+- P8.3 [OPEN] Concordance network + pathway consensus -> `integration_concordance` +
+  `integration_pathway` + tests. Pairwise logFC-Spearman 3x5 on the common 3,109-universe, descriptive
+  (no gene-permutation p; optional per-modality unit-resample + DE-refit bootstrap CI on rho) +
+  reimplemented directional-overlap (phyper off-by-one audited out, descriptive); msigdbr GO-BP
+  directional set scores + >=2-modality coverage-gated DESCRIPTIVE consensus. Accept: rho + overlap
+  reproduce (tol 0); bootstrap/consensus deterministic under fixed seed; gate green. MAIN
+  SIZE-CHECK - SPLIT-CANDIDATE (concordance /
+  pathway / report) if >200K; the reimplement-vs-ActivePathways pathway decision is made here.
+- P8.4 [OPEN] Report integration -> `integration_figures` + `sections/integration.qmd` + report /
+  report_sources / render_report wiring + memory/map. Figures 11+: (a) joint/individual/residual
+  variance + joint contrast-loading heatmap + top joint genes; (b) per-contrast concordance heatmap +
+  directional-overlap; (c) pathway consensus. Accept: `scripts/check.sh` green (warn=2, self-contained
+  HTML); new figures fold + fig-alt; Figures 1-10 undisturbed; DAG count updated.
 
 ## Backlog - phased build (each phase = closeable increments; mine archive_digest per phase)
 - P0 Foundations [DONE 2026-06-29; live env leaned 2026-07-07]: project-local rv R env,
@@ -152,6 +157,16 @@ do not block.
   then run a preregistered DAM-occupancy robustness audit of the +0.174 interaction. 5 units
   P7.1-P7.5 all DONE 2026-07-19 (verdict FRAGILE: +0.174 occupancy sign robust across 34
   variants, zero-null significance resolution-fragile at res 0.5-0.6); MILESTONE-REVIEW closed 2026-07-19.
+- P8 Cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19 ->
+  `.agent/p8_crossmodality_integration_plan.md`]: quantify how the amyloid x tau response divides into
+  SHARED vs MODALITY-SPECIFIC across snRNAseq / GeoMx / bulk-TiO2 on the shared gene-symbol x
+  5-contrast effect-size space (NO crosswalk; per-animal pairing P7.3-prohibited + infeasible).
+  Reimplemented pure-R AJIVE joint/individual/residual decomposition + pairwise Spearman / RRHO-style
+  concordance + msigdbr GO-BP >=2-modality directional consensus; logFC primary (moderated-t
+  secondary); all layers descriptive - no design-valid calibrated cross-modality p from cached
+  topTables (genes not exchangeable). New `R/analysis/integration.R` +
+  `integration_` targets + `sections/integration.qmd`; report grows 10 -> ~12-13 figures. 4
+  gate-independent units P8.1-P8.4 (substrate / decomposition / concordance+pathway / report).
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -279,6 +294,39 @@ do not block.
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-19 P8 cross-modality symbol/effect-size integration OPENED (direction "cross-modality paired
+  integration", user-selected at the direction gate; the VALID substitute the user confirmed = symbol-
+  level effect-size joint integration WITHOUT a crosswalk) -> `.agent/p8_crossmodality_integration_plan.md`.
+  Plans how the amyloid x tau response divides into SHARED vs MODALITY-SPECIFIC across snRNAseq / GeoMx
+  / bulk-TiO2 on the shared gene-symbol x 5-contrast effect-size space, as 4 gate-independent units
+  (P8.1 harmonized substrate, P8.2 joint-vs-individual decomposition, P8.3 concordance + pathway
+  consensus, P8.4 report integration). Per-animal paired methods (DIABLO / MOFA-matched / mediation /
+  within-animal correlation) confirmed INFEASIBLE (only `genotype` shared; no crosswalk) and stay
+  P7.3-PROHIBITED; the symbol-level route is P7.3-compliant. Precondition MET this session against
+  permitted real inputs (`tar_read` on cached DE targets): the 4 producers emit 5 per-contrast
+  topTables (logFC + moderated-t + symbol); shared symbols complete-case 3,109 / >=2-modality 12,427 /
+  distinct 22,241; bulk logFC sd ~2-4x RNA (standardization mandatory); complete-case Spearman 0.04-0.19
+  (strongest on amyloid contrasts, ~0 interaction) = modest structured signal; a joint-SVD preview
+  (PC1 22% but sign-conflicting loadings) shows concatenated PCA conflates shared + specific ->
+  joint-vs-individual decomposition indicated. Method LOCKED (multi-agent research fan-out + web sweep,
+  reconciled): reimplemented pure-R AJIVE joint/individual/residual decomposition (complete-case
+  standardized 5-contrast x gene blocks; p=5 -> r_init<=2 and >=1 residual dim; r.jive 2.4
+  [CRAN-current, no-compile, checks OK 2026-07-19] as the packaged cross-check reference, NOT a dep) +
+  pairwise logFC-Spearman / RRHO-style directional concordance (common 3,109-universe, descriptive -
+  no gene-permutation p) + msigdbr GO-BP >=2-modality directional consensus. logFC is primary
+  (moderated-t a secondary evidence view); all three layers are DESCRIPTIVE - no design-valid
+  calibrated cross-modality p from cached topTables (cross-gene permutation anti-conservative; genes
+  not exchangeable), only an optional per-modality unit-resample + DE-refit bootstrap on rho
+  calibrates. Bulk = ONE modality (protein-group
+  primary; no phosphosite double-count). REJECTED with recorded rationale: MOFA2 (Python
+  reticulate/basilisk surface, D=5 weak), RGCCA/SGCCA (caret + correlation-max, not joint/individual),
+  mixOmics/DIABLO (needs an outcome), MCIA/omicade4 (co-inertia not joint/individual, quiet since 2020),
+  concatenated PCA (conflates), py_jive (deprecated). NEW module `R/analysis/integration.R` +
+  `integration_` target prefix + fragment `sections/integration.qmd` after `sections/modality.qmd`;
+  report grows 10 -> ~12-13 figures (intentional scope growth per the user direction). Research fan-out
+  (SOTA multi-omics survey / MCIA / RRHO2 / consensus statistics / MOFA2 / r.jive-AJIVE Explore finders)
+  delivered its decision-critical findings and was stopped (TaskStop) to halt over-research; repo left
+  unchanged except the new plan doc -- planning only, no unit executed. Next = WORK-UNIT P8.1.
 - 2026-07-19 P7 MILESTONE-REVIEW closed (M7 review) -> milestone REVIEWED. Reviewed all 7 P7 commits
   (05cf860^..HEAD) via four analysis-only lenses (correctness/spec, cross-unit integration,
   instruction/memory conformance, token-efficiency/obsolescence) + independent MAIN verification against
