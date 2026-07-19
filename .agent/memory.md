@@ -199,7 +199,9 @@ DAM-occupancy robustness (P7.5 executed):
   microglia_state_substrate, symbol_map)` is the compact, parent-isolated non-report leaf: exact
   reference substrate/membership/re-annotation anchors; 35-row reference + 34 one-at-a-time variant
   table; 105 E1/E2/E3 attempts; E1 range/tipping/margin summaries; failure inventory; sign concordance;
-  frozen verdict. Live payload = 42,640 in-memory / 5,769 serialized bytes.
+  frozen verdict. Live payload is compact, orders under the 256 KiB audit budget;
+  `audit$serialized_bytes` (~5,769) self-measures before that field is populated, so it is a
+  pre-write estimate a few bytes off the authoritative on-disk `tar_meta(bytes)`, not an exact size.
 - Pre-committed verdict = **FRAGILE**: all E1 estimates remain positive, but resolutions 0.5 and 0.6
   cross to `fdr_zero > 0.05`; E1 empirical range = [0.1090994, 0.2306348]. No estimator failed;
   E2/E3 signs track E1 in 35/35 variants. E1 `fdr_minimum` spans [7.369534e-05, 1.0], resolves in
