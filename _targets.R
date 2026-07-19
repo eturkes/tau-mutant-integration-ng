@@ -41,7 +41,7 @@ list(
   tar_target(microglia_seurat_raw, load_snrnaseq(snrnaseq_file),          format = "qs"),
   tar_target(symbol_map,           build_symbol_map(microglia_seurat_raw), format = "qs"),
 
-  # GeoMx spatial + 24M bulk proteome / phosphosite loads feed the cross-tau amyloid-response
+  # GeoMx spatial + 24M bulk TiO2 phospho (protein-group / phosphosite) loads feed the cross-tau amyloid-response
   # scatter (below). Small tables (parsed Spectronaut exports + a Seurat object), not the 8G snRNAseq.
   tar_target(geomx,      load_geomx(geomx_file),               format = "qs"),
   tar_target(proteomics, read_spectronaut_tsv(proteomics_file), format = "qs"),
@@ -65,7 +65,7 @@ list(
              format = "qs"),
 
   # Whole-microglia pseudobulk limma-voom DE across the 5 canonical contrasts. The report
-  # uses these topTables for the snRNAseq panel in the four-method amyloid-response scatter.
+  # uses these topTables for the snRNAseq panel in the four-panel amyloid-response scatter.
   tar_target(pb_de_microglia, run_pb_de_microglia(microglia_annotated), format = "qs"),
 
   # P6-S2: beta-binomial retained-state occupancy + state-wise raw-count voom/treat,
@@ -152,10 +152,10 @@ list(
              trajectory_figure_data(trajectory_report),
              format = "qs"),
 
-  # --- cross-tau amyloid-response (four-method logFC scatter) ---
+  # --- cross-tau amyloid-response (four-panel logFC scatter) ---
   # Primary per-contrast DE for the three non-snRNAseq modalities (R/analysis/modality_de.R): GeoMx
   # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation plus the one retained
-  # compact GeoMx sample-heatmap descriptor. 24M bulk proteome and
+  # compact GeoMx sample-heatmap descriptor. 24M bulk TiO2 phospho protein-group and
   # phosphosite limma-trend on log2 median-normalised, prevalence-filtered intensities (no batch).
   # Each returns per-contrast topTables with logFC keyed by the 5 canonical contrasts.
   tar_target(geomx_de,        run_geomx_de(geomx),                       format = "qs"),

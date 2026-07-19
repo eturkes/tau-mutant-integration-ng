@@ -78,7 +78,7 @@ Units (P7.1-P7.5 all DONE 2026-07-19; milestone REVIEWED 2026-07-19; sequence P7
   contracts, column+code evidence, reconfirmed against real inputs). Re-added a compact
   `$run_order_sensitivity` to both bulk DE targets (rank-5 additive continuous run_index, 11 df) that
   quantifies AND scopes the genotype-blocked confound: interaction is orthogonal to linear run order
-  (aggregate shift +0.001), confounded amyloid/tau main effects shift 0.09-0.24; figures keep the primary
+  (aggregate shift +0.001), confounded amyloid/tau main-effect mean shifts span ~0.04-0.24 (amyloid ~0.08-0.24, per the G2 dossier table); figures keep the primary
   no-batch `$top`. Figure fate resolved = RELABEL (conventional integrity default, P7.1 precedent): all
   user-facing "proteome" labels -> accurate TiO2 phospho (protein-group/site); code TOKENS stable.
   Replace/remove (esp. the same-assay redundant scatter facet) left USER-TWEAKABLE.
