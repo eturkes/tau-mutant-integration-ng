@@ -1,4 +1,4 @@
-# P8 integration is restricted to the P7.3-compliant symbol x five-contrast
+# P8 integration is restricted to the P7.3-compliant five-contrast x symbol
 # effect-size space: no animal-level pairing is attempted. The protein-group
 # view is the single bulk modality; phosphosite-to-parent collapse is retained
 # only as a within-assay alternate and is never counted as a fourth modality.
@@ -88,7 +88,7 @@ integration_select_representatives <- function(features, symbols, ave_expr, vali
 
 integration_effect_matrix <- function(top, contrasts, feature_col, representatives, statistic) {
   stopifnot(statistic %in% c("logFC", "t"), is.data.frame(representatives))
-  columns <- lapply(contrasts, function(contrast) {
+  rows <- lapply(contrasts, function(contrast) {
     tab <- top[[contrast]]
     idx <- match(representatives$feature, as.character(tab[[feature_col]]))
     stopifnot(!anyNA(idx))
@@ -96,14 +96,14 @@ integration_effect_matrix <- function(top, contrasts, feature_col, representativ
     stopifnot(is.numeric(values), all(is.finite(values)))
     values
   })
-  out <- do.call(cbind, columns)
-  dimnames(out) <- list(representatives$symbol, contrasts)
+  out <- do.call(rbind, rows)
+  dimnames(out) <- list(contrasts, representatives$symbol)
 
   # Exact, tolerance-zero reconstruction from every representative source row.
   for (j in seq_along(contrasts)) {
     tab <- top[[contrasts[[j]]]]
     idx <- match(representatives$feature, as.character(tab[[feature_col]]))
-    stopifnot(identical(as.vector(out[, j]), as.vector(tab[[statistic]][idx])))
+    stopifnot(identical(as.vector(out[j, ]), as.vector(tab[[statistic]][idx])))
   }
   out
 }
@@ -113,19 +113,19 @@ robust_z <- function(x) {
     is.matrix(x), is.numeric(x), nrow(x) > 0L, ncol(x) > 0L,
     !is.null(rownames(x)), !is.null(colnames(x)), all(is.finite(x))
   )
-  center <- apply(x, 2L, stats::median)
+  center <- apply(x, 1L, stats::median)
   scale <- vapply(
-    seq_len(ncol(x)),
-    function(j) stats::mad(x[, j], center = center[[j]]),
+    seq_len(nrow(x)),
+    function(i) stats::mad(x[i, ], center = center[[i]]),
     numeric(1)
   )
-  names(center) <- colnames(x)
-  names(scale) <- colnames(x)
+  names(center) <- rownames(x)
+  names(scale) <- rownames(x)
   stopifnot(all(is.finite(center)), all(is.finite(scale)), all(scale > 0))
 
-  z <- sweep(sweep(x, 2L, center, "-"), 2L, scale, "/")
+  z <- sweep(sweep(x, 1L, center, "-"), 1L, scale, "/")
   dimnames(z) <- dimnames(x)
-  reconstructed <- sweep(sweep(z, 2L, scale, "*"), 2L, center, "+")
+  reconstructed <- sweep(sweep(z, 1L, scale, "*"), 1L, center, "+")
   stopifnot(all(is.finite(z)), max(abs(reconstructed - x)) < 1e-9)
 
   list(z = z, center = center, scale = scale)
@@ -241,8 +241,8 @@ build_integration_substrate <- function(
       stopifnot(
         max(abs(
           sweep(
-            sweep(rz$z, 2L, rz$scale, "*"),
-            2L, rz$center, "+"
+            sweep(rz$z, 1L, rz$scale, "*"),
+            1L, rz$center, "+"
           ) - raw[[modality]][[statistic]]
         )) < 1e-9
       )
@@ -399,7 +399,7 @@ build_integration_substrate <- function(
       z_matrix <- result$standardized[[modality]][[statistic]]
       params <- result$standardization[[modality]][[statistic]]
       stopifnot(
-        identical(dimnames(raw_matrix), list(result$symbols[[modality]], result$contrasts)),
+        identical(dimnames(raw_matrix), list(result$contrasts, result$symbols[[modality]])),
         identical(dimnames(z_matrix), dimnames(raw_matrix)),
         all(is.finite(raw_matrix)), all(is.finite(z_matrix)),
         identical(names(params), c("center", "scale")),
@@ -407,7 +407,7 @@ build_integration_substrate <- function(
         identical(names(params$scale), result$contrasts),
         all(params$scale > 0),
         max(abs(
-          sweep(sweep(z_matrix, 2L, params$scale, "*"), 2L, params$center, "+") -
+          sweep(sweep(z_matrix, 1L, params$scale, "*"), 1L, params$center, "+") -
             raw_matrix
         )) < 1e-9
       )
@@ -424,9 +424,9 @@ build_integration_substrate <- function(
               integration_radix_sort(result$phospho_parent_alt$symbols)),
     anyDuplicated(result$phospho_parent_alt$symbols) == 0L,
     identical(dimnames(result$phospho_parent_alt$logFC),
-              list(result$phospho_parent_alt$symbols, result$contrasts)),
+              list(result$contrasts, result$phospho_parent_alt$symbols)),
     identical(dimnames(result$phospho_parent_alt$t),
-              list(result$phospho_parent_alt$symbols, result$contrasts)),
+              list(result$contrasts, result$phospho_parent_alt$symbols)),
     !integration_contains_parent(result),
     as.numeric(object.size(result)) < 25 * 1024^2
   )

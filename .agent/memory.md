@@ -143,7 +143,7 @@ Five canonical contrasts everywhere:
 - `interaction`
 
 Cross-modality integration (P8):
-- `integration_substrate` is the symbol x five-contrast effect-size substrate over exactly three
+- `integration_substrate` is the five-contrast x symbol (5 contrasts x genes) effect-size substrate over exactly three
   modalities: snRNAseq, GeoMx, and bulk protein-group. It stores raw `logFC`/moderated-`t` plus
   invertible per-modality/per-contrast median-MAD robust-z matrices.
 - Symbol coverage is complete-case 3,109 / >=2-modality 12,427 / union 22,241; pairwise overlaps

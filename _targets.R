@@ -179,7 +179,7 @@ list(
                                          proteome_de_24m, phospho_de_24m),
              format = "qs"),
 
-  # P8.1 non-report leaf: harmonized symbol x five-contrast raw/robust-z effects.
+  # P8.1 non-report leaf: harmonized five-contrast x symbol (5 x genes) raw/robust-z effects.
   tar_target(integration_substrate,
              build_integration_substrate(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m),
