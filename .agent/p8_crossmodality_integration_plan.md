@@ -187,7 +187,7 @@ compact reimplement is the default):
   (gene-exchangeability fails); report variance-explained / ρ / directional scores with explicit n +
   coverage; interaction stays "mostly modality-specific"; a near-null shared component is valid.
 
-## Units (4; sequential; all OPEN — no gated precondition)
+## Units (5; sequential; all gate-independent — the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam, 2026-07-20; live DONE/OPEN status in `.agent/roadmap.md`)
 New module `R/analysis/integration.R`; new fragment `sections/integration.qmd`; new-target prefix
 `integration_` (distinct from the deleted `crossmodality_*` chapter). Report is figure-only; the new
 section appends AFTER `sections/modality.qmd`.
@@ -216,20 +216,31 @@ section appends AFTER `sections/modality.qmd`.
   with an r.jive run on the same blocks (within a documented method tolerance); compact + parent-isolated;
   no report change; gate green. MAIN SIZE-CHECK before dispatch (decomposition math + fixtures + cross-check).
 
-- **P8.3 — Concordance network + pathway consensus.** `integration_concordance` +
-  `integration_pathway` (compact targets) + tests. Pairwise **logFC** Spearman on the common
-  3,109-universe (primary; Pearson + per-pair-overlap + moderated-t = sensitivities) reported
-  DESCRIPTIVELY — NO gene-permutation p; OPTIONAL per-modality unit-resample + DE-refit bootstrap CI
-  on ρ (feasibility-gated) — plus the reimplemented directional-overlap (phyper off-by-one audited
-  out). `msigdbr` GO-BP directional set scores + ≥2-modality coverage-gated DESCRIPTIVE consensus
-  (competitive null anti-conservative → optional CAMERA-refit only from per-sample data). Acceptance:
-  ρ + directional scores reproduce on real inputs; any bootstrap/seeded output deterministic; consensus
-  set membership stable; overlap map audited free of the phyper off-by-one; compact; no report change;
-  gate green. MAIN SIZE-CHECK — SPLIT-CANDIDATE (concordance → P8.3, pathway → P8.4, report → P8.5) if
-  the implementing Agent projects >200K; the reimplement-vs-ActivePathways + the optional-bootstrap
-  feasibility decisions are made here.
+- **P8.3 — Concordance network.** `integration_concordance` (compact target) + tests. Pairwise
+  **logFC** Spearman on the common 3,109-universe (primary; Pearson + per-pair ≥2-modality overlap +
+  moderated-t = sensitivities), 3 modality-pairs × 5 contrasts, reported DESCRIPTIVELY — NO
+  gene-permutation p; OPTIONAL per-modality unit-resample + DE-refit bootstrap CI on ρ
+  (feasibility-gated — DEFER with recorded rationale if it cannot reach cached per-unit matrices
+  cheaply) — plus the reimplemented RRHO-style directional-overlap (phyper off-by-one audited out,
+  descriptive). Reads ONLY `integration_substrate` (raw logFC/t + index sets); the optional bootstrap
+  may reach cached per-unit matrices only. Acceptance: ρ + overlap counts reproduce on the real
+  substrate (tol 0); any bootstrap/seeded output deterministic under a fixed seed; overlap map audited
+  free of the phyper off-by-one; compact + parent-isolated; no report change; gate green.
 
-- **P8.4 — Report integration.** `integration_figures` (compact leaf) + `sections/integration.qmd`
+- **P8.4 — Pathway consensus.** `integration_pathway` (compact target) + tests. `msigdbr` mouse GO-BP
+  (+ optional project DAM/Homeostatic/IFN/MHC_APC sets), per modality × contrast a compact set-level
+  DIRECTIONAL score (mean standardized effect over set genes, coverage-gated) + ≥2-modality
+  coverage-gated DESCRIPTIVE consensus (same-sign above threshold in ≥2 modalities per contrast, with
+  an explicit minimum-modality-coverage count guarding single-modality pass-through). The
+  reimplement-vs-ActivePathways decision is made here — DEFAULT = lean reimplement over the
+  already-locked `msigdbr` (no new dep, per CLAUDE.md); ActivePathways / fgsea re-add only if the
+  reimplement proves inadequate, with recorded rationale. Competitive-null gene-permutation p is
+  anti-conservative → NO calibrated enrichment p; report scores + coverage descriptively. Reads ONLY
+  `integration_substrate` (standardized effect for scoring) + `msigdbr`. Acceptance: set scores +
+  consensus membership reproduce on the real substrate (tol 0); consensus deterministic under a fixed
+  seed; coverage gating correct; compact + parent-isolated; no report change; gate green.
+
+- **P8.5 — Report integration.** `integration_figures` (compact leaf) + `sections/integration.qmd`
   (append after modality in `index.qmd`) + wire into `report`/`report_sources`/`render_report()`
   args + memory/map update. New numbered figures (Figure 11+): (a) joint/individual/residual variance
   + joint contrast-loading heatmap + top joint genes (framed descriptive/exploratory); (b) per-contrast

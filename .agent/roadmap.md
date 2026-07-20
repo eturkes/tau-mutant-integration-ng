@@ -56,7 +56,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.2 DONE, P8.3-P8.4 OPEN]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.2 DONE, P8.3-P8.5 OPEN]
 
 Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
 to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
@@ -90,7 +90,7 @@ concordance (common 3,109-universe primary, descriptive - no gene-permutation p)
 (intentional). No new heavy dep (MOFA2 / RGCCA / mixOmics / omicade4 / concatenated PCA / py_jive all
 rejected with recorded rationale; lean reimplement per CLAUDE.md).
 
-Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all gate-independent):
+Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8.5; all gate-independent; the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam 2026-07-20):
 - P8.1 [DONE 2026-07-19] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
   core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [symbol x 5-contrast] logFC +
   moderated-t matrices, robust-z standardization (raw + invertible standardized stored), complete-case (3,109) +
@@ -111,15 +111,25 @@ Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8
   Spearman anchor reproduced to full precision; clean rebuild + check.sh GREEN). NOTE for P8.4: joint
   component is EMPTY (r_J=0), so figure (a) renders the variance split + shared-candidate alignment
   diagnostic, not an empty joint-loading heatmap (forced-rank-1 joint = optional illustrative sensitivity).
-- P8.3 [OPEN] Concordance network + pathway consensus -> `integration_concordance` +
-  `integration_pathway` + tests. Pairwise logFC-Spearman 3x5 on the common 3,109-universe, descriptive
-  (no gene-permutation p; optional per-modality unit-resample + DE-refit bootstrap CI on rho) +
-  reimplemented directional-overlap (phyper off-by-one audited out, descriptive); msigdbr GO-BP
-  directional set scores + >=2-modality coverage-gated DESCRIPTIVE consensus. Accept: rho + overlap
-  reproduce (tol 0); bootstrap/consensus deterministic under fixed seed; gate green. MAIN
-  SIZE-CHECK - SPLIT-CANDIDATE (concordance /
-  pathway / report) if >200K; the reimplement-vs-ActivePathways pathway decision is made here.
-- P8.4 [OPEN] Report integration -> `integration_figures` + `sections/integration.qmd` + report /
+- P8.3 [OPEN] Concordance network -> `integration_concordance` + tests. Pairwise logFC-Spearman 3x5
+  (3 modality-pairs x 5 contrasts) on the common 3,109-universe, descriptive (no gene-permutation p;
+  OPTIONAL per-modality unit-resample + DE-refit bootstrap CI on rho, feasibility-gated -- DEFER with
+  recorded rationale if it cannot reach cached per-unit matrices cheaply) + reimplemented RRHO-style
+  directional-overlap (phyper off-by-one audited out, descriptive). Reads ONLY integration_substrate
+  (raw logFC/t + index sets). Accept: rho + overlap counts reproduce (tol 0); any bootstrap/seeded
+  output deterministic under fixed seed; overlap free of the phyper off-by-one; compact + parent-
+  isolated; gate green.
+- P8.4 [OPEN] Pathway consensus -> `integration_pathway` + tests. msigdbr mouse GO-BP (+ optional
+  project DAM/Homeostatic/IFN/MHC_APC sets), per modality x contrast set-level directional score (mean
+  standardized effect over set genes, coverage-gated) + >=2-modality coverage-gated DESCRIPTIVE
+  consensus (same-sign above threshold in >=2 modalities per contrast + explicit minimum-modality-
+  coverage count). Reimplement-vs-ActivePathways decision made here: DEFAULT lean reimplement over the
+  already-locked msigdbr (no new dep); ActivePathways/fgsea only if reimplement inadequate, with
+  rationale. No calibrated enrichment p (competitive null anti-conservative). Reads ONLY
+  integration_substrate (standardized effect) + msigdbr. Accept: set scores + consensus membership
+  reproduce (tol 0); consensus deterministic under fixed seed; coverage gating correct; compact +
+  parent-isolated; gate green.
+- P8.5 [OPEN] Report integration -> `integration_figures` + `sections/integration.qmd` + report /
   report_sources / render_report wiring + memory/map. Figures 11+: (a) joint/individual/residual
   variance + joint contrast-loading heatmap + top joint genes; (b) per-contrast concordance heatmap +
   directional-overlap; (c) pathway consensus. Accept: `scripts/check.sh` green (warn=2, self-contained
@@ -174,8 +184,8 @@ Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8
   concordance + msigdbr GO-BP >=2-modality directional consensus; logFC primary (moderated-t
   secondary); all layers descriptive - no design-valid calibrated cross-modality p from cached
   topTables (genes not exchangeable). New `R/analysis/integration.R` +
-  `integration_` targets + `sections/integration.qmd`; report grows 10 -> ~12-13 figures. 4
-  gate-independent units P8.1-P8.4 (substrate / decomposition / concordance+pathway / report).
+  `integration_` targets + `sections/integration.qmd`; report grows 10 -> ~12-13 figures. 5
+  gate-independent units P8.1-P8.5 (substrate / decomposition / concordance / pathway / report).
 - Figure expansion [DONE 2026-07-02 -> `.agent/completed/figure_expansion_plan_2026-07-02.md`]:
   post-report visual-density pass. Inline chapter expansion backed by compact
   per-chapter figure targets; +26 planned figures landed without changing claims.
@@ -303,6 +313,24 @@ Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-20 P8.3 SIZE-CHECK respec-split (M8.3 respec). MAIN SIZE-CHECK before dispatch projected the
+  original P8.3 ("concordance + pathway consensus" = `integration_concordance` + `integration_pathway`
+  + both oracle suites + the reimplement-vs-ActivePathways decision) at ~258K against the 272K Agent
+  window, overflowing the ~72K verification/closure reserve. Calibration: P8.1 substrate (~430 lines /
+  1 oracle / 1 target) landed at impl 154K/272K, and the two P8.3 layers are each comparable in subtlety
+  to a substrate-sized layer (concordance = pairwise Spearman/Pearson + RRHO directional-overlap
+  reimplement with the phyper off-by-one audit + optional DE-refit bootstrap; pathway = msigdbr GO-BP
+  ~7k-set directional consensus + dependency decision), so 154K + 154K - ~50K shared read overhead ~=
+  258K. The roadmap/plan author had pre-earmarked P8.3 SPLIT-CANDIDATE with the exact renumbering; the
+  seam is confirmed clean (both layers read ONLY `integration_substrate`, neither depends on the other,
+  the report unit consumes both). Split at the concordance/pathway seam into 3 fresh self-contained OPEN
+  units: P8.3 concordance network (`integration_concordance`), P8.4 pathway consensus
+  (`integration_pathway`; reimplement-vs-ActivePathways decided there, DEFAULT lean reimplement over the
+  locked msigdbr), P8.5 report integration (was P8.4; unchanged -- consumes decomposition + concordance
+  + pathway). Banked: bootstrap CI stays OPTIONAL/feasibility-gated (defer with rationale if it can't
+  reach cached per-unit matrices cheaply); pathway default = no new dep. No code / target / gate change;
+  roadmap + `.agent/p8_crossmodality_integration_plan.md` Units enumeration updated (4 -> 5). Milestone
+  stays IN-PROGRESS; next = P8.3 (concordance network). Respec-only; session ends at this commit.
 - 2026-07-20 P8.2 joint-vs-individual decomposition (M8.2) DONE. New pure-R AJIVE-style
   joint/individual/residual split in `R/analysis/integration.R` (`build_integration_decomposition` +
   helpers `integration_rank_signal` / `integration_random_joint_threshold` / `integration_joint_basis` /
