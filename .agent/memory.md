@@ -36,8 +36,9 @@ corrected from the earlier wrong "tau-KO baseline":
   confirm the literature-inferred construct at the animal level.
 
 Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, 34 report-ancestry
-targets (39 live: + `occupancy_harness_check`, `occupancy_robustness`, `integration_substrate`,
-`integration_decomposition`, and `integration_concordance` non-report leaves, outside report ancestry).
+targets (40 live: + `occupancy_harness_check`, `occupancy_robustness`, `integration_substrate`,
+`integration_decomposition`, `integration_concordance`, and `integration_pathway` non-report leaves,
+outside report ancestry).
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -170,6 +171,13 @@ Cross-modality integration (P8):
   deterministic RRHO summaries use corrected `phyper(q - 1, ...)`; all are descriptive-only with no
   calibrated cross-modality p. The unit-resample + DE-refit bootstrap is deferred because per-unit
   matrices are outside the substrate-only contract. `scripts/check.sh` rebuilds the leaf.
+- `integration_pathway` is the compact parent-isolated non-report P8.4 leaf over 7,535 human
+  C5:GO:BP sets ortholog-mapped to mouse plus all five `canonical_microglia_markers` project sets.
+  It stores 113,100 modality x contrast coverage-gated mean standardized-logFC scores with a
+  standardized moderated-t descriptive view, then 37,700 >=2-modality directional-consensus rows
+  at fixed coverage >=5 and score magnitude >=0.5. No calibrated p-value or competitive-null
+  enrichment is produced because genes are non-exchangeable. Count, score, coverage, consensus,
+  determinism, parent-isolation, and <25 MiB oracles are runtime-fatal; `scripts/check.sh` rebuilds it.
 
 Microglia reprocess:
 - SCT-v2/glmGamPoi on RNA counts, regress percent_mt + percent_contam.
@@ -336,7 +344,8 @@ Fresh bootstrap:
 
 `scripts/check.sh`:
 - invalidates and rebuilds `report` plus the non-report `occupancy_harness_check`,
-  `integration_substrate`, `integration_decomposition`, and `integration_concordance` validation leaves
+  `integration_substrate`, `integration_decomposition`, `integration_concordance`, and
+  `integration_pathway` validation leaves
 - does not sync the environment or scan all target metadata/logs
 - relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
 - functional green does not currently imply byte stability: repeated renders vary only in Figure 8

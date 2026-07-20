@@ -15,7 +15,7 @@ Fresh clone:
 2. `scripts/bootstrap/rv.sh` - project R package manager.
 3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness, integration-substrate, integration-decomposition, and integration-concordance guardrails.
+5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness, integration-substrate, integration-decomposition, integration-concordance, and integration-pathway guardrails.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 39.
+store to `storage/targets/`. Expected live target count: 40.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -145,6 +145,12 @@ Modality context:
   matrix/tidy correlations, Pearson/moderated-t and per-pair coverage sensitivities, exact directional
   counts, and deterministic corrected-`phyper(q - 1, ...)` RRHO maxima. Bootstrap calibration is
   deferred; all outputs are descriptive-only. `scripts/check.sh` rebuilds it on every gate.
+- `integration_pathway <- build_integration_pathway(integration_substrate)` is the P8.4 compact,
+  parent-isolated NON-report leaf. It scores 7,535 human C5:GO:BP sets ortholog-mapped to mouse plus
+  five project marker sets across all three modalities and five contrasts using coverage-gated means
+  of standardized logFC (primary) and moderated t (secondary), then records >=2-modality same-direction
+  consensus at fixed coverage 5 and score threshold 0.5. All outputs are descriptive-only, with no
+  calibrated p-value or competitive-null enrichment. `scripts/check.sh` rebuilds it on every gate.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", sections/*.qmd, R/**/*.R)`
@@ -227,6 +233,10 @@ Report:
   `integration_hypergeom_upper()`, `integration_rrho_thresholds()`,
   `integration_rrho_maximum()`, and `integration_directional_overlap()` for common-universe and
   pairwise raw-effect concordance plus compact four-quadrant directional-overlap summaries.
+- `build_integration_pathway()` constructs deterministic radix-sorted mouse GO-BP/project sets,
+  scores covered symbols from `integration_substrate$standardized`, derives coverage-gated directional
+  consensus, and enforces independent score/coverage/consensus, determinism, count, parent-isolation,
+  NA-pattern, and <25 MiB oracles without calibrated or competitive-null inference.
 
 `R/report/figures.R`
 - Compact figure-data builders for rendered slots only:

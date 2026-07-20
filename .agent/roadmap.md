@@ -56,7 +56,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.3 DONE, P8.4-P8.5 OPEN]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.4 DONE, P8.5 OPEN]
 
 Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
 to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
@@ -90,7 +90,7 @@ concordance (common 3,109-universe primary, descriptive - no gene-permutation p)
 (intentional). No new heavy dep (MOFA2 / RGCCA / mixOmics / omicade4 / concatenated PCA / py_jive all
 rejected with recorded rationale; lean reimplement per CLAUDE.md).
 
-Units (P8.1-P8.3 DONE 2026-07-19/20, P8.4-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8.5; all gate-independent; the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam 2026-07-20):
+Units (P8.1-P8.4 DONE 2026-07-19/20, P8.5 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8.5; all gate-independent; the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam 2026-07-20):
 - P8.1 [DONE 2026-07-19] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
   core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [symbol x 5-contrast] logFC +
   moderated-t matrices, robust-z standardization (raw + invertible standardized stored), complete-case (3,109) +
@@ -135,7 +135,7 @@ Units (P8.1-P8.3 DONE 2026-07-19/20, P8.4-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8
   GREEN (report 11.91 MB, 10 figures undisturbed, + integration_concordance). Payload 4,038 B serialized
   / 22,944 B in-memory. Live target count 38 -> 39 (leaf stays non-report until P8.5). main=73% 197K/272K;
   impl=57% 156K/272K.
-- P8.4 [OPEN] Pathway consensus -> `integration_pathway` + tests. msigdbr mouse GO-BP (+ optional
+- P8.4 [DONE 2026-07-20] Pathway consensus -> `integration_pathway` + tests. msigdbr mouse GO-BP (+ optional
   project DAM/Homeostatic/IFN/MHC_APC sets), per modality x contrast set-level directional score (mean
   standardized effect over set genes, coverage-gated) + >=2-modality coverage-gated DESCRIPTIVE
   consensus (same-sign above threshold in >=2 modalities per contrast + explicit minimum-modality-
@@ -329,6 +329,35 @@ Units (P8.1-P8.3 DONE 2026-07-19/20, P8.4-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-20 P8.4 pathway consensus (M8.4) DONE. New cross-modality pathway leaf
+  `integration_pathway` + `build_integration_pathway` in `R/analysis/integration.R`, reading ONLY
+  `integration_substrate$standardized` + msigdbr (locked 26.1.0, bundled/offline -- no new dep; DEFAULT
+  lean reimplement, fgsea/decoupleR/OmnipathR/ActivePathways deliberately absent from the lock). Gene-set
+  collection = 7,535 human C5:GO:BP sets ortholog-mapped to mouse (msigdbr db_species="HS",
+  species="Mus musculus"; 15,988 unique mouse gene_symbols) + all 5 `canonical_microglia_markers` project
+  sets (Homeostatic/DAM/IFN/Proliferative/MHC_APC) = 7,540 sets; NA gene_symbols dropped, members unique +
+  radix-sorted, set names radix-sorted within collection. Per (collection x set x contrast x modality):
+  coverage-gated mean of per-modality robust-z standardized logFC (PRIMARY) + standardized moderated-t
+  (secondary descriptive view), NA iff <5 set symbols present in that modality (min_coverage 5L) ->
+  113,100 score rows. Consensus (37,700 = set x contrast): >=2 covered modalities same-sign past +/-0.5
+  (score_threshold) -> up/down else none; records n_modalities_covered/n_up/n_down. All DESCRIPTIVE -- no
+  calibrated p and no competitive-null enrichment (genes non-exchangeable; the consensus is a
+  coverage-gated directional-agreement count, not a test). RESULT: 732 up / 705 down / 36,263 none across
+  the 37,700 consensus rows. In-builder oracles (no committed test, lean posture, mirrors P8.1-P8.3): hard
+  tripwires 7,535/15,988/5/7,540 sets + 113,100/37,700 rows + per-modality symbol counts
+  (14,512/19,959/3,306) + msigdbr 26.1.0 version pin; independent sampled score recompute (logFC +
+  moderated-t max abs diff 0, <1e-12); independent coverage + FULL 37,700-row consensus recompute (exact);
+  determinism (whole result built twice, identical, no RNG); NA-pattern gate is.na(score) iff coverage<5
+  for both stats -- the one place the blanket concordance !anyNA guard could NOT be copied; parent-isolated;
+  <25 MiB. MAIN independently verified: diff inspected (scoring/consensus/oracle arithmetic spec-correct,
+  descriptive-only preserved, no scope creep); own clean-invalidate `TZ=UTC scripts/check.sh` GREEN (exit 0;
+  integration_pathway rebuilt 4m43s / 1.71 MB serialized; report re-rendered 11.91 MB, 10 figures
+  undisturbed; substrate/decomposition/concordance/occupancy_harness_check all rebuilt). Diff = 5 files
+  (integration.R +431, _targets.R +5, check.sh +8, memory.md, map.md); report surface (sections/ +
+  R/report/) UNTOUCHED. Wired into check.sh (invalidate+rebuild alongside the other guardrails). Live
+  target count 39 -> 40 (leaf stays non-report until P8.5). Docs = new fn/target/leaf in memory + map
+  (Agent). Payload 1.71 MB serialized / 9.27 MiB in-memory. main=42% 114K/272K; impl=54% 146K/272K.
+  Milestone stays IN-PROGRESS; next = P8.5 (report integration).
 - 2026-07-20 P8.3 concordance network (M8.3) DONE. New cross-modality concordance leaf
   `integration_concordance` + `build_integration_concordance` (+ helpers `integration_modality_pairs` /
   `_hypergeom_upper` / `_rrho_thresholds` / `_rrho_maximum` / `_directional_overlap`) in

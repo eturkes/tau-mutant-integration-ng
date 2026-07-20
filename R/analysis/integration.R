@@ -1713,3 +1713,434 @@ build_integration_concordance <- function(integration_substrate) {
   )
   result
 }
+
+
+build_integration_pathway <- function(integration_substrate) {
+  modalities <- c("snRNAseq", "GeoMx", "bulk")
+  contrasts <- integration_contrast_names()
+  collections <- c("GO:BP", "PROJECT")
+  min_coverage <- 5L
+  score_threshold <- 0.5
+  expected_symbol_counts <- c(snRNAseq = 14512L, GeoMx = 19959L, bulk = 3306L)
+  expected_go_sets <- 7535L
+  expected_go_symbols <- 15988L
+  expected_project_sets <- 5L
+  expected_total_sets <- 7540L
+  expected_score_rows <- 113100L
+  expected_consensus_rows <- 37700L
+
+  stopifnot(
+    is.list(integration_substrate),
+    identical(integration_substrate$modalities, modalities),
+    identical(integration_substrate$contrasts, contrasts),
+    is.list(integration_substrate$standardized),
+    identical(names(integration_substrate$standardized), modalities)
+  )
+  for (modality in modalities) {
+    block <- integration_substrate$standardized[[modality]]
+    stopifnot(
+      is.list(block), identical(names(block), c("logFC", "t")),
+      identical(dimnames(block$logFC), dimnames(block$t)),
+      ncol(block$logFC) == expected_symbol_counts[[modality]]
+    )
+    for (statistic in c("logFC", "t")) {
+      matrix <- block[[statistic]]
+      stopifnot(
+        is.matrix(matrix), is.numeric(matrix),
+        identical(rownames(matrix), contrasts),
+        identical(colnames(matrix), integration_radix_sort(colnames(matrix))),
+        anyDuplicated(colnames(matrix)) == 0L,
+        all(is.finite(matrix))
+      )
+    }
+  }
+
+  msigdbr_version <- as.character(utils::packageVersion("msigdbr"))
+  stopifnot(identical(msigdbr_version, "26.1.0"))
+  go_table <- msigdbr::msigdbr(
+    db_species = "HS",
+    species = "Mus musculus",
+    collection = "C5",
+    subcollection = "GO:BP"
+  )
+  stopifnot(
+    is.data.frame(go_table),
+    all(c("gs_name", "gene_symbol") %in% names(go_table))
+  )
+  go_table <- go_table[
+    !is.na(go_table$gene_symbol),
+    c("gs_name", "gene_symbol"),
+    drop = FALSE
+  ]
+  go_table$gs_name <- as.character(go_table$gs_name)
+  go_table$gene_symbol <- as.character(go_table$gene_symbol)
+  go_split <- split(go_table$gene_symbol, go_table$gs_name)
+  go_names <- integration_radix_sort(names(go_split))
+  go_sets <- setNames(
+    lapply(go_names, function(set_name) {
+      integration_radix_sort(unique(go_split[[set_name]]))
+    }),
+    go_names
+  )
+  go_symbols <- integration_radix_sort(unique(unlist(go_sets, use.names = FALSE)))
+  stopifnot(
+    length(go_sets) == expected_go_sets,
+    length(go_symbols) == expected_go_symbols,
+    identical(names(go_sets), integration_radix_sort(names(go_sets))),
+    all(lengths(go_sets) > 0L),
+    all(vapply(go_sets, function(x) {
+      is.character(x) && identical(x, integration_radix_sort(x)) &&
+        anyDuplicated(x) == 0L
+    }, logical(1)))
+  )
+
+  expected_project_names <- c(
+    "Homeostatic", "DAM", "IFN", "Proliferative", "MHC_APC"
+  )
+  stopifnot(
+    is.list(canonical_microglia_markers),
+    identical(names(canonical_microglia_markers), expected_project_names),
+    length(canonical_microglia_markers) == expected_project_sets,
+    all(vapply(canonical_microglia_markers, is.character, logical(1)))
+  )
+  project_names <- integration_radix_sort(names(canonical_microglia_markers))
+  project_sets <- setNames(
+    lapply(project_names, function(set_name) {
+      integration_radix_sort(unique(canonical_microglia_markers[[set_name]]))
+    }),
+    project_names
+  )
+  stopifnot(
+    length(project_sets) == expected_project_sets,
+    identical(names(project_sets), integration_radix_sort(names(project_sets))),
+    all(lengths(project_sets) > 0L),
+    all(vapply(project_sets, function(x) {
+      is.character(x) && identical(x, integration_radix_sort(x)) &&
+        anyDuplicated(x) == 0L
+    }, logical(1)))
+  )
+
+  gene_sets <- list(`GO:BP` = go_sets, PROJECT = project_sets)
+  set_index <- do.call(rbind, lapply(collections, function(collection) {
+    set_names <- integration_radix_sort(names(gene_sets[[collection]]))
+    data.frame(
+      collection = rep.int(collection, length(set_names)),
+      set = set_names,
+      set_size = as.integer(lengths(gene_sets[[collection]][set_names])),
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(set_index) <- NULL
+  stopifnot(
+    identical(names(gene_sets), collections),
+    nrow(set_index) == expected_total_sets,
+    sum(set_index$collection == "GO:BP") == expected_go_sets,
+    sum(set_index$collection == "PROJECT") == expected_project_sets,
+    anyDuplicated(paste(set_index$collection, set_index$set, sep = "\r")) == 0L,
+    all(set_index$set_size > 0L),
+    !anyNA(set_index)
+  )
+
+  provenance <- list(
+    gene_sets = list(
+      msigdbr = list(
+        package = "msigdbr",
+        package_version = msigdbr_version,
+        db_species = "HS",
+        species = "Mus musculus",
+        collection = "C5",
+        subcollection = "GO:BP",
+        call = paste0(
+          "msigdbr::msigdbr(db_species = \"HS\", species = \"Mus musculus\", ",
+          "collection = \"C5\", subcollection = \"GO:BP\")"
+        ),
+        mapping = paste0(
+          "human MSigDB C5:GO:BP ortholog-mapped to Mus musculus by msigdbr; ",
+          "gene_symbol is the mouse symbol"
+        ),
+        n_sets = expected_go_sets,
+        n_unique_mouse_symbols = expected_go_symbols
+      ),
+      project = list(
+        source = "canonical_microglia_markers in R/core/constants.R",
+        sets = project_names,
+        n_sets = expected_project_sets
+      ),
+      total_sets = expected_total_sets,
+      membership = paste0(
+        "NA gene_symbol rows dropped; members unique and radix-sorted within each set; ",
+        "set names radix-sorted within GO:BP then PROJECT"
+      )
+    ),
+    scoring = list(
+      primary = paste0(
+        "mean per-modality robust-z standardized logFC over covered set symbols, ",
+        "separately for each canonical contrast"
+      ),
+      secondary = paste0(
+        "mean per-modality robust-z standardized moderated t over the same symbols; ",
+        "DESCRIPTIVE ONLY evidence-statistic view"
+      ),
+      min_coverage = min_coverage,
+      score_threshold = score_threshold,
+      coverage_gate = paste0(
+        "score_logFC and score_t are NA iff fewer than 5 set symbols are present ",
+        "in that modality"
+      ),
+      consensus = paste0(
+        "coverage-gated descriptive directional agreement: up or down requires at least ",
+        "2 covered modalities with score_logFC >= 0.5 or <= -0.5, respectively; ",
+        "otherwise none"
+      )
+    ),
+    interpretation = paste0(
+      "DESCRIPTIVE ONLY: no calibrated p-value and no competitive-null enrichment are ",
+      "produced because genes are non-exchangeable; pathway scores and consensus are ",
+      "coverage-gated directional summaries, not inferential discoveries"
+    ),
+    determinism = paste0(
+      "set and symbol ordering use integration_radix_sort; scoring and consensus use no RNG; ",
+      "the complete result is recomputed and required to be identical"
+    )
+  )
+
+  build_result <- function() {
+    n_score_rows <- nrow(set_index) * length(contrasts) * length(modalities)
+    scores <- data.frame(
+      collection = rep.int("", n_score_rows),
+      set = rep.int("", n_score_rows),
+      contrast = rep.int("", n_score_rows),
+      modality = rep.int("", n_score_rows),
+      set_size = integer(n_score_rows),
+      coverage = integer(n_score_rows),
+      score_logFC = rep.int(NA_real_, n_score_rows),
+      score_t = rep.int(NA_real_, n_score_rows),
+      stringsAsFactors = FALSE
+    )
+    score_i <- 0L
+    for (set_i in seq_len(nrow(set_index))) {
+      collection <- set_index$collection[[set_i]]
+      set_name <- set_index$set[[set_i]]
+      members <- gene_sets[[collection]][[set_name]]
+      covered <- setNames(lapply(modalities, function(modality) {
+        integration_radix_sort(intersect(
+          members,
+          colnames(integration_substrate$standardized[[modality]]$logFC)
+        ))
+      }), modalities)
+      coverage <- setNames(as.integer(lengths(covered)), modalities)
+      score_logFC <- matrix(
+        NA_real_, nrow = length(contrasts), ncol = length(modalities),
+        dimnames = list(contrasts, modalities)
+      )
+      score_t <- score_logFC
+      for (modality in modalities) {
+        if (coverage[[modality]] >= min_coverage) {
+          score_logFC[, modality] <- vapply(contrasts, function(contrast) {
+            mean(integration_substrate$standardized[[modality]]$logFC[
+              contrast, covered[[modality]]
+            ])
+          }, numeric(1))
+          score_t[, modality] <- vapply(contrasts, function(contrast) {
+            mean(integration_substrate$standardized[[modality]]$t[
+              contrast, covered[[modality]]
+            ])
+          }, numeric(1))
+        }
+      }
+      for (contrast_i in seq_along(contrasts)) {
+        rows <- score_i + seq_along(modalities)
+        scores$collection[rows] <- collection
+        scores$set[rows] <- set_name
+        scores$contrast[rows] <- contrasts[[contrast_i]]
+        scores$modality[rows] <- modalities
+        scores$set_size[rows] <- set_index$set_size[[set_i]]
+        scores$coverage[rows] <- coverage
+        scores$score_logFC[rows] <- score_logFC[contrast_i, ]
+        scores$score_t[rows] <- score_t[contrast_i, ]
+        score_i <- score_i + length(modalities)
+      }
+    }
+    rownames(scores) <- NULL
+
+    n_consensus_rows <- nrow(set_index) * length(contrasts)
+    consensus <- data.frame(
+      collection = rep.int("", n_consensus_rows),
+      set = rep.int("", n_consensus_rows),
+      contrast = rep.int("", n_consensus_rows),
+      set_size = integer(n_consensus_rows),
+      n_modalities_covered = integer(n_consensus_rows),
+      n_up = integer(n_consensus_rows),
+      n_down = integer(n_consensus_rows),
+      consensus_direction = rep.int("", n_consensus_rows),
+      stringsAsFactors = FALSE
+    )
+    consensus_i <- 0L
+    for (set_i in seq_len(nrow(set_index))) {
+      for (contrast_i in seq_along(contrasts)) {
+        score_start <- (set_i - 1L) * length(contrasts) * length(modalities) +
+          (contrast_i - 1L) * length(modalities)
+        score_rows <- score_start + seq_along(modalities)
+        values <- scores$score_logFC[score_rows]
+        covered_values <- values[!is.na(values)]
+        n_modalities_covered <- as.integer(length(covered_values))
+        n_up <- as.integer(sum(covered_values >= score_threshold))
+        n_down <- as.integer(sum(covered_values <= -score_threshold))
+        consensus_direction <- if (
+          n_modalities_covered >= 2L && n_up >= 2L
+        ) {
+          "up"
+        } else if (n_modalities_covered >= 2L && n_down >= 2L) {
+          "down"
+        } else {
+          "none"
+        }
+        consensus_i <- consensus_i + 1L
+        consensus$collection[[consensus_i]] <- set_index$collection[[set_i]]
+        consensus$set[[consensus_i]] <- set_index$set[[set_i]]
+        consensus$contrast[[consensus_i]] <- contrasts[[contrast_i]]
+        consensus$set_size[[consensus_i]] <- set_index$set_size[[set_i]]
+        consensus$n_modalities_covered[[consensus_i]] <- n_modalities_covered
+        consensus$n_up[[consensus_i]] <- n_up
+        consensus$n_down[[consensus_i]] <- n_down
+        consensus$consensus_direction[[consensus_i]] <- consensus_direction
+      }
+    }
+    rownames(consensus) <- NULL
+
+    list(scores = scores, consensus = consensus, provenance = provenance)
+  }
+
+  result <- build_result()
+  result_repeat <- build_result()
+  stopifnot(identical(result, result_repeat))
+  rm(result_repeat)
+
+  scores <- result$scores
+  consensus <- result$consensus
+  rows_per_set <- length(contrasts) * length(modalities)
+  oracle_set_indices <- unique(c(
+    1L,
+    as.integer(expected_go_sets %/% 2L),
+    expected_go_sets,
+    expected_go_sets + 1L,
+    expected_total_sets
+  ))
+  oracle_rows <- unlist(lapply(oracle_set_indices, function(set_i) {
+    (set_i - 1L) * rows_per_set + seq_len(rows_per_set)
+  }), use.names = FALSE)
+  oracle_coverage <- integer(length(oracle_rows))
+  oracle_set_size <- integer(length(oracle_rows))
+  oracle_logFC <- rep.int(NA_real_, length(oracle_rows))
+  oracle_t <- rep.int(NA_real_, length(oracle_rows))
+  for (oracle_i in seq_along(oracle_rows)) {
+    row <- scores[oracle_rows[[oracle_i]], , drop = FALSE]
+    members <- gene_sets[[row$collection[[1L]]]][[row$set[[1L]]]]
+    matrix_logFC <- integration_substrate$standardized[[row$modality[[1L]]]]$logFC
+    matrix_t <- integration_substrate$standardized[[row$modality[[1L]]]]$t
+    covered_oracle <- integration_radix_sort(intersect(
+      integration_radix_sort(unique(as.character(members))),
+      colnames(matrix_logFC)
+    ))
+    oracle_coverage[[oracle_i]] <- as.integer(length(covered_oracle))
+    oracle_set_size[[oracle_i]] <- as.integer(length(unique(as.character(members))))
+    if (oracle_coverage[[oracle_i]] >= min_coverage) {
+      oracle_logFC[[oracle_i]] <- mean(matrix_logFC[
+        row$contrast[[1L]], covered_oracle
+      ])
+      oracle_t[[oracle_i]] <- mean(matrix_t[
+        row$contrast[[1L]], covered_oracle
+      ])
+    }
+  }
+  logFC_scored <- !is.na(oracle_logFC)
+  t_scored <- !is.na(oracle_t)
+  stopifnot(
+    identical(scores$coverage[oracle_rows], oracle_coverage),
+    identical(scores$set_size[oracle_rows], oracle_set_size),
+    identical(is.na(scores$score_logFC[oracle_rows]), is.na(oracle_logFC)),
+    identical(is.na(scores$score_t[oracle_rows]), is.na(oracle_t)),
+    any(logFC_scored), any(t_scored),
+    max(abs(scores$score_logFC[oracle_rows][logFC_scored] -
+      oracle_logFC[logFC_scored])) < 1e-12,
+    max(abs(scores$score_t[oracle_rows][t_scored] -
+      oracle_t[t_scored])) < 1e-12
+  )
+
+  oracle_modalities <- integer(nrow(consensus))
+  oracle_up <- integer(nrow(consensus))
+  oracle_down <- integer(nrow(consensus))
+  oracle_direction <- character(nrow(consensus))
+  for (consensus_i in seq_len(nrow(consensus))) {
+    score_rows <- (consensus_i - 1L) * length(modalities) + seq_along(modalities)
+    score_block <- scores[score_rows, , drop = FALSE]
+    stopifnot(
+      identical(unique(score_block$collection), consensus$collection[[consensus_i]]),
+      identical(unique(score_block$set), consensus$set[[consensus_i]]),
+      identical(unique(score_block$contrast), consensus$contrast[[consensus_i]]),
+      identical(unique(score_block$set_size), consensus$set_size[[consensus_i]])
+    )
+    values <- score_block$score_logFC
+    covered_values <- values[!is.na(values)]
+    oracle_modalities[[consensus_i]] <- as.integer(length(covered_values))
+    oracle_up[[consensus_i]] <- as.integer(sum(covered_values >= score_threshold))
+    oracle_down[[consensus_i]] <- as.integer(sum(covered_values <= -score_threshold))
+    oracle_direction[[consensus_i]] <- if (
+      oracle_modalities[[consensus_i]] >= 2L && oracle_up[[consensus_i]] >= 2L
+    ) {
+      "up"
+    } else if (
+      oracle_modalities[[consensus_i]] >= 2L && oracle_down[[consensus_i]] >= 2L
+    ) {
+      "down"
+    } else {
+      "none"
+    }
+  }
+  stopifnot(
+    identical(consensus$n_modalities_covered, oracle_modalities),
+    identical(consensus$n_up, oracle_up),
+    identical(consensus$n_down, oracle_down),
+    identical(consensus$consensus_direction, oracle_direction)
+  )
+
+  stopifnot(
+    identical(names(result), c("scores", "consensus", "provenance")),
+    identical(names(scores), c(
+      "collection", "set", "contrast", "modality", "set_size", "coverage",
+      "score_logFC", "score_t"
+    )),
+    identical(names(consensus), c(
+      "collection", "set", "contrast", "set_size", "n_modalities_covered",
+      "n_up", "n_down", "consensus_direction"
+    )),
+    nrow(scores) == expected_score_rows,
+    nrow(consensus) == expected_consensus_rows,
+    identical(unique(scores$collection), collections),
+    identical(unique(scores$contrast), contrasts),
+    identical(unique(scores$modality), modalities),
+    identical(unique(consensus$collection), collections),
+    identical(unique(consensus$contrast), contrasts),
+    all(scores$set_size > 0L),
+    all(scores$coverage >= 0L),
+    all(scores$coverage <= scores$set_size),
+    all(consensus$set_size > 0L),
+    all(consensus$n_modalities_covered >= 0L & consensus$n_modalities_covered <= 3L),
+    all(consensus$n_up >= 0L & consensus$n_up <= consensus$n_modalities_covered),
+    all(consensus$n_down >= 0L & consensus$n_down <= consensus$n_modalities_covered),
+    all(consensus$n_up + consensus$n_down <= consensus$n_modalities_covered),
+    all(consensus$consensus_direction %in% c("none", "up", "down")),
+    identical(is.na(scores$score_logFC), scores$coverage < min_coverage),
+    identical(is.na(scores$score_t), scores$coverage < min_coverage),
+    identical(is.na(scores$score_logFC), is.na(scores$score_t)),
+    all(is.finite(scores$score_logFC[!is.na(scores$score_logFC)])),
+    all(is.finite(scores$score_t[!is.na(scores$score_t)])),
+    !anyNA(scores[, setdiff(names(scores), c("score_logFC", "score_t")), drop = FALSE]),
+    !anyNA(consensus),
+    !anyNA(unlist(result$provenance, recursive = TRUE, use.names = FALSE)),
+    !integration_contains_parent(result),
+    as.numeric(object.size(result)) < 25 * 1024^2
+  )
+
+  result
+}

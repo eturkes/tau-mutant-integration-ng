@@ -10,10 +10,10 @@ cd "$ROOT"
 
 trap 'echo "check.sh: GATE FAILED -> ${BASH_COMMAND}" >&2' ERR
 
-echo "== render report/tau-mutant-integration.html + validate occupancy_harness_check + integration_substrate + integration_decomposition + integration_concordance =="
-if ! Rscript -e 'targets::tar_invalidate(tidyselect::any_of(c("report", "occupancy_harness_check", "integration_substrate", "integration_decomposition", "integration_concordance"))); targets::tar_make(names = c("report", "occupancy_harness_check", "integration_substrate", "integration_decomposition", "integration_concordance"))'; then
-  echo "check.sh: report render, occupancy harness check, integration substrate, integration decomposition, or integration concordance failed (see output above)" >&2
+echo "== render report/tau-mutant-integration.html + validate occupancy_harness_check + integration_substrate + integration_decomposition + integration_concordance + integration_pathway =="
+if ! Rscript -e 'targets::tar_invalidate(tidyselect::any_of(c("report", "occupancy_harness_check", "integration_substrate", "integration_decomposition", "integration_concordance", "integration_pathway"))); targets::tar_make(names = c("report", "occupancy_harness_check", "integration_substrate", "integration_decomposition", "integration_concordance", "integration_pathway"))'; then
+  echo "check.sh: report render, occupancy harness check, integration substrate, integration decomposition, integration concordance, or integration pathway failed (see output above)" >&2
   exit 1
 fi
 
-echo "PASS - report/tau-mutant-integration.html + occupancy_harness_check + integration_substrate + integration_decomposition + integration_concordance"
+echo "PASS - report/tau-mutant-integration.html + occupancy_harness_check + integration_substrate + integration_decomposition + integration_concordance + integration_pathway"
