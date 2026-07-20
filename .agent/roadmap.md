@@ -56,7 +56,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1 DONE, P8.2-P8.4 OPEN]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.2 DONE, P8.3-P8.4 OPEN]
 
 Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
 to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
@@ -90,18 +90,27 @@ concordance (common 3,109-universe primary, descriptive - no gene-permutation p)
 (intentional). No new heavy dep (MOFA2 / RGCCA / mixOmics / omicade4 / concatenated PCA / py_jive all
 rejected with recorded rationale; lean reimplement per CLAUDE.md).
 
-Units (P8.1 DONE 2026-07-19, P8.2-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all gate-independent):
+Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4; all gate-independent):
 - P8.1 [DONE 2026-07-19] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
   core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [symbol x 5-contrast] logFC +
   moderated-t matrices, robust-z standardization (raw + invertible standardized stored), complete-case (3,109) +
   >=2-modality (12,427) index sets + per-pair overlaps (12,324/3,132/3,189), phosphosite parent alternate (3,019,
   not a modality), provenance. Reconstruction tol 0, counts reproduce, invertibility <1e-9, bulk single-modality,
   compact (6.78 MB) + parent-isolated, gate green -- MAIN-verified against cached DE targets.
-- P8.2 [OPEN] Joint-vs-individual decomposition -> `integration_decomposition` + AJIVE reimplement +
-  oracle tests + r.jive cross-check. Joint/individual/residual variance per block, joint gene scores,
-  per-block joint contrast-loadings, ranks + diagnostics. Accept: X_k = J_k + A_k + E_k to <1e-8;
-  joint orthogonal to individual row-spaces; deterministic ranks; planted-rank fixture recovers;
-  r.jive agreement within a documented tolerance; gate green. MAIN SIZE-CHECK before dispatch.
+- P8.2 [DONE 2026-07-20] Joint-vs-individual decomposition -> `integration_decomposition` + pure-R AJIVE
+  reimplement (`build_integration_decomposition` + `integration_rank_signal` / `_random_joint_threshold` /
+  `_joint_basis` / `_ajive_decompose` / `_ajive_fixture`) + in-builder oracle + planted rank-1/2 fixtures +
+  one-time r.jive cross-check. Complete-case 5-contrast x 3,109-gene standardized blocks (logFC primary,
+  moderated-t sensitivity). RESULT (descriptive): joint rank r_J = 0 -- no three-way shared axis; each
+  modality ~82-87% individual / ~13-18% residual, 0% joint (logFC and t agree); the top shared candidate
+  aligns with snRNAseq/GeoMx (squared-cos 0.612/0.583, ~38-40 deg) but is orthogonal to bulk TiO2 phospho
+  (0.079, ~74 deg), robust well past the 45-deg Wedin-degenerate fallback. Reconstruction <1e-8 (2.26e-15);
+  joint orthogonal to individual; deterministic ranks (r_k<=2 cap, r_J+r_I,k<=4, >=1 residual, fixed seed);
+  both planted fixtures recover exactly; r.jive matched-rank fractions within 0.036<0.10 (its perm rank
+  selection timed out -> documented). Gate green; MAIN-verified against the cached substrate (geometry +
+  Spearman anchor reproduced to full precision; clean rebuild + check.sh GREEN). NOTE for P8.4: joint
+  component is EMPTY (r_J=0), so figure (a) renders the variance split + shared-candidate alignment
+  diagnostic, not an empty joint-loading heatmap (forced-rank-1 joint = optional illustrative sensitivity).
 - P8.3 [OPEN] Concordance network + pathway consensus -> `integration_concordance` +
   `integration_pathway` + tests. Pairwise logFC-Spearman 3x5 on the common 3,109-universe, descriptive
   (no gene-permutation p; optional per-modality unit-resample + DE-refit bootstrap CI on rho) +
@@ -294,6 +303,48 @@ Units (P8.1 DONE 2026-07-19, P8.2-P8.4 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-20 P8.2 joint-vs-individual decomposition (M8.2) DONE. New pure-R AJIVE-style
+  joint/individual/residual split in `R/analysis/integration.R` (`build_integration_decomposition` +
+  helpers `integration_rank_signal` / `integration_random_joint_threshold` / `integration_joint_basis` /
+  `integration_ajive_decompose` / `integration_ajive_fixture`) + compact parent-isolated NON-report leaf
+  `integration_decomposition` over the 3 complete-case standardized blocks (5 contrasts x 3,109 shared
+  genes; logFC primary, moderated-t sensitivity). RESULT (descriptive, honest): JOINT RANK r_J = 0 -- no
+  three-way shared gene-score axis; each modality is ~82-87% individual (rank-2, modality-specific) /
+  ~13-18% residual, 0% joint (logFC 0.827/0.871/0.818 individual, t view agrees). The top shared CANDIDATE
+  axis aligns with snRNAseq (squared-cos 0.612, ~38.5 deg) and GeoMx (0.583, ~40 deg) but is near-orthogonal
+  to bulk TiO2 phospho (0.079, ~73.7 deg); pairwise top-2 subspace angles confirm bulk 86-89 deg from both
+  RNA modalities and snR~GeoMx only weakly aligned (best canonical-cos 0.26). ROBUST, not a threshold
+  artifact: bulk's 0.079 fails the block gate decisively (would fail past ~70 deg); Wedin degenerates at
+  p=5 (sigma_3 > the sigma_2-sigma_3 gap in all blocks) so the documented 45-deg principal-angle fallback
+  is operative. Consistent with the spine (interaction mostly composition-specific) and the plan's Spearman
+  preview (strongest nlgf_in_p301s snR~GeoMx +0.193, interaction near-zero) -- weak diffuse amyloid
+  concordance (P8.3's layer) genuinely does not rise to a dominant joint axis. Rank selection: uncapped 3
+  -> hard-cap r_k=2 per the p=5 constraint; r_J=0, r_I=(2,2,2), >=1 residual dim; deterministic (fixed seed
+  8202 + sign-canonicalized axes). In-builder oracles fire on the REAL substrate: exact reconstruction
+  (max 2.26e-15 < 1e-8), joint/individual basis orthogonality, Frobenius/Pythagorean identity, rank budget,
+  planted rank-1 AND rank-2 fixtures recover EXACTLY (principal angles 2.11e-8 / 3.33e-8 rad; relative
+  joint-recovery error 1.18e-10; deterministic repeat identical), <25 MiB, parent isolation. One-time
+  r.jive 2.4 cross-check installed into /tmp ONLY (NOT a dep, not wired): matched-rank (r_J=0, r_A=2,2,2,
+  center/scale=FALSE, orthIndiv=TRUE) component-fraction diffs snRNAseq 0.00004 / GeoMx 0.036 / bulk 0.0046,
+  inside the documented 0.10 tolerance; r.jive's own permutation rank selection exceeded bounded 20-min
+  (default) and 10-min (10-perm) runs -> stopped + documented (it cross-checks the variance arithmetic at
+  forced rank 0, NOT an independent r_J=0 corroboration; the angle geometry above is that corroboration).
+  MAIN independently verified: recomputed the block geometry from `integration_substrate` -> stacked SVs /
+  cand1 alignments / snRNAseq fractions (0.8269107) match the stored target to full precision; reproduced
+  the Spearman anchor; clean-invalidate rebuild of `integration_decomposition` (1.1s, 18.36 kB,
+  error/warnings NA) re-fired fixture+oracles; `TZ=UTC scripts/check.sh` GREEN (report re-rendered 11.91 MB
+  warn-clean, 10 figures undisturbed, + occupancy_harness_check + integration_substrate +
+  integration_decomposition). Wired into check.sh (invalidate+rebuild alongside the other guardrails).
+  Live target count 37 -> 38 (leaf stays non-report until P8.4). Docs = new module fns/target in memory +
+  map (Agent). Payload 18.36 kB serialized / 304,904 bytes in-memory. main=72% 196K/272K; impl not surfaced
+  to coordinator (background Agent, transcript not accessible as a sidechain; scope moderate -- focused
+  AJIVE module + oracle + fixture + r.jive cross-check). NOTE FOR P8.4: the joint component is EMPTY
+  (r_J=0 -> joint gene scores 3,109x0, contrast loadings 5x0), so planned figure (a) should render the
+  joint/individual/residual variance split + the shared-CANDIDATE alignment diagnostic (snR/GeoMx partially
+  share an axis; bulk orthogonal) from `$primary$diagnostics$joint$candidates` / `block_alignment` rather
+  than an empty joint-loading heatmap / top-joint-genes; a forced-rank-1 joint sensitivity is an OPTIONAL
+  P8.4 add (r_J=0 is robust, so it would be an illustrative bound only). Milestone stays IN-PROGRESS; next
+  = P8.3 (concordance network + pathway consensus; MAIN SIZE-CHECK - SPLIT-CANDIDATE).
 - 2026-07-19 P8.1 harmonized effect-size substrate (M8.1) DONE. New `R/analysis/integration.R`
   (`build_integration_substrate` + reusable `robust_z`) + compact parent-isolated NON-report leaf
   `integration_substrate` over the 5 cached DE targets. Harmonizes the 3 integration modalities to gene

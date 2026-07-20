@@ -15,7 +15,7 @@ Fresh clone:
 2. `scripts/bootstrap/rv.sh` - project R package manager.
 3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness and integration-substrate guardrails.
+5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness, integration-substrate, and integration-decomposition guardrails.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 37.
+store to `storage/targets/`. Expected live target count: 38.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -134,6 +134,12 @@ Modality context:
   22,241 union symbols (pairwise 12,324/3,132/3,189); and keeps the 3,019 phosphosite parent-gene
   collapse as a same-TiO2-assay alternate, never a fourth modality. `scripts/check.sh` invalidates
   and rebuilds this self-validating leaf on every gate.
+- `integration_decomposition <- build_integration_decomposition(integration_substrate)` is the P8.2
+  compact, parent-isolated NON-report leaf. It decomposes the aligned 3,109 complete-case genes into
+  joint/individual/residual Frobenius-energy shares on standardized logFC, with standardized
+  moderated-t sensitivity, deterministic capped ranks and angle diagnostics, joint gene scores, and
+  per-modality five-contrast loadings. In-builder reconstruction, orthogonality, rank-budget, planted
+  rank-1/rank-2, and size oracles are runtime-fatal; `scripts/check.sh` rebuilds it on every gate.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", sections/*.qmd, R/**/*.R)`
@@ -208,6 +214,10 @@ Report:
   per-statistic, per-contrast median/MAD scaling; deterministic max-`AveExpr` representatives,
   exact source reconstruction, overlap counts, compactness, and parent isolation are runtime-fatal
   guards. The phosphosite parent-gene payload is explicitly a within-assay alternate.
+- `build_integration_decomposition()` uses `integration_rank_signal()`,
+  `integration_random_joint_threshold()`, `integration_joint_basis()`, and
+  `integration_ajive_decompose()` for the pure-R AJIVE-style split; `integration_ajive_fixture()`
+  self-tests planted joint ranks 1 and 2 with near-zero-noise reconstruction.
 
 `R/report/figures.R`
 - Compact figure-data builders for rendered slots only:

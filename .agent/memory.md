@@ -36,8 +36,8 @@ corrected from the earlier wrong "tau-KO baseline":
   confirm the literature-inferred construct at the animal level.
 
 Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, 34 report-ancestry
-targets (37 live: + `occupancy_harness_check`, `occupancy_robustness`, and `integration_substrate`
-non-report leaves, outside report ancestry).
+targets (38 live: + `occupancy_harness_check`, `occupancy_robustness`, `integration_substrate`, and
+`integration_decomposition` non-report leaves, outside report ancestry).
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -153,6 +153,17 @@ Cross-modality integration (P8):
 - `integration_substrate` is a compact, parent-isolated, self-validating non-report leaf rebuilt by
   `scripts/check.sh`; exact source reconstruction, invertibility, deterministic representatives,
   fixed counts, and the <25 MiB size ceiling are runtime-fatal.
+- `integration_decomposition` is the complete-case-only pure-R AJIVE-style joint/individual/residual
+  decomposition on standardized logFC (primary) with standardized moderated-t sensitivity. It stores
+  Frobenius-energy shares, deterministic ranks/threshold diagnostics, joint gene scores, and per-block
+  five-contrast joint loadings; no imputation or pairing is used and interpretation is descriptive.
+  Signal ranks are capped at 2, `r_J + r_I,k <= 4`, and every block retains at least one residual
+  dimension. The planted rank-1/rank-2 fixtures, reconstruction/orthogonality/rank oracles,
+  parent-isolation, and <25 MiB ceiling are runtime-fatal. `scripts/check.sh` rebuilds the leaf; the
+  one-time `r.jive` reference tolerance is <=0.10 absolute per component fraction and <=0.05 for the
+  total structured fraction. The matched-rank (`r_J=0`, `r_A=2,2,2`) check differed by at most 0.036
+  absolute (GeoMx; snRNAseq 0.00004, bulk 0.00462), inside tolerance; default and reduced-permutation
+  rank selection exceeded bounded 20- and 10-minute runs, respectively, and is not a pipeline gate.
 
 Microglia reprocess:
 - SCT-v2/glmGamPoi on RNA counts, regress percent_mt + percent_contam.
@@ -226,7 +237,8 @@ DAM-occupancy robustness (P7.5 executed):
   filler rows so `n_retained` and coverage reproduce exactly; E2/E3 success requires exact schemas
   and finite inferential output, and reduced-design smoke requires E2/E3 `ok` plus a separate fabricated
   non-estimable fixture with all three failures recorded. `scripts/check.sh` invalidates and rebuilds
-  this guardrail together with `integration_substrate`; `occupancy_robustness` stays an explicitly
+  this guardrail together with `integration_substrate` and `integration_decomposition`;
+  `occupancy_robustness` stays an explicitly
   built non-report leaf.
 
 Microglia DE:
@@ -317,8 +329,8 @@ Fresh bootstrap:
 5. `scripts/check.sh`
 
 `scripts/check.sh`:
-- invalidates and rebuilds `report` plus the non-report `occupancy_harness_check` and
-  `integration_substrate` validation leaves
+- invalidates and rebuilds `report` plus the non-report `occupancy_harness_check`,
+  `integration_substrate`, and `integration_decomposition` validation leaves
 - does not sync the environment or scan all target metadata/logs
 - relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
 - functional green does not currently imply byte stability: repeated renders vary only in Figure 8

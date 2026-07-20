@@ -185,6 +185,11 @@ list(
                                          proteome_de_24m, phospho_de_24m),
              format = "qs"),
 
+  # P8.2 non-report leaf: complete-case AJIVE joint/individual/residual split.
+  tar_target(integration_decomposition,
+             build_integration_decomposition(integration_substrate),
+             format = "qs"),
+
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # figure/code-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
