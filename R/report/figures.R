@@ -1258,3 +1258,370 @@ state_decomposition_figure_data <- function(state_response, gene_atlas, alpha = 
             out$audit$serialized_bytes <= max_target_bytes)
   out
 }
+
+
+# P8 Figures 11-13: compact report-only summaries of the three integration leaves. The
+# pathway payload is deliberately reduced to counts and a fixed top-set display; no full
+# score or consensus table crosses the report boundary.
+integration_figure_data <- function(integration_decomposition,
+                                    integration_concordance,
+                                    integration_pathway,
+                                    top_pathways_per_contrast = 5L,
+                                    max_target_bytes = 1024^2) {
+  stopifnot(
+    is.list(integration_decomposition), is.list(integration_concordance),
+    is.list(integration_pathway),
+    length(top_pathways_per_contrast) == 1L,
+    is.finite(top_pathways_per_contrast), top_pathways_per_contrast >= 1,
+    top_pathways_per_contrast == as.integer(top_pathways_per_contrast),
+    length(max_target_bytes) == 1L, is.finite(max_target_bytes), max_target_bytes > 0
+  )
+  top_pathways_per_contrast <- as.integer(top_pathways_per_contrast)
+  modalities <- c("snRNAseq", "GeoMx", "bulk")
+  modality_labels <- c(snRNAseq = "snRNA-seq", GeoMx = "GeoMx", bulk = "bulk TiO2")
+  contrasts <- c("tau_alone", "nlgf_in_maptki", "nlgf_in_p301s",
+                 "tau_in_nlgf", "interaction")
+  contrast_labels <- c(
+    tau_alone = "tau | no amyloid",
+    nlgf_in_maptki = "amyloid | MAPTKI",
+    nlgf_in_p301s = "amyloid | P301S",
+    tau_in_nlgf = "tau | amyloid",
+    interaction = "interaction"
+  )
+  amyloid_contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s")
+
+  # Figure 11: the selected joint rank is zero, so retain the variance partition and
+  # the top unselected shared-candidate diagnostic instead of empty joint loadings.
+  decomposition <- integration_decomposition$primary
+  stopifnot(
+    is.list(decomposition), identical(decomposition$statistic, "standardized_logFC"),
+    identical(integration_decomposition$provenance$modalities, modalities),
+    identical(integration_decomposition$provenance$contrasts, contrasts),
+    is.matrix(decomposition$joint_gene_scores), ncol(decomposition$joint_gene_scores) == 0L,
+    is.list(decomposition$joint_contrast_loadings),
+    all(vapply(decomposition$joint_contrast_loadings, ncol, integer(1)) == 0L)
+  )
+  variance <- decomposition$variance
+  .fig_require_cols(variance, c("modality", "component", "sum_squares", "fraction"),
+                    "integration decomposition variance")
+  variance <- variance[
+    variance$modality %in% modalities &
+      variance$component %in% c("joint", "individual", "residual") &
+      is.finite(variance$sum_squares) & is.finite(variance$fraction),
+    c("modality", "component", "sum_squares", "fraction"), drop = FALSE
+  ]
+  variance <- variance[order(match(variance$modality, modalities),
+                             match(variance$component,
+                                   c("joint", "individual", "residual"))), , drop = FALSE]
+  rownames(variance) <- NULL
+  stopifnot(nrow(variance) == length(modalities) * 3L,
+            !anyDuplicated(variance[c("modality", "component")]),
+            all(variance$fraction >= 0 & variance$fraction <= 1))
+  fraction_sums <- vapply(modalities, function(modality) {
+    sum(variance$fraction[variance$modality == modality])
+  }, numeric(1))
+  stopifnot(max(abs(fraction_sums - 1)) <= 1e-8)
+  variance$modality_label <- unname(modality_labels[variance$modality])
+  variance$component_label <- unname(c(
+    joint = "joint", individual = "modality-specific", residual = "residual"
+  )[variance$component])
+
+  ranks <- decomposition$ranks
+  .fig_require_cols(ranks, c("modality", "signal_rank", "joint_rank",
+                             "individual_rank", "residual_rank_budget"),
+                    "integration decomposition ranks")
+  joint_rank <- unique(as.integer(ranks$joint_rank))
+  stopifnot(length(joint_rank) == 1L, !is.na(joint_rank), joint_rank == 0L)
+  ranks <- ranks[match(modalities, as.character(ranks$modality)),
+                 c("modality", "signal_rank", "joint_rank", "individual_rank",
+                   "residual_rank_budget"), drop = FALSE]
+  stopifnot(!anyNA(ranks$modality))
+  rownames(ranks) <- NULL
+
+  joint_diagnostic <- decomposition$diagnostics$joint
+  stopifnot(is.list(joint_diagnostic), is.matrix(joint_diagnostic$block_alignment),
+            is.data.frame(joint_diagnostic$candidates),
+            is.list(joint_diagnostic$thresholds))
+  candidates <- joint_diagnostic$candidates
+  .fig_require_cols(candidates, c("axis", "stacked_singular_value", "selected"),
+                    "integration joint candidates")
+  candidate_axis <- as.character(candidates$axis[[which.max(candidates$stacked_singular_value)]])
+  candidate_row <- match(candidate_axis, rownames(joint_diagnostic$block_alignment))
+  candidate_meta <- candidates[match(candidate_axis, candidates$axis), , drop = FALSE]
+  stopifnot(!is.na(candidate_row), nrow(candidate_meta) == 1L,
+            identical(candidate_meta$selected, FALSE),
+            all(modalities %in% colnames(joint_diagnostic$block_alignment)))
+  squared_cosine <- as.numeric(
+    joint_diagnostic$block_alignment[candidate_row, modalities, drop = TRUE]
+  )
+  squared_cosine <- pmin(1, pmax(0, squared_cosine))
+  alignment_threshold <- joint_diagnostic$thresholds$block_alignment
+  stopifnot(is.numeric(alignment_threshold), all(modalities %in% names(alignment_threshold)))
+  alignment <- data.frame(
+    modality = modalities,
+    modality_label = unname(modality_labels[modalities]),
+    candidate_axis = candidate_axis,
+    squared_cosine = squared_cosine,
+    principal_angle_degrees = acos(sqrt(squared_cosine)) * 180 / pi,
+    alignment_threshold = as.numeric(alignment_threshold[modalities]),
+    selected = rep(FALSE, length(modalities)),
+    stringsAsFactors = FALSE
+  )
+  .fig_assert_finite(alignment,
+                     c("squared_cosine", "principal_angle_degrees", "alignment_threshold"),
+                     "integration shared-candidate alignment")
+
+  # Figure 12: raw-logFC Spearman rho plus exact same-sign fractions on the common universe.
+  rho_matrix <- integration_concordance$primary$spearman_logFC
+  stopifnot(is.matrix(rho_matrix), identical(colnames(rho_matrix), contrasts),
+            identical(rownames(rho_matrix),
+                      c("snRNAseq_GeoMx", "snRNAseq_bulk", "GeoMx_bulk")),
+            identical(integration_concordance$provenance$n_genes, 3109L))
+  pair_labels <- c(
+    snRNAseq_GeoMx = "snRNA-seq - GeoMx",
+    snRNAseq_bulk = "snRNA-seq - bulk",
+    GeoMx_bulk = "GeoMx - bulk"
+  )
+  rho <- expand.grid(
+    pair = rownames(rho_matrix), contrast = colnames(rho_matrix),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  rho$rho <- as.numeric(rho_matrix)
+  rho$pair_label <- unname(pair_labels[rho$pair])
+  rho$contrast_label <- unname(contrast_labels[rho$contrast])
+  rho$n <- as.integer(integration_concordance$provenance$n_genes)
+  .fig_assert_finite(rho, c("rho", "n"), "integration concordance heatmap")
+
+  directional <- integration_concordance$directional_overlap$sign_concordance
+  .fig_require_cols(
+    directional,
+    c("pair", "contrast", "concordant", "discordant", "concordant_fraction", "n"),
+    "integration directional sign concordance"
+  )
+  directional <- directional[
+    directional$pair %in% names(pair_labels) & directional$contrast %in% contrasts &
+      is.finite(directional$concordant) & is.finite(directional$discordant) &
+      is.finite(directional$concordant_fraction) & is.finite(directional$n),
+    c("pair", "contrast", "concordant", "discordant", "concordant_fraction", "n"),
+    drop = FALSE
+  ]
+  directional_key <- paste(directional$pair, directional$contrast, sep = "\r")
+  rho_key <- paste(rho$pair, rho$contrast, sep = "\r")
+  directional <- directional[match(rho_key, directional_key), , drop = FALSE]
+  stopifnot(nrow(directional) == nrow(rho), !anyNA(directional$pair),
+            all(directional$concordant + directional$discordant == directional$n),
+            all(directional$n == rho$n))
+  directional$pair_label <- unname(pair_labels[directional$pair])
+  directional$contrast_label <- unname(contrast_labels[directional$contrast])
+  rownames(directional) <- NULL
+
+  # Figure 13: count every scored set for the directional-consensus bars, then retain only
+  # all-three-covered top GO-BP rows for the small amyloid-contrast score heatmap.
+  consensus <- integration_pathway$consensus
+  scores <- integration_pathway$scores
+  .fig_require_cols(
+    consensus,
+    c("collection", "set", "contrast", "set_size", "n_modalities_covered",
+      "n_up", "n_down", "consensus_direction"),
+    "integration pathway consensus"
+  )
+  .fig_require_cols(
+    scores,
+    c("collection", "set", "contrast", "modality", "set_size", "coverage",
+      "score_logFC"),
+    "integration pathway scores"
+  )
+  stopifnot(
+    identical(integration_pathway$provenance$gene_sets$total_sets, 7540L),
+    identical(integration_pathway$provenance$scoring$min_coverage, 5L),
+    identical(integration_pathway$provenance$scoring$score_threshold, 0.5)
+  )
+  directions <- c("down", "none", "up")
+  consensus <- consensus[
+    consensus$contrast %in% contrasts & consensus$consensus_direction %in% directions,
+    , drop = FALSE
+  ]
+  consensus_table <- table(
+    factor(consensus$contrast, levels = contrasts),
+    factor(consensus$consensus_direction, levels = directions)
+  )
+  consensus_counts <- as.data.frame(consensus_table, stringsAsFactors = FALSE)
+  names(consensus_counts) <- c("contrast", "direction", "n")
+  consensus_counts$contrast <- as.character(consensus_counts$contrast)
+  consensus_counts$direction <- as.character(consensus_counts$direction)
+  consensus_counts$n <- as.integer(consensus_counts$n)
+  consensus_counts$contrast_label <- unname(contrast_labels[consensus_counts$contrast])
+  consensus_counts$signed_count <- ifelse(
+    consensus_counts$direction == "up", consensus_counts$n,
+    ifelse(consensus_counts$direction == "down", -consensus_counts$n, 0L)
+  )
+  stopifnot(sum(consensus_counts$n) == nrow(consensus))
+
+  eligible <- consensus[
+    consensus$collection == "GO:BP" & consensus$contrast %in% amyloid_contrasts &
+      consensus$consensus_direction %in% c("up", "down"),
+    c("collection", "set", "contrast", "set_size", "n_modalities_covered",
+      "consensus_direction"), drop = FALSE
+  ]
+  stopifnot(nrow(eligible) > 0L,
+            !anyDuplicated(eligible[c("collection", "set", "contrast")]))
+  eligible_key <- paste(eligible$collection, eligible$set, eligible$contrast, sep = "\r")
+  finite_scores <- scores[
+    scores$collection == "GO:BP" & scores$contrast %in% amyloid_contrasts &
+      scores$modality %in% modalities & is.finite(scores$set_size) &
+      is.finite(scores$coverage) & is.finite(scores$score_logFC),
+    c("collection", "set", "contrast", "modality", "set_size", "coverage",
+      "score_logFC"), drop = FALSE
+  ]
+  finite_key <- paste(finite_scores$collection, finite_scores$set,
+                      finite_scores$contrast, sep = "\r")
+  finite_scores <- finite_scores[finite_key %in% eligible_key, , drop = FALSE]
+  stopifnot(nrow(finite_scores) > 0L,
+            !anyDuplicated(finite_scores[c("collection", "set", "contrast", "modality")]))
+
+  score_summary <- stats::aggregate(
+    score_logFC ~ collection + set + contrast,
+    data = finite_scores, FUN = mean
+  )
+  names(score_summary)[names(score_summary) == "score_logFC"] <- "mean_score_logFC"
+  modality_summary <- stats::aggregate(
+    modality ~ collection + set + contrast,
+    data = finite_scores, FUN = function(x) length(unique(x))
+  )
+  names(modality_summary)[names(modality_summary) == "modality"] <- "n_modalities"
+  score_summary <- merge(
+    score_summary, modality_summary,
+    by = c("collection", "set", "contrast"), sort = FALSE
+  )
+  score_key <- paste(score_summary$collection, score_summary$set,
+                     score_summary$contrast, sep = "\r")
+  eligible_index <- match(score_key, eligible_key)
+  keep_summary <- score_summary$n_modalities == length(modalities) & !is.na(eligible_index)
+  score_summary <- score_summary[keep_summary, , drop = FALSE]
+  eligible_index <- eligible_index[keep_summary]
+  score_summary$consensus_direction <- eligible$consensus_direction[eligible_index]
+  score_summary$n_modalities_covered <- eligible$n_modalities_covered[eligible_index]
+  .fig_assert_finite(score_summary, c("mean_score_logFC", "n_modalities",
+                                      "n_modalities_covered"),
+                     "integration top pathway summary")
+
+  selected_summary <- .fig_bind(lapply(amyloid_contrasts, function(contrast) {
+    z <- score_summary[score_summary$contrast == contrast, , drop = FALSE]
+    z <- z[order(-abs(z$mean_score_logFC), z$set, method = "radix"), , drop = FALSE]
+    z <- utils::head(z, top_pathways_per_contrast)
+    z$rank <- seq_len(nrow(z))
+    z
+  }))
+  stopifnot(nrow(selected_summary) ==
+              length(amyloid_contrasts) * top_pathways_per_contrast)
+  selected_key <- paste(selected_summary$collection, selected_summary$set,
+                        selected_summary$contrast, sep = "\r")
+  top_consensus <- finite_scores[
+    paste(finite_scores$collection, finite_scores$set,
+          finite_scores$contrast, sep = "\r") %in% selected_key,
+    , drop = FALSE
+  ]
+  top_index <- match(
+    paste(top_consensus$collection, top_consensus$set,
+          top_consensus$contrast, sep = "\r"),
+    selected_key
+  )
+  stopifnot(!anyNA(top_index),
+            nrow(top_consensus) == nrow(selected_summary) * length(modalities))
+  top_consensus$rank <- selected_summary$rank[top_index]
+  top_consensus$mean_score_logFC <- selected_summary$mean_score_logFC[top_index]
+  top_consensus$consensus_direction <- selected_summary$consensus_direction[top_index]
+  top_consensus$n_modalities_covered <-
+    selected_summary$n_modalities_covered[top_index]
+  top_consensus$modality_label <- unname(modality_labels[top_consensus$modality])
+  top_consensus$contrast_label <- unname(contrast_labels[top_consensus$contrast])
+  top_consensus$set_label <- .fig_pathway_label(top_consensus$set)
+  top_consensus$set_label <- vapply(top_consensus$set_label, function(label) {
+    paste(strwrap(label, width = 46L), collapse = "\n")
+  }, character(1), USE.NAMES = FALSE)
+  top_consensus$pathway_key <- paste(top_consensus$contrast, top_consensus$set, sep = "::")
+  top_consensus <- top_consensus[order(
+    match(top_consensus$contrast, amyloid_contrasts), top_consensus$rank,
+    match(top_consensus$modality, modalities), method = "radix"
+  ), , drop = FALSE]
+  rownames(top_consensus) <- NULL
+  .fig_assert_finite(
+    top_consensus,
+    c("set_size", "coverage", "score_logFC", "rank", "mean_score_logFC",
+      "n_modalities_covered"),
+    "integration top pathway scores"
+  )
+
+  out <- list(
+    schema = "p8_integration_figures_v1",
+    decomposition = list(
+      variance = variance,
+      alignment = alignment,
+      ranks = ranks,
+      joint_rank = joint_rank,
+      candidate_axis = candidate_axis
+    ),
+    concordance = list(
+      rho = rho,
+      directional = directional
+    ),
+    pathway = list(
+      consensus_counts = consensus_counts,
+      top_consensus = top_consensus
+    ),
+    provenance = list(
+      source_targets = c("integration_decomposition", "integration_concordance",
+                         "integration_pathway"),
+      modalities = modalities,
+      modality_labels = modality_labels,
+      contrasts = contrasts,
+      contrast_labels = contrast_labels,
+      amyloid_contrasts = amyloid_contrasts,
+      n_genes = integration_concordance$provenance$n_genes,
+      total_pathway_sets = integration_pathway$provenance$gene_sets$total_sets,
+      pathway_min_coverage = integration_pathway$provenance$scoring$min_coverage,
+      pathway_score_threshold = integration_pathway$provenance$scoring$score_threshold,
+      top_pathway_rule = paste0(
+        "top ", top_pathways_per_contrast,
+        " GO:BP directional-consensus sets per amyloid contrast by absolute mean finite ",
+        "standardized-logFC score; all three modalities coverage-gated"
+      ),
+      alignment_field =
+        "primary$diagnostics$joint$block_alignment['joint_candidate_1', ]",
+      interpretation = paste(
+        "DESCRIPTIVE ONLY: point-estimate variance, raw-logFC rank concordance,",
+        "directional overlap, and pathway scores; no calibrated cross-modality p-value"
+      ),
+      contract = paste(
+        "compact report-only variance/alignment, 3 x 5 concordance summaries,",
+        "consensus counts, and fixed top-pathway rows; no full pathway score/consensus table"
+      )
+    ),
+    audit = list(
+      row_counts = c(
+        variance = nrow(variance), alignment = nrow(alignment),
+        rho = nrow(rho), directional = nrow(directional),
+        consensus_counts = nrow(consensus_counts),
+        top_consensus = nrow(top_consensus)
+      ),
+      consensus_direction_totals = stats::setNames(
+        vapply(directions, function(direction) {
+          sum(consensus_counts$n[consensus_counts$direction == direction])
+        }, integer(1)), directions
+      ),
+      joint_rank_zero = TRUE,
+      empty_joint_payload_respected = TRUE,
+      deterministic_order = TRUE,
+      parent_isolated = NA,
+      in_memory_bytes = NA_real_, serialized_bytes = NA_real_,
+      max_target_bytes = max_target_bytes
+    )
+  )
+  stopifnot(!state_substrate_contains_parent(out))
+  out$audit$parent_isolated <- TRUE
+  out$audit$in_memory_bytes <- as.numeric(object.size(out))
+  out$audit$serialized_bytes <- as.numeric(length(qs2::qs_serialize(out)))
+  stopifnot(out$audit$in_memory_bytes <= max_target_bytes,
+            out$audit$serialized_bytes <= max_target_bytes)
+  out
+}

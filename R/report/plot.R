@@ -2516,3 +2516,379 @@ state_decomposition_figure_plot <- function(figures, base_size = 15.5) {
   patchwork::wrap_plots(list(top, p_factorial), ncol = 1,
                         heights = c(0.82, 1.58))
 }
+
+
+# P8 Figure 11: descriptive AJIVE variance split plus the top unselected shared candidate.
+integration_decomposition_plot <- function(figures, base_size = 13.2) {
+  stopifnot(
+    is.list(figures), identical(figures$schema, "p8_integration_figures_v1"),
+    is.list(figures$decomposition),
+    is.data.frame(figures$decomposition$variance),
+    is.data.frame(figures$decomposition$alignment),
+    identical(figures$decomposition$joint_rank, 0L),
+    length(base_size) == 1L, is.finite(base_size), base_size > 0
+  )
+  variance <- figures$decomposition$variance
+  alignment <- figures$decomposition$alignment
+  .fig_require_cols(
+    variance,
+    c("modality", "modality_label", "component", "component_label", "fraction"),
+    "Figure 11 variance partition"
+  )
+  .fig_require_cols(
+    alignment,
+    c("modality", "modality_label", "squared_cosine", "principal_angle_degrees",
+      "alignment_threshold", "selected"),
+    "Figure 11 shared-candidate alignment"
+  )
+  stopifnot(all(is.finite(variance$fraction)), all(is.finite(alignment$squared_cosine)),
+            !any(alignment$selected))
+
+  modality_levels <- unname(
+    figures$provenance$modality_labels[figures$provenance$modalities]
+  )
+  variance$modality_label <- factor(variance$modality_label, levels = modality_levels)
+  variance$component <- factor(
+    variance$component, levels = c("joint", "individual", "residual")
+  )
+  variance$percent_label <- scales::percent(variance$fraction, accuracy = 1)
+  variance$label_y <- ave(variance$fraction, variance$modality, FUN = function(x) {
+    cumsum(x) - x / 2
+  })
+  variance_labels <- variance[variance$fraction >= 0.05, , drop = FALSE]
+  variance_labels$text_colour <- ifelse(
+    as.character(variance_labels$component) == "individual", "#FFFFFF", "#20242A"
+  )
+  joint_notes <- unique(variance[c("modality_label")])
+  names(joint_notes) <- "modality_label"
+  joint_notes$label <- "joint = 0%"
+
+  panel_theme <- theme_tau(base_size = base_size) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = ggplot2::rel(0.94)),
+      plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.74), lineheight = 0.96),
+      axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.78)),
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(7, 8, 7, 8)
+    )
+
+  p_variance <- ggplot2::ggplot(
+    variance, ggplot2::aes(modality_label, fraction, fill = component)
+  ) +
+    ggplot2::geom_col(
+      width = 0.68, colour = "#F8F5ED", linewidth = 0.35,
+      position = ggplot2::position_stack(reverse = TRUE)
+    ) +
+    ggplot2::geom_text(
+      data = variance_labels,
+      ggplot2::aes(y = label_y, label = percent_label, colour = text_colour),
+      fontface = "bold", size = 3.6, show.legend = FALSE
+    ) +
+    ggplot2::geom_text(
+      data = joint_notes,
+      ggplot2::aes(modality_label, 1.035, label = label),
+      inherit.aes = FALSE, colour = "#2F78A0", fontface = "bold", size = 3.25,
+      show.legend = FALSE
+    ) +
+    ggplot2::scale_colour_identity() +
+    ggplot2::scale_fill_manual(
+      values = c(joint = "#2F78A0", individual = "#A63A50", residual = "#D7D2C8"),
+      breaks = c("joint", "individual", "residual"),
+      labels = c("joint", "modality-specific", "residual"),
+      drop = FALSE, name = NULL
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1.08), breaks = seq(0, 1, 0.25),
+      labels = scales::label_percent(accuracy = 1),
+      expand = ggplot2::expansion(mult = c(0, 0))
+    ) +
+    ggplot2::labs(
+      title = "A | Standardized-logFC variance partition",
+      subtitle = "No selected three-way joint component (r_J = 0); individual subspaces dominate",
+      x = NULL, y = "fraction of block sum of squares"
+    ) +
+    panel_theme +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank())
+
+  alignment$modality_label <- factor(alignment$modality_label, levels = modality_levels)
+  alignment$label_y <- pmin(0.94, alignment$squared_cosine + 0.075)
+  alignment$value_label <- sprintf(
+    "%.2f\n%.1f degrees", alignment$squared_cosine, alignment$principal_angle_degrees
+  )
+  alignment_threshold <- unique(alignment$alignment_threshold)
+  stopifnot(length(alignment_threshold) == 1L, is.finite(alignment_threshold))
+  p_alignment <- ggplot2::ggplot(
+    alignment, ggplot2::aes(modality_label, squared_cosine, fill = squared_cosine)
+  ) +
+    ggplot2::geom_hline(
+      yintercept = alignment_threshold, colour = "#6F6A61", linetype = "dashed",
+      linewidth = 0.55
+    ) +
+    ggplot2::geom_col(width = 0.68, colour = "#F8F5ED", linewidth = 0.35) +
+    ggplot2::geom_text(
+      ggplot2::aes(y = label_y, label = value_label),
+      colour = "#20242A", fontface = "bold", size = 3.25,
+      lineheight = 0.92, show.legend = FALSE
+    ) +
+    scale_fill_rwb(
+      midpoint = NULL, limits = c(0, 1), breaks = c(0, 0.5, 1),
+      name = "squared cosine"
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1), breaks = seq(0, 1, 0.25),
+      expand = ggplot2::expansion(mult = c(0, 0.02))
+    ) +
+    ggplot2::labs(
+      title = "B | Top shared-candidate alignment",
+      subtitle = "Unselected candidate; dashed line = 45-degree all-block diagnostic cutoff",
+      x = NULL, y = "squared cosine to candidate axis"
+    ) +
+    panel_theme +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank())
+
+  patchwork::wrap_plots(list(p_variance, p_alignment), nrow = 1, widths = c(1.08, 1))
+}
+
+# P8 Figure 12: two matched 3 x 5 descriptive concordance maps.
+integration_concordance_plot <- function(figures, base_size = 13.2) {
+  stopifnot(
+    is.list(figures), identical(figures$schema, "p8_integration_figures_v1"),
+    is.list(figures$concordance), is.data.frame(figures$concordance$rho),
+    is.data.frame(figures$concordance$directional),
+    length(base_size) == 1L, is.finite(base_size), base_size > 0
+  )
+  rho <- figures$concordance$rho
+  directional <- figures$concordance$directional
+  .fig_require_cols(rho, c("pair", "pair_label", "contrast", "contrast_label", "rho", "n"),
+                    "Figure 12 logFC concordance")
+  .fig_require_cols(
+    directional,
+    c("pair", "pair_label", "contrast", "contrast_label", "concordant_fraction", "n"),
+    "Figure 12 directional concordance"
+  )
+  stopifnot(nrow(rho) == 15L, nrow(directional) == 15L,
+            all(is.finite(rho$rho)), all(is.finite(directional$concordant_fraction)))
+
+  pair_levels <- unname(c(
+    snRNAseq_GeoMx = "snRNA-seq - GeoMx",
+    snRNAseq_bulk = "snRNA-seq - bulk",
+    GeoMx_bulk = "GeoMx - bulk"
+  )[c("snRNAseq_GeoMx", "snRNAseq_bulk", "GeoMx_bulk")])
+  contrast_levels <- unname(
+    figures$provenance$contrast_labels[figures$provenance$contrasts]
+  )
+  rho$pair_label <- factor(rho$pair_label, levels = rev(pair_levels))
+  rho$contrast_label <- factor(rho$contrast_label, levels = contrast_levels)
+  directional$pair_label <- factor(directional$pair_label, levels = rev(pair_levels))
+  directional$contrast_label <- factor(directional$contrast_label, levels = contrast_levels)
+
+  heatmap_theme <- theme_tau(base_size = base_size) +
+    ggplot2::theme(
+      panel.grid = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(angle = 28, hjust = 1,
+                                          size = ggplot2::rel(0.72)),
+      axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.76)),
+      plot.title = ggplot2::element_text(size = ggplot2::rel(0.94)),
+      plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.72), lineheight = 0.96),
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(7, 8, 7, 8)
+    )
+
+  rho_limit <- max(0.2, ceiling(max(abs(rho$rho)) * 10) / 10)
+  p_rho <- ggplot2::ggplot(
+    rho, ggplot2::aes(contrast_label, pair_label, fill = rho)
+  ) +
+    ggplot2::geom_tile(colour = "#F8F5ED", linewidth = 0.55) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = sprintf("%+.2f", rho)),
+      colour = "#20242A", fontface = "bold", size = 3.25,
+      show.legend = FALSE
+    ) +
+    scale_fill_rwb(
+      midpoint = 0, limits = c(-rho_limit, rho_limit),
+      breaks = c(-rho_limit, 0, rho_limit), name = "Spearman rho"
+    ) +
+    ggplot2::coord_fixed() +
+    ggplot2::labs(
+      title = "A | Raw-logFC rank concordance",
+      subtitle = "Descriptive Spearman rho across 3,109 common genes; amyloid contrasts are most positive",
+      x = NULL, y = NULL
+    ) +
+    heatmap_theme
+
+  fraction_range <- range(directional$concordant_fraction)
+  fraction_pad <- max(diff(fraction_range) * 0.08, 0.005)
+  fraction_limits <- c(max(0, fraction_range[[1L]] - fraction_pad),
+                       min(1, fraction_range[[2L]] + fraction_pad))
+  fraction_breaks <- unique(round(c(fraction_limits[[1L]], mean(fraction_limits),
+                                    fraction_limits[[2L]]), 2))
+  p_directional <- ggplot2::ggplot(
+    directional,
+    ggplot2::aes(contrast_label, pair_label, fill = concordant_fraction)
+  ) +
+    ggplot2::geom_tile(colour = "#F8F5ED", linewidth = 0.55) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = scales::percent(concordant_fraction, accuracy = 0.1)),
+      colour = "#20242A", fontface = "bold", size = 3.15,
+      show.legend = FALSE
+    ) +
+    scale_fill_rwb(
+      midpoint = NULL, limits = fraction_limits, breaks = fraction_breaks,
+      labels = scales::label_percent(accuracy = 1), name = "same sign"
+    ) +
+    ggplot2::coord_fixed() +
+    ggplot2::labs(
+      title = "B | Directional overlap",
+      subtitle = "Fraction with matching logFC sign; interaction remains near the descriptive null",
+      x = NULL, y = NULL
+    ) +
+    heatmap_theme
+
+  patchwork::wrap_plots(list(p_rho, p_directional), nrow = 1)
+}
+
+# P8 Figure 13: directional-consensus counts plus a fixed, finite top GO-BP score map.
+integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
+  stopifnot(
+    is.list(figures), identical(figures$schema, "p8_integration_figures_v1"),
+    is.list(figures$pathway), is.data.frame(figures$pathway$consensus_counts),
+    is.data.frame(figures$pathway$top_consensus),
+    length(base_size) == 1L, is.finite(base_size), base_size > 0
+  )
+  counts <- figures$pathway$consensus_counts
+  top <- figures$pathway$top_consensus
+  .fig_require_cols(
+    counts, c("contrast", "contrast_label", "direction", "n", "signed_count"),
+    "Figure 13 consensus counts"
+  )
+  .fig_require_cols(
+    top,
+    c("contrast", "contrast_label", "modality", "modality_label", "set", "set_label",
+      "pathway_key", "rank", "score_logFC", "mean_score_logFC",
+      "consensus_direction"),
+    "Figure 13 top pathway scores"
+  )
+  stopifnot(all(is.finite(counts$n)), all(is.finite(counts$signed_count)),
+            all(is.finite(top$score_logFC)), nrow(top) > 0L)
+
+  contrast_levels <- unname(
+    figures$provenance$contrast_labels[figures$provenance$contrasts]
+  )
+  directional_counts <- counts[counts$direction %in% c("down", "up"), , drop = FALSE]
+  directional_counts$contrast_label <- factor(
+    directional_counts$contrast_label, levels = contrast_levels
+  )
+  directional_counts$direction <- factor(
+    directional_counts$direction, levels = c("down", "up")
+  )
+  count_max <- max(abs(directional_counts$signed_count))
+  directional_counts$label_y <- directional_counts$signed_count +
+    ifelse(directional_counts$signed_count < 0, -1, 1) * count_max * 0.045
+  none_counts <- counts[counts$direction == "none", , drop = FALSE]
+  none_range <- range(none_counts$n)
+  count_label <- scales::label_number(accuracy = 1, big.mark = ",")
+
+  panel_theme <- theme_tau(base_size = base_size) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = ggplot2::rel(0.94)),
+      plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.73), lineheight = 0.96),
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(7, 8, 7, 8)
+    )
+
+  p_counts <- ggplot2::ggplot(
+    directional_counts,
+    ggplot2::aes(contrast_label, signed_count, fill = direction)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#777268", linewidth = 0.45) +
+    ggplot2::geom_col(width = 0.68, colour = "#F8F5ED", linewidth = 0.3) +
+    ggplot2::geom_text(
+      ggplot2::aes(y = label_y, label = count_label(n)),
+      colour = "#20242A", fontface = "bold", size = 3.2,
+      show.legend = FALSE
+    ) +
+    scale_fill_direction(
+      labels = c(down = "down consensus", up = "up consensus"), name = NULL
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(-count_max * 1.18, count_max * 1.18),
+      breaks = scales::breaks_pretty(n = 5),
+      labels = function(x) count_label(abs(x)),
+      expand = ggplot2::expansion(mult = c(0, 0))
+    ) +
+    ggplot2::labs(
+      title = "A | At-least-two-modality directional consensus",
+      subtitle = paste0(
+        "Counts across ", format(figures$provenance$total_pathway_sets, big.mark = ","),
+        " GO-BP/project sets; ", format(none_range[[1L]], big.mark = ","), "-",
+        format(none_range[[2L]], big.mark = ","),
+        " sets per contrast remain below the directional threshold"
+      ),
+      x = NULL, y = "set count (absolute scale)"
+    ) +
+    panel_theme +
+    ggplot2::theme(
+      panel.grid.major.x = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(angle = 22, hjust = 1,
+                                          size = ggplot2::rel(0.76))
+    )
+
+  amyloid_levels <- unname(
+    figures$provenance$contrast_labels[figures$provenance$amyloid_contrasts]
+  )
+  modality_levels <- unname(
+    figures$provenance$modality_labels[figures$provenance$modalities]
+  )
+  pathway_levels <- rev(unique(top$pathway_key))
+  pathway_lookup <- unique(top[c("pathway_key", "set_label")])
+  pathway_labels <- stats::setNames(pathway_lookup$set_label, pathway_lookup$pathway_key)
+  top$contrast_label <- factor(top$contrast_label, levels = amyloid_levels)
+  top$modality_label <- factor(top$modality_label, levels = modality_levels)
+  top$pathway_key <- factor(top$pathway_key, levels = pathway_levels)
+  score_limit <- ceiling(max(abs(top$score_logFC)) * 2) / 2
+  if (!is.finite(score_limit) || score_limit <= 0) score_limit <- 1
+  top$score_label <- sprintf("%+.1f", top$score_logFC)
+  top$text_colour <- ifelse(abs(top$score_logFC) >= score_limit * 0.55,
+                            "#FFFFFF", "#20242A")
+  top_n <- max(top$rank)
+
+  p_top <- ggplot2::ggplot(
+    top, ggplot2::aes(modality_label, pathway_key, fill = score_logFC)
+  ) +
+    ggplot2::geom_tile(colour = "#F8F5ED", linewidth = 0.5) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = score_label, colour = text_colour),
+      fontface = "bold", size = 3.0, show.legend = FALSE
+    ) +
+    scale_fill_rwb(
+      midpoint = 0, limits = c(-score_limit, score_limit),
+      breaks = c(-score_limit, 0, score_limit),
+      name = "standardized\nlogFC score"
+    ) +
+    ggplot2::scale_colour_identity() +
+    ggplot2::scale_y_discrete(labels = pathway_labels) +
+    ggplot2::facet_wrap(ggplot2::vars(contrast_label), nrow = 1, scales = "free_y") +
+    ggplot2::guides(
+      fill = ggplot2::guide_colourbar(
+        barheight = grid::unit(0.45, "lines"), barwidth = grid::unit(5.5, "lines")
+      )
+    ) +
+    ggplot2::labs(
+      title = "B | Top directional GO-BP consensus sets",
+      subtitle = paste0(
+        "Top ", top_n,
+        " per amyloid contrast by absolute mean score; all three modalities covered; descriptive"
+      ),
+      x = NULL, y = NULL
+    ) +
+    panel_theme +
+    ggplot2::theme(
+      panel.grid = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(size = ggplot2::rel(0.76)),
+      axis.text.y = ggplot2::element_text(size = ggplot2::rel(0.68), lineheight = 0.93),
+      strip.text = ggplot2::element_text(size = ggplot2::rel(0.80)),
+      panel.spacing.x = grid::unit(12, "pt")
+    )
+
+  patchwork::wrap_plots(list(p_counts, p_top), ncol = 1, heights = c(0.82, 1.55))
+}

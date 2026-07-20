@@ -1,0 +1,57 @@
+```{r}
+#| label: integration-setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(patchwork)
+})
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
+targets::tar_source()                                # plot theme + compact integration figure helpers
+targets::tar_load(integration_figures)               # three compact descriptive integration plates
+knitr::opts_chunk$set(message = FALSE)
+theme_set(theme_tau())
+
+ifg <- integration_figures
+```
+
+::: {.figure-print-block}
+
+<h2 class="figure-heading">Figure 11</h2>
+
+```{r}
+#| label: plot-integration-decomposition
+#| fig-width: 15.8
+#| fig-height: 8.8
+#| fig-alt: "Two-panel descriptive cross-modality decomposition figure. Stacked bars show zero joint variance, 82.7 to 87.1 percent modality-specific variance, and 12.9 to 18.2 percent residual variance for standardized log fold changes in snRNA-seq, GeoMx, and bulk TiO2, explicitly marking selected joint rank r_J equals zero. A companion bar panel shows squared-cosine alignment to the top unselected shared candidate of 0.612 for snRNA-seq, 0.583 for GeoMx, and 0.079 for bulk, corresponding to principal angles of about 38.5, 40.2, and 73.7 degrees; snRNA-seq and GeoMx partly align while bulk is orthogonal, so no three-way shared axis is claimed."
+integration_decomposition_plot(ifg)
+```
+
+:::
+
+::: {.figure-print-block}
+
+<h2 class="figure-heading">Figure 12</h2>
+
+```{r}
+#| label: plot-integration-concordance
+#| fig-width: 16.8
+#| fig-height: 8.8
+#| fig-alt: "Two matched three-by-five descriptive heatmaps compare each modality pair across five canonical contrasts using 3,109 common genes. The signed raw-logFC Spearman panel shows the strongest positive concordance for the amyloid effect on the P301S background, with rho 0.193 for snRNA-seq versus GeoMx, 0.131 for snRNA-seq versus bulk, and 0.144 for GeoMx versus bulk; the amyloid effect on MAPTKI is more modest, and interaction values remain near zero at minus 0.058, plus 0.068, and minus 0.048. The directional panel reports matching-sign fractions, peaking near 56 to 57 percent for the P301S amyloid contrast; all values are descriptive and carry no calibrated cross-modality p-values."
+integration_concordance_plot(ifg)
+```
+
+:::
+
+::: {.figure-print-block}
+
+<h2 class="figure-heading">Figure 13</h2>
+
+```{r}
+#| label: plot-integration-pathway-consensus
+#| fig-width: 18.8
+#| fig-height: 14.5
+#| fig-alt: "Descriptive pathway-consensus figure. Diverging bars count at-least-two-modality directional agreement across 7,540 GO biological-process and project sets: the P301S amyloid contrast has 335 up and 189 down consensus sets, the MAPTKI amyloid contrast has 266 up and 141 down, whereas the interaction has only 66 up and 86 down and most sets in every contrast remain below threshold. A companion signed heatmap shows the five top all-three-covered GO biological-process consensus sets per amyloid contrast, including microglial-cell activation, amyloid-beta clearance, MHC class II antigen processing, glutamate catabolism, and mitochondrial electron transport, with per-modality standardized-logFC scores; no enrichment p-values are shown or implied."
+integration_pathway_consensus_plot(ifg)
+```
+
+:::

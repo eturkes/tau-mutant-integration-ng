@@ -200,6 +200,12 @@ list(
              build_integration_pathway(integration_substrate),
              format = "qs"),
 
+  # P8.5 compact report leaf: descriptive decomposition, concordance, and pathway plates.
+  tar_target(integration_figures,
+             integration_figure_data(integration_decomposition, integration_concordance,
+                                     integration_pathway),
+             format = "qs"),
+
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # figure/code-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc
@@ -227,7 +233,8 @@ list(
       microglia_figures = microglia_figures,
       trajectory_figures = trajectory_figures,
       modality_scatter_figures = modality_scatter_figures,
-      state_decomposition_figures = state_decomposition_figures
+      state_decomposition_figures = state_decomposition_figures,
+      integration_figures = integration_figures
     ),
     format = "file"
   )

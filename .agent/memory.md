@@ -35,14 +35,15 @@ corrected from the earlier wrong "tau-KO baseline":
   per-animal provenance (MAPTKI/P301S animal IDs, promoter/locus, genotyping confirmation) to
   confirm the literature-inferred construct at the animal level.
 
-Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, 34 report-ancestry
-targets (40 live: + `occupancy_harness_check`, `occupancy_robustness`, `integration_substrate`,
-`integration_decomposition`, `integration_concordance`, and `integration_pathway` non-report leaves,
-outside report ancestry).
+Live report scope (2026-07-20): 13 visible figures, 5 included qmd fragments, 37 report-ancestry
+targets (41 live: `spine`, `microglia_state_decomposition`, `occupancy_harness_check`, and
+`occupancy_robustness` remain outside report ancestry). The integration substrate, decomposition,
+concordance, pathway, and figure leaves are now report-connected through the compact
+`integration_figures` target.
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
-`Figure 10`) + figures + per-figure folded code only; no visible document title, TOC,
+`Figure 13`) + figures + per-figure folded code only; no visible document title, TOC,
 captions, body prose, tables, or global code-tools menu. Folded-code summaries and expanded
 code blocks are intentionally compact via `assets/theme.scss`.
 Retired infrastructure remains absent: committed tests, Python/uv files,
@@ -73,6 +74,12 @@ CI, B2m is display-collapsed, and four below-filter genes are listed. The two-ti
 18.8 x 12.2 inches; marker selection remains fixed and programme-free.
 `sections/state-decomposition.qmd` loads only this leaf after the stable Figures 1-9;
 no Seurat/S4 parent or fitted model crosses the report boundary.
+
+P8.5 report integration appends Figures 11-13 after Figure 10. These figures are DESCRIPTIVE:
+Figure 11 reports `r_J = 0`, per-modality individual/residual variance, and the unselected top
+shared-candidate alignment; Figure 12 reports raw-logFC Spearman rho plus same-sign fractions;
+Figure 13 reports >=2-modality pathway-consensus counts and a finite top-GO-BP score view. No
+calibrated cross-modality p-value or competitive-null enrichment is shown.
 
 ## Data
 
@@ -125,8 +132,8 @@ Durable headline:
   DAM-composition interaction (+0.174) is directionally robust (positive in all 35 P7.5
   variants) but its zero-null significance is resolution-fragile (P7.5 verdict = FRAGILE):
   read this as a robust-sign, significance-caveated claim.
-- Non-snRNAseq modalities provide context figures, not resurrected mechanism or
-  cross-modality chapters.
+- Non-snRNAseq modality-native panels remain context-only; the report now adds a separate
+  descriptive symbol/effect-size integration across snRNAseq, GeoMx, and bulk TiO2.
 
 Subpopulations: Homeostatic, DAM, IFN, Proliferative. Current coherent clusters contain
 Homeostatic/DAM/IFN; no Proliferative-dominant cluster in the built annotated object.
@@ -151,13 +158,16 @@ Cross-modality integration (P8):
   are snRNAseq-GeoMx 12,324, snRNAseq-bulk 3,132, and GeoMx-bulk 3,189.
 - The 3,019-symbol phosphosite parent-gene collapse is a within-assay alternate of the SAME TiO2
   assay, NOT a modality; bulk remains one modality and no per-animal pairing is attempted.
-- `integration_substrate` is a compact, parent-isolated, self-validating non-report leaf rebuilt by
-  `scripts/check.sh`; exact source reconstruction, invertibility, deterministic representatives,
+- `integration_substrate` is a compact, parent-isolated, self-validating analysis leaf rebuilt by
+  `scripts/check.sh` and connected to report ancestry only through `integration_figures`; exact source
+  reconstruction, invertibility, deterministic representatives,
   fixed counts, and the <25 MiB size ceiling are runtime-fatal.
 - `integration_decomposition` is the complete-case-only pure-R AJIVE-style joint/individual/residual
-  decomposition on standardized logFC (primary) with standardized moderated-t sensitivity. It stores
-  Frobenius-energy shares, deterministic ranks/threshold diagnostics, joint gene scores, and per-block
-  five-contrast joint loadings; no imputation or pairing is used and interpretation is descriptive.
+  analysis leaf, report-connected through `integration_figures`; it decomposes standardized logFC
+  (primary) with standardized moderated-t sensitivity. It stores Frobenius-energy shares and
+  deterministic ranks/threshold diagnostics; the live `r_J = 0` result makes joint gene scores and
+  all per-block joint loadings empty. No imputation or pairing is used; interpretation remains
+  descriptive.
   Signal ranks are capped at 2, `r_J + r_I,k <= 4`, and every block retains at least one residual
   dimension. The planted rank-1/rank-2 fixtures, reconstruction/orthogonality/rank oracles,
   parent-isolation, and <25 MiB ceiling are runtime-fatal. `scripts/check.sh` rebuilds the leaf; the
@@ -165,19 +175,27 @@ Cross-modality integration (P8):
   total structured fraction. The matched-rank (`r_J=0`, `r_A=2,2,2`) check differed by at most 0.036
   absolute (GeoMx; snRNAseq 0.00004, bulk 0.00462), inside tolerance; default and reduced-permutation
   rank selection exceeded bounded 20- and 10-minute runs, respectively, and is not a pipeline gate.
-- `integration_concordance` is the compact parent-isolated non-report P8.3 leaf: primary raw-logFC
-  Spearman on the 3 x 5 pair/contrast grid over 3,109 complete-case genes, with same-universe
+- `integration_concordance` is the compact parent-isolated P8.3 analysis leaf, report-connected
+  through `integration_figures`: primary raw-logFC Spearman on the 3 x 5 pair/contrast grid over
+  3,109 complete-case genes, with same-universe
   Pearson/moderated-t views and per-pair >=2-modality coverage sensitivity. Directional counts plus
   deterministic RRHO summaries use corrected `phyper(q - 1, ...)`; all are descriptive-only with no
   calibrated cross-modality p. The unit-resample + DE-refit bootstrap is deferred because per-unit
   matrices are outside the substrate-only contract. `scripts/check.sh` rebuilds the leaf.
-- `integration_pathway` is the compact parent-isolated non-report P8.4 leaf over 7,535 human
-  C5:GO:BP sets ortholog-mapped to mouse plus all five `canonical_microglia_markers` project sets.
+- `integration_pathway` is the compact parent-isolated P8.4 analysis leaf, report-connected through
+  `integration_figures`, over 7,535 human C5:GO:BP sets ortholog-mapped to mouse plus all five
+  `canonical_microglia_markers` project sets.
   It stores 113,100 modality x contrast coverage-gated mean standardized-logFC scores with a
   standardized moderated-t descriptive view, then 37,700 >=2-modality directional-consensus rows
   at fixed coverage >=5 and score magnitude >=0.5. No calibrated p-value or competitive-null
   enrichment is produced because genes are non-exchangeable. Count, score, coverage, consensus,
   determinism, parent-isolation, and <25 MiB oracles are runtime-fatal; `scripts/check.sh` rebuilds it.
+- `integration_figures <- integration_figure_data(integration_decomposition,
+  integration_concordance, integration_pathway)` is the compact P8.5 report leaf. It preserves the
+  `r_J = 0` outcome by plotting variance plus the top unselected shared-candidate alignment, stores
+  the 3 x 5 raw-logFC rho and same-sign grids, aggregates all pathway consensus to 15 count rows,
+  and retains only 30 finite top-GO-BP score rows. It is parent-isolated, below 1 MiB, and contains
+  neither the 113,100-row score table nor the 37,700-row consensus table.
 
 Microglia reprocess:
 - SCT-v2/glmGamPoi on RNA counts, regress percent_mt + percent_contam.
@@ -315,10 +333,11 @@ Modality context:
   targets only; it is not a target family and is not wired into any figure.
 
 Report:
-- `sections/{microglia,trajectory,modality,state-decomposition}.qmd`;
+- `sections/{microglia,trajectory,modality,state-decomposition,integration}.qmd`;
   rendered artifact =
-  `report/tau-mutant-integration.html`; visible HTML = simple numbered figure headings +
-  figures plus per-chunk folded code. Alt text stays in image attributes; captions/TOC/visible
+  `report/tau-mutant-integration.html`; visible HTML = 13 simple numbered figure headings +
+  figures plus per-chunk folded code. Figures 11-13 are descriptive cross-modality integration.
+  Alt text stays in image attributes; captions/TOC/visible
   title stay absent.
 - qmd chunks set `options(warn=2)`. Any warning during render is a failure.
 - Compact report targets must keep qmd renders off the 612MB annotated Seurat object.
@@ -343,9 +362,9 @@ Fresh bootstrap:
 5. `scripts/check.sh`
 
 `scripts/check.sh`:
-- invalidates and rebuilds `report` plus the non-report `occupancy_harness_check`,
-  `integration_substrate`, `integration_decomposition`, `integration_concordance`, and
-  `integration_pathway` validation leaves
+- invalidates and rebuilds `report` plus `occupancy_harness_check`, `integration_substrate`,
+  `integration_decomposition`, `integration_concordance`, `integration_pathway`, and
+  `integration_figures` validation leaves
 - does not sync the environment or scan all target metadata/logs
 - relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
 - functional green does not currently imply byte stability: repeated renders vary only in Figure 8

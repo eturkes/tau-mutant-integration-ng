@@ -1,8 +1,8 @@
 # Map - live codebase wiring
 
-Current rendered surface (2026-07-16): lean 10-figure report. Closed P6 has compact
-Homeostatic/DAM substrate, response, channel, paired gene-atlas, and Figure 10 payload
-targets; report integration is complete.
+Current rendered surface (2026-07-20): 13-figure report. Figures 1-10 retain the closed
+P6/modality surface; P8.5 appends descriptive cross-modality integration as Figures 11-13
+through the compact `integration_figures` leaf.
 No committed test suite, Python/uv surface, composition/sccomp/CmdStan arm,
 retired P1 per-subpopulation DE target, prose-inventory
 utility, mechanism/cross-modality/qc/story chapters, or retired agent configs. Historical
@@ -15,7 +15,9 @@ Fresh clone:
 2. `scripts/bootstrap/rv.sh` - project R package manager.
 3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness, integration-substrate, integration-decomposition, integration-concordance, and integration-pathway guardrails.
+5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness,
+   integration-substrate, integration-decomposition, integration-concordance, integration-pathway,
+   and integration-figures guardrails.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -25,7 +27,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 40.
+store to `storage/targets/`. Expected live target count: 41.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -128,35 +130,47 @@ Modality context:
   keeps the same effect direction as the top-ranked candidate, collapses exact duplicate log2
   median-normalized profiles to the first ranked representative without label suffixes.
 - `integration_substrate <- build_integration_substrate(pb_de_microglia, symbol_map, geomx_de, proteome_de_24m, phospho_de_24m)`
-  is the P8.1 compact, parent-isolated NON-report leaf over exactly three modalities
-  (`snRNAseq`, `GeoMx`, bulk protein-group). It stores raw and invertible robust-z `logFC`/moderated-`t`
+  is the P8.1 compact, parent-isolated analysis leaf over exactly three modalities
+  (`snRNAseq`, `GeoMx`, bulk protein-group), now connected to the report only through
+  `integration_figures`. It stores raw and invertible robust-z `logFC`/moderated-`t`
   matrices on the five canonical contrasts; indexes 3,109 complete-case, 12,427 >=2-modality, and
   22,241 union symbols (pairwise 12,324/3,132/3,189); and keeps the 3,019 phosphosite parent-gene
   collapse as a same-TiO2-assay alternate, never a fourth modality. `scripts/check.sh` invalidates
   and rebuilds this self-validating leaf on every gate.
 - `integration_decomposition <- build_integration_decomposition(integration_substrate)` is the P8.2
-  compact, parent-isolated NON-report leaf. It decomposes the aligned 3,109 complete-case genes into
+  compact, parent-isolated analysis leaf, now connected to the report through `integration_figures`.
+  It decomposes the aligned 3,109 complete-case genes into
   joint/individual/residual Frobenius-energy shares on standardized logFC, with standardized
-  moderated-t sensitivity, deterministic capped ranks and angle diagnostics, joint gene scores, and
-  per-modality five-contrast loadings. In-builder reconstruction, orthogonality, rank-budget, planted
+  moderated-t sensitivity and deterministic capped ranks/angle diagnostics. The live primary result
+  has `r_J = 0`, so joint gene scores and per-modality joint loadings are empty by construction.
+  In-builder reconstruction, orthogonality, rank-budget, planted
   rank-1/rank-2, and size oracles are runtime-fatal; `scripts/check.sh` rebuilds it on every gate.
 - `integration_concordance <- build_integration_concordance(integration_substrate)` is the P8.3
-  compact, parent-isolated NON-report leaf. It stores the common-3,109 raw-logFC Spearman 3 x 5
-  matrix/tidy correlations, Pearson/moderated-t and per-pair coverage sensitivities, exact directional
+  compact, parent-isolated analysis leaf, now connected to the report through `integration_figures`.
+  It stores the common-3,109 raw-logFC Spearman 3 x 5 matrix/tidy correlations,
+  Pearson/moderated-t and per-pair coverage sensitivities, exact directional
   counts, and deterministic corrected-`phyper(q - 1, ...)` RRHO maxima. Bootstrap calibration is
   deferred; all outputs are descriptive-only. `scripts/check.sh` rebuilds it on every gate.
 - `integration_pathway <- build_integration_pathway(integration_substrate)` is the P8.4 compact,
-  parent-isolated NON-report leaf. It scores 7,535 human C5:GO:BP sets ortholog-mapped to mouse plus
-  five project marker sets across all three modalities and five contrasts using coverage-gated means
+  parent-isolated analysis leaf, now connected to the report through `integration_figures`. It scores
+  7,535 human C5:GO:BP sets ortholog-mapped to mouse plus five project marker sets across all
+  three modalities and five contrasts using coverage-gated means
   of standardized logFC (primary) and moderated t (secondary), then records >=2-modality same-direction
   consensus at fixed coverage 5 and score threshold 0.5. All outputs are descriptive-only, with no
   calibrated p-value or competitive-null enrichment. `scripts/check.sh` rebuilds it on every gate.
+- `integration_figures <- integration_figure_data(integration_decomposition, integration_concordance,
+  integration_pathway)` is the P8.5 compact, parent-isolated report leaf. It stores nine variance rows,
+  the three top-candidate alignment diagnostics, matched 3 x 5 rho/sign-concordance grids, 15
+  contrast/direction consensus counts, and 30 finite top-GO-BP score rows (five sets x two amyloid
+  contrasts x three modalities). It carries no full 113,100-row score table or 37,700-row consensus
+  table; `scripts/check.sh` invalidates and rebuilds it on every gate.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", sections/*.qmd, R/**/*.R)`
   so helper-only plot/source edits invalidate `report`.
 - `report_extra_files <- c("assets/theme.scss", assets/fonts/*.woff2)`
-- `report <- render_report(...)`
+- `report <- render_report(...)` depends explicitly on `integration_figures`, so the substrate,
+  decomposition, concordance, pathway, and figure leaves are all in report ancestry.
 
 ## Modules
 
@@ -241,12 +255,14 @@ Report:
 `R/report/figures.R`
 - Compact figure-data builders for rendered slots only:
   `microglia_figure_data()`, `trajectory_figure_data()`,
-  `modality_logfc_scatter_data()`, `state_decomposition_figure_data()`.
+  `modality_logfc_scatter_data()`, `state_decomposition_figure_data()`, and
+  `integration_figure_data()`.
 
 `R/report/plot.R`
 - Shared report theme, scales, modality and rendered descriptive plot helpers including
-  `geomx_sample_heatmap_plot()`, `bulk_modality_context_plot()`, and the report-integrated
-  `state_decomposition_figure_plot()`.
+  `geomx_sample_heatmap_plot()`, `bulk_modality_context_plot()`,
+  `state_decomposition_figure_plot()`, `integration_decomposition_plot()`,
+  `integration_concordance_plot()`, and `integration_pathway_consensus_plot()`.
 
 `R/report/render.R`
 - Quarto render wrapper, embedded-lightbox repair, and report-dir pruning so the final HTML is the only
@@ -254,8 +270,8 @@ Report:
 
 ## Report
 
-`index.qmd` includes four qmd fragments. The rendered HTML exposes simple numbered
-`Figure 1` ... `Figure 10` headings, but no title/TOC/captions:
+`index.qmd` includes five qmd fragments. The rendered HTML exposes simple numbered
+`Figure 1` ... `Figure 13` headings, but no title/TOC/captions:
 - `sections/microglia.qmd`: subpopulation marker dot plot, vertically stacked subpopulation/DAM UMAPs,
   genotype-faceted subpopulation UMAP, replicate-unit subpopulation composition.
 - `sections/trajectory.qmd`: pseudotime density by genotype/subpopulation.
@@ -265,8 +281,10 @@ Report:
 - `sections/state-decomposition.qmd`: compact two-tier plate with retained-state occupancy,
   transcriptome-wide two-state interaction geometry, and ungrouped line-profile fields
   spanning all declared marker genes.
+- `sections/integration.qmd`: descriptive Figures 11-13 for the zero-joint-rank variance/alignment
+  result, raw-logFC concordance plus sign overlap, and coverage-gated pathway consensus.
 
-Rendered output = 10 numbered figures plus compact per-figure folded code controls/content in
+Rendered output = 13 numbered figures plus compact per-figure folded code controls/content in
 `report/tau-mutant-integration.html`; `render_report()` removes stale sibling outputs from `report/`.
 The browser/tab title is `Tau Mutant Integration`.
 Chunk setup uses `options(warn=2)`; data builders pre-filter/guard finite values so report

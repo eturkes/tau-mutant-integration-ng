@@ -20,3 +20,5 @@ execute:
 {{< include sections/modality.qmd >}}
 
 {{< include sections/state-decomposition.qmd >}}
+
+{{< include sections/integration.qmd >}}
