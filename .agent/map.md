@@ -15,7 +15,7 @@ Fresh clone:
 2. `scripts/bootstrap/rv.sh` - project R package manager.
 3. `scripts/bootstrap/quarto.sh` - pinned local Quarto CLI.
 4. `rv sync` - `rproject.toml` -> `rv.lock` -> `rv/library`.
-5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness, integration-substrate, and integration-decomposition guardrails.
+5. `scripts/check.sh` - fast force-render of the final HTML plus the DAM-occupancy harness, integration-substrate, integration-decomposition, and integration-concordance guardrails.
 
 R activation:
 - `.Rprofile` sources `rv/scripts/rvr.R` + `rv/scripts/activate.R`.
@@ -25,7 +25,7 @@ R activation:
 
 `_targets.R` recursively sources `R/`, sets pinned `QUARTO_PATH`, and stores
 heavy/intermediate objects as `format="qs"`. `_targets.yaml` routes the generated
-store to `storage/targets/`. Expected live target count: 38.
+store to `storage/targets/`. Expected live target count: 39.
 
 Raw file targets:
 - `snrnaseq_file`
@@ -140,6 +140,11 @@ Modality context:
   moderated-t sensitivity, deterministic capped ranks and angle diagnostics, joint gene scores, and
   per-modality five-contrast loadings. In-builder reconstruction, orthogonality, rank-budget, planted
   rank-1/rank-2, and size oracles are runtime-fatal; `scripts/check.sh` rebuilds it on every gate.
+- `integration_concordance <- build_integration_concordance(integration_substrate)` is the P8.3
+  compact, parent-isolated NON-report leaf. It stores the common-3,109 raw-logFC Spearman 3 x 5
+  matrix/tidy correlations, Pearson/moderated-t and per-pair coverage sensitivities, exact directional
+  counts, and deterministic corrected-`phyper(q - 1, ...)` RRHO maxima. Bootstrap calibration is
+  deferred; all outputs are descriptive-only. `scripts/check.sh` rebuilds it on every gate.
 
 Report:
 - `report_sources <- c("_quarto.yml", "index.qmd", sections/*.qmd, R/**/*.R)`
@@ -218,6 +223,10 @@ Report:
   `integration_random_joint_threshold()`, `integration_joint_basis()`, and
   `integration_ajive_decompose()` for the pure-R AJIVE-style split; `integration_ajive_fixture()`
   self-tests planted joint ranks 1 and 2 with near-zero-noise reconstruction.
+- `build_integration_concordance()` uses `integration_modality_pairs()`,
+  `integration_hypergeom_upper()`, `integration_rrho_thresholds()`,
+  `integration_rrho_maximum()`, and `integration_directional_overlap()` for common-universe and
+  pairwise raw-effect concordance plus compact four-quadrant directional-overlap summaries.
 
 `R/report/figures.R`
 - Compact figure-data builders for rendered slots only:

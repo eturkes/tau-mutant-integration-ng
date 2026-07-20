@@ -190,6 +190,11 @@ list(
              build_integration_decomposition(integration_substrate),
              format = "qs"),
 
+  # P8.3 non-report leaf: common-universe concordance and directional overlap.
+  tar_target(integration_concordance,
+             build_integration_concordance(integration_substrate),
+             format = "qs"),
+
   # Standalone HTML report render. Source-file targets make report invalidation explicit so
   # figure/code-only post-render repair can run inside the same `report` target. The render still
   # depends on all compact qmd inputs declared below, and quiet=FALSE keeps Quarto/Pandoc

@@ -56,7 +56,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.2 DONE, P8.3-P8.5 OPEN]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [IN-PROGRESS 2026-07-19; P8.1-P8.3 DONE, P8.4-P8.5 OPEN]
 
 Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
 to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
@@ -90,7 +90,7 @@ concordance (common 3,109-universe primary, descriptive - no gene-permutation p)
 (intentional). No new heavy dep (MOFA2 / RGCCA / mixOmics / omicade4 / concatenated PCA / py_jive all
 rejected with recorded rationale; lean reimplement per CLAUDE.md).
 
-Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8.5; all gate-independent; the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam 2026-07-20):
+Units (P8.1-P8.3 DONE 2026-07-19/20, P8.4-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8.5; all gate-independent; the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam 2026-07-20):
 - P8.1 [DONE 2026-07-19] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
   core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [symbol x 5-contrast] logFC +
   moderated-t matrices, robust-z standardization (raw + invertible standardized stored), complete-case (3,109) +
@@ -111,14 +111,30 @@ Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8
   Spearman anchor reproduced to full precision; clean rebuild + check.sh GREEN). NOTE for P8.4: joint
   component is EMPTY (r_J=0), so figure (a) renders the variance split + shared-candidate alignment
   diagnostic, not an empty joint-loading heatmap (forced-rank-1 joint = optional illustrative sensitivity).
-- P8.3 [OPEN] Concordance network -> `integration_concordance` + tests. Pairwise logFC-Spearman 3x5
-  (3 modality-pairs x 5 contrasts) on the common 3,109-universe, descriptive (no gene-permutation p;
-  OPTIONAL per-modality unit-resample + DE-refit bootstrap CI on rho, feasibility-gated -- DEFER with
-  recorded rationale if it cannot reach cached per-unit matrices cheaply) + reimplemented RRHO-style
-  directional-overlap (phyper off-by-one audited out, descriptive). Reads ONLY integration_substrate
-  (raw logFC/t + index sets). Accept: rho + overlap counts reproduce (tol 0); any bootstrap/seeded
-  output deterministic under fixed seed; overlap free of the phyper off-by-one; compact + parent-
-  isolated; gate green.
+- P8.3 [DONE 2026-07-20] Concordance network -> `integration_concordance` + in-builder oracles
+  (`build_integration_concordance` + helpers `integration_modality_pairs` / `_hypergeom_upper` /
+  `_rrho_thresholds` / `_rrho_maximum` / `_directional_overlap`). Reads ONLY `integration_substrate`
+  (raw logFC/t + index sets). Pairwise raw-logFC Spearman on the common 3,109 complete-case universe
+  (PRIMARY, 3 modality-pairs x 5 contrasts) + same-universe Pearson / moderated-t evidence-concordance
+  + per-pair >=2-modality coverage-sensitivity (12,324/3,132/3,189, no imputation) + reimplemented
+  RRHO-style four-quadrant directional overlap (rank-rank hypergeometric maxima, corrected
+  phyper(q-1,...); the classic RRHO/RRHO2 phyper(q,...) off-by-one audited OUT). All DESCRIPTIVE -- no
+  gene-permutation / calibrated cross-modality p. RESULT: amyloid contrasts carry the concordance --
+  nlgf_in_p301s +0.193/+0.131/+0.144 (snR~GeoMx/snR~bulk/GeoMx~bulk, the only contrast positive across
+  all three pairs), nlgf_in_maptki +0.130/+0.056/+0.044; interaction near-zero everywhere
+  (-0.058/+0.068/-0.048) with sign-concordant fraction ~0.48-0.52 (~chance) -- consistent with the
+  spine (interaction mostly composition-specific; matches P8.2's r_J=0). Bootstrap rho-CI DEFERRED with
+  recorded rationale (design-valid per-modality unit-resample + DE-refit needs per-unit matrices absent
+  from the substrate; the substrate-only parent-isolated contract forbids reaching the 8GB/612MB/per-unit
+  parents). In-builder oracles: Spearman reproduced via the rank-Pearson identity <1e-12; quadrant
+  counts integer-exact (tol 0, sum 3,109); phyper off-by-one proven = exact dhyper-sum AND = buggy
+  phyper(q,...) + dhyper(q) point-mass; RRHO grid maxima re-checked by direct set-intersection overlap;
+  determinism; complete-case re-derived by Reduce(intersect) over raw columns; parent-isolated; <25 MiB.
+  MAIN-verified against the cached substrate: primary 3x5 Spearman matrix reproduced to max abs diff
+  0e+00; phyper fix reconfirmed; clean-rebuild error/warnings NA (4,038 B); `TZ=UTC scripts/check.sh`
+  GREEN (report 11.91 MB, 10 figures undisturbed, + integration_concordance). Payload 4,038 B serialized
+  / 22,944 B in-memory. Live target count 38 -> 39 (leaf stays non-report until P8.5). main=73% 197K/272K;
+  impl=57% 156K/272K.
 - P8.4 [OPEN] Pathway consensus -> `integration_pathway` + tests. msigdbr mouse GO-BP (+ optional
   project DAM/Homeostatic/IFN/MHC_APC sets), per modality x contrast set-level directional score (mean
   standardized effect over set genes, coverage-gated) + >=2-modality coverage-gated DESCRIPTIVE
@@ -313,6 +329,37 @@ Units (P8.1-P8.2 DONE 2026-07-19/20, P8.3-P8.5 OPEN; sequence P8.1 -> P8.2 -> P8
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-20 P8.3 concordance network (M8.3) DONE. New cross-modality concordance leaf
+  `integration_concordance` + `build_integration_concordance` (+ helpers `integration_modality_pairs` /
+  `_hypergeom_upper` / `_rrho_thresholds` / `_rrho_maximum` / `_directional_overlap`) in
+  `R/analysis/integration.R`, reading ONLY `integration_substrate`. Pairwise raw-logFC Spearman on the
+  common 3,109 complete-case universe (PRIMARY; 3 modality-pairs x 5 contrasts) + same-universe Pearson /
+  moderated-t evidence-concordance + per-pair >=2-modality coverage-sensitivity rho (12,324/3,132/3,189,
+  no imputation) + reimplemented RRHO-style four-quadrant directional overlap (rank-rank hypergeometric
+  maxima, corrected phyper(q-1,K,N-K,n,lower.tail=FALSE); the classic RRHO/RRHO2 phyper(q,...) off-by-one
+  audited OUT). All layers DESCRIPTIVE -- no gene-permutation / calibrated cross-modality p (genes not
+  exchangeable). RESULT: amyloid contrasts carry the concordance -- nlgf_in_p301s +0.193/+0.131/+0.144
+  (snR~GeoMx/snR~bulk/GeoMx~bulk, the ONLY contrast positive across all three pairs; the strongest edge
+  matches the plan preview), nlgf_in_maptki +0.130/+0.056/+0.044; interaction near-zero everywhere
+  (-0.058/+0.068/-0.048) with sign-concordant fraction ~0.48-0.52 (~chance) -- consistent with the spine
+  (interaction mostly microglia-composition-specific, so no dominant shared effect-size axis; matches
+  P8.2's r_J=0). Bootstrap rho-CI DEFERRED with recorded rationale: the design-valid per-modality
+  unit-resample + DE-refit calibration needs per-unit matrices (snRNAseq genotype_batch pseudobulks /
+  GeoMx AOIs / bulk runs) absent from the substrate, and the substrate-only parent-isolated compact
+  contract forbids reaching the 8GB Seurat / 612MB annotated / per-unit DE parents -> future
+  feasibility-gated pass. In-builder oracles (no committed test, lean posture, mirrors P8.1/P8.2):
+  Spearman reproduced via the rank-Pearson identity <1e-12; quadrant counts integer-exact (tol 0) and
+  sum to 3,109; phyper off-by-one proven = exact dhyper-sum AND = buggy phyper(q,...) + dhyper(q)
+  point-mass; RRHO grid maxima re-checked by direct set-intersection overlap + direct phyper;
+  determinism (identical repeat); complete-case re-derived by Reduce(intersect) over raw columns;
+  parent-isolated; <25 MiB. MAIN independently verified against the cached substrate: primary 3x5
+  Spearman matrix reproduced to max abs diff 0e+00; phyper fix reconfirmed; clean-invalidate rebuild
+  error/warnings NA (4,038 B); `TZ=UTC scripts/check.sh` GREEN (report re-rendered 11.91 MB, 10 figures
+  undisturbed, 5 built / 31 cached, + integration_concordance). Diff = 5 files (integration.R +545,
+  _targets.R +5, check.sh +8, memory.md, map.md); report surface (sections/ + R/report/) UNTOUCHED.
+  Wired into check.sh (invalidate+rebuild alongside the other guardrails). Live target count 38 -> 39.
+  Docs = new fns/target/leaf in memory + map (Agent). Payload 4,038 B serialized / 22,944 B in-memory.
+  main=73% 197K/272K; impl=57% 156K/272K. Milestone stays IN-PROGRESS; next = P8.4 (pathway consensus).
 - 2026-07-20 P8.3 SIZE-CHECK respec-split (M8.3 respec). MAIN SIZE-CHECK before dispatch projected the
   original P8.3 ("concordance + pathway consensus" = `integration_concordance` + `integration_pathway`
   + both oracle suites + the reimplement-vs-ActivePathways decision) at ~258K against the 272K Agent

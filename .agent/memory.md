@@ -36,8 +36,8 @@ corrected from the earlier wrong "tau-KO baseline":
   confirm the literature-inferred construct at the animal level.
 
 Live report scope (2026-07-16): 10 visible figures, 4 included qmd fragments, 34 report-ancestry
-targets (38 live: + `occupancy_harness_check`, `occupancy_robustness`, `integration_substrate`, and
-`integration_decomposition` non-report leaves, outside report ancestry).
+targets (39 live: + `occupancy_harness_check`, `occupancy_robustness`, `integration_substrate`,
+`integration_decomposition`, and `integration_concordance` non-report leaves, outside report ancestry).
 Rendered HTML artifact = `report/tau-mutant-integration.html`; the report directory is pruned after each
 render so that HTML is the only user-facing output. Browser/tab title =
 `Tau Mutant Integration`. Visible surface = simple numbered figure headings (`Figure 1` ...
@@ -164,6 +164,12 @@ Cross-modality integration (P8):
   total structured fraction. The matched-rank (`r_J=0`, `r_A=2,2,2`) check differed by at most 0.036
   absolute (GeoMx; snRNAseq 0.00004, bulk 0.00462), inside tolerance; default and reduced-permutation
   rank selection exceeded bounded 20- and 10-minute runs, respectively, and is not a pipeline gate.
+- `integration_concordance` is the compact parent-isolated non-report P8.3 leaf: primary raw-logFC
+  Spearman on the 3 x 5 pair/contrast grid over 3,109 complete-case genes, with same-universe
+  Pearson/moderated-t views and per-pair >=2-modality coverage sensitivity. Directional counts plus
+  deterministic RRHO summaries use corrected `phyper(q - 1, ...)`; all are descriptive-only with no
+  calibrated cross-modality p. The unit-resample + DE-refit bootstrap is deferred because per-unit
+  matrices are outside the substrate-only contract. `scripts/check.sh` rebuilds the leaf.
 
 Microglia reprocess:
 - SCT-v2/glmGamPoi on RNA counts, regress percent_mt + percent_contam.
@@ -330,7 +336,7 @@ Fresh bootstrap:
 
 `scripts/check.sh`:
 - invalidates and rebuilds `report` plus the non-report `occupancy_harness_check`,
-  `integration_substrate`, and `integration_decomposition` validation leaves
+  `integration_substrate`, `integration_decomposition`, and `integration_concordance` validation leaves
 - does not sync the environment or scan all target metadata/logs
 - relies on qmd `options(warn=2)`, target/harness failures, and `render_report()`'s self-contained/pruned HTML assertion
 - functional green does not currently imply byte stability: repeated renders vary only in Figure 8
