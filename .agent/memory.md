@@ -179,7 +179,7 @@ Cross-modality integration (P8):
   through `integration_figures`: primary raw-logFC Spearman on the 3 x 5 pair/contrast grid over
   3,109 complete-case genes, with same-universe
   Pearson/moderated-t views and per-pair >=2-modality coverage sensitivity. Directional counts plus
-  deterministic RRHO summaries use corrected `phyper(q - 1, ...)`; all are descriptive-only with no
+  the exact per-quadrant same-sign concordance fraction; all are descriptive-only with no
   calibrated cross-modality p. The unit-resample + DE-refit bootstrap is deferred because per-unit
   matrices are outside the substrate-only contract. `scripts/check.sh` rebuilds the leaf.
 - `integration_pathway` is the compact parent-isolated P8.4 analysis leaf, report-connected through

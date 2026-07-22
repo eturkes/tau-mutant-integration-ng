@@ -1,11 +1,11 @@
 ```{r}
 #| label: state-decomposition-setup
 #| include: false
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 suppressPackageStartupMessages({
   library(ggplot2)
   library(patchwork)
 })
-options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 targets::tar_source()                                # plot theme + compact Figure 10 helper
 targets::tar_load(state_decomposition_figures)       # compact gene-effect leaf only
 knitr::opts_chunk$set(message = FALSE)

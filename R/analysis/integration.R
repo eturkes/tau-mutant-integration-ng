@@ -941,7 +941,6 @@ integration_ajive_decompose <- function(
   )
   if (keep_components) {
     result$components <- lapply(block_results, `[[`, "components")
-    result$individual_bases <- lapply(block_results, `[[`, "individual_basis")
   }
   result
 }
@@ -1178,124 +1177,7 @@ integration_modality_pairs <- function() {
   )
 }
 
-integration_hypergeom_upper <- function(q, K, N, n, log_p = FALSE) {
-  stopifnot(
-    length(N) == 1L, is.numeric(N), is.finite(N), N == floor(N), N > 0,
-    length(log_p) == 1L, is.logical(log_p), !is.na(log_p),
-    all(is.finite(q)), all(is.finite(K)), all(is.finite(n)),
-    all(q == floor(q)), all(K == floor(K)), all(n == floor(n)),
-    all(K >= 0 & K <= N), all(n >= 0 & n <= N),
-    all(q >= pmax(0, K + n - N)), all(q <= pmin(K, n))
-  )
-  stats::phyper(
-    q - 1, K, N - K, n,
-    lower.tail = FALSE, log.p = log_p
-  )
-}
-
-integration_rrho_thresholds <- function(n, step) {
-  stopifnot(
-    length(n) == 1L, is.numeric(n), is.finite(n), n == floor(n), n >= 2,
-    length(step) == 1L, is.numeric(step), is.finite(step),
-    step == floor(step), step >= 1
-  )
-  stepped <- if (step <= n) seq.int(step, n, by = step) else integer()
-  thresholds <- sort(unique(as.integer(c(1L, stepped, n))), method = "radix")
-  stopifnot(
-    thresholds[[1L]] == 1L,
-    thresholds[[length(thresholds)]] == as.integer(n),
-    all(diff(thresholds) > 0L)
-  )
-  thresholds
-}
-
-integration_rrho_maximum <- function(a, b, genes, quadrant, step) {
-  quadrants <- c("up_up", "down_down", "up_down", "down_up")
-  stopifnot(
-    is.numeric(a), is.numeric(b), is.character(genes),
-    length(a) == length(b), length(a) == length(genes), length(a) >= 2L,
-    all(is.finite(a)), all(is.finite(b)), !anyNA(genes),
-    all(nzchar(genes)), anyDuplicated(genes) == 0L,
-    length(quadrant) == 1L, quadrant %in% quadrants
-  )
-  n_genes <- length(genes)
-  thresholds <- integration_rrho_thresholds(n_genes, step)
-  a_descending <- quadrant %in% c("up_up", "up_down")
-  b_descending <- quadrant %in% c("up_up", "down_up")
-  order_a <- if (a_descending) {
-    order(-a, genes, method = "radix")
-  } else {
-    order(a, genes, method = "radix")
-  }
-  order_b <- if (b_descending) {
-    order(-b, genes, method = "radix")
-  } else {
-    order(b, genes, method = "radix")
-  }
-  genes_a <- genes[order_a]
-  genes_b <- genes[order_b]
-  position_b <- match(genes_a, genes_b)
-  stopifnot(
-    !anyNA(position_b),
-    identical(sort(position_b, method = "radix"), seq_len(n_genes))
-  )
-
-  n_thresholds <- length(thresholds)
-  enters_a <- findInterval(seq_len(n_genes) - 1L, thresholds) + 1L
-  enters_b <- findInterval(position_b - 1L, thresholds) + 1L
-  entry <- matrix(
-    tabulate(
-      enters_a + (enters_b - 1L) * n_thresholds,
-      nbins = n_thresholds * n_thresholds
-    ),
-    nrow = n_thresholds,
-    ncol = n_thresholds
-  )
-  overlap <- entry
-  if (n_thresholds > 1L) {
-    for (i in 2L:n_thresholds) {
-      overlap[i, ] <- overlap[i, ] + overlap[i - 1L, ]
-    }
-    for (j in 2L:n_thresholds) {
-      overlap[, j] <- overlap[, j] + overlap[, j - 1L]
-    }
-  }
-  stopifnot(overlap[n_thresholds, n_thresholds] == n_genes)
-
-  list_a_size <- thresholds[row(overlap)]
-  list_b_size <- thresholds[col(overlap)]
-  log_upper_tail <- integration_hypergeom_upper(
-    overlap, list_a_size, n_genes, list_b_size, log_p = TRUE
-  )
-  enrichment <- -log_upper_tail / log(10)
-  stopifnot(all(is.finite(enrichment)), all(enrichment >= 0))
-
-  flat_enrichment <- as.vector(enrichment)
-  flat_overlap <- as.vector(overlap)
-  flat_rank_a <- rep(thresholds, times = n_thresholds)
-  flat_rank_b <- rep(thresholds, each = n_thresholds)
-  best <- order(
-    -flat_enrichment, flat_rank_a, flat_rank_b, -flat_overlap,
-    method = "radix"
-  )[[1L]]
-  result <- list(
-    quadrant = quadrant,
-    max_neg_log10_p = unname(flat_enrichment[[best]]),
-    rank_a = as.integer(flat_rank_a[[best]]),
-    rank_b = as.integer(flat_rank_b[[best]]),
-    overlap = as.integer(flat_overlap[[best]]),
-    n = as.integer(n_genes)
-  )
-  stopifnot(
-    result$rank_a %in% thresholds,
-    result$rank_b %in% thresholds,
-    result$overlap <= min(result$rank_a, result$rank_b),
-    result$max_neg_log10_p >= 0
-  )
-  result
-}
-
-integration_directional_overlap <- function(a, b, genes, rrho_step) {
+integration_directional_overlap <- function(a, b, genes) {
   stopifnot(
     is.numeric(a), is.numeric(b), is.character(genes),
     length(a) == length(b), length(a) == length(genes),
@@ -1322,28 +1204,14 @@ integration_directional_overlap <- function(a, b, genes, rrho_step) {
     concordant_fraction = concordant / n_genes,
     n = as.integer(n_genes)
   )
-  quadrants <- c("up_up", "down_down", "up_down", "down_up")
-  rrho <- do.call(rbind, lapply(quadrants, function(quadrant) {
-    maximum <- integration_rrho_maximum(a, b, genes, quadrant, rrho_step)
-    data.frame(
-      quadrant = maximum$quadrant,
-      max_neg_log10_p = maximum$max_neg_log10_p,
-      rank_a = maximum$rank_a,
-      rank_b = maximum$rank_b,
-      overlap = maximum$overlap,
-      n = maximum$n,
-      stringsAsFactors = FALSE
-    )
-  }))
-  rownames(rrho) <- NULL
   stopifnot(
     identical(as.integer(sum(counts)), as.integer(n_genes)),
     concordant + discordant == n_genes,
-    identical(rrho$quadrant, quadrants),
-    all(rrho$overlap <= pmin(rrho$rank_a, rrho$rank_b)),
-    all(is.finite(rrho$max_neg_log10_p))
+    is.finite(sign_concordance$concordant_fraction),
+    sign_concordance$concordant_fraction >= 0,
+    sign_concordance$concordant_fraction <= 1
   )
-  list(sign_concordance = sign_concordance, rrho = rrho)
+  list(sign_concordance = sign_concordance)
 }
 
 build_integration_concordance <- function(integration_substrate) {
@@ -1351,7 +1219,6 @@ build_integration_concordance <- function(integration_substrate) {
   contrasts <- integration_contrast_names()
   pairs <- integration_modality_pairs()
   pair_names <- names(pairs)
-  rrho_step <- 50L
   expected_symbol_counts <- c(snRNAseq = 14512L, GeoMx = 19959L, bulk = 3306L)
   expected_overlap_counts <- c(
     snRNAseq_GeoMx = 12324L,
@@ -1422,7 +1289,6 @@ build_integration_concordance <- function(integration_substrate) {
   correlation_rows <- vector("list", n_rows)
   coverage_rows <- vector("list", n_rows)
   sign_rows <- vector("list", n_rows)
-  rrho_rows <- vector("list", n_rows)
   row_i <- 0L
   for (pair_name in pair_names) {
     pair <- pairs[[pair_name]]
@@ -1501,12 +1367,8 @@ build_integration_concordance <- function(integration_substrate) {
         stringsAsFactors = FALSE
       )
 
-      directional <- integration_directional_overlap(
-        a_logFC, b_logFC, genes, rrho_step
-      )
-      directional_repeat <- integration_directional_overlap(
-        a_logFC, b_logFC, genes, rrho_step
-      )
+      directional <- integration_directional_overlap(a_logFC, b_logFC, genes)
+      directional_repeat <- integration_directional_overlap(a_logFC, b_logFC, genes)
       stopifnot(identical(directional, directional_repeat))
       sign_row <- cbind(
         data.frame(pair = pair_name, contrast = contrast, stringsAsFactors = FALSE),
@@ -1529,42 +1391,6 @@ build_integration_concordance <- function(integration_substrate) {
       )
       sign_rows[[row_i]] <- sign_row
 
-      for (rrho_i in seq_len(nrow(directional$rrho))) {
-        rrho_row <- directional$rrho[rrho_i, , drop = FALSE]
-        quadrant <- rrho_row$quadrant[[1L]]
-        a_descending <- quadrant %in% c("up_up", "up_down")
-        b_descending <- quadrant %in% c("up_up", "down_up")
-        independent_order_a <- if (a_descending) {
-          order(-a_logFC, genes, method = "radix")
-        } else {
-          order(a_logFC, genes, method = "radix")
-        }
-        independent_order_b <- if (b_descending) {
-          order(-b_logFC, genes, method = "radix")
-        } else {
-          order(b_logFC, genes, method = "radix")
-        }
-        independent_overlap <- as.integer(sum(
-          genes[independent_order_a][seq_len(rrho_row$rank_a[[1L]])] %in%
-            genes[independent_order_b][seq_len(rrho_row$rank_b[[1L]])]
-        ))
-        independent_enrichment <- -stats::phyper(
-          independent_overlap - 1L,
-          rrho_row$rank_a[[1L]],
-          length(genes) - rrho_row$rank_a[[1L]],
-          rrho_row$rank_b[[1L]],
-          lower.tail = FALSE,
-          log.p = TRUE
-        ) / log(10)
-        stopifnot(
-          identical(rrho_row$overlap[[1L]], independent_overlap),
-          abs(rrho_row$max_neg_log10_p[[1L]] - independent_enrichment) < 1e-12
-        )
-      }
-      rrho_rows[[row_i]] <- cbind(
-        data.frame(pair = pair_name, contrast = contrast, stringsAsFactors = FALSE),
-        directional$rrho
-      )
     }
   }
   stopifnot(row_i == n_rows)
@@ -1572,11 +1398,9 @@ build_integration_concordance <- function(integration_substrate) {
   correlations <- do.call(rbind, correlation_rows)
   coverage_sensitivity <- do.call(rbind, coverage_rows)
   sign_concordance <- do.call(rbind, sign_rows)
-  rrho <- do.call(rbind, rrho_rows)
   rownames(correlations) <- NULL
   rownames(coverage_sensitivity) <- NULL
   rownames(sign_concordance) <- NULL
-  rownames(rrho) <- NULL
 
   primary_matrix <- matrix(
     NA_real_, nrow = length(pair_names), ncol = length(contrasts),
@@ -1588,29 +1412,6 @@ build_integration_concordance <- function(integration_substrate) {
     ] <- correlations$spearman_logFC[[i]]
   }
 
-  oracle_N <- 20L
-  oracle_K <- 8L
-  oracle_n <- 7L
-  oracle_q <- 5L
-  corrected_tail <- integration_hypergeom_upper(
-    oracle_q, oracle_K, oracle_N, oracle_n
-  )
-  direct_tail <- sum(stats::dhyper(
-    seq.int(oracle_q, min(oracle_K, oracle_n)),
-    oracle_K, oracle_N - oracle_K, oracle_n
-  ))
-  buggy_tail <- stats::phyper(
-    oracle_q, oracle_K, oracle_N - oracle_K, oracle_n,
-    lower.tail = FALSE
-  )
-  point_mass <- stats::dhyper(
-    oracle_q, oracle_K, oracle_N - oracle_K, oracle_n
-  )
-  stopifnot(
-    abs(corrected_tail - direct_tail) < 1e-12,
-    abs(corrected_tail - (buggy_tail + point_mass)) < 1e-12,
-    corrected_tail > buggy_tail
-  )
 
   result <- list(
     primary = list(
@@ -1618,10 +1419,7 @@ build_integration_concordance <- function(integration_substrate) {
       spearman_logFC = primary_matrix
     ),
     coverage_sensitivity = coverage_sensitivity,
-    directional_overlap = list(
-      sign_concordance = sign_concordance,
-      rrho = rrho
-    ),
+    directional_overlap = list(sign_concordance = sign_concordance),
     provenance = list(
       universe = "complete_case",
       n_genes = as.integer(length(genes)),
@@ -1638,22 +1436,6 @@ build_integration_concordance <- function(integration_substrate) {
         "p-value or calibrated cross-modality p-value is produced; report rho, n, and ",
         "directional counts explicitly"
       ),
-      rrho = list(
-        statistic = paste0(
-          "maximum -log10 upper-tail hypergeometric probability per directional quadrant; ",
-          "descriptive and uncalibrated because nested dependent grid cells are maximized"
-        ),
-        step = rrho_step,
-        thresholds = integration_rrho_thresholds(length(genes), rrho_step),
-        ordering = paste0(
-          "signed raw logFC; rank 1, every fixed 50-gene step, and rank N are evaluated; ",
-          "ties use radix-sorted gene symbols"
-        ),
-        phyper_off_by_one = paste0(
-          "corrected P(X >= q) = phyper(q - 1, K, N - K, n, lower.tail = FALSE); ",
-          "the buggy phyper(q, ...) P(X >= q + 1) form is audited out and oracle-checked"
-        )
-      ),
       exact_zero_policy = paste0(
         "exact-zero logFC is build-fatal for directional sign counts; none is present in ",
         "the continuous limma complete-case effects"
@@ -1669,8 +1451,8 @@ build_integration_concordance <- function(integration_substrate) {
         )
       ),
       determinism = paste0(
-        "RRHO uses a fixed 50-gene step grid and radix tie-breaking; no RNG is used ",
-        "because the optional bootstrap is deferred"
+        "Sign-concordance counts are exact and deterministic; no RNG is used because ",
+        "the optional bootstrap is deferred"
       )
     )
   )
@@ -1684,18 +1466,17 @@ build_integration_concordance <- function(integration_substrate) {
       "primary", "coverage_sensitivity", "directional_overlap", "provenance"
     )),
     identical(names(result$primary), c("correlations", "spearman_logFC")),
+    identical(names(result$directional_overlap), "sign_concordance"),
     identical(dimnames(result$primary$spearman_logFC), list(pair_names, contrasts)),
     nrow(correlations) == n_rows,
     nrow(coverage_sensitivity) == n_rows,
     nrow(sign_concordance) == n_rows,
-    nrow(rrho) == n_rows * 4L,
     identical(correlations$n, rep.int(as.integer(length(genes)), n_rows)),
     identical(
       coverage_sensitivity$n_overlap,
       as.integer(rep(unname(expected_overlap_counts), each = length(contrasts)))
     ),
     identical(sign_concordance$n, rep.int(as.integer(length(genes)), n_rows)),
-    identical(rrho$n, rep.int(as.integer(length(genes)), n_rows * 4L)),
     all(abs(correlation_rho) <= 1),
     all(abs(coverage_sensitivity$spearman_logFC) <= 1),
     all(sign_concordance$up_up + sign_concordance$down_down +
@@ -1703,10 +1484,6 @@ build_integration_concordance <- function(integration_substrate) {
     all(sign_concordance$concordant + sign_concordance$discordant == length(genes)),
     all(sign_concordance$concordant_fraction >= 0 &
           sign_concordance$concordant_fraction <= 1),
-    all(rrho$rank_a %in% result$provenance$rrho$thresholds),
-    all(rrho$rank_b %in% result$provenance$rrho$thresholds),
-    all(rrho$overlap <= pmin(rrho$rank_a, rrho$rank_b)),
-    all(is.finite(rrho$max_neg_log10_p)),
     !anyNA(unlist(result, recursive = TRUE, use.names = FALSE)),
     !integration_contains_parent(result),
     as.numeric(object.size(result)) < 25 * 1024^2

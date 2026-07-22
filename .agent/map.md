@@ -149,7 +149,7 @@ Modality context:
   compact, parent-isolated analysis leaf, now connected to the report through `integration_figures`.
   It stores the common-3,109 raw-logFC Spearman 3 x 5 matrix/tidy correlations,
   Pearson/moderated-t and per-pair coverage sensitivities, exact directional
-  counts, and deterministic corrected-`phyper(q - 1, ...)` RRHO maxima. Bootstrap calibration is
+  counts, and concordant/discordant sign fractions. Bootstrap calibration is
   deferred; all outputs are descriptive-only. `scripts/check.sh` rebuilds it on every gate.
 - `integration_pathway <- build_integration_pathway(integration_substrate)` is the P8.4 compact,
   parent-isolated analysis leaf, now connected to the report through `integration_figures`. It scores
@@ -243,10 +243,9 @@ Report:
   `integration_random_joint_threshold()`, `integration_joint_basis()`, and
   `integration_ajive_decompose()` for the pure-R AJIVE-style split; `integration_ajive_fixture()`
   self-tests planted joint ranks 1 and 2 with near-zero-noise reconstruction.
-- `build_integration_concordance()` uses `integration_modality_pairs()`,
-  `integration_hypergeom_upper()`, `integration_rrho_thresholds()`,
-  `integration_rrho_maximum()`, and `integration_directional_overlap()` for common-universe and
-  pairwise raw-effect concordance plus compact four-quadrant directional-overlap summaries.
+- `build_integration_concordance()` uses `integration_modality_pairs()` and
+  `integration_directional_overlap()` for common-universe pairwise raw-effect Spearman
+  concordance plus the exact per-quadrant same-sign directional-overlap fraction.
 - `build_integration_pathway()` constructs deterministic radix-sorted mouse GO-BP/project sets,
   scores covered symbols from `integration_substrate$standardized`, derives coverage-gated directional
   consensus, and enforces independent score/coverage/consensus, determinism, count, parent-isolation,

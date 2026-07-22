@@ -33,8 +33,8 @@ Durable findings mined from v1 (the headline to rebuild around):
 4. [TORN DOWN 2026-07-06] Cross-modality (amyloid-response spine + synaptic/clearance axis; focused Apoe-Trem2;
    SpatialDecon abundance blocked; full CCC not called) -- chapter + targets + `R/crossmodality.R` deleted; science
    in git history + Ledger.
-REPORT SCOPE (current 2026-07-16): the rendered report = TEN visible figures with simple numbered
-`Figure 1` ... `Figure 10` headings plus compact per-figure folded code only (no visible document title,
+REPORT SCOPE (current 2026-07-23): the rendered report = THIRTEEN visible figures with simple numbered
+`Figure 1` ... `Figure 13` headings plus compact per-figure folded code only (no visible document title,
 TOC, captions, body prose, tables, or global code menu):
 microglia (P1) + trajectory (P2) +
 one appended P6 retained-state response plate (DAM occupancy, ungrouped 52-gene
@@ -48,7 +48,12 @@ chapters, targets, R modules, tests, Python/uv surface, composition/sccomp targe
 stageR layer, prose-inventory utility, and retired GeoMx exploratory/native panels remain deleted or retired from
 the live DAG (Ledger 2026-07-08). Closed P6 kept the live DAG at 34 report-ancestry targets and appends Figure 10 from only
 the compact `state_decomposition_figures` leaf; P7 adds two non-report guardrail leaves
-(`occupancy_harness_check`, `occupancy_robustness`) => 36 live targets (see map.md).
+(`occupancy_harness_check`, `occupancy_robustness`) => 36 live targets (see map.md). P8 appends
+Figures 11-13 (cross-modality AJIVE joint/individual/residual decomposition; raw-logFC Spearman +
+same-sign directional concordance; GO-BP/project-set directional pathway consensus) via the compact
+`integration_figures` report leaf plus four upstream analysis leaves (`integration_substrate` /
+`_decomposition` / `_concordance` / `_pathway`), all report ancestors => 39 report-ancestry + 2
+non-report guardrail = 41 live targets.
 P3/P4/P5 + the figure-expansion passes below stay as
 historical DONE records (this roadmap holds the trajectory); their report chapters no longer exist.
 Streamlined OUT (v1 bloat): the 11-arc ledger + contest machinery, the margin-neutral
@@ -56,7 +61,7 @@ corroboration arcs (SCENIC, spatial-decon, gene-level dynamics),
 the human-validation layer, the capstone convergence matrix, the heavy prose,
 and the user-declined cross-cell-type response-specificity expansion.
 
-## Active milestone: P8 - cross-modality symbol/effect-size integration [IMPLEMENTED 2026-07-20; P8.1-P8.5 DONE]
+## Active milestone: P8 - cross-modality symbol/effect-size integration [REVIEWED 2026-07-23; P8.1-P8.5 DONE]
 
 Direction "cross-modality paired integration" selected by the user at the direction gate, constrained
 to the VALID substitute the user then confirmed: symbol/effect-size joint integration WITHOUT a
@@ -83,7 +88,7 @@ units OPEN.
 Method (locked, multi-agent research + web sweep, reconciled; rejected alternatives in the plan):
 reimplemented pure-R AJIVE joint/individual/residual decomposition (complete-case standardized
 5-contrast x gene blocks; p=5 -> r_init<=2 and >=1 residual dim; r.jive 2.4 [CRAN-current, no-compile]
-as the packaged cross-check reference, NOT a dep) + pairwise logFC-Spearman / RRHO-style directional
+as the packaged cross-check reference, NOT a dep) + pairwise logFC-Spearman / same-sign directional
 concordance (common 3,109-universe primary, descriptive - no gene-permutation p) + msigdbr GO-BP
 >=2-modality directional consensus. NEW module `R/analysis/integration.R`, target prefix `integration_`, fragment
 `sections/integration.qmd` appended after `sections/modality.qmd`; report grows 10 -> ~12-13 figures
@@ -92,7 +97,7 @@ rejected with recorded rationale; lean reimplement per CLAUDE.md).
 
 Units (P8.1-P8.5 DONE 2026-07-19/20; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8.5; all gate-independent; the original P8.3 "concordance + pathway" was SIZE-CHECK-split at the concordance/pathway seam 2026-07-20):
 - P8.1 [DONE 2026-07-19] Harmonized effect-size substrate -> `integration_substrate` + `R/analysis/integration.R`
-  core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [symbol x 5-contrast] logFC +
+  core + in-builder stopifnot oracle (no committed test, lean posture). Per-modality [5-contrast x symbol] logFC +
   moderated-t matrices, robust-z standardization (raw + invertible standardized stored), complete-case (3,109) +
   >=2-modality (12,427) index sets + per-pair overlaps (12,324/3,132/3,189), phosphosite parent alternate (3,019,
   not a modality), provenance. Reconstruction tol 0, counts reproduce, invertibility <1e-9, bulk single-modality,
@@ -135,7 +140,7 @@ Units (P8.1-P8.5 DONE 2026-07-19/20; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8
   GREEN (report 11.91 MB, 10 figures undisturbed, + integration_concordance). Payload 4,038 B serialized
   / 22,944 B in-memory. Live target count 38 -> 39 (leaf stays non-report until P8.5). main=73% 197K/272K;
   impl=57% 156K/272K.
-- P8.4 [DONE 2026-07-20] Pathway consensus -> `integration_pathway` + tests. msigdbr mouse GO-BP (+ optional
+- P8.4 [DONE 2026-07-20] Pathway consensus -> `integration_pathway` + in-builder oracle (no committed test, lean posture). msigdbr mouse GO-BP (+ optional
   project DAM/Homeostatic/IFN/MHC_APC sets), per modality x contrast set-level directional score (mean
   standardized effect over set genes, coverage-gated) + >=2-modality coverage-gated DESCRIPTIVE
   consensus (same-sign above threshold in >=2 modalities per contrast + explicit minimum-modality-
@@ -143,7 +148,7 @@ Units (P8.1-P8.5 DONE 2026-07-19/20; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8
   already-locked msigdbr (no new dep); ActivePathways/fgsea only if reimplement inadequate, with
   rationale. No calibrated enrichment p (competitive null anti-conservative). Reads ONLY
   integration_substrate (standardized effect) + msigdbr. Accept: set scores + consensus membership
-  reproduce (tol 0); consensus deterministic under fixed seed; coverage gating correct; compact +
+  reproduce (tol 0); consensus deterministic (no RNG); coverage gating correct; compact +
   parent-isolated; gate green.
 - P8.5 [DONE 2026-07-20] Report integration -> `integration_figures` = `integration_figure_data()`
   (`R/report/figures.R`) + 3 plot fns (`R/report/plot.R`) + `sections/integration.qmd` (Figures 11-13)
@@ -195,11 +200,11 @@ Units (P8.1-P8.5 DONE 2026-07-19/20; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8
   then run a preregistered DAM-occupancy robustness audit of the +0.174 interaction. 5 units
   P7.1-P7.5 all DONE 2026-07-19 (verdict FRAGILE: +0.174 occupancy sign robust across 34
   variants, zero-null significance resolution-fragile at res 0.5-0.6); MILESTONE-REVIEW closed 2026-07-19.
-- P8 Cross-modality symbol/effect-size integration [IMPLEMENTED 2026-07-20 ->
-  `.agent/p8_crossmodality_integration_plan.md`]: quantify how the amyloid x tau response divides into
+- P8 Cross-modality symbol/effect-size integration [REVIEWED 2026-07-23 ->
+  `.agent/completed/p8_crossmodality_integration_plan_2026-07-23.md`]: quantify how the amyloid x tau response divides into
   SHARED vs MODALITY-SPECIFIC across snRNAseq / GeoMx / bulk-TiO2 on the shared gene-symbol x
   5-contrast effect-size space (NO crosswalk; per-animal pairing P7.3-prohibited + infeasible).
-  Reimplemented pure-R AJIVE joint/individual/residual decomposition + pairwise Spearman / RRHO-style
+  Reimplemented pure-R AJIVE joint/individual/residual decomposition + pairwise Spearman / same-sign
   concordance + msigdbr GO-BP >=2-modality directional consensus; logFC primary (moderated-t
   secondary); all layers descriptive - no design-valid calibrated cross-modality p from cached
   topTables (genes not exchangeable). New `R/analysis/integration.R` +
@@ -332,6 +337,30 @@ Units (P8.1-P8.5 DONE 2026-07-19/20; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8
   exclude no AOIs, change no DE model, and keep SpatialDecon abundance blocked/not claimed.
 
 ## Ledger (trajectory)
+- 2026-07-23 P8 MILESTONE-REVIEW closed (M8 review) -> milestone REVIEWED. Reviewed all P8 commits
+  (M8.1-M8.5 + plan/respec). Four analysis-only lenses (correctness/spec, cross-unit integration,
+  instruction/memory conformance, token-efficiency/obsolescence); MAIN deduped findings, dispatched the
+  accepted fixes as one no-commit Agent batch (10 files, 275/263), independently inspected the diff +
+  reran `TZ=UTC scripts/check.sh` GREEN (7 completed/31 skipped; report 49.8s/13.61 MB; all 5 P8 targets +
+  occupancy_harness_check PASS). USER DECISION (AskUserQuestion): REMOVE the buggy, unused RRHO-maxima
+  computation. `integration_rrho_maximum` built thresholds from the full n_genes and scanned the entire
+  ranked list per quadrant (41/60 maxima crossed a sign boundary) and had ZERO downstream consumer (no
+  figure/extractor reads `$rrho`). Directional cross-modality overlap is now realized SOLELY by the exact
+  per-quadrant same-sign concordance fraction (Figure 12 panel B, numerically unchanged). Deleted
+  `integration_hypergeom_upper` / `_rrho_thresholds` / `_rrho_maximum` + the q-1 phyper oracle + result
+  field + provenance + guards (integration.R -234 lines; `grep -ic rrho` = 0; no rrho ref under R/ or
+  sections/). Other accepted fixes: report-wide `options(warn=2)` before library() in all 5 setup chunks
+  (gate-critical user standing decision, negative test fires); alt-text drift guard (figures.R DERIVES the
+  load-bearing scalars, render-time substring assert; both negative tests fire); Fig 11 complete-case
+  n=3,109 provenance + block-individual (not three-way-joint) relabel + near-orthogonal wording; Fig 13
+  coverage honesty (6,443 eligible / 1,097 undercovered of 7,540); `_targets.R`/`rproject.toml` comment
+  drift (report-ancestry, two-assay-source/three-report-layer, msigdbr Fig 9+13); `individual_bases`
+  dead-code drop; parent-isolation via `integration_contains_parent()`. AJIVE r_J=0 caveats (cumprod-prefix
+  rank selection, custom Wedin + 45-deg fallback, fail-closed rank-0 figure branch) reviewed = real but
+  zero-impact -> documented as known limitations, no untested rank>0 branch built (r_J=0 reconfirmed by
+  peer reference-AJIVE + r.jive cross-check). REPORT SCOPE recount 10->13 figures / 34->39 report-ancestry
+  / 36->41 live. main=79% 214K/272K (Agent batch impl not separately surfaced). Plan archived ->
+  `.agent/completed/p8_crossmodality_integration_plan_2026-07-23.md`. Next session plans P9.
 - 2026-07-20 P8.5 report integration (M8.5) DONE -> milestone P8 IMPLEMENTED. New compact report leaf
   `integration_figures` = `integration_figure_data()` (`R/report/figures.R`, reads ONLY
   `integration_decomposition`/`integration_concordance`/`integration_pathway`) + 3 plot fns
@@ -340,7 +369,7 @@ Units (P8.1-P8.5 DONE 2026-07-19/20; sequence P8.1 -> P8.2 -> P8.3 -> P8.4 -> P8
   `_targets.R` (target + `render_report` arg), `render.R` (param + dependency-touch), `index.qmd` (last
   include), `check.sh` (invalidate+rebuild parity). SCIENTIFIC HONESTY: the live r_J=0 makes the planned
   joint-loading heatmap/top-joint-genes EMPTY, so Figure 11 instead renders the variance partition (joint
-  0 / individual 82.7-87.1% / residual 12.9-18.2%) + the top UNSELECTED shared-candidate alignment
+  0 / individual 81.8-87.1% / residual 12.9-18.2%) + the top UNSELECTED shared-candidate alignment
   (squared-cos snRNAseq 0.612 / GeoMx 0.583 / bulk 0.079 -> 38.5/40.2/73.7 deg; snR & GeoMx partly align,
   bulk TiO2 orthogonal) from `primary$diagnostics$joint$block_alignment['joint_candidate_1', ]`; Figure 12
   = 3x5 raw-logFC Spearman (amyloid|P301S strongest 0.193/0.131/0.144, interaction ~0) + directional

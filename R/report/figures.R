@@ -1289,6 +1289,14 @@ integration_figure_data <- function(integration_decomposition,
     interaction = "interaction"
   )
   amyloid_contrasts <- c("nlgf_in_maptki", "nlgf_in_p301s")
+  shared_universe <- integration_decomposition$provenance$universe
+  shared_n_genes <- integration_decomposition$provenance$n_genes
+  stopifnot(
+    identical(shared_universe, "complete_case"),
+    identical(shared_n_genes, 3109L),
+    identical(integration_concordance$provenance$universe, shared_universe),
+    identical(integration_concordance$provenance$n_genes, shared_n_genes)
+  )
 
   # Figure 11: the selected joint rank is zero, so retain the variance partition and
   # the top unselected shared-candidate diagnostic instead of empty joint loadings.
@@ -1323,7 +1331,7 @@ integration_figure_data <- function(integration_decomposition,
   stopifnot(max(abs(fraction_sums - 1)) <= 1e-8)
   variance$modality_label <- unname(modality_labels[variance$modality])
   variance$component_label <- unname(c(
-    joint = "joint", individual = "modality-specific", residual = "residual"
+    joint = "joint", individual = "block-individual", residual = "residual"
   )[variance$component])
 
   ranks <- decomposition$ranks
@@ -1436,6 +1444,7 @@ integration_figure_data <- function(integration_decomposition,
     identical(integration_pathway$provenance$scoring$min_coverage, 5L),
     identical(integration_pathway$provenance$scoring$score_threshold, 0.5)
   )
+  min_consensus_modalities <- 2L
   directions <- c("down", "none", "up")
   consensus <- consensus[
     consensus$contrast %in% contrasts & consensus$consensus_direction %in% directions,
@@ -1455,7 +1464,24 @@ integration_figure_data <- function(integration_decomposition,
     consensus_counts$direction == "up", consensus_counts$n,
     ifelse(consensus_counts$direction == "down", -consensus_counts$n, 0L)
   )
-  stopifnot(sum(consensus_counts$n) == nrow(consensus))
+  stopifnot(sum(consensus_counts$n) == nrow(consensus),
+            all(consensus$n_modalities_covered %in% 0:3))
+  coverage_summary <- data.frame(
+    contrast = contrasts,
+    contrast_label = unname(contrast_labels[contrasts]),
+    undercovered = vapply(contrasts, function(contrast) {
+      as.integer(sum(consensus$contrast == contrast & consensus$n_modalities_covered < min_consensus_modalities))
+    }, integer(1)),
+    eligible = vapply(contrasts, function(contrast) {
+      as.integer(sum(consensus$contrast == contrast & consensus$n_modalities_covered >= min_consensus_modalities))
+    }, integer(1)),
+    stringsAsFactors = FALSE
+  )
+  stopifnot(
+    all(coverage_summary$undercovered + coverage_summary$eligible ==
+          integration_pathway$provenance$gene_sets$total_sets),
+    all(coverage_summary$undercovered > 0L), all(coverage_summary$eligible > 0L)
+  )
 
   eligible <- consensus[
     consensus$collection == "GO:BP" & consensus$contrast %in% amyloid_contrasts &
@@ -1552,8 +1578,150 @@ integration_figure_data <- function(integration_decomposition,
     "integration top pathway scores"
   )
 
+  format_integer <- function(x) {
+    format(as.integer(x), big.mark = ",", scientific = FALSE, trim = TRUE)
+  }
+  format_signed_word <- function(x) {
+    paste0(ifelse(x < 0, "minus ", "plus "), sprintf("%.3f", abs(x)))
+  }
+  joint_fraction <- variance$fraction[variance$component == "joint"]
+  individual_fraction <- variance$fraction[variance$component == "individual"]
+  residual_fraction <- variance$fraction[variance$component == "residual"]
+  joint_rank_word <- if (joint_rank == 0L) "zero" else format_integer(joint_rank)
+  alignment_index <- match(modalities, alignment$modality)
+  pair_order <- names(pair_labels)
+  p301s_index <- match(
+    paste(pair_order, "nlgf_in_p301s", sep = "\r"), rho_key
+  )
+  interaction_index <- match(
+    paste(pair_order, "interaction", sep = "\r"), rho_key
+  )
+  p301s_sign_match_percent <- round(
+    100 * directional$concordant_fraction[p301s_index]
+  )
+  undercovered_per_contrast <- unique(coverage_summary$undercovered)
+  eligible_per_contrast <- unique(coverage_summary$eligible)
+  stopifnot(
+    length(joint_fraction) == length(modalities), all(joint_fraction == 0),
+    length(individual_fraction) == length(modalities),
+    length(residual_fraction) == length(modalities),
+    !anyNA(alignment_index), !anyNA(p301s_index), !anyNA(interaction_index),
+    length(p301s_sign_match_percent) == length(pair_order),
+    all(is.finite(p301s_sign_match_percent)),
+    length(undercovered_per_contrast) == 1L,
+    length(eligible_per_contrast) == 1L
+  )
+  consensus_value <- function(contrast, direction) {
+    value <- consensus_counts$n[
+      consensus_counts$contrast == contrast & consensus_counts$direction == direction
+    ]
+    stopifnot(length(value) == 1L)
+    as.integer(value)
+  }
+  alt_scalars <- list(
+    figure_11 = c(
+      shared_universe_genes = paste0(format_integer(shared_n_genes), " genes"),
+      zero_joint_variance = paste0(joint_rank_word, " joint variance"),
+      selected_joint_rank = paste0("r_J equals ", joint_rank_word),
+      block_individual_range = paste0(
+        sprintf("%.1f", 100 * min(individual_fraction)), " to ",
+        sprintf("%.1f", 100 * max(individual_fraction)), " percent"
+      ),
+      residual_range = paste0(
+        sprintf("%.1f", 100 * min(residual_fraction)), " to ",
+        sprintf("%.1f", 100 * max(residual_fraction)), " percent"
+      ),
+      snRNAseq_squared_cosine = paste0(
+        sprintf("%.3f", alignment$squared_cosine[alignment_index[[1L]]]),
+        " for snRNA-seq"
+      ),
+      GeoMx_squared_cosine = paste0(
+        sprintf("%.3f", alignment$squared_cosine[alignment_index[[2L]]]),
+        " for GeoMx"
+      ),
+      bulk_squared_cosine = paste0(
+        sprintf("%.3f", alignment$squared_cosine[alignment_index[[3L]]]),
+        " for bulk"
+      ),
+      principal_angles = paste0(
+        sprintf("%.1f", alignment$principal_angle_degrees[alignment_index[[1L]]]), ", ",
+        sprintf("%.1f", alignment$principal_angle_degrees[alignment_index[[2L]]]),
+        ", and ",
+        sprintf("%.1f", alignment$principal_angle_degrees[alignment_index[[3L]]]),
+        " degrees"
+      )
+    ),
+    figure_12 = c(
+      shared_universe_genes = paste0(format_integer(shared_n_genes), " common genes"),
+      p301s_snRNAseq_GeoMx_rho = paste0(
+        "rho ", sprintf("%.3f", rho$rho[p301s_index[[1L]]]),
+        " for snRNA-seq versus GeoMx"
+      ),
+      p301s_snRNAseq_bulk_rho = paste0(
+        sprintf("%.3f", rho$rho[p301s_index[[2L]]]),
+        " for snRNA-seq versus bulk"
+      ),
+      p301s_GeoMx_bulk_rho = paste0(
+        sprintf("%.3f", rho$rho[p301s_index[[3L]]]),
+        " for GeoMx versus bulk"
+      ),
+      interaction_rho = paste0(
+        format_signed_word(rho$rho[interaction_index[[1L]]]), ", ",
+        format_signed_word(rho$rho[interaction_index[[2L]]]), ", and ",
+        format_signed_word(rho$rho[interaction_index[[3L]]])
+      ),
+      p301s_sign_match_peak = paste0(
+        min(p301s_sign_match_percent), " to ",
+        max(p301s_sign_match_percent), " percent"
+      )
+    ),
+    figure_13 = c(
+      total_pathway_sets = paste0(
+        format_integer(integration_pathway$provenance$gene_sets$total_sets),
+        " GO biological-process"
+      ),
+      eligible_sets_per_contrast = paste0(
+        format_integer(eligible_per_contrast), " sets per contrast"
+      ),
+      undercovered_sets_per_contrast = paste0(
+        format_integer(undercovered_per_contrast), " sets per contrast"
+      ),
+      min_modalities = paste0(">=", min_consensus_modalities, " modalities"),
+      min_covered_symbols = paste0(
+        ">=", integration_pathway$provenance$scoring$min_coverage,
+        " covered symbols"
+      ),
+      score_threshold = paste0(
+        "|score| >=",
+        sprintf("%.1f", integration_pathway$provenance$scoring$score_threshold)
+      ),
+      p301s_up = paste0(format_integer(consensus_value("nlgf_in_p301s", "up")), " up"),
+      p301s_down = paste0(
+        format_integer(consensus_value("nlgf_in_p301s", "down")), " down"
+      ),
+      maptki_up = paste0(format_integer(consensus_value("nlgf_in_maptki", "up")), " up"),
+      maptki_down = paste0(
+        format_integer(consensus_value("nlgf_in_maptki", "down")), " down"
+      ),
+      interaction_up = paste0(
+        "only ", format_integer(consensus_value("interaction", "up")), " up"
+      ),
+      interaction_down = paste0(
+        format_integer(consensus_value("interaction", "down")), " down"
+      )
+    )
+  )
+  stopifnot(
+    identical(names(alt_scalars), c("figure_11", "figure_12", "figure_13")),
+    all(vapply(alt_scalars, function(values) {
+      is.character(values) && length(values) > 0L && !is.null(names(values)) &&
+        all(nzchar(names(values))) && all(nzchar(values)) && !anyDuplicated(names(values))
+    }, logical(1)))
+  )
+
   out <- list(
     schema = "p8_integration_figures_v1",
+    alt_scalars = alt_scalars,
     decomposition = list(
       variance = variance,
       alignment = alignment,
@@ -1567,6 +1735,7 @@ integration_figure_data <- function(integration_decomposition,
     ),
     pathway = list(
       consensus_counts = consensus_counts,
+      coverage_summary = coverage_summary,
       top_consensus = top_consensus
     ),
     provenance = list(
@@ -1577,9 +1746,11 @@ integration_figure_data <- function(integration_decomposition,
       contrasts = contrasts,
       contrast_labels = contrast_labels,
       amyloid_contrasts = amyloid_contrasts,
-      n_genes = integration_concordance$provenance$n_genes,
+      universe = shared_universe,
+      n_genes = shared_n_genes,
       total_pathway_sets = integration_pathway$provenance$gene_sets$total_sets,
       pathway_min_coverage = integration_pathway$provenance$scoring$min_coverage,
+      pathway_min_modalities = min_consensus_modalities,
       pathway_score_threshold = integration_pathway$provenance$scoring$score_threshold,
       top_pathway_rule = paste0(
         "top ", top_pathways_per_contrast,
@@ -1602,6 +1773,7 @@ integration_figure_data <- function(integration_decomposition,
         variance = nrow(variance), alignment = nrow(alignment),
         rho = nrow(rho), directional = nrow(directional),
         consensus_counts = nrow(consensus_counts),
+        coverage_summary = nrow(coverage_summary),
         top_consensus = nrow(top_consensus)
       ),
       consensus_direction_totals = stats::setNames(
@@ -1617,7 +1789,7 @@ integration_figure_data <- function(integration_decomposition,
       max_target_bytes = max_target_bytes
     )
   )
-  stopifnot(!state_substrate_contains_parent(out))
+  stopifnot(!integration_contains_parent(out))
   out$audit$parent_isolated <- TRUE
   out$audit$in_memory_bytes <- as.numeric(object.size(out))
   out$audit$serialized_bytes <- as.numeric(length(qs2::qs_serialize(out)))

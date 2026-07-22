@@ -37,7 +37,8 @@ dependencies = [
     # a compiled C++ template, NOT Stan -> fully ON-lock; P3M ships the trixie BINARY co-built
     # against the snapshot's Matrix/TMB, so it loads ABI-clean (no local source build, no mismatch warning).
     "glmmTMB",
-    # modality functional categories: mouse MSigDB GO-BP role unions for figure 10.
+    # modality categories + cross-modality pathway consensus: mouse MSigDB GO-BP role
+    # unions for Figure 9 and GO-BP consensus sets for Figure 13.
     "msigdbr",
     # plotting
     "ggplot2",

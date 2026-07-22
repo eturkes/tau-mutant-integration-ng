@@ -2526,6 +2526,9 @@ integration_decomposition_plot <- function(figures, base_size = 13.2) {
     is.data.frame(figures$decomposition$variance),
     is.data.frame(figures$decomposition$alignment),
     identical(figures$decomposition$joint_rank, 0L),
+    is.list(figures$provenance),
+    identical(figures$provenance$universe, "complete_case"),
+    identical(figures$provenance$n_genes, 3109L),
     length(base_size) == 1L, is.finite(base_size), base_size > 0
   )
   variance <- figures$decomposition$variance
@@ -2594,7 +2597,7 @@ integration_decomposition_plot <- function(figures, base_size = 13.2) {
     ggplot2::scale_fill_manual(
       values = c(joint = "#2F78A0", individual = "#A63A50", residual = "#D7D2C8"),
       breaks = c("joint", "individual", "residual"),
-      labels = c("joint", "modality-specific", "residual"),
+      labels = c("joint", "block-individual", "residual"),
       drop = FALSE, name = NULL
     ) +
     ggplot2::scale_y_continuous(
@@ -2604,7 +2607,12 @@ integration_decomposition_plot <- function(figures, base_size = 13.2) {
     ) +
     ggplot2::labs(
       title = "A | Standardized-logFC variance partition",
-      subtitle = "No selected three-way joint component (r_J = 0); individual subspaces dominate",
+      subtitle = paste0(
+        "Complete-case shared universe: n = ",
+        format(figures$provenance$n_genes, big.mark = ","),
+        " genes; block-individual variance is not selected as a three-way joint ",
+        "component and may include pairwise-shared structure"
+      ),
       x = NULL, y = "fraction of block sum of squares"
     ) +
     panel_theme +
@@ -2752,23 +2760,36 @@ integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
   stopifnot(
     is.list(figures), identical(figures$schema, "p8_integration_figures_v1"),
     is.list(figures$pathway), is.data.frame(figures$pathway$consensus_counts),
+    is.data.frame(figures$pathway$coverage_summary),
     is.data.frame(figures$pathway$top_consensus),
+    is.list(figures$provenance),
+    identical(figures$provenance$pathway_min_coverage, 5L),
+    identical(figures$provenance$pathway_min_modalities, 2L),
     length(base_size) == 1L, is.finite(base_size), base_size > 0
   )
   counts <- figures$pathway$consensus_counts
+  coverage <- figures$pathway$coverage_summary
   top <- figures$pathway$top_consensus
   .fig_require_cols(
     counts, c("contrast", "contrast_label", "direction", "n", "signed_count"),
     "Figure 13 consensus counts"
   )
   .fig_require_cols(
+    coverage, c("contrast", "contrast_label", "undercovered", "eligible"),
+    "Figure 13 pathway coverage summary"
+  )
+  .fig_require_cols(
     top,
     c("contrast", "contrast_label", "modality", "modality_label", "set", "set_label",
-      "pathway_key", "rank", "score_logFC", "mean_score_logFC",
+      "pathway_key", "rank", "coverage", "score_logFC", "mean_score_logFC",
       "consensus_direction"),
     "Figure 13 top pathway scores"
   )
   stopifnot(all(is.finite(counts$n)), all(is.finite(counts$signed_count)),
+            all(is.finite(coverage$undercovered)), all(is.finite(coverage$eligible)),
+            all(coverage$undercovered > 0L), all(coverage$eligible > 0L),
+            all(is.finite(top$coverage)),
+            all(top$coverage >= figures$provenance$pathway_min_coverage),
             all(is.finite(top$score_logFC)), nrow(top) > 0L)
 
   contrast_levels <- unname(
@@ -2784,9 +2805,16 @@ integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
   count_max <- max(abs(directional_counts$signed_count))
   directional_counts$label_y <- directional_counts$signed_count +
     ifelse(directional_counts$signed_count < 0, -1, 1) * count_max * 0.045
-  none_counts <- counts[counts$direction == "none", , drop = FALSE]
-  none_range <- range(none_counts$n)
   count_label <- scales::label_number(accuracy = 1, big.mark = ",")
+  range_label <- function(x) {
+    bounds <- range(as.integer(x))
+    labels <- format(bounds, big.mark = ",", scientific = FALSE, trim = TRUE)
+    if (bounds[[1L]] == bounds[[2L]]) labels[[1L]] else paste(labels, collapse = "-")
+  }
+  eligible_label <- range_label(coverage$eligible)
+  undercovered_label <- range_label(coverage$undercovered)
+  up_label <- range_label(directional_counts$n[directional_counts$direction == "up"])
+  down_label <- range_label(directional_counts$n[directional_counts$direction == "down"])
 
   panel_theme <- theme_tau(base_size = base_size) +
     ggplot2::theme(
@@ -2819,10 +2847,12 @@ integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
     ggplot2::labs(
       title = "A | At-least-two-modality directional consensus",
       subtitle = paste0(
-        "Counts across ", format(figures$provenance$total_pathway_sets, big.mark = ","),
-        " GO-BP/project sets; ", format(none_range[[1L]], big.mark = ","), "-",
-        format(none_range[[2L]], big.mark = ","),
-        " sets per contrast remain below the directional threshold"
+        "Of ", eligible_label, " of ",
+        format(figures$provenance$total_pathway_sets, big.mark = ","),
+        " sets covered in >=", figures$provenance$pathway_min_modalities,
+        " modalities per contrast, ", up_label, " up / ", down_label,
+        " down reach consensus; ", undercovered_label, " undercovered (<",
+        figures$provenance$pathway_min_modalities, " modalities)"
       ),
       x = NULL, y = "set count (absolute scale)"
     ) +
@@ -2847,7 +2877,9 @@ integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
   top$pathway_key <- factor(top$pathway_key, levels = pathway_levels)
   score_limit <- ceiling(max(abs(top$score_logFC)) * 2) / 2
   if (!is.finite(score_limit) || score_limit <= 0) score_limit <- 1
-  top$score_label <- sprintf("%+.1f", top$score_logFC)
+  top$score_label <- sprintf(
+    "%+.1f\n%d genes", top$score_logFC, as.integer(top$coverage)
+  )
   top$text_colour <- ifelse(abs(top$score_logFC) >= score_limit * 0.55,
                             "#FFFFFF", "#20242A")
   top_n <- max(top$rank)
@@ -2858,7 +2890,7 @@ integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
     ggplot2::geom_tile(colour = "#F8F5ED", linewidth = 0.5) +
     ggplot2::geom_text(
       ggplot2::aes(label = score_label, colour = text_colour),
-      fontface = "bold", size = 3.0, show.legend = FALSE
+      fontface = "bold", size = 2.75, lineheight = 0.92, show.legend = FALSE
     ) +
     scale_fill_rwb(
       midpoint = 0, limits = c(-score_limit, score_limit),
@@ -2877,7 +2909,9 @@ integration_pathway_consensus_plot <- function(figures, base_size = 12.3) {
       title = "B | Top directional GO-BP consensus sets",
       subtitle = paste0(
         "Top ", top_n,
-        " per amyloid contrast by absolute mean score; all three modalities covered; descriptive"
+        " per amyloid contrast by absolute mean score; all three modalities meet >=",
+        figures$provenance$pathway_min_coverage,
+        "-gene coverage; tile text gives score and covered genes; descriptive"
       ),
       x = NULL, y = NULL
     ) +

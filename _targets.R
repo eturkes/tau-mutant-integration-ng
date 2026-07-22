@@ -153,7 +153,8 @@ list(
              format = "qs"),
 
   # --- cross-tau amyloid-response (four-panel logFC scatter) ---
-  # Primary per-contrast DE for the three non-snRNAseq modalities (R/analysis/modality_de.R): GeoMx
+  # Primary per-contrast DE for three report layers from two non-snRNAseq assay sources
+  # (R/analysis/modality_de.R): GeoMx
   # voom+TMM with a slide fixed effect + bio-unit duplicateCorrelation plus the one retained
   # compact GeoMx sample-heatmap descriptor. 24M bulk TiO2 phospho protein-group and
   # phosphosite limma-trend on log2 median-normalised, prevalence-filtered intensities (no batch).
@@ -179,23 +180,27 @@ list(
                                          proteome_de_24m, phospho_de_24m),
              format = "qs"),
 
-  # P8.1 non-report leaf: harmonized five-contrast x symbol (5 x genes) raw/robust-z effects.
+  # P8.1 compact analysis leaf; report ancestor via integration_figures:
+  # harmonized five-contrast x symbol (5 x genes) raw/robust-z effects.
   tar_target(integration_substrate,
              build_integration_substrate(pb_de_microglia, symbol_map, geomx_de,
                                          proteome_de_24m, phospho_de_24m),
              format = "qs"),
 
-  # P8.2 non-report leaf: complete-case AJIVE joint/individual/residual split.
+  # P8.2 compact analysis leaf; report ancestor via integration_figures:
+  # complete-case AJIVE joint/individual/residual split.
   tar_target(integration_decomposition,
              build_integration_decomposition(integration_substrate),
              format = "qs"),
 
-  # P8.3 non-report leaf: common-universe concordance and directional overlap.
+  # P8.3 compact analysis leaf; report ancestor via integration_figures:
+  # common-universe concordance and directional overlap.
   tar_target(integration_concordance,
              build_integration_concordance(integration_substrate),
              format = "qs"),
 
-  # P8.4 non-report leaf: coverage-gated GO-BP/project pathway scores and consensus.
+  # P8.4 compact analysis leaf; report ancestor via integration_figures:
+  # coverage-gated GO-BP/project pathway scores and consensus.
   tar_target(integration_pathway,
              build_integration_pathway(integration_substrate),
              format = "qs"),

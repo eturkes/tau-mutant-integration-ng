@@ -1,10 +1,10 @@
 ```{r}
 #| label: trajectory-setup
 #| include: false
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 suppressPackageStartupMessages({
   library(ggplot2)
 })
-options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 targets::tar_source()                                # constants, plot theme + genotype scales
 targets::tar_load(trajectory_figures)                # compact target only (no 612MB Seurat)
 knitr::opts_chunk$set(message = FALSE)

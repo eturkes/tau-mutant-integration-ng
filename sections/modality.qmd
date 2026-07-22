@@ -1,11 +1,11 @@
 ```{r}
 #| label: modality-setup
 #| include: false
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 suppressPackageStartupMessages({
   library(ggplot2)
   library(patchwork)
 })
-options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 targets::tar_source()                                # constants, plot theme + modality figure helpers
 targets::tar_load(modality_scatter_figures)          # compact logFC pairs + functional group scores
 knitr::opts_chunk$set(message = FALSE)

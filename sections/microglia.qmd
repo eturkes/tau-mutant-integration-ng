@@ -1,11 +1,11 @@
 ```{r}
 #| label: microglia-setup
 #| include: false
+options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 suppressPackageStartupMessages({
   library(ggplot2)
   library(patchwork)
 })
-options(warn = 2)                                    # promote any chunk warning to a render error (gate-critical)
 targets::tar_source()                                # constants, marker sets, plot theme + genotype scales
 targets::tar_load(c(microglia_report, microglia_figures))  # compact targets only -> render stays cheap (no 612MB Seurat)
 knitr::opts_chunk$set(message = FALSE)
